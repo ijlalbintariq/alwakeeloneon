@@ -43,84 +43,84 @@ export const PAKISTANI_OUTCOMES = [
     value: "arguments",
     label: "Arguments Heard / Concluded",
     urdu: "دلائل سنے گئے",
-    color: "bg-slate-50 text-[#0F172A] border-slate-200",
+    color: "bg-slate-50 dark:bg-slate-800 text-[#0F172A] dark:text-[#F8FAFC] border-slate-200 dark:border-slate-500/20",
     description: "Counsel advanced arguments on merits; further hearing or order reserved.",
   },
   {
     value: "evidence",
     label: "Evidence Recorded / Cross-Exam",
     urdu: "شہادت ریکارڈ ہوئی",
-    color: "bg-blue-50 text-blue-700 border-blue-200",
+    color: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20",
     description: "Witness statement examined or cross-examination conducted.",
   },
   {
     value: "instruction",
     label: "For Instructions / Notice Issued",
     urdu: "ہدایات / نوٹس جاری",
-    color: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    color: "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20",
     description: "Notice issued to respondent; standing counsel directed to seek instructions.",
   },
   {
     value: "order_passed",
     label: "Order Passed / Interim Relief Granted",
     urdu: "حکم جاری / حکم امتناعی منظور",
-    color: "bg-emerald-50 text-[#105B38] border-emerald-200",
+    color: "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20",
     description: "Court granted stay order, interim injunction, or bail relief.",
   },
   {
     value: "adjourned",
     label: "Adjourned / Adjournment Granted",
     urdu: "التواء دیا گیا",
-    color: "bg-amber-50 text-amber-800 border-amber-200",
+    color: "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-500/20",
     description: "Adjourned on request of counsel, non-availability of bench, or time for reply.",
   },
   {
     value: "reserved",
     label: "Judgment / Order Reserved",
     urdu: "فیصلہ محفوظ",
-    color: "bg-purple-50 text-purple-800 border-purple-200",
+    color: "bg-purple-50 dark:bg-purple-500/10 text-purple-800 dark:text-purple-400 border-purple-200 dark:border-purple-500/20",
     description: "Arguments completed; judgment or short order reserved by bench.",
   },
   {
     value: "allowed",
     label: "Allowed / Petition Accepted",
     urdu: "درخواست منظور",
-    color: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    color: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20",
     description: "Petition or suit allowed in terms of prayer.",
   },
   {
     value: "partly_allowed",
     label: "Partly Allowed",
     urdu: "جزوی منظور",
-    color: "bg-teal-50 text-teal-800 border-teal-200",
+    color: "bg-teal-50 dark:bg-teal-500/10 text-teal-800 dark:text-teal-400 border-teal-200 dark:border-teal-500/20",
     description: "Relief granted partially; remaining claim declined.",
   },
   {
     value: "disposed_off",
     label: "Disposed Off / Settled",
     urdu: "مقدمہ نمٹایا گیا",
-    color: "bg-slate-50 text-slate-700 border-slate-200",
+    color: "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-500/20",
     description: "Matter finalized with directions to relevant statutory authority.",
   },
   {
     value: "dnp",
     label: "DNP (Dismissed for Non-Prosecution)",
     urdu: "عدم پیروی خارج",
-    color: "bg-rose-50 text-rose-700 border-rose-200",
+    color: "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20",
     description: "Dismissed due to absence of petitioner or counsel when called.",
   },
   {
     value: "dismissed",
     label: "Dismissed on Merits",
     urdu: "خارج بر بنائے استحقاق",
-    color: "bg-rose-50 text-rose-700 border-rose-200",
+    color: "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20",
     description: "Petition or suit dismissed after hearing arguments.",
   },
   {
     value: "other",
     label: "Other Proceeding / Direction",
     urdu: "دیگر کارروائی",
-    color: "bg-slate-50 text-slate-700 border-slate-200",
+    color: "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-500/20",
     description: "Miscellaneous court orders, commission appointment, or report submission.",
   },
 ];
@@ -230,20 +230,20 @@ export const PostHearingOutcomeModal: React.FC<PostHearingOutcomeModalProps> = (
       <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
       <div
-        className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#105B38]/10 border border-[#105B38]/20 flex items-center justify-center text-[#105B38]">
+            <div className="w-8 h-8 rounded-lg bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 flex items-center justify-center text-[#105B38]">
               <Gavel className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-[#0F172A]">
+              <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 Log Post-Hearing Outcome & Order
               </h2>
-              <p className="text-[11px] text-[#64748B]">
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 Record Pakistani court proceedings, interim orders, and chain next date
               </p>
             </div>
@@ -251,22 +251,22 @@ export const PostHearingOutcomeModal: React.FC<PostHearingOutcomeModalProps> = (
 
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+            className="p-1 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Current Hearing Context */}
-        <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1 text-xs">
+        <div className="p-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-1 text-xs">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-[#0F172A]">{item.title}</span>
+            <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{item.title}</span>
             <span className="font-mono text-[10px] text-[#105B38] font-bold">
               {item.date} {item.time ? `• ${item.time}` : ""}
             </span>
           </div>
           {item.caseTitle && (
-            <p className="text-[11px] text-[#64748B]">
+            <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               Matter: {item.caseTitle}
             </p>
           )}
@@ -274,7 +274,7 @@ export const PostHearingOutcomeModal: React.FC<PostHearingOutcomeModalProps> = (
 
         {/* Outcome Selector */}
         <div className="space-y-1.5">
-          <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+          <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
             Court Proceeding Outcome / Order *
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -287,8 +287,8 @@ export const PostHearingOutcomeModal: React.FC<PostHearingOutcomeModalProps> = (
                   onClick={() => setOutcome(o.value)}
                   className={`p-2.5 rounded-xl border text-left transition-all ${
                     isSelected
-                      ? "bg-emerald-50 border-[#105B38] text-[#105B38] ring-1 ring-[#105B38] shadow-xs font-bold"
-                      : "bg-white border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] hover:border-[#CBD5E1]"
+                      ? "bg-emerald-50 dark:bg-emerald-500/10 border-[#105B38] text-[#105B38] ring-1 ring-[#105B38] shadow-xs font-bold"
+                      : "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E] hover:border-[#CBD5E1]"
                   }`}
                 >
                   <p className="text-xs font-bold leading-tight">{o.label}</p>
@@ -297,26 +297,26 @@ export const PostHearingOutcomeModal: React.FC<PostHearingOutcomeModalProps> = (
               );
             })}
           </div>
-          <p className="text-[11px] text-[#64748B] italic pt-1">
+          <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] italic pt-1">
             {selectedOutcomeCfg.description}
           </p>
         </div>
 
         {/* Next Hearing Chaining Section */}
-        <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
+        <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-[#105B38]" />
-              <h4 className="text-xs font-bold text-[#0F172A]">
+              <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 Next Hearing Fixation (Automated Chaining)
               </h4>
             </div>
-            <label className="flex items-center gap-1.5 text-[11px] text-[#0F172A] font-mono cursor-pointer">
+            <label className="flex items-center gap-1.5 text-[11px] text-[#0F172A] dark:text-[#F8FAFC] font-mono cursor-pointer">
               <input
                 type="checkbox"
                 checked={autoChainNextDate}
                 onChange={(e) => setAutoChainNextDate(e.target.checked)}
-                className="w-3.5 h-3.5 rounded text-[#105B38] accent-[#105B38] bg-white border-[#E2E8F0]"
+                className="w-3.5 h-3.5 rounded text-[#105B38] accent-[#105B38] bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44]"
               />
               <span>Auto-create diary entry</span>
             </label>
@@ -324,19 +324,19 @@ export const PostHearingOutcomeModal: React.FC<PostHearingOutcomeModalProps> = (
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+              <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
                 Next Hearing Date
               </label>
               <input
                 type="date"
                 value={nextDate}
                 onChange={(e) => setNextDate(e.target.value)}
-                className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2 text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+              <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
                 Next Stage / Fixation Purpose
               </label>
               <input
@@ -344,7 +344,7 @@ export const PostHearingOutcomeModal: React.FC<PostHearingOutcomeModalProps> = (
                 placeholder="e.g. For Final Arguments / Written Arguments"
                 value={nextStage}
                 onChange={(e) => setNextStage(e.target.value)}
-                className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2 text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
               />
             </div>
           </div>
@@ -352,7 +352,7 @@ export const PostHearingOutcomeModal: React.FC<PostHearingOutcomeModalProps> = (
 
         {/* Court Order & Directions Summary */}
         <div className="space-y-1">
-          <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+          <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
             Order Notes, Judge Directions & Advocate Instructions
           </label>
           <textarea
@@ -360,15 +360,15 @@ export const PostHearingOutcomeModal: React.FC<PostHearingOutcomeModalProps> = (
             value={orderNotes}
             onChange={(e) => setOrderNotes(e.target.value)}
             rows={3}
-            className="w-full bg-white border border-[#E2E8F0] rounded-xl p-3 text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] resize-none leading-relaxed shadow-xs"
+            className="w-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl p-3 text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] resize-none leading-relaxed shadow-xs"
           />
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E8F0]">
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-xl transition-colors"
+            className="px-4 py-2 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] rounded-xl transition-colors"
           >
             Cancel
           </button>

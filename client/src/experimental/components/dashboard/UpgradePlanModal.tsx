@@ -38,29 +38,29 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-4xl bg-white border-[#E2E8F0] text-[#0F172A] p-6 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] p-6 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="text-center sm:text-left">
           <div className="flex items-center gap-2 text-[#105B38] font-mono text-xs mb-1 font-semibold">
             <Sparkles className="w-4 h-4" />
             <span>AL WAKEELO CHAMBERS QUOTA & UPGRADE</span>
           </div>
-          <DialogTitle className="text-2xl font-bold font-serif text-[#0F172A]">
+          <DialogTitle className="text-2xl font-bold font-serif text-[#0F172A] dark:text-[#F8FAFC]">
             Chambers Subscriptions & AI Action Quotas
           </DialogTitle>
-          <DialogDescription className="text-xs text-[#64748B]">
+          <DialogDescription className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
             Transparent PKR pricing with instant Safepay settlement, unlimited 83k statutory search, and multi-advocate pooled quotas.
           </DialogDescription>
         </DialogHeader>
 
         {/* Cycle Selector */}
         <div className="flex justify-center my-3">
-          <div className="inline-flex items-center p-1 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
+          <div className="inline-flex items-center p-1 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
             <button
               onClick={() => setCycle("monthly")}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
                 cycle === "monthly"
                   ? "bg-[#105B38] text-white font-bold shadow-sm"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               }`}
             >
               Monthly Retainer
@@ -70,13 +70,13 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
               className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1 ${
                 cycle === "quarterly"
                   ? "bg-[#105B38] text-white font-bold shadow-sm"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               }`}
             >
               <span>Quarterly</span>
               <span
                 className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold ${
-                  cycle === "quarterly" ? "bg-white/20 text-white" : "bg-[#EBF5F0] text-[#105B38]"
+                  cycle === "quarterly" ? "bg-white dark:bg-[#131E2E]/20 text-white" : "bg-[#EBF5F0] dark:bg-[#105B38]/20 text-[#105B38]"
                 }`}
               >
                 Save 10%
@@ -87,13 +87,13 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
               className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1 ${
                 cycle === "yearly"
                   ? "bg-[#105B38] text-white font-bold shadow-sm"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               }`}
             >
               <span>Annual Chambers</span>
               <span
                 className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold ${
-                  cycle === "yearly" ? "bg-white/20 text-white" : "bg-[#EBF5F0] text-[#105B38]"
+                  cycle === "yearly" ? "bg-white dark:bg-[#131E2E]/20 text-white" : "bg-[#EBF5F0] dark:bg-[#105B38]/20 text-[#105B38]"
                 }`}
               >
                 Save 20%
@@ -114,10 +114,10 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
                 key={plan.key}
                 className={`relative flex flex-col justify-between rounded-xl p-4 border transition-all ${
                   plan.highlighted
-                    ? "bg-white border-[#105B38] shadow-md ring-1 ring-[#105B38]/30"
+                    ? "bg-white dark:bg-[#131E2E] border-[#105B38] shadow-md ring-1 ring-[#105B38]/30"
                     : isCurrent
-                    ? "bg-white border-emerald-500/50"
-                    : "bg-[#F8FAFC] border-[#E2E8F0] hover:border-[#CBD5E1]"
+                    ? "bg-white dark:bg-[#131E2E] border-emerald-500/50"
+                    : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#CBD5E1]"
                 }`}
               >
                 {plan.highlighted && (
@@ -128,21 +128,21 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-bold text-sm text-[#0F172A] font-serif">
+                    <h3 className="font-bold text-sm text-[#0F172A] dark:text-[#F8FAFC] font-serif">
                       {plan.title}
                     </h3>
                     {isCurrent && (
-                      <span className="text-[9px] font-mono text-[#105B38] bg-[#EBF5F0] border border-[#A3D4BC] px-1.5 py-0.5 rounded font-bold">
+                      <span className="text-[9px] font-mono text-[#105B38] bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 px-1.5 py-0.5 rounded font-bold">
                         Current
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-[#64748B] mb-3">
+                  <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mb-3">
                     {plan.subtitle}
                   </p>
 
                   <div className="mb-4">
-                    <span className="text-xl font-bold font-mono text-[#0F172A]">
+                    <span className="text-xl font-bold font-mono text-[#0F172A] dark:text-[#F8FAFC]">
                       {pricing.totalLabel}
                     </span>
                     {cycle !== "monthly" && (
@@ -152,7 +152,7 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
                     )}
                   </div>
 
-                  <div className="space-y-2 text-[11px] text-[#334155]">
+                  <div className="space-y-2 text-[11px] text-[#334155] dark:text-[#CBD5E1]">
                     {plan.features.map((feat: string, idx: number) => (
                       <div key={idx} className="flex items-start gap-1.5">
                         <Check className="w-3.5 h-3.5 text-[#105B38] shrink-0 mt-0.5" />
@@ -162,14 +162,14 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-4 mt-4 border-t border-[#E2E8F0]">
+                <div className="pt-4 mt-4 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                   <Link
                     href={`/preview/checkout?plan=${plan.key}&cycle=${cycle}`}
                     onClick={() => onClose()}
                     className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
                       plan.highlighted
                         ? "bg-[#105B38] hover:bg-[#0D4A2E] text-white font-bold shadow-sm"
-                        : "bg-[#E2E8F0] hover:bg-[#CBD5E1] text-[#0F172A]"
+                        : "bg-[#E2E8F0] hover:bg-[#CBD5E1] text-[#0F172A] dark:text-[#F8FAFC]"
                     }`}
                   >
                     <span>{plan.cta}</span>
@@ -182,7 +182,7 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
         </div>
 
         {/* Footer Link to Full Pricing Matrix */}
-        <div className="mt-4 pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs text-[#64748B]">
+        <div className="mt-4 pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
           <span>Need custom enterprise seats or on-premise deployment?</span>
           <Link
             href="/preview/pricing"

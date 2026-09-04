@@ -126,7 +126,7 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
   const hasMore = data.hits.length > DEFAULT_VISIBLE;
 
   return (
-    <div className="my-3 rounded-xl border border-[#1A1A1A]/20 bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg shadow-black/30 transition-all">
+    <div className="my-3 rounded-xl border border-[#1A1A1A]/20 dark:border-[#1E2D44] bg-white dark:bg-[#131E2E]/70 backdrop-blur-sm overflow-hidden shadow-lg shadow-black/30 transition-all">
       {/* Header Button */}
       <button
         type="button"
@@ -137,25 +137,25 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
         )}
       >
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-md bg-[#1A1A1A]/8 border border-[#1A1A1A]/20 flex items-center justify-center text-[#1A1A1A]">
+          <div className="h-6 w-6 rounded-md bg-[#1A1A1A]/8 border border-[#1A1A1A]/20 dark:border-[#1E2D44] flex items-center justify-center text-[#1A1A1A] dark:text-[#F8FAFC]">
             <Database className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform duration-200" />
           </div>
-          <span className="text-xs font-bold font-mono uppercase tracking-wider text-[#1A1A1A]">
+          <span className="text-xs font-bold font-mono uppercase tracking-wider text-[#1A1A1A] dark:text-[#F8FAFC]">
             Verified Precedents from Database
           </span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#1A1A1A]/10 text-[#1A1A1A] border border-[#1A1A1A]/20">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#1A1A1A]/10 text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#1A1A1A]/20 dark:border-[#1E2D44]">
             {data.totalFound} match{data.totalFound !== 1 ? "es" : ""}
           </span>
         </div>
 
-        <div className="flex items-center gap-2 text-[#666666] group-hover:text-[#1A1A1A] transition-colors">
+        <div className="flex items-center gap-2 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] group-hover:text-[#1A1A1A] dark:text-[#F8FAFC] transition-colors">
           <span className="text-[10px] hidden sm:inline font-mono">
             {sectionExpanded ? "Collapse Precedents" : "View Precedents"}
           </span>
           {sectionExpanded ? (
-            <ChevronUp className="w-4 h-4 text-[#1A1A1A]" />
+            <ChevronUp className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC]" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-[#1A1A1A]" />
+            <ChevronDown className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC]" />
           )}
         </div>
       </button>
@@ -172,7 +172,7 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
             return (
               <div
                 key={`${hit.citation}-${idx}`}
-                className="rounded-lg border border-[#E5E4E2] bg-[#FAFAF9] hover:border-[#D9D8D6] transition-all overflow-hidden"
+                className="rounded-lg border border-[#E5E4E2] dark:border-[#1E2D44] bg-[#FAFAF9] hover:border-[#D9D8D6] transition-all overflow-hidden"
               >
                 <div
                   onClick={() => handleHitClick(hit, idx)}
@@ -180,23 +180,23 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold font-mono text-[#1A1A1A]">
+                      <span className="text-xs font-bold font-mono text-[#1A1A1A] dark:text-[#F8FAFC]">
                         {hit.citation}
                       </span>
                       {isAiCited && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#1A1A1A]/10 border border-[#1A1A1A]/30 text-[#1A1A1A] text-[9px] font-bold uppercase tracking-wider">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#1A1A1A]/10 border border-[#1A1A1A]/30 text-[#1A1A1A] dark:text-[#F8FAFC] text-[9px] font-bold uppercase tracking-wider">
                           <Star className="w-2.5 h-2.5 fill-[#1A1A1A]" />
                           AI Cited
                         </span>
                       )}
-                      <span className="text-[10px] text-[#666666] font-mono">
+                      <span className="text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
                         {hit.court}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-xs text-[#666666] group-hover:text-[#2D2D2D] shrink-0">
+                    <div className="flex items-center gap-1.5 text-xs text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] group-hover:text-[#2D2D2D] dark:text-[#CBD5E1] shrink-0">
                       {isHitExpanded ? (
-                        <ChevronUp className="w-3.5 h-3.5 text-[#1A1A1A]" />
+                        <ChevronUp className="w-3.5 h-3.5 text-[#1A1A1A] dark:text-[#F8FAFC]" />
                       ) : (
                         <ChevronDown className="w-3.5 h-3.5" />
                       )}
@@ -204,13 +204,13 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
                   </div>
 
                   {hit.title && (
-                    <div className="text-xs font-medium text-[#2D2D2D] line-clamp-1">
+                    <div className="text-xs font-medium text-[#2D2D2D] dark:text-[#CBD5E1] line-clamp-1">
                       {hit.title}
                     </div>
                   )}
 
                   {hit.snippet && (
-                    <p className="text-[11px] text-[#666666] line-clamp-2 leading-relaxed">
+                    <p className="text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] line-clamp-2 leading-relaxed">
                       {hit.snippet}
                     </p>
                   )}
@@ -218,32 +218,32 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
 
                 {/* Expanded Ratio & AI Synthesis Panel */}
                 {isHitExpanded && (
-                  <div className="p-3 border-t border-[#E5E4E2] bg-black/20 space-y-2.5 text-xs">
+                  <div className="p-3 border-t border-[#E5E4E2] dark:border-[#1E2D44] bg-black/20 space-y-2.5 text-xs">
                     {loading ? (
-                      <div className="flex items-center gap-2 text-[#666666] py-2 font-mono text-[11px]">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#1A1A1A]" />
+                      <div className="flex items-center gap-2 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] py-2 font-mono text-[11px]">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#1A1A1A] dark:text-[#F8FAFC]" />
                         <span>Synthesizing precedent ratio from judgment repository...</span>
                       </div>
                     ) : summary ? (
                       <>
                         <div>
-                          <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-[#1A1A1A]">
+                          <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-[#1A1A1A] dark:text-[#F8FAFC]">
                             Precedent Holding / Ratio:
                           </span>
-                          <p className="text-[#2D2D2D] mt-0.5 leading-relaxed">
+                          <p className="text-[#2D2D2D] dark:text-[#CBD5E1] mt-0.5 leading-relaxed">
                             {summary.result}
                           </p>
                         </div>
 
                         {summary.legalPrinciples?.length > 0 && (
                           <div>
-                            <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-[#1A1A1A]">
+                            <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-[#1A1A1A] dark:text-[#F8FAFC]">
                               Legal Principles Established:
                             </span>
-                            <ul className="mt-1 space-y-1 text-[#4A4A4A]">
+                            <ul className="mt-1 space-y-1 text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569]">
                               {summary.legalPrinciples.map((p, pIdx) => (
                                 <li key={pIdx} className="flex items-start gap-1.5">
-                                  <span className="text-[#1A1A1A] mt-1">•</span>
+                                  <span className="text-[#1A1A1A] dark:text-[#F8FAFC] mt-1">•</span>
                                   <span>{p}</span>
                                 </li>
                               ))}
@@ -251,18 +251,18 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
                           </div>
                         )}
 
-                        <div className="pt-2 flex items-center gap-3 border-t border-[#E5E4E2]">
+                        <div className="pt-2 flex items-center gap-3 border-t border-[#E5E4E2] dark:border-[#1E2D44]">
                           <Link
                             href={`/preview/judgments?q=${encodeURIComponent(hit.citation)}`}
-                            className="inline-flex items-center gap-1 text-[11px] text-[#1A1A1A] hover:text-[#1A1A1A] font-semibold"
+                            className="inline-flex items-center gap-1 text-[11px] text-[#1A1A1A] dark:text-[#F8FAFC] hover:text-[#1A1A1A] dark:text-[#F8FAFC] font-semibold"
                           >
                             <span>Open in Full Judgment Reader</span>
                             <ExternalLink className="w-3 h-3" />
                           </Link>
-                          <span className="text-[#999999]">·</span>
+                          <span className="text-[#999999] dark:text-[#475569]">·</span>
                           <Link
                             href={`/preview/drafting?cite=${encodeURIComponent(hit.citation)}`}
-                            className="inline-flex items-center gap-1 text-[11px] text-[#666666] hover:text-[#666666] font-semibold"
+                            className="inline-flex items-center gap-1 text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] font-semibold"
                           >
                             <Gavel className="w-3 h-3" />
                             <span>Insert into Petition</span>
@@ -271,12 +271,12 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
                       </>
                     ) : (
                       <div className="flex items-center justify-between text-[11px] py-1">
-                        <span className="text-[#666666]">
+                        <span className="text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
                           Full judgment text available in library.
                         </span>
                         <Link
                           href={`/preview/judgments?q=${encodeURIComponent(hit.citation)}`}
-                          className="inline-flex items-center gap-1 text-[#1A1A1A] hover:text-[#1A1A1A] font-semibold"
+                          className="inline-flex items-center gap-1 text-[#1A1A1A] dark:text-[#F8FAFC] hover:text-[#1A1A1A] dark:text-[#F8FAFC] font-semibold"
                         >
                           <span>Read Full Judgment</span>
                           <ExternalLink className="w-3 h-3" />
@@ -294,7 +294,7 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
             <button
               type="button"
               onClick={() => setExpandedAll((v) => !v)}
-              className="w-full py-1.5 text-center text-[10px] font-mono uppercase tracking-widest text-[#1A1A1A] hover:text-[#1A1A1A] hover:bg-[#FAFAF9] rounded-lg border border-[#E5E4E2] transition-colors"
+              className="w-full py-1.5 text-center text-[10px] font-mono uppercase tracking-widest text-[#1A1A1A] dark:text-[#F8FAFC] hover:text-[#1A1A1A] dark:text-[#F8FAFC] hover:bg-[#FAFAF9] rounded-lg border border-[#E5E4E2] dark:border-[#1E2D44] transition-colors"
             >
               {expandedAll ? `Show top ${DEFAULT_VISIBLE}` : `Show all ${data.hits.length} precedents`}
             </button>
@@ -302,9 +302,9 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
 
           {/* Queries Searched Footer */}
           {data.queriesUsed && data.queriesUsed.length > 0 && (
-            <div className="pt-2 border-t border-[#E5E4E2] flex items-center gap-1 text-[10px] text-[#666666] font-mono">
+            <div className="pt-2 border-t border-[#E5E4E2] dark:border-[#1E2D44] flex items-center gap-1 text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
               <span>Searched Precedent Queries:</span>
-              <span className="text-[#666666]">{data.queriesUsed.join(" · ")}</span>
+              <span className="text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">{data.queriesUsed.join(" · ")}</span>
             </div>
           )}
         </div>

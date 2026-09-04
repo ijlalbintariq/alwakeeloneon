@@ -295,23 +295,23 @@ export const PreviewCommandPalette: React.FC<PreviewCommandPaletteProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl p-0 gap-0 overflow-hidden bg-white text-[#0F172A] border border-[#E2E8F0] shadow-xl rounded-2xl"
+        className="max-w-2xl p-0 gap-0 overflow-hidden bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl rounded-2xl"
         onKeyDown={handleDialogKeyDown}
       >
         {/* Search Header */}
-        <div className="flex items-center px-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+        <div className="flex items-center px-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
           <Search className="w-4 h-4 text-[#105B38] shrink-0 mr-3" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Type a command, precedent citation, template, or AI action..."
-            className="w-full h-12 bg-transparent text-sm text-[#0F172A] placeholder:text-[#64748B] focus:outline-none font-sans"
+            className="w-full h-12 bg-transparent text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] focus:outline-none font-sans"
             autoFocus
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="text-xs text-[#64748B] hover:text-[#0F172A] font-mono px-1.5 py-0.5 rounded bg-white border border-[#E2E8F0]"
+              className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] font-mono px-1.5 py-0.5 rounded bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44]"
             >
               Clear
             </button>
@@ -321,7 +321,7 @@ export const PreviewCommandPalette: React.FC<PreviewCommandPaletteProps> = ({
         {/* Results List */}
         <div className="max-h-96 overflow-y-auto p-2 space-y-1">
           {filteredItems.length === 0 ? (
-            <div className="py-12 text-center text-[#64748B] text-xs font-mono">
+            <div className="py-12 text-center text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] text-xs font-mono">
               No matching commands or precedents found for &quot;{query}&quot;
             </div>
           ) : (
@@ -335,8 +335,8 @@ export const PreviewCommandPalette: React.FC<PreviewCommandPaletteProps> = ({
                   className={cn(
                     "flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-xs",
                     isSelected
-                      ? "bg-emerald-50/80 text-[#0F172A] border border-[#105B38]/30"
-                      : "text-[#334155] hover:bg-[#F8FAFC] border border-transparent"
+                      ? "bg-emerald-50/8 dark:bg-emerald-500/100 dark:bg-emerald-500/10 text-[#0F172A] dark:text-[#F8FAFC] border border-[#105B38]/30"
+                      : "text-[#334155] dark:text-[#CBD5E1] hover:bg-[#F8FAFC] dark:bg-[#0B131E] border border-transparent"
                   )}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -345,23 +345,23 @@ export const PreviewCommandPalette: React.FC<PreviewCommandPaletteProps> = ({
                         "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border",
                         isSelected
                           ? "bg-[#105B38] text-white border-[#105B38]"
-                          : "bg-[#F8FAFC] text-[#105B38] border-[#E2E8F0]"
+                          : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#105B38] border-[#E2E8F0] dark:border-[#1E2D44]"
                       )}
                     >
                       <item.icon className="h-3.5 w-3.5" />
                     </div>
 
                     <div className="flex flex-col min-w-0">
-                      <span className="font-semibold text-[#0F172A] truncate flex items-center gap-2">
+                      <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] truncate flex items-center gap-2">
                         {item.title}
                         {item.badge && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-50 text-[#105B38] border border-emerald-200">
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                             {item.badge}
                           </span>
                         )}
                       </span>
                       {item.subtitle && (
-                        <span className="text-[11px] text-[#64748B] truncate">
+                        <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] truncate">
                           {item.subtitle}
                         </span>
                       )}
@@ -371,7 +371,7 @@ export const PreviewCommandPalette: React.FC<PreviewCommandPaletteProps> = ({
                   <ArrowRight
                     className={cn(
                       "w-3.5 h-3.5 shrink-0 transition-transform",
-                      isSelected ? "text-[#105B38] translate-x-0.5" : "text-[#94A3B8]"
+                      isSelected ? "text-[#105B38] translate-x-0.5" : "text-[#94A3B8] dark:text-[#475569]"
                     )}
                   />
                 </div>
@@ -381,19 +381,19 @@ export const PreviewCommandPalette: React.FC<PreviewCommandPaletteProps> = ({
         </div>
 
         {/* Footer shortcuts */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#E2E8F0] bg-[#F8FAFC] text-[10px] font-mono text-[#64748B]">
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] text-[10px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
           <div className="flex items-center gap-3">
             <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E2E8F0] text-[#0F172A] mr-1">↑</kbd>
-              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E2E8F0] text-[#0F172A] mr-1">↓</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] mr-1">↑</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] mr-1">↓</kbd>
               Navigate
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E2E8F0] text-[#0F172A] mr-1">↵</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] mr-1">↵</kbd>
               Select
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E2E8F0] text-[#0F172A] mr-1">ESC</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] mr-1">ESC</kbd>
               Close
             </span>
           </div>

@@ -84,19 +84,19 @@ export const LinkDocumentModal: React.FC<LinkDocumentModalProps> = ({
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
 
       <div
-        className="relative bg-white border border-[#E5E4E2] rounded-2xl shadow-lg max-w-lg w-full p-6 space-y-4"
+        className="relative bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-2xl shadow-lg max-w-lg w-full p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between pb-3 border-b border-[#E5E4E2]">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E5E4E2] dark:border-[#1E2D44]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#1A1A1A]/5 border border-[#1A1A1A]/20 flex items-center justify-center text-[#1A1A1A]">
+            <div className="w-8 h-8 rounded-lg bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 border border-[#1A1A1A]/20 dark:border-[#1E2D44] flex items-center justify-center text-[#1A1A1A] dark:text-[#F8FAFC]">
               <Link2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold font-serif text-[#1A1A1A]">
+              <h2 className="text-sm font-bold font-serif text-[#1A1A1A] dark:text-[#F8FAFC]">
                 Link Document from Knowledge Vault
               </h2>
-              <p className="text-[11px] text-[#666666]">
+              <p className="text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
                 Attach pleadings, annexures, or orders to this case
               </p>
             </div>
@@ -104,7 +104,7 @@ export const LinkDocumentModal: React.FC<LinkDocumentModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-[#666666] hover:text-[#2D2D2D]"
+            className="p-1 rounded-lg text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#2D2D2D] dark:text-[#CBD5E1]"
           >
             <X className="w-4 h-4" />
           </button>
@@ -112,20 +112,20 @@ export const LinkDocumentModal: React.FC<LinkDocumentModalProps> = ({
 
         {/* Search */}
         <div className="relative">
-          <Search className="w-4 h-4 text-[#666666] absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search documents by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white border border-[#E5E4E2] rounded-xl pl-9 pr-4 py-2 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+            className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-xl pl-9 pr-4 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
           />
         </div>
 
         {/* Optional Label */}
         {selectedDocId && (
-          <div className="p-3 rounded-xl bg-white border border-[#1A1A1A]/20 space-y-1.5">
-            <label className="text-[10px] font-mono uppercase text-[#1A1A1A] block font-semibold">
+          <div className="p-3 rounded-xl bg-white dark:bg-[#131E2E] border border-[#1A1A1A]/20 dark:border-[#1E2D44] space-y-1.5">
+            <label className="text-[10px] font-mono uppercase text-[#1A1A1A] dark:text-[#F8FAFC] block font-semibold">
               Case Document Tag / Role (Optional)
             </label>
             <input
@@ -133,7 +133,7 @@ export const LinkDocumentModal: React.FC<LinkDocumentModalProps> = ({
               placeholder="e.g. Impugned Order, Annexure-A, FIR Copy, Plaint"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-1.5 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+              className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-1.5 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
             />
           </div>
         )}
@@ -141,14 +141,14 @@ export const LinkDocumentModal: React.FC<LinkDocumentModalProps> = ({
         {/* Document List */}
         <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
           {isLoading ? (
-            <div className="py-8 flex flex-col items-center justify-center gap-2 text-[#666666]">
-              <Loader2 className="w-5 h-5 animate-spin text-[#1A1A1A]" />
+            <div className="py-8 flex flex-col items-center justify-center gap-2 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
+              <Loader2 className="w-5 h-5 animate-spin text-[#1A1A1A] dark:text-[#F8FAFC]" />
               <span className="text-xs font-mono">Loading Knowledge Vault...</span>
             </div>
           ) : availableDocs.length === 0 ? (
-            <div className="py-8 text-center text-xs text-[#666666] space-y-1">
+            <div className="py-8 text-center text-xs text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] space-y-1">
               <p>No available documents to link.</p>
-              <p className="text-[10px] text-[#666666]">
+              <p className="text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
                 Upload a new document or search with a different query.
               </p>
             </div>
@@ -161,19 +161,19 @@ export const LinkDocumentModal: React.FC<LinkDocumentModalProps> = ({
                   onClick={() => setSelectedDocId(isSelected ? null : doc.id)}
                   className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-3 ${
                     isSelected
-                      ? "bg-[#1A1A1A]/8 border-[#1A1A1A]/50 text-[#1A1A1A] shadow-md"
-                      : "bg-white border-[#E5E4E2] text-[#4A4A4A] hover:bg-[#F5F4F2]"
+                      ? "bg-[#1A1A1A]/8 border-[#1A1A1A]/50 text-[#1A1A1A] dark:text-[#F8FAFC] shadow-md"
+                      : "bg-white dark:bg-[#131E2E] border-[#E5E4E2] dark:border-[#1E2D44] text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] hover:bg-[#F5F4F2] dark:bg-[#0B131E]"
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <FileText
                       className={`w-4 h-4 shrink-0 ${
-                        isSelected ? "text-[#1A1A1A]" : "text-[#666666]"
+                        isSelected ? "text-[#1A1A1A] dark:text-[#F8FAFC]" : "text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]"
                       }`}
                     />
                     <div className="min-w-0">
                       <p className="text-xs font-semibold truncate">{doc.title}</p>
-                      <p className="text-[10px] text-[#666666] font-mono">
+                      <p className="text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
                         {new Date(doc.createdAt).toLocaleDateString()} ·{" "}
                         {doc.sourceType || "vault file"}
                       </p>
@@ -184,7 +184,7 @@ export const LinkDocumentModal: React.FC<LinkDocumentModalProps> = ({
                     className={`w-5 h-5 rounded-full flex items-center justify-center border shrink-0 ${
                       isSelected
                         ? "bg-[#1A1A1A] border-[#1A1A1A] text-white"
-                        : "border-[#E5E4E2]"
+                        : "border-[#E5E4E2] dark:border-[#1E2D44]"
                     }`}
                   >
                     {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -196,10 +196,10 @@ export const LinkDocumentModal: React.FC<LinkDocumentModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E5E4E2]">
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E5E4E2] dark:border-[#1E2D44]">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs text-[#666666] hover:text-[#2D2D2D]"
+            className="px-4 py-2 text-xs text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#2D2D2D] dark:text-[#CBD5E1]"
           >
             Cancel
           </button>

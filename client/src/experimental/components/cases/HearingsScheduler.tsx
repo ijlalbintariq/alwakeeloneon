@@ -133,20 +133,20 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. Quick Set Next Hearing Card */}
-      <div className="p-5 rounded-xl bg-[#FAFAF9] border border-[#1A1A1A]/20 space-y-4 shadow-lg">
+      <div className="p-5 rounded-xl bg-[#FAFAF9] border border-[#1A1A1A]/20 dark:border-[#1E2D44] space-y-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Gavel className="w-5 h-5 text-[#1A1A1A]" />
+            <Gavel className="w-5 h-5 text-[#1A1A1A] dark:text-[#F8FAFC]" />
             <div>
-              <h3 className="text-sm font-bold font-serif text-[#1A1A1A]">
+              <h3 className="text-sm font-bold font-serif text-[#1A1A1A] dark:text-[#F8FAFC]">
                 Fix Next Hearing Date
               </h3>
-              <p className="text-[11px] text-[#666666]">
+              <p className="text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
                 Auto-syncs with Daily Diary & generates 1-click Google Calendar / .ICS reminders
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1A1A1A]/10 text-[#1A1A1A] border border-[#1A1A1A]/30">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1A1A1A]/10 text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#1A1A1A]/30">
             Auto-Diary Sync
           </span>
         </div>
@@ -154,7 +154,7 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Fixation Stage / Purpose */}
           <div className="sm:col-span-2 space-y-1">
-            <label className="text-[10px] font-mono uppercase text-[#666666] block">
+            <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] block">
               Hearing Purpose / Stage *
             </label>
             <input
@@ -163,7 +163,7 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               list="common-stages"
-              className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+              className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
             />
             <datalist id="common-stages">
               {COMMON_FIXATION_STAGES.map((st) => (
@@ -174,20 +174,20 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
 
           {/* Date */}
           <div className="space-y-1">
-            <label className="text-[10px] font-mono uppercase text-[#666666] block">
+            <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] block">
               Hearing Date *
             </label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] outline-none focus:border-[#1A1A1A]/50"
+              className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] outline-none focus:border-[#1A1A1A]/50"
             />
           </div>
 
           {/* Court Room */}
           <div className="space-y-1">
-            <label className="text-[10px] font-mono uppercase text-[#666666] block">
+            <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] block">
               Court / Room
             </label>
             <input
@@ -195,13 +195,13 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
               placeholder="e.g. Court #04, LHC"
               value={court}
               onChange={(e) => setCourt(e.target.value)}
-              className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+              className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
             />
           </div>
 
           {/* Judge / Bench */}
           <div className="space-y-1">
-            <label className="text-[10px] font-mono uppercase text-[#666666] block">
+            <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] block">
               Bench / Judge Name
             </label>
             <input
@@ -209,20 +209,20 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
               placeholder="e.g. Hon'ble Justice..."
               value={judge}
               onChange={(e) => setJudge(e.target.value)}
-              className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+              className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
             />
           </div>
 
           {/* Type / Submit */}
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-1">
-              <label className="text-[10px] font-mono uppercase text-[#666666] block">
+              <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] block">
                 Category
               </label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full bg-white border border-[#E5E4E2] rounded-lg px-2.5 py-2 text-xs text-[#2D2D2D] outline-none"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-2.5 py-2 text-xs text-[#2D2D2D] dark:text-[#CBD5E1] outline-none"
               >
                 <option value="hearing">Court Hearing</option>
                 <option value="filing_deadline">Filing Deadline</option>
@@ -249,19 +249,19 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
       {/* 2. Court Dates & Hearing Timeline */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-bold font-serif text-[#2D2D2D] flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-[#1A1A1A]" />
+          <h3 className="text-xs font-bold font-serif text-[#2D2D2D] dark:text-[#CBD5E1] flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC]" />
             <span>Hearings & Cause List History ({sortedHearings.length})</span>
           </h3>
         </div>
 
         {sortedHearings.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] text-center space-y-2">
-            <Gavel className="w-8 h-8 text-[#94A3B8] mx-auto" />
-            <p className="text-xs font-bold text-[#0F172A]">
+          <div className="p-8 rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-center space-y-2">
+            <Gavel className="w-8 h-8 text-[#94A3B8] dark:text-[#475569] mx-auto" />
+            <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
               No hearing dates scheduled for this matter yet.
             </p>
-            <p className="text-xs text-[#64748B]">
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               Use the form above to fix the upcoming hearing date.
             </p>
           </div>
@@ -280,10 +280,10 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
                   className={cn(
                     "p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3",
                     isPast
-                      ? "bg-rose-50/50 border-rose-200"
+                      ? "bg-rose-50/5 dark:bg-rose-500/100 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20"
                       : isDone
-                      ? "bg-[#F8FAFC] border-[#E2E8F0] opacity-75"
-                      : "bg-white border-[#E2E8F0] hover:border-[#105B38]/40 shadow-xs"
+                      ? "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] opacity-75"
+                      : "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/40 shadow-xs"
                   )}
                 >
                   <div className="flex items-start gap-3 min-w-0">
@@ -292,10 +292,10 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
                       className={cn(
                         "text-center px-3 py-1.5 rounded-xl border shrink-0",
                         isPast
-                          ? "bg-rose-50 border-rose-200 text-rose-700"
+                          ? "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400"
                           : isDone
-                          ? "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B]"
-                          : "bg-emerald-50 border-emerald-200 text-[#105B38]"
+                          ? "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
+                          : "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-[#105B38]"
                       )}
                     >
                       <p className="text-base font-bold font-mono leading-none">
@@ -314,17 +314,17 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
                         <h4
                           className={cn(
                             "text-xs sm:text-sm font-bold",
-                            isDone ? "line-through text-[#64748B]" : "text-[#0F172A]"
+                            isDone ? "line-through text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" : "text-[#0F172A] dark:text-[#F8FAFC]"
                           )}
                         >
                           {h.title}
                         </h4>
-                        <span className="text-xs font-mono uppercase px-2 py-0.5 rounded-full bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]">
+                        <span className="text-xs font-mono uppercase px-2 py-0.5 rounded-full bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                           {h.type.replace(/_/g, " ")}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs text-[#64748B] mt-1 flex-wrap font-mono">
+                      <div className="flex items-center gap-2 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1 flex-wrap font-mono">
                         {h.court && (
                           <span className="flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5 text-[#105B38]" />
@@ -353,7 +353,7 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
                       }}
                       size="sm"
                       variant="outline"
-                      className="bg-white border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC] text-xs font-semibold rounded-xl"
+                      className="bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-xs font-semibold rounded-xl"
                     />
 
                     {isDone ? (
@@ -365,7 +365,7 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
                             status: "pending",
                           })
                         }
-                        className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-emerald-50 text-[#105B38] border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                        className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-100 transition-colors"
                       >
                         Done ✓
                       </button>
@@ -378,7 +378,7 @@ export const HearingsScheduler: React.FC<HearingsSchedulerProps> = ({
                             status: "done",
                           })
                         }
-                        className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-[#F8FAFC] text-[#0F172A] border border-[#E2E8F0] hover:bg-emerald-50 hover:text-[#105B38] hover:border-emerald-200 transition-all"
+                        className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-[#105B38] hover:border-emerald-200 dark:border-emerald-500/20 transition-all"
                       >
                         Mark Done
                       </button>

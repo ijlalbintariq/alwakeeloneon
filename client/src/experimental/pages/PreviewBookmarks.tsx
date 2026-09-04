@@ -243,7 +243,7 @@ export const PreviewBookmarks: React.FC = () => {
             } catch {}
             toast({ title: "Bookmark Restored" });
           }}
-          className="px-3 py-1 bg-white text-[#105B38] font-bold rounded-lg border border-emerald-200 text-xs shadow-xs"
+          className="px-3 py-1 bg-white dark:bg-[#131E2E] text-[#105B38] font-bold rounded-lg border border-emerald-200 dark:border-emerald-500/20 text-xs shadow-xs"
         >
           Undo
         </button>
@@ -429,18 +429,18 @@ export const PreviewBookmarks: React.FC = () => {
     <PreviewShell>
       <div className="max-w-7xl mx-auto space-y-6 pb-12">
         {/* Header */}
-        <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="bg-white dark:bg-[#131E2E] p-6 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 <Bookmark className="w-5 h-5" />
               </div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#105B38]">
                 Personal Precedent & Research Vault
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">Saved Authorities & Bookmarks</h1>
-            <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">Saved Authorities & Bookmarks</h1>
+            <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
               Curated library of Supreme Court/High Court citations, statutory provisions, standard drafting clauses, and research notes.
             </p>
           </div>
@@ -449,7 +449,7 @@ export const PreviewBookmarks: React.FC = () => {
             <button
               type="button"
               onClick={handleExportMarkdown}
-              className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5 shadow-2xs"
               title="Export formatted Markdown research summary"
             >
               <Download className="w-4 h-4 text-[#105B38]" />
@@ -459,7 +459,7 @@ export const PreviewBookmarks: React.FC = () => {
             <button
               type="button"
               onClick={handleExportCsv}
-              className="px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5 shadow-2xs"
               title="Export as CSV spreadsheet"
             >
               <FileSpreadsheet className="w-4 h-4 text-[#105B38]" />
@@ -479,68 +479,68 @@ export const PreviewBookmarks: React.FC = () => {
 
         {/* Stats Metrics Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <BookmarkCheck className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">{bookmarks.length}</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Saved Authorities</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{bookmarks.length}</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Saved Authorities</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <Gavel className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 {bookmarks.filter((b) => b.category === "Citations").length}
               </div>
-              <div className="text-[11px] text-[#64748B] font-medium">Court Judgments</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Court Judgments</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 {bookmarks.filter((b) => b.category === "Statutes").length}
               </div>
-              <div className="text-[11px] text-[#64748B] font-medium">Statutory Provisions</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Statutory Provisions</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <Briefcase className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">{uniqueMatters.length}</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Linked Case Matters</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{uniqueMatters.length}</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Linked Case Matters</div>
             </div>
           </div>
         </div>
 
         {/* Search & Filter Hub */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
+        <div className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="flex-1 flex items-center px-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] focus-within:border-[#105B38] focus-within:bg-white transition-all">
-              <Search className="w-4 h-4 text-[#94A3B8] mr-2.5 shrink-0" />
+            <div className="flex-1 flex items-center px-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] focus-within:border-[#105B38] focus-within:bg-white dark:bg-[#131E2E] transition-all">
+              <Search className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mr-2.5 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search saved authorities by citation (e.g. 2024 SCMR 1420), case title, statute, or personal notes..."
-                className="w-full h-11 bg-transparent text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none"
+                className="w-full h-11 bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="p-1 rounded-md text-[#94A3B8] hover:text-[#0F172A]"
+                  className="p-1 rounded-md text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -549,12 +549,12 @@ export const PreviewBookmarks: React.FC = () => {
 
             {/* Matter Filter Dropdown */}
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                <Briefcase className="w-3.5 h-3.5 text-[#64748B]" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
+                <Briefcase className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <select
                   value={selectedMatter}
                   onChange={(e) => setSelectedMatter(e.target.value)}
-                  className="bg-transparent text-xs text-[#0F172A] font-semibold focus:outline-none cursor-pointer max-w-[180px] truncate"
+                  className="bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none cursor-pointer max-w-[180px] truncate"
                 >
                   <option value="All">All Linked Matters</option>
                   {uniqueMatters.map((m) => (
@@ -566,12 +566,12 @@ export const PreviewBookmarks: React.FC = () => {
               </div>
 
               {/* Importance Filter */}
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                <Tag className="w-3.5 h-3.5 text-[#64748B]" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
+                <Tag className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <select
                   value={selectedImportance}
                   onChange={(e) => setSelectedImportance(e.target.value)}
-                  className="bg-transparent text-xs text-[#0F172A] font-semibold focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none cursor-pointer"
                 >
                   <option value="All">All Importance</option>
                   <option value="critical">Critical Authority</option>
@@ -583,8 +583,8 @@ export const PreviewBookmarks: React.FC = () => {
           </div>
 
           {/* Category Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E2E8F0]/70">
-            <span className="text-[11px] font-bold text-[#64748B] mr-2">Category:</span>
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E2E8F0] dark:border-[#1E2D44]/70">
+            <span className="text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mr-2">Category:</span>
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -594,7 +594,7 @@ export const PreviewBookmarks: React.FC = () => {
                   "px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
                   selectedCategory === cat
                     ? "bg-[#105B38] text-white shadow-xs"
-                    : "bg-[#F8FAFC] text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0]"
+                    : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
                 )}
               >
                 {cat}
@@ -605,12 +605,12 @@ export const PreviewBookmarks: React.FC = () => {
 
         {/* Bookmarks Grid / Empty State */}
         {filteredBookmarks.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#E2E8F0] text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 text-[#105B38] flex items-center justify-center mx-auto">
+          <div className="bg-white dark:bg-[#131E2E] p-12 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] flex items-center justify-center mx-auto">
               <Bookmark className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-[#0F172A]">No Matching Bookmarked Authorities</h3>
-            <p className="text-xs text-[#64748B] max-w-md mx-auto">
+            <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">No Matching Bookmarked Authorities</h3>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-md mx-auto">
               You haven&apos;t saved any legal authorities under this filter. Try clearing filters or bookmarking a new precedent.
             </p>
             <div className="pt-2">
@@ -622,7 +622,7 @@ export const PreviewBookmarks: React.FC = () => {
                   setSelectedImportance("All");
                   setSelectedMatter("All");
                 }}
-                className="px-4 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#105B38]"
+                className="px-4 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38]"
               >
                 Reset All Filters
               </button>
@@ -633,24 +633,24 @@ export const PreviewBookmarks: React.FC = () => {
             {filteredBookmarks.map((item) => (
               <div
                 key={item.id}
-                className="p-5 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
+                className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
               >
                 <div className="space-y-3">
                   {/* Top Line */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                      <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/20">
                         {item.citation}
                       </span>
 
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] uppercase">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">
                         {item.category}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1.5">
                       {item.matterTag && (
-                        <span className="font-mono text-[10px] font-bold text-[#0F172A] bg-[#F8FAFC] px-2 py-0.5 rounded-md border border-[#E2E8F0]">
+                        <span className="font-mono text-[10px] font-bold text-[#0F172A] dark:text-[#F8FAFC] bg-[#F8FAFC] dark:bg-[#0B131E] px-2 py-0.5 rounded-md border border-[#E2E8F0] dark:border-[#1E2D44]">
                           {item.matterTag}
                         </span>
                       )}
@@ -659,10 +659,10 @@ export const PreviewBookmarks: React.FC = () => {
                         className={cn(
                           "text-[9px] uppercase font-bold px-1.5 py-0.5 rounded",
                           item.importance === "critical"
-                            ? "bg-rose-100 text-rose-800"
+                            ? "bg-rose-100 text-rose-800 dark:text-rose-400"
                             : item.importance === "leading"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-blue-100 text-blue-800"
+                            ? "bg-emerald-100 text-emerald-800 dark:text-emerald-400"
+                            : "bg-blue-100 text-blue-800 dark:text-blue-400"
                         )}
                       >
                         {item.importance}
@@ -672,10 +672,10 @@ export const PreviewBookmarks: React.FC = () => {
 
                   {/* Title & Court */}
                   <div>
-                    <h3 className="font-bold text-sm text-[#0F172A] group-hover:text-[#105B38] transition-colors leading-snug">
+                    <h3 className="font-bold text-sm text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] transition-colors leading-snug">
                       {item.title}
                     </h3>
-                    <div className="flex items-center gap-2 text-[11px] text-[#64748B] mt-1">
+                    <div className="flex items-center gap-2 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
                       <span>{item.courtOrSource}</span>
                       <span>·</span>
                       <span>{item.year}</span>
@@ -689,8 +689,8 @@ export const PreviewBookmarks: React.FC = () => {
 
                   {/* User Note Box (if present) */}
                   {item.userNotes && (
-                    <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-[#78350F] flex items-start gap-2">
-                      <Edit3 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600" />
+                    <div className="p-2.5 rounded-xl bg-amber-50/7 dark:bg-amber-500/100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20/80 text-[11px] text-[#78350F] flex items-start gap-2">
+                      <Edit3 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                       <div className="flex-1 line-clamp-2">
                         <span className="font-bold">Advocate Note: </span>
                         {item.userNotes}
@@ -703,7 +703,7 @@ export const PreviewBookmarks: React.FC = () => {
                     {item.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B]"
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                       >
                         #{tag}
                       </span>
@@ -712,15 +712,15 @@ export const PreviewBookmarks: React.FC = () => {
                 </div>
 
                 {/* Footer Controls */}
-                <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-[#94A3B8]">Saved on {item.savedAt}</span>
+                <div className="pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-[#94A3B8] dark:text-[#475569]">Saved on {item.savedAt}</span>
 
                   <div className="flex items-center gap-1.5">
                     {/* Copy Citation */}
                     <button
                       type="button"
                       onClick={(e) => handleCopyCitation(item.citation, e)}
-                      className="p-1.5 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] transition-colors"
+                      className="p-1.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
                       title="Copy Citation"
                     >
                       <Copy className="w-3.5 h-3.5" />
@@ -733,7 +733,7 @@ export const PreviewBookmarks: React.FC = () => {
                         setEditingNoteBookmark(item);
                         setTempNoteText(item.userNotes || "");
                       }}
-                      className="p-1.5 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#64748B] hover:text-[#105B38] transition-colors"
+                      className="p-1.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] transition-colors"
                       title="Edit Research Note"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
@@ -743,7 +743,7 @@ export const PreviewBookmarks: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setActiveInspectBookmark(item)}
-                      className="px-2.5 py-1 rounded-lg bg-[#F8FAFC] hover:bg-emerald-50 border border-[#E2E8F0] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1"
                       title="Inspect Authority Details"
                     >
                       <span>Inspect</span>
@@ -762,7 +762,7 @@ export const PreviewBookmarks: React.FC = () => {
                     <button
                       type="button"
                       onClick={(e) => handleDeleteBookmark(item.id, e)}
-                      className="p-1.5 rounded-lg bg-[#F8FAFC] hover:bg-rose-50 border border-[#E2E8F0] text-[#94A3B8] hover:text-rose-600 transition-colors"
+                      className="p-1.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-rose-50 dark:bg-rose-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 transition-colors"
                       title="Remove Bookmark"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -783,17 +783,17 @@ export const PreviewBookmarks: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Top Bar */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38] shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38] shrink-0">
                     <Scale className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A] truncate">
+                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
                       {activeInspectBookmark.title}
                     </h2>
                     <p className="text-[11px] font-mono text-[#105B38] font-bold">
@@ -806,7 +806,7 @@ export const PreviewBookmarks: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleCopyCitation(activeInspectBookmark.citation)}
-                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5"
                   >
                     <Copy className="w-3.5 h-3.5 text-[#105B38]" />
                     <span>Copy Citation</span>
@@ -815,7 +815,7 @@ export const PreviewBookmarks: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setActiveInspectBookmark(null)}
-                    className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0]"
+                    className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0]"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -825,23 +825,23 @@ export const PreviewBookmarks: React.FC = () => {
               {/* Modal Body */}
               <div className="flex-1 overflow-y-auto p-6 space-y-5">
                 {/* Meta Summary */}
-                <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3 text-xs">
+                <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-3 text-xs">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div>
-                      <span className="text-[#64748B] block text-[10px] font-bold uppercase">Category</span>
-                      <span className="font-bold text-[#0F172A]">{activeInspectBookmark.category}</span>
+                      <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block text-[10px] font-bold uppercase">Category</span>
+                      <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{activeInspectBookmark.category}</span>
                     </div>
                     <div>
-                      <span className="text-[#64748B] block text-[10px] font-bold uppercase">Importance</span>
+                      <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block text-[10px] font-bold uppercase">Importance</span>
                       <span className="font-bold text-[#105B38] uppercase">{activeInspectBookmark.importance}</span>
                     </div>
                     <div>
-                      <span className="text-[#64748B] block text-[10px] font-bold uppercase">Linked Matter</span>
-                      <span className="font-bold text-[#0F172A]">{activeInspectBookmark.matterTag || "General"}</span>
+                      <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block text-[10px] font-bold uppercase">Linked Matter</span>
+                      <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{activeInspectBookmark.matterTag || "General"}</span>
                     </div>
                     <div>
-                      <span className="text-[#64748B] block text-[10px] font-bold uppercase">Saved Date</span>
-                      <span className="font-bold text-[#0F172A]">{activeInspectBookmark.savedAt}</span>
+                      <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block text-[10px] font-bold uppercase">Saved Date</span>
+                      <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{activeInspectBookmark.savedAt}</span>
                     </div>
                   </div>
                 </div>
@@ -852,7 +852,7 @@ export const PreviewBookmarks: React.FC = () => {
                     <Gavel className="w-4 h-4" />
                     Ratio Decidendi & Legal Principle
                   </span>
-                  <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-2xs text-xs text-[#1E293B] leading-relaxed">
+                  <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-2xs text-xs text-[#1E293B] leading-relaxed">
                     {activeInspectBookmark.fullRatioText || activeInspectBookmark.holdingSummary}
                   </div>
                 </div>
@@ -860,8 +860,8 @@ export const PreviewBookmarks: React.FC = () => {
                 {/* Research Notes Container */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase text-[#0F172A] tracking-wider flex items-center gap-1.5">
-                      <Edit3 className="w-4 h-4 text-amber-600" />
+                    <span className="text-xs font-bold uppercase text-[#0F172A] dark:text-[#F8FAFC] tracking-wider flex items-center gap-1.5">
+                      <Edit3 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                       Advocate Chamber Notes
                     </span>
                     <button
@@ -875,19 +875,19 @@ export const PreviewBookmarks: React.FC = () => {
                       Edit Note
                     </button>
                   </div>
-                  <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200/80 text-xs text-[#78350F] leading-relaxed">
+                  <div className="p-4 rounded-xl bg-amber-50/5 dark:bg-amber-500/100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20/80 text-xs text-[#78350F] leading-relaxed">
                     {activeInspectBookmark.userNotes || "No personal research notes added yet. Click 'Edit Note' to add litigation takeaways."}
                   </div>
                 </div>
 
                 {/* Tags */}
                 <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold text-[#64748B]">Indexed Topic Tags:</span>
+                  <span className="text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Indexed Topic Tags:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {activeInspectBookmark.tags.map((t) => (
                       <span
                         key={t}
-                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-[#334155]"
+                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#334155] dark:text-[#CBD5E1]"
                       >
                         #{t}
                       </span>
@@ -897,11 +897,11 @@ export const PreviewBookmarks: React.FC = () => {
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between text-xs shrink-0">
+              <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs shrink-0">
                 <div className="flex items-center gap-2">
                   <Link
                     href={`/preview/judgments?q=${encodeURIComponent(activeInspectBookmark.citation)}`}
-                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-[#E2E8F0] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
+                    className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-emerald-50 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Open in Precedent Graph</span>
@@ -909,7 +909,7 @@ export const PreviewBookmarks: React.FC = () => {
 
                   <Link
                     href="/preview/drafting"
-                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-[#E2E8F0] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
+                    className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-emerald-50 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
                   >
                     <FileSignature className="w-3.5 h-3.5" />
                     <span>Insert into Drafting Studio</span>
@@ -937,24 +937,24 @@ export const PreviewBookmarks: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-center justify-center text-amber-700 dark:text-amber-400">
                     <Edit3 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-[#0F172A]">Edit Advocate Research Note</h2>
-                    <p className="text-[11px] font-mono text-[#64748B]">{editingNoteBookmark.citation}</p>
+                    <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Edit Advocate Research Note</h2>
+                    <p className="text-[11px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{editingNoteBookmark.citation}</p>
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setEditingNoteBookmark(null)}
-                  className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A]"
+                  className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -966,14 +966,14 @@ export const PreviewBookmarks: React.FC = () => {
                   value={tempNoteText}
                   onChange={(e) => setTempNoteText(e.target.value)}
                   placeholder="Record your legal strategy, paragraph citations, or specific counter-arguments..."
-                  className="w-full p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:bg-white focus:border-[#105B38] focus:outline-none"
+                  className="w-full p-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:bg-white dark:bg-[#131E2E] focus:border-[#105B38] focus:outline-none"
                 />
 
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setEditingNoteBookmark(null)}
-                    className="px-4 py-2 rounded-xl bg-[#F8FAFC] text-xs font-bold text-[#64748B]"
+                    className="px-4 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                   >
                     Cancel
                   </button>
@@ -999,24 +999,24 @@ export const PreviewBookmarks: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38]">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38]">
                     <Bookmark className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-[#0F172A]">Bookmark Legal Authority</h2>
-                    <p className="text-xs text-[#64748B]">Add a precedent, statutory provision, or drafting clause.</p>
+                    <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">Bookmark Legal Authority</h2>
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Add a precedent, statutory provision, or drafting clause.</p>
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setIsAddBookmarkOpen(false)}
-                  className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A]"
+                  className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1025,37 +1025,37 @@ export const PreviewBookmarks: React.FC = () => {
               <form onSubmit={handleCreateBookmark} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-[#0F172A] mb-1">Title / Case Name *</label>
+                    <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Title / Case Name *</label>
                     <input
                       type="text"
                       required
                       value={addForm.title}
                       onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
                       placeholder="e.g. Federation of Pakistan v. Tariq Aziz"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:border-[#105B38] focus:bg-white focus:outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#0F172A] mb-1">Citation / Reference *</label>
+                    <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Citation / Reference *</label>
                     <input
                       type="text"
                       required
                       value={addForm.citation}
                       onChange={(e) => setAddForm({ ...addForm, citation: e.target.value })}
                       placeholder="e.g. 2025 SCMR 982"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:border-[#105B38] focus:bg-white focus:outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-[#0F172A] mb-1">Category</label>
+                    <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Category</label>
                     <select
                       value={addForm.category}
                       onChange={(e) => setAddForm({ ...addForm, category: e.target.value as any })}
-                      className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] font-semibold focus:outline-none"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none"
                     >
                       <option value="Citations">Citations (Precedents)</option>
                       <option value="Statutes">Statutes & Acts</option>
@@ -1066,22 +1066,22 @@ export const PreviewBookmarks: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#0F172A] mb-1">Court / Authority</label>
+                    <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Court / Authority</label>
                     <input
                       type="text"
                       value={addForm.courtOrSource}
                       onChange={(e) => setAddForm({ ...addForm, courtOrSource: e.target.value })}
                       placeholder="e.g. Supreme Court"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#0F172A] mb-1">Importance</label>
+                    <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Importance</label>
                     <select
                       value={addForm.importance}
                       onChange={(e) => setAddForm({ ...addForm, importance: e.target.value as any })}
-                      className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] font-semibold focus:outline-none"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none"
                     >
                       <option value="critical">Critical Authority</option>
                       <option value="leading">Leading Precedent</option>
@@ -1092,47 +1092,47 @@ export const PreviewBookmarks: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-[#0F172A] mb-1">Link to Matter</label>
+                    <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Link to Matter</label>
                     <input
                       type="text"
                       value={addForm.matterTag}
                       onChange={(e) => setAddForm({ ...addForm, matterTag: e.target.value })}
                       placeholder="e.g. WP No. 4812/2026 or General Research"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#0F172A] mb-1">Tags (comma separated)</label>
+                    <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Tags (comma separated)</label>
                     <input
                       type="text"
                       value={addForm.tagsInput}
                       onChange={(e) => setAddForm({ ...addForm, tagsInput: e.target.value })}
                       placeholder="e.g. Art. 199, Order 39, Writ"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#0F172A] mb-1">Legal Ratio / Holding Summary</label>
+                  <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Legal Ratio / Holding Summary</label>
                   <textarea
                     rows={2}
                     value={addForm.holdingSummary}
                     onChange={(e) => setAddForm({ ...addForm, holdingSummary: e.target.value })}
                     placeholder="Core legal rule established by the court..."
-                    className="w-full p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:outline-none resize-none"
+                    className="w-full p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none resize-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#0F172A] mb-1">Personal Advocate Notes (Optional)</label>
+                  <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Personal Advocate Notes (Optional)</label>
                   <textarea
                     rows={2}
                     value={addForm.userNotes}
                     onChange={(e) => setAddForm({ ...addForm, userNotes: e.target.value })}
                     placeholder="Notes for arguments, counter-pleas, or drafting..."
-                    className="w-full p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:outline-none resize-none"
+                    className="w-full p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none resize-none"
                   />
                 </div>
 
@@ -1140,7 +1140,7 @@ export const PreviewBookmarks: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsAddBookmarkOpen(false)}
-                    className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] text-xs font-bold text-[#64748B]"
+                    className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                   >
                     Cancel
                   </button>

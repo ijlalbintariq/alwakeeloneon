@@ -104,7 +104,7 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
             {pages.map((pageContent, pageIndex) => (
               <div
                 key={pageIndex}
-                className="bg-white rounded-lg shadow-xl relative"
+                className="bg-white dark:bg-[#131E2E] rounded-lg shadow-xl relative"
                 style={{ minHeight: "400px" }}
               >
                 <div className="absolute top-3 right-4 text-[9px] text-muted-foreground font-mono select-none">

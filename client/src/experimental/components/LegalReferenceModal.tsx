@@ -97,21 +97,21 @@ function DomainIcon({ domain, className }: { domain: StatuteDomain; className?: 
 
 // Domain Badge Styling
 const DOMAIN_STYLES: Record<StatuteDomain, { bg: string; text: string; border: string; label: string }> = {
-  civil: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", label: "Civil Law" },
-  criminal: { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", label: "Criminal Law" },
-  constitutional: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", label: "Constitutional" },
-  commercial: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", label: "Property & Commercial" },
-  evidence: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", label: "Evidence & Forensics" },
-  family: { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200", label: "Family Law" },
-  special: { bg: "bg-cyan-50", text: "text-cyan-700", border: "border-cyan-200", label: "Special & Cyber" },
+  civil: { bg: "bg-blue-50 dark:bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", border: "border-blue-200 dark:border-blue-500/20", label: "Civil Law" },
+  criminal: { bg: "bg-rose-50 dark:bg-rose-500/10", text: "text-rose-700 dark:text-rose-400", border: "border-rose-200 dark:border-rose-500/20", label: "Criminal Law" },
+  constitutional: { bg: "bg-purple-50 dark:bg-purple-500/10", text: "text-purple-700 dark:text-purple-400", border: "border-purple-200 dark:border-purple-500/20", label: "Constitutional" },
+  commercial: { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", border: "border-emerald-200 dark:border-emerald-500/20", label: "Property & Commercial" },
+  evidence: { bg: "bg-amber-50 dark:bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", border: "border-amber-200 dark:border-amber-500/20", label: "Evidence & Forensics" },
+  family: { bg: "bg-indigo-50 dark:bg-indigo-500/10", text: "text-indigo-700 dark:text-indigo-400", border: "border-indigo-200 dark:border-indigo-500/20", label: "Family Law" },
+  special: { bg: "bg-cyan-50 dark:bg-cyan-500/10", text: "text-cyan-700 dark:text-cyan-400", border: "border-cyan-200 dark:border-cyan-500/20", label: "Special & Cyber" },
 };
 
 // Court Hierarchy Tier Styling
 const TIER_STYLES: Record<CourtHierarchyTier, { bg: string; text: string; border: string; label: string }> = {
-  apex: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", label: "Apex Court" },
-  high_courts: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", label: "High Court" },
-  tribunals: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", label: "Special Tribunal" },
-  district: { bg: "bg-slate-50", text: "text-slate-700", border: "border-slate-200", label: "District Judiciary" },
+  apex: { bg: "bg-purple-50 dark:bg-purple-500/10", text: "text-purple-700 dark:text-purple-400", border: "border-purple-200 dark:border-purple-500/20", label: "Apex Court" },
+  high_courts: { bg: "bg-blue-50 dark:bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", border: "border-blue-200 dark:border-blue-500/20", label: "High Court" },
+  tribunals: { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", border: "border-emerald-200 dark:border-emerald-500/20", label: "Special Tribunal" },
+  district: { bg: "bg-slate-50 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-400", border: "border-slate-200 dark:border-slate-500/20", label: "District Judiciary" },
 };
 
 export const LegalReferenceModal: React.FC<LegalReferenceModalProps> = ({
@@ -525,23 +525,23 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
       aria-labelledby="chambers-shelf-title"
       className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200"
     >
-      <div className="bg-white border border-[#E2E8F0] rounded-2xl max-w-6xl w-full h-[92vh] max-h-[900px] flex flex-col shadow-2xl overflow-hidden text-[#0F172A]">
+      <div className="bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl max-w-6xl w-full h-[92vh] max-h-[900px] flex flex-col shadow-2xl overflow-hidden text-[#0F172A] dark:text-[#F8FAFC]">
         {/* ── Modal Global Header ── */}
-        <div className="px-6 py-3.5 border-b border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between gap-4 shrink-0">
+        <div className="px-6 py-3.5 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#105B38]/10 border border-[#105B38]/20 flex items-center justify-center text-[#105B38] shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 flex items-center justify-center text-[#105B38] shrink-0">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-[#105B38] uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="text-[10px] font-bold text-[#105B38] uppercase tracking-wider bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20">
                   Chambers Reference Shelf
                 </span>
-                <span className="text-[11px] text-[#64748B] hidden sm:inline">
+                <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hidden sm:inline">
                   Pakistani Practice Manual & Legal Codes
                 </span>
               </div>
-              <h2 id="chambers-shelf-title" className="text-base sm:text-lg font-bold text-[#0F172A] leading-tight">
+              <h2 id="chambers-shelf-title" className="text-base sm:text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC] leading-tight">
                 Statutes, Major Codes & Procedural Guides
               </h2>
             </div>
@@ -550,7 +550,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0]/60 transition-colors"
+              className="p-2 rounded-xl text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0]/60 transition-colors"
               aria-label="Close Reference Shelf"
             >
               <X className="w-5 h-5" />
@@ -559,7 +559,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
         </div>
 
         {/* ── 4 Global Navigation Tabs ── */}
-        <div className="flex items-center gap-1.5 px-6 pt-2 border-b border-[#E2E8F0] shrink-0 bg-white overflow-x-auto custom-scrollbar">
+        <div className="flex items-center gap-1.5 px-6 pt-2 border-b border-[#E2E8F0] dark:border-[#1E2D44] shrink-0 bg-white dark:bg-[#131E2E] overflow-x-auto custom-scrollbar">
           {[
             {
               id: "statutes" as const,
@@ -597,17 +597,17 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                 "group inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold rounded-t-xl border-b-2 transition-all whitespace-nowrap",
                 activeTab === t.id
                   ? "border-[#105B38] text-[#105B38] bg-[#105B38]/5 shadow-xs"
-                  : "border-transparent text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                  : "border-transparent text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
               )}
             >
-              <t.icon className={cn("w-4 h-4", activeTab === t.id ? "text-[#105B38]" : "text-[#94A3B8]")} />
+              <t.icon className={cn("w-4 h-4", activeTab === t.id ? "text-[#105B38]" : "text-[#94A3B8] dark:text-[#475569]")} />
               <span>{t.label}</span>
               <span
                 className={cn(
                   "text-[10px] px-1.5 py-0.5 rounded-full font-mono font-medium",
                   activeTab === t.id
                     ? "bg-[#105B38] text-white"
-                    : "bg-[#F1F5F9] text-[#64748B] group-hover:bg-[#E2E8F0]"
+                    : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] group-hover:bg-[#E2E8F0]"
                 )}
               >
                 {t.count}
@@ -617,34 +617,34 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
         </div>
 
         {/* ── Modal Body (Active Tab Content) ── */}
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white dark:bg-[#131E2E]">
           {/* =================================================================
               TAB 1: STATUTES & MAJOR CODES COMPENDIUM
               ================================================================= */}
           {activeTab === "statutes" && (
             <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
               {/* ── Left Master List Pane ── */}
-              <div className="w-full md:w-[360px] lg:w-[400px] border-r border-[#E2E8F0] flex flex-col bg-[#F8FAFC] shrink-0 min-h-0">
+              <div className="w-full md:w-[360px] lg:w-[400px] border-r border-[#E2E8F0] dark:border-[#1E2D44] flex flex-col bg-[#F8FAFC] dark:bg-[#0B131E] shrink-0 min-h-0">
                 {/* Search & Domain Filters Bar */}
-                <div className="p-3.5 border-b border-[#E2E8F0] space-y-2.5 bg-white shrink-0">
+                <div className="p-3.5 border-b border-[#E2E8F0] dark:border-[#1E2D44] space-y-2.5 bg-white dark:bg-[#131E2E] shrink-0">
                   {/* Search input */}
                   <div className="relative">
                     {isLiveFetching ? (
                       <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#105B38] animate-spin" />
                     ) : (
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8] dark:text-[#475569]" />
                     )}
                     <input
                       type="text"
                       value={statuteQuery}
                       onChange={(e) => setStatuteQuery(e.target.value)}
                       placeholder="Search section, CPC, PPC, SRA, keywords..."
-                      className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:bg-white shadow-xs"
+                      className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] shadow-xs"
                     />
                     {statuteQuery && (
                       <button
                         onClick={() => setStatuteQuery("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#0F172A]"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -659,7 +659,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         "px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors border",
                         selectedDomain === "all"
                           ? "bg-[#105B38] text-white border-[#105B38]"
-                          : "bg-white text-[#64748B] border-[#E2E8F0] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                          : "bg-white dark:bg-[#131E2E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                       )}
                     >
                       All Domains ({STATUTE_SECTIONS.length})
@@ -672,7 +672,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                           "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors border",
                           selectedDomain === domain.id
                             ? "bg-[#105B38] text-white border-[#105B38]"
-                            : "bg-white text-[#64748B] border-[#E2E8F0] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                            : "bg-white dark:bg-[#131E2E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                         )}
                       >
                         <DomainIcon domain={domain.id} className="w-3 h-3" />
@@ -683,30 +683,30 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                 </div>
 
                 {/* Section List Header */}
-                <div className="px-4 py-2 bg-[#F1F5F9]/60 border-b border-[#E2E8F0] flex items-center justify-between text-[11px] text-[#64748B] shrink-0">
+                <div className="px-4 py-2 bg-[#F1F5F9] dark:bg-[#1E2D44]/60 border-b border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] shrink-0">
                   <span className="font-semibold">
                     {statuteError
                       ? "Search Error"
                       : `${filteredSections.length} Statutory Provision${filteredSections.length === 1 ? "" : "s"}${liveDbSections.length > 0 ? ` (${liveDbSections.length} live from DB)` : ""}`}
                   </span>
-                  <span className="text-[10px] text-[#94A3B8]">Click to view details</span>
+                  <span className="text-[10px] text-[#94A3B8] dark:text-[#475569]">Click to view details</span>
                 </div>
 
                 {/* Scrollable Section Master List */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-[#F1F5F9]">
                   {statuteError ? (
-                    <div className="p-6 text-center space-y-3 bg-rose-50/60 m-3 rounded-xl border border-rose-200">
-                      <AlertTriangle className="w-8 h-8 text-rose-600 mx-auto" />
+                    <div className="p-6 text-center space-y-3 bg-rose-50/6 dark:bg-rose-500/100 dark:bg-rose-500/10 m-3 rounded-xl border border-rose-200 dark:border-rose-500/20">
+                      <AlertTriangle className="w-8 h-8 text-rose-600 dark:text-rose-400 mx-auto" />
                       <div className="space-y-1">
                         <p className="text-xs font-bold text-rose-900">Statute Lookup Error</p>
-                        <p className="text-[11px] text-rose-700 leading-relaxed">{statuteError}</p>
+                        <p className="text-[11px] text-rose-700 dark:text-rose-400 leading-relaxed">{statuteError}</p>
                       </div>
                       <button
                         onClick={() => {
                           setStatuteError(null);
                           setStatuteQuery(statuteQuery);
                         }}
-                        className="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors inline-block"
+                        className="px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400 bg-white dark:bg-[#131E2E] border border-rose-200 dark:border-rose-500/20 rounded-lg hover:bg-rose-50 dark:bg-rose-500/10 transition-colors inline-block"
                       >
                         Retry Search
                       </button>
@@ -714,8 +714,8 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                   ) : filteredSections.length === 0 ? (
                     <div className="p-8 text-center space-y-2">
                       <BookOpen className="w-8 h-8 text-[#CBD5E1] mx-auto" />
-                      <p className="text-xs font-semibold text-[#64748B]">No statutory provisions found</p>
-                      <p className="text-[11px] text-[#94A3B8]">
+                      <p className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">No statutory provisions found</p>
+                      <p className="text-[11px] text-[#94A3B8] dark:text-[#475569]">
                         Try searching for &quot;O7 R11&quot;, &quot;489-F&quot;, &quot;199&quot;, &quot;readiness&quot;, or change domain.
                       </p>
                       <button
@@ -723,7 +723,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                           setStatuteQuery("");
                           setSelectedDomain("all");
                         }}
-                        className="px-3 py-1.5 text-xs font-semibold text-[#105B38] bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors inline-block mt-2"
+                        className="px-3 py-1.5 text-xs font-semibold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 rounded-lg hover:bg-emerald-100 transition-colors inline-block mt-2"
                       >
                         Reset All Filters
                       </button>
@@ -740,7 +740,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                             "p-3.5 cursor-pointer transition-all border-l-4 select-none",
                             isSelected
                               ? "bg-[#105B38]/8 border-l-[#105B38] shadow-xs"
-                              : "bg-white border-l-transparent hover:bg-[#F8FAFC] hover:border-l-[#CBD5E1]"
+                              : "bg-white dark:bg-[#131E2E] border-l-transparent hover:bg-[#F8FAFC] dark:bg-[#0B131E] hover:border-l-[#CBD5E1]"
                           )}
                         >
                           <div className="flex items-start justify-between gap-2 mb-1">
@@ -748,7 +748,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                               {sec.sectionNumber}
                             </span>
                             {sec.isLiveDb ? (
-                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
+                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 inline-flex items-center gap-1 shadow-2xs">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 <span>Live Database</span>
                               </span>
@@ -765,19 +765,19 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                               </span>
                             )}
                           </div>
-                          <p className="text-xs font-bold text-[#0F172A] line-clamp-1 mb-1">
+                          <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] line-clamp-1 mb-1">
                             {sec.title}
                           </p>
-                          <p className="text-[11px] text-[#64748B] line-clamp-1">
+                          <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] line-clamp-1">
                             {sec.statuteName} ({sec.statuteYear})
                           </p>
                           {sec.isLiveDb ? (
-                            <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 w-fit">
-                              <Database className="w-2.5 h-2.5 text-emerald-600" />
+                            <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 w-fit">
+                              <Database className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                               <span>PostgreSQL Record</span>
                             </div>
                           ) : sec.landmarkCitations.length > 0 ? (
-                            <div className="mt-2 flex items-center gap-1.5 text-[10px] text-[#475569] font-mono bg-[#F8FAFC] px-2 py-0.5 rounded border border-[#E2E8F0] w-fit">
+                            <div className="mt-2 flex items-center gap-1.5 text-[10px] text-[#475569] font-mono bg-[#F8FAFC] dark:bg-[#0B131E] px-2 py-0.5 rounded border border-[#E2E8F0] dark:border-[#1E2D44] w-fit">
                               <Gavel className="w-2.5 h-2.5 text-[#105B38]" />
                               <span>{sec.landmarkCitations[0].citation}</span>
                             </div>
@@ -790,13 +790,13 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
               </div>
 
               {/* ── Right Detail & Action Hub Pane ── */}
-              <div className="flex-1 flex flex-col min-w-0 bg-white overflow-hidden">
+              <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#131E2E] overflow-hidden">
                 {statuteError ? (
-                  <div className="flex-1 flex items-center justify-center p-8 bg-[#F8FAFC]">
-                    <div className="max-w-md text-center space-y-3 bg-white p-6 rounded-2xl border border-rose-200 shadow-sm">
+                  <div className="flex-1 flex items-center justify-center p-8 bg-[#F8FAFC] dark:bg-[#0B131E]">
+                    <div className="max-w-md text-center space-y-3 bg-white dark:bg-[#131E2E] p-6 rounded-2xl border border-rose-200 dark:border-rose-500/20 shadow-sm">
                       <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto" />
-                      <h3 className="text-base font-bold text-[#0F172A]">Unable to Load Statutes</h3>
-                      <p className="text-xs text-[#64748B] leading-relaxed">{statuteError}</p>
+                      <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">Unable to Load Statutes</h3>
+                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">{statuteError}</p>
                       <button
                         onClick={() => {
                           setStatuteError(null);
@@ -811,7 +811,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                 ) : (
                   <>
                     {/* Detail View Header with Action Hub Buttons */}
-                    <div className="px-6 py-4 border-b border-[#E2E8F0] bg-white flex flex-col lg:flex-row lg:items-center justify-between gap-3 shrink-0">
+                    <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] flex flex-col lg:flex-row lg:items-center justify-between gap-3 shrink-0">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span
@@ -825,19 +825,19 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         {DOMAIN_STYLES[activeSection.domain].label}
                       </span>
                       {activeSection.isLiveDb && (
-                        <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
-                          <Database className="w-3 h-3 text-emerald-600" />
+                        <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 inline-flex items-center gap-1.5 shadow-2xs">
+                          <Database className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                           <span>Live Database Record</span>
                         </span>
                       )}
-                      <span className="text-[11px] font-mono text-[#64748B]">
+                      <span className="text-[11px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                         {activeSection.statuteName} · {activeSection.statuteYear}
                       </span>
-                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold border border-emerald-200">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded font-semibold border border-emerald-200 dark:border-emerald-500/20">
                         In Force & Applicable
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-[#0F172A] tracking-tight">
+                    <h3 className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight">
                       {activeSection.sectionNumber}: {activeSection.title}
                     </h3>
                   </div>
@@ -847,17 +847,17 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                     {/* Action 1: Copy Section & Citation */}
                     <button
                       onClick={() => handleCopyCitation(activeSection)}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-[#CBD5E1] text-[#0F172A] hover:bg-[#F8FAFC] hover:border-[#94A3B8] transition-all shadow-xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-[#131E2E] border border-[#CBD5E1] text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E] hover:border-[#94A3B8] transition-all shadow-xs"
                       title="Copy section text and leading landmark citation to clipboard"
                     >
                       {copiedCitation ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-700 font-bold">Copied!</span>
+                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-emerald-700 dark:text-emerald-400 font-bold">Copied!</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-[#64748B]" />
+                          <Copy className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                           <span>Copy Citation</span>
                         </>
                       )}
@@ -866,10 +866,10 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                     {/* Action 2: Search Precedents */}
                     <button
                       onClick={() => handleSearchPrecedents(activeSection)}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 transition-all shadow-xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-400 hover:bg-blue-100 transition-all shadow-xs"
                       title="Search case law & judgments for this statutory section"
                     >
-                      <Search className="w-3.5 h-3.5 text-blue-600" />
+                      <Search className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       <span>Search Precedents</span>
                     </button>
 
@@ -895,14 +895,14 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         <BookOpen className="w-3.5 h-3.5" />
                         Verbatim Statutory Provision
                       </p>
-                      <span className="text-[11px] font-mono text-[#64748B]">
+                      <span className="text-[11px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                         {activeSection.statuteName}
                       </span>
                     </div>
 
-                    <div className="relative p-4 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] shadow-2xs">
+                    <div className="relative p-4 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] dark:bg-[#0B131E] shadow-2xs">
                       <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-[#105B38] rounded-l-xl" />
-                      <pre className="font-serif text-sm leading-relaxed text-[#0F172A] whitespace-pre-wrap select-text pl-2">
+                      <pre className="font-serif text-sm leading-relaxed text-[#0F172A] dark:text-[#F8FAFC] whitespace-pre-wrap select-text pl-2">
                         {activeSection.text}
                       </pre>
                     </div>
@@ -915,7 +915,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                       Legislative Commentary & Procedural Rules
                     </p>
 
-                    <div className="p-4 rounded-xl border border-[#E2E8F0] bg-white text-xs leading-relaxed text-[#334155] space-y-3 shadow-2xs">
+                    <div className="p-4 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] text-xs leading-relaxed text-[#334155] dark:text-[#CBD5E1] space-y-3 shadow-2xs">
                       {activeSection.commentary.split("\n\n").map((para, idx) => (
                         <p key={idx} className="leading-relaxed">
                           {para}
@@ -925,9 +925,9 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
                     {/* Mandatory Pleading Requirement Callout (e.g. S.24(c) readiness, O.VII R.11 date) */}
                     {activeSection.mandatoryPleadings && (
-                      <div className="p-3.5 rounded-xl border border-amber-300 bg-amber-50/80 text-xs text-amber-900 space-y-1 shadow-2xs">
-                        <div className="flex items-center gap-2 font-bold text-amber-950">
-                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div className="p-3.5 rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50/8 dark:bg-amber-500/100 dark:bg-amber-500/10 text-xs text-amber-900 dark:text-amber-300 space-y-1 shadow-2xs">
+                        <div className="flex items-center gap-2 font-bold text-amber-950 dark:text-amber-300">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                           <span>Mandatory Pleading Requirement (Strict Compliance)</span>
                         </div>
                         <p className="leading-relaxed pl-6">{activeSection.mandatoryPleadings}</p>
@@ -936,9 +936,9 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
                     {/* Procedural Notes */}
                     {activeSection.proceduralNotes && (
-                      <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/70 text-xs text-blue-900 space-y-1">
+                      <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-500/20 bg-blue-50/7 dark:bg-blue-500/100 dark:bg-blue-500/10 text-xs text-blue-900 dark:text-blue-300 space-y-1">
                         <div className="flex items-center gap-2 font-bold text-blue-950">
-                          <Shield className="w-4 h-4 text-blue-600 shrink-0" />
+                          <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                           <span>Procedural Notes & Invalidation Risks</span>
                         </div>
                         <p className="leading-relaxed pl-6">{activeSection.proceduralNotes}</p>
@@ -947,9 +947,9 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
                     {/* Relief / Punishment */}
                     {activeSection.punishmentOrRelief && (
-                      <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/70 text-xs text-emerald-900 space-y-1">
-                        <div className="flex items-center gap-2 font-bold text-emerald-950">
-                          <Gavel className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/7 dark:bg-emerald-500/100 dark:bg-emerald-500/10 text-xs text-emerald-900 dark:text-emerald-300 space-y-1">
+                        <div className="flex items-center gap-2 font-bold text-emerald-950 dark:text-emerald-300">
+                          <Gavel className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span>Statutory Relief / Prescribed Penalty</span>
                         </div>
                         <p className="leading-relaxed pl-6">{activeSection.punishmentOrRelief}</p>
@@ -964,26 +964,26 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         <Gavel className="w-3.5 h-3.5 text-[#105B38]" />
                         Landmark Precedent Authorities ({activeSection.landmarkCitations.length})
                       </p>
-                      <span className="text-[10px] text-[#64748B]">Supreme Court & High Courts of Pakistan</span>
+                      <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Supreme Court & High Courts of Pakistan</span>
                     </div>
 
                     <div className="space-y-3">
                       {activeSection.landmarkCitations.map((citation, idx) => (
                         <div
                           key={idx}
-                          className="p-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] hover:border-[#105B38]/50 transition-all space-y-2 shadow-2xs"
+                          className="p-4 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] hover:border-[#105B38]/50 transition-all space-y-2 shadow-2xs"
                         >
                           <div className="flex items-start justify-between gap-3 flex-wrap">
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20">
                                   {citation.citation}
                                 </span>
-                                <span className="text-xs font-bold text-[#0F172A]">
+                                <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                                   {citation.title}
                                 </span>
                               </div>
-                              <p className="text-[11px] text-[#64748B] mt-0.5">
+                              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                                 {citation.court} · {citation.year}
                               </p>
                             </div>
@@ -1000,7 +1000,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                             </button>
                           </div>
 
-                          <div className="p-3 rounded-lg bg-white border border-[#E2E8F0] text-xs text-[#334155] leading-relaxed italic">
+                          <div className="p-3 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#334155] dark:text-[#CBD5E1] leading-relaxed italic">
                             &ldquo;{citation.ratio}&rdquo;
                           </div>
                         </div>
@@ -1009,15 +1009,15 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                   </div>
 
                   {/* 4. Keywords & Cross References */}
-                  <div className="pt-4 border-t border-[#E2E8F0] space-y-2">
-                    <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+                  <div className="pt-4 border-t border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
+                    <p className="text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
                       Statutory Keywords & Taxonomy
                     </p>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {activeSection.keywords.map((kw, i) => (
                         <span
                           key={i}
-                          className="px-2 py-0.5 rounded-md text-[11px] bg-[#F1F5F9] text-[#475569] border border-[#E2E8F0]"
+                          className="px-2 py-0.5 rounded-md text-[11px] bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]"
                         >
                           {kw}
                         </span>
@@ -1037,39 +1037,39 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
           {activeTab === "limitation" && (
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
               {/* Statutory Disclaimer & Section 4 Rule Banner */}
-              <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 flex items-start gap-3 text-xs text-amber-950 leading-relaxed shadow-2xs">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-xl bg-amber-50/9 dark:bg-amber-500/100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-start gap-3 text-xs text-amber-950 dark:text-amber-300 leading-relaxed shadow-2xs">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-bold">
                     Limitation Act 1908 Schedule Calculator & Section 4 Court Recess Engine
                   </p>
-                  <p className="text-amber-900 text-[11px]">
+                  <p className="text-amber-900 dark:text-amber-300 text-[11px]">
                     Under <strong>Section 3 of the Limitation Act, 1908</strong>, every suit instituted after the prescribed period shall be dismissed although limitation has not been set up as a defence. Under <strong>Section 4</strong>, where the prescribed period expires on a day when the court is closed (Sundays, gazetted holidays, or court recesses), the suit may be instituted on the day that the court reopens.
                   </p>
                 </div>
               </div>
 
               {/* Calculator Engine Card */}
-              <div className="p-5 rounded-2xl border border-[#CBD5E1] bg-[#F8FAFC] space-y-5 shadow-xs">
-                <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3 flex-wrap gap-2">
+              <div className="p-5 rounded-2xl border border-[#CBD5E1] bg-[#F8FAFC] dark:bg-[#0B131E] space-y-5 shadow-xs">
+                <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3 flex-wrap gap-2">
                   <div>
                     <p className="text-[11px] font-bold text-[#105B38] uppercase tracking-wider">
                       Interactive Limitation Clock
                     </p>
-                    <h3 className="text-base font-bold text-[#0F172A]">
+                    <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                       Compute Filing Deadline & Weekend Rollover
                     </h3>
                   </div>
 
                   {/* Section 4 Rollover Toggle */}
-                  <label className="inline-flex items-center gap-2 cursor-pointer select-none bg-white px-3 py-1.5 rounded-xl border border-[#CBD5E1] shadow-2xs">
+                  <label className="inline-flex items-center gap-2 cursor-pointer select-none bg-white dark:bg-[#131E2E] px-3 py-1.5 rounded-xl border border-[#CBD5E1] shadow-2xs">
                     <input
                       type="checkbox"
                       checked={applySection4}
                       onChange={(e) => setApplySection4(e.target.checked)}
                       className="rounded text-[#105B38] focus:ring-[#105B38] w-4 h-4 accent-[#105B38]"
                     />
-                    <span className="text-xs font-semibold text-[#0F172A]">
+                    <span className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC]">
                       Apply Section 4 Weekend Rollover
                     </span>
                   </label>
@@ -1096,7 +1096,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                               "px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors border",
                               limitationCategory === cat
                                 ? "bg-[#105B38] text-white border-[#105B38]"
-                                : "bg-white text-[#64748B] border-[#E2E8F0] hover:text-[#0F172A]"
+                                : "bg-white dark:bg-[#131E2E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                             )}
                           >
                             {cat === "all" ? "All Categories" : cat}
@@ -1109,7 +1109,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                     <select
                       value={activeLimitationEntry.article}
                       onChange={(e) => setSelectedArticleKey(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#CBD5E1] text-xs font-medium text-[#0F172A] focus:outline-none focus:border-[#105B38] shadow-xs"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#CBD5E1] text-xs font-medium text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] shadow-xs"
                     >
                       {filteredLimitationEntries.map((entry) => (
                         <option key={entry.article} value={entry.article}>
@@ -1128,38 +1128,38 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                       type="date"
                       value={accrualDate}
                       onChange={(e) => setAccrualDate(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#CBD5E1] text-xs font-medium text-[#0F172A] focus:outline-none focus:border-[#105B38] shadow-xs"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#CBD5E1] text-xs font-medium text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] shadow-xs"
                     />
 
                     {/* Quick Date Presets */}
                     <div className="flex items-center gap-1 flex-wrap pt-1">
                       <button
                         onClick={() => setDatePreset(0)}
-                        className="px-2 py-0.5 text-[10px] font-semibold bg-white border border-[#E2E8F0] rounded hover:bg-[#F1F5F9] text-[#475569]"
+                        className="px-2 py-0.5 text-[10px] font-semibold bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569]"
                       >
                         Today
                       </button>
                       <button
                         onClick={() => setDatePreset(30)}
-                        className="px-2 py-0.5 text-[10px] font-semibold bg-white border border-[#E2E8F0] rounded hover:bg-[#F1F5F9] text-[#475569]"
+                        className="px-2 py-0.5 text-[10px] font-semibold bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569]"
                       >
                         30d ago
                       </button>
                       <button
                         onClick={() => setDatePreset(90)}
-                        className="px-2 py-0.5 text-[10px] font-semibold bg-white border border-[#E2E8F0] rounded hover:bg-[#F1F5F9] text-[#475569]"
+                        className="px-2 py-0.5 text-[10px] font-semibold bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569]"
                       >
                         90d ago
                       </button>
                       <button
                         onClick={() => setDatePreset(365)}
-                        className="px-2 py-0.5 text-[10px] font-semibold bg-white border border-[#E2E8F0] rounded hover:bg-[#F1F5F9] text-[#475569]"
+                        className="px-2 py-0.5 text-[10px] font-semibold bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569]"
                       >
                         1y ago
                       </button>
                       <button
                         onClick={() => setDatePreset(3 * 365)}
-                        className="px-2 py-0.5 text-[10px] font-semibold bg-white border border-[#E2E8F0] rounded hover:bg-[#F1F5F9] text-[#475569]"
+                        className="px-2 py-0.5 text-[10px] font-semibold bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569]"
                       >
                         3y ago
                       </button>
@@ -1168,21 +1168,21 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                 </div>
 
                 {/* ── Computation Result Banner ── */}
-                <div className="p-4 rounded-xl bg-white border border-[#CBD5E1] space-y-4 shadow-sm">
+                <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#CBD5E1] space-y-4 shadow-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#F1F5F9] pb-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20">
                           {activeLimitationEntry.article}
                         </span>
-                        <span className="text-xs font-bold text-[#0F172A]">
+                        <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                           {activeLimitationEntry.title}
                         </span>
-                        <span className="text-[10px] text-[#64748B] bg-[#F1F5F9] px-2 py-0.5 rounded font-mono">
+                        <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-[#F1F5F9] dark:bg-[#1E2D44] px-2 py-0.5 rounded font-mono">
                           {activeLimitationEntry.category}
                         </span>
                       </div>
-                      <p className="text-xs text-[#64748B] mt-1">
+                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
                         Trigger: <strong>{activeLimitationEntry.triggerEvent}</strong>
                       </p>
                     </div>
@@ -1193,10 +1193,10 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         className={cn(
                           "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border",
                           limitationResult.isBarred
-                            ? "bg-rose-50 text-rose-700 border-rose-200"
+                            ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
                             : limitationResult.daysRemaining === 0
-                            ? "bg-amber-50 text-amber-800 border-amber-200"
-                            : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            ? "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                            : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
                         )}
                       >
                         <CalendarClock className="w-4 h-4" />
@@ -1207,19 +1207,19 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
                   {/* Calculated Dates Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
-                      <p className="text-[10px] font-bold text-[#64748B] uppercase">Accrual Date</p>
-                      <p className="font-mono font-bold text-[#0F172A] mt-0.5">{accrualDate}</p>
+                    <div className="p-3 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44]">
+                      <p className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">Accrual Date</p>
+                      <p className="font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5">{accrualDate}</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
-                      <p className="text-[10px] font-bold text-[#64748B] uppercase">Prescribed Period</p>
+                    <div className="p-3 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44]">
+                      <p className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">Prescribed Period</p>
                       <p className="font-mono font-bold text-[#105B38] mt-0.5">
                         {activeLimitationEntry.periodText}
                       </p>
                     </div>
-                    <div className="p-3 rounded-lg bg-emerald-50/60 border border-emerald-200">
+                    <div className="p-3 rounded-lg bg-emerald-50/6 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
                       <p className="text-[10px] font-bold text-[#105B38] uppercase">Statutory Deadline</p>
-                      <p className="font-bold text-[#0F172A] mt-0.5 text-sm">
+                      <p className="font-bold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5 text-sm">
                         {limitationResult.expiryFormatted}
                       </p>
                     </div>
@@ -1227,11 +1227,11 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
                   {/* Section 4 Rollover Alert */}
                   {limitationResult.isWeekendRollover && (
-                    <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs text-emerald-950 flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 text-xs text-emerald-950 dark:text-emerald-300 flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-bold">Section 4 Weekend Rollover Applied</p>
-                        <p className="text-[11px] text-emerald-900 mt-0.5">
+                        <p className="text-[11px] text-emerald-900 dark:text-emerald-300 mt-0.5">
                           Raw expiry fell on a Sunday / Court Holiday. Limitation deadline is legally extended to the reopening court day (Monday) under Section 4 Limitation Act 1908 &amp; Section 10 General Clauses Act 1897.
                         </p>
                       </div>
@@ -1240,8 +1240,8 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
                   {/* Landmark Precedent on this Article */}
                   {activeLimitationEntry.landmarkPrecedent && (
-                    <div className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#334155] space-y-1">
-                      <p className="text-[10px] font-bold text-[#64748B] uppercase flex items-center gap-1">
+                    <div className="p-3 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#334155] dark:text-[#CBD5E1] space-y-1">
+                      <p className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase flex items-center gap-1">
                         <Gavel className="w-3 h-3 text-[#105B38]" />
                         Leading Precedent Authority
                       </p>
@@ -1255,16 +1255,16 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                   <div className="flex items-center gap-2 pt-2 border-t border-[#F1F5F9] justify-end flex-wrap">
                     <button
                       onClick={handleCopyLimitationSummary}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-[#CBD5E1] text-[#0F172A] hover:bg-[#F8FAFC]"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-[#131E2E] border border-[#CBD5E1] text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                     >
                       {copiedLimitation ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-700 font-bold">Assessment Copied!</span>
+                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-emerald-700 dark:text-emerald-400 font-bold">Assessment Copied!</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-[#64748B]" />
+                          <Copy className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                           <span>Copy Assessment</span>
                         </>
                       )}
@@ -1289,7 +1289,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                     <p className="text-[11px] font-bold text-[#475569] uppercase tracking-wider">
                       Limitation Act 1908 First Schedule Master Reference
                     </p>
-                    <p className="text-[11px] text-[#64748B]">
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       Click any row to load article into the live calculation clock
                     </p>
                   </div>
@@ -1300,29 +1300,29 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                       value={limitationSearch}
                       onChange={(e) => setLimitationSearch(e.target.value)}
                       placeholder="Filter articles & keywords..."
-                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E2E8F0] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38]"
+                      className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38]"
                     />
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[#CBD5E1] overflow-hidden bg-white shadow-xs">
+                <div className="rounded-xl border border-[#CBD5E1] overflow-hidden bg-white dark:bg-[#131E2E] shadow-xs">
                   <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
                     <table className="w-full text-left">
-                      <thead className="sticky top-0 bg-[#F8FAFC] border-b border-[#E2E8F0] z-10">
+                      <thead className="sticky top-0 bg-[#F8FAFC] dark:bg-[#0B131E] border-b border-[#E2E8F0] dark:border-[#1E2D44] z-10">
                         <tr>
-                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
                             Article
                           </th>
-                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
                             Category
                           </th>
-                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
                             Matter & Description
                           </th>
-                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
                             Trigger Event
                           </th>
-                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider text-right">
+                          <th className="px-3.5 py-2.5 text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider text-right">
                             Period
                           </th>
                         </tr>
@@ -1335,26 +1335,26 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                               key={entry.article}
                               onClick={() => setSelectedArticleKey(entry.article)}
                               className={cn(
-                                "cursor-pointer transition-colors hover:bg-[#F8FAFC]",
+                                "cursor-pointer transition-colors hover:bg-[#F8FAFC] dark:bg-[#0B131E]",
                                 isSelected && "bg-[#105B38]/8 font-medium"
                               )}
                             >
                               <td className="px-3.5 py-2 font-mono font-bold text-[#105B38] whitespace-nowrap">
                                 {entry.article}
                               </td>
-                              <td className="px-3.5 py-2 text-[11px] text-[#64748B] whitespace-nowrap">
-                                <span className="bg-[#F1F5F9] px-2 py-0.5 rounded border border-[#E2E8F0]">
+                              <td className="px-3.5 py-2 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] whitespace-nowrap">
+                                <span className="bg-[#F1F5F9] dark:bg-[#1E2D44] px-2 py-0.5 rounded border border-[#E2E8F0] dark:border-[#1E2D44]">
                                   {entry.category}
                                 </span>
                               </td>
-                              <td className="px-3.5 py-2 text-[#0F172A]">
+                              <td className="px-3.5 py-2 text-[#0F172A] dark:text-[#F8FAFC]">
                                 <p className="font-semibold">{entry.title}</p>
-                                <p className="text-[11px] text-[#64748B] line-clamp-1">{entry.description}</p>
+                                <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] line-clamp-1">{entry.description}</p>
                               </td>
                               <td className="px-3.5 py-2 text-[11px] text-[#475569] max-w-[200px] truncate">
                                 {entry.triggerEvent}
                               </td>
-                              <td className="px-3.5 py-2 font-mono font-bold text-[#0F172A] text-right whitespace-nowrap">
+                              <td className="px-3.5 py-2 font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC] text-right whitespace-nowrap">
                                 {entry.periodText}
                               </td>
                             </tr>
@@ -1379,7 +1379,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                   <p className="text-[11px] font-bold text-[#105B38] uppercase tracking-wider">
                     Select Provincial Jurisdiction (5 High Court Regimes)
                   </p>
-                  <span className="text-[11px] text-[#64748B]">
+                  <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                     Governing Act: <strong>{activeProvinceRule.governingAct}</strong>
                   </span>
                 </div>
@@ -1401,14 +1401,14 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         "p-3 rounded-xl border text-left transition-all shadow-2xs",
                         selectedProvince === p.id
                           ? "bg-[#105B38] text-white border-[#105B38] shadow-xs"
-                          : "bg-white text-[#0F172A] border-[#CBD5E1] hover:border-[#94A3B8] hover:bg-[#F8FAFC]"
+                          : "bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] border-[#CBD5E1] hover:border-[#94A3B8] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                       )}
                     >
                       <p className="text-xs font-bold">{p.name}</p>
                       <p
                         className={cn(
                           "text-[10px]",
-                          selectedProvince === p.id ? "text-emerald-100" : "text-[#64748B]"
+                          selectedProvince === p.id ? "text-emerald-100" : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                         )}
                       >
                         {p.court}
@@ -1420,50 +1420,50 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
               {/* 4 Summary Stat Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]">
-                  <p className="text-[10px] font-bold text-[#64748B] uppercase">Ad Valorem Rate</p>
+                <div className="p-3.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
+                  <p className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">Ad Valorem Rate</p>
                   <p className="text-lg font-bold text-[#105B38] mt-0.5 font-mono">
                     {activeProvinceRule.adValoremRate}%
                   </p>
-                  <p className="text-[10px] text-[#64748B]">Applied on Suit Valuation</p>
+                  <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Applied on Suit Valuation</p>
                 </div>
-                <div className="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]">
-                  <p className="text-[10px] font-bold text-[#64748B] uppercase">Statutory Exemption</p>
-                  <p className="text-lg font-bold text-[#0F172A] mt-0.5 font-mono">
+                <div className="p-3.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
+                  <p className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">Statutory Exemption</p>
+                  <p className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5 font-mono">
                     &le; PKR {activeProvinceRule.exemptThreshold.toLocaleString()}
                   </p>
-                  <p className="text-[10px] text-emerald-700 font-semibold">Court Fee = PKR 0/-</p>
+                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">Court Fee = PKR 0/-</p>
                 </div>
-                <div className="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]">
-                  <p className="text-[10px] font-bold text-[#64748B] uppercase">General Maximum Cap</p>
-                  <p className="text-lg font-bold text-[#0F172A] mt-0.5 font-mono">
+                <div className="p-3.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
+                  <p className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">General Maximum Cap</p>
+                  <p className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5 font-mono">
                     PKR {activeProvinceRule.maxCapGeneral.toLocaleString()}
                   </p>
-                  <p className="text-[10px] text-[#64748B]">Statutory Fee Ceiling</p>
+                  <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Statutory Fee Ceiling</p>
                 </div>
-                <div className="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]">
-                  <p className="text-[10px] font-bold text-[#64748B] uppercase">
+                <div className="p-3.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
+                  <p className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">
                     {selectedProvince === "sindh" ? "SHC Original Side Cap" : "Constitutional Writ Fee"}
                   </p>
-                  <p className="text-lg font-bold text-[#0F172A] mt-0.5 font-mono">
+                  <p className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5 font-mono">
                     PKR{" "}
                     {selectedProvince === "sindh"
                       ? `${activeProvinceRule.highCourtOriginalSideCap?.toLocaleString()}/- (>65M)`
                       : `${activeProvinceRule.fixedFees.writPetition.toLocaleString()}/- (Fixed)`}
                   </p>
-                  <p className="text-[10px] text-[#64748B]">
+                  <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                     {selectedProvince === "sindh" ? "Sindh High Court Suit" : "Art. 199 High Court"}
                   </p>
                 </div>
               </div>
 
               {/* Fee Calculator & Plaint Valuation Engine */}
-              <div className="p-5 rounded-2xl border border-[#CBD5E1] bg-[#F8FAFC] space-y-5 shadow-xs">
-                <div className="border-b border-[#E2E8F0] pb-3">
+              <div className="p-5 rounded-2xl border border-[#CBD5E1] bg-[#F8FAFC] dark:bg-[#0B131E] space-y-5 shadow-xs">
+                <div className="border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3">
                   <p className="text-[11px] font-bold text-[#105B38] uppercase tracking-wider">
                     Interactive Valuation Engine
                   </p>
-                  <h3 className="text-base font-bold text-[#0F172A]">
+                  <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                     Compute Payable Fee & Determine Pecuniary Trial Court
                   </h3>
                 </div>
@@ -1477,7 +1477,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                     <select
                       value={selectedSuitTypeId}
                       onChange={(e) => setSelectedSuitTypeId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#CBD5E1] text-xs font-medium text-[#0F172A] focus:outline-none focus:border-[#105B38] shadow-xs"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#CBD5E1] text-xs font-medium text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] shadow-xs"
                     >
                       {COURT_FEE_SUIT_TYPES.map((st) => (
                         <option key={st.id} value={st.id}>
@@ -1485,7 +1485,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         </option>
                       ))}
                     </select>
-                    <p className="text-[10px] text-[#64748B]">{activeSuitType.description}</p>
+                    <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{activeSuitType.description}</p>
                   </div>
 
                   {/* Valuation Amount Input */}
@@ -1497,7 +1497,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                       type="number"
                       value={claimValuation}
                       onChange={(e) => setClaimValuation(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#CBD5E1] text-xs font-mono font-bold text-[#0F172A] focus:outline-none focus:border-[#105B38] shadow-xs"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#CBD5E1] text-xs font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] shadow-xs"
                     />
 
                     {/* Quick Valuation Presets */}
@@ -1513,7 +1513,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         <button
                           key={item.label}
                           onClick={() => setClaimValuation(item.val)}
-                          className="px-2 py-0.5 text-[10px] font-semibold bg-white border border-[#E2E8F0] rounded hover:bg-[#F1F5F9] text-[#475569]"
+                          className="px-2 py-0.5 text-[10px] font-semibold bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569]"
                         >
                           {item.label}
                         </button>
@@ -1523,16 +1523,16 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                 </div>
 
                 {/* Calculation Result Card */}
-                <div className="p-4 rounded-xl bg-white border border-[#CBD5E1] space-y-4 shadow-sm">
+                <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#CBD5E1] space-y-4 shadow-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#F1F5F9] pb-3">
                     <div>
-                      <span className="text-[10px] font-bold text-[#64748B] uppercase">
+                      <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">
                         Payable Court Fee
                       </span>
                       <p className="text-2xl font-extrabold text-[#105B38] font-mono">
                         PKR {courtFeeResult.fee.toLocaleString()}/-
                       </p>
-                      <p className="text-xs text-[#64748B] mt-0.5 font-mono">
+                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5 font-mono">
                         {courtFeeResult.breakdownFormula}
                       </p>
                     </div>
@@ -1542,10 +1542,10 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         className={cn(
                           "px-3 py-1 rounded-full text-xs font-bold border w-fit",
                           courtFeeResult.isExempt
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
                             : courtFeeResult.isCapped
-                            ? "bg-blue-50 text-blue-800 border-blue-200"
-                            : "bg-[#F8FAFC] text-[#0F172A] border-[#E2E8F0]"
+                            ? "bg-blue-50 dark:bg-blue-500/10 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-500/20"
+                            : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] border-[#E2E8F0] dark:border-[#1E2D44]"
                         )}
                       >
                         {courtFeeResult.isExempt
@@ -1554,7 +1554,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                           ? `Capped at Max Statutory Ceiling (PKR ${courtFeeResult.capAmount.toLocaleString()})`
                           : "Standard Ad Valorem Rate"}
                       </span>
-                      <span className="text-[11px] text-[#64748B]">
+                      <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                         Governed by: {courtFeeResult.statutoryReference}
                       </span>
                     </div>
@@ -1562,19 +1562,19 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
                   {/* Pecuniary Forum Recommendation */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] space-y-1">
-                      <p className="text-[10px] font-bold text-[#64748B] uppercase flex items-center gap-1">
+                    <div className="p-3 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-1">
+                      <p className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase flex items-center gap-1">
                         <Landmark className="w-3 h-3 text-[#105B38]" />
                         Recommended Trial Court (Pecuniary Tier)
                       </p>
-                      <p className="font-bold text-[#0F172A]">{courtFeeResult.pecuniaryCourt}</p>
+                      <p className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{courtFeeResult.pecuniaryCourt}</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] space-y-1">
-                      <p className="text-[10px] font-bold text-[#64748B] uppercase flex items-center gap-1">
+                    <div className="p-3 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-1">
+                      <p className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase flex items-center gap-1">
                         <Info className="w-3 h-3 text-[#105B38]" />
                         Statutory Explanation
                       </p>
-                      <p className="text-[#334155] leading-relaxed">{courtFeeResult.explanation}</p>
+                      <p className="text-[#334155] dark:text-[#CBD5E1] leading-relaxed">{courtFeeResult.explanation}</p>
                     </div>
                   </div>
 
@@ -1582,16 +1582,16 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                   <div className="flex items-center gap-2 pt-2 border-t border-[#F1F5F9] justify-end flex-wrap">
                     <button
                       onClick={handleCopyPlaintValuationClause}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white border border-[#CBD5E1] text-[#0F172A] hover:bg-[#F8FAFC]"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-[#131E2E] border border-[#CBD5E1] text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                     >
                       {copiedFeeClause ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-700 font-bold">Clause Copied!</span>
+                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-emerald-700 dark:text-emerald-400 font-bold">Clause Copied!</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-[#64748B]" />
+                          <Copy className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                           <span>Copy Plaint Valuation Clause</span>
                         </>
                       )}
@@ -1615,32 +1615,32 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                   {activeProvinceRule.provinceName} Pecuniary Jurisdiction Tiers
                 </p>
 
-                <div className="rounded-xl border border-[#CBD5E1] overflow-hidden bg-white shadow-xs">
+                <div className="rounded-xl border border-[#CBD5E1] overflow-hidden bg-white dark:bg-[#131E2E] shadow-xs">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                    <thead className="bg-[#F8FAFC] dark:bg-[#0B131E] border-b border-[#E2E8F0] dark:border-[#1E2D44]">
                       <tr>
-                        <th className="px-4 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                        <th className="px-4 py-2.5 text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
                           Court / Judicial Forum
                         </th>
-                        <th className="px-4 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                        <th className="px-4 py-2.5 text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
                           Valuation Range (PKR)
                         </th>
-                        <th className="px-4 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                        <th className="px-4 py-2.5 text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
                           Jurisdiction Rules & Notes
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#F1F5F9]">
                       {activeProvinceRule.pecuniaryTiers.map((tier, idx) => (
-                        <tr key={idx} className="hover:bg-[#F8FAFC]">
-                          <td className="px-4 py-2.5 font-bold text-[#0F172A]">{tier.courtName}</td>
+                        <tr key={idx} className="hover:bg-[#F8FAFC] dark:bg-[#0B131E]">
+                          <td className="px-4 py-2.5 font-bold text-[#0F172A] dark:text-[#F8FAFC]">{tier.courtName}</td>
                           <td className="px-4 py-2.5 font-mono text-[#105B38]">
                             PKR {tier.minValuation.toLocaleString()} —{" "}
                             {tier.maxValuation === null
                               ? "Unlimited"
                               : `PKR ${tier.maxValuation.toLocaleString()}`}
                           </td>
-                          <td className="px-4 py-2.5 text-[#64748B]">{tier.notes}</td>
+                          <td className="px-4 py-2.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{tier.notes}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1659,18 +1659,18 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
                 {/* Search Bar */}
                 <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8] dark:text-[#475569]" />
                   <input
                     type="text"
                     value={courtQuery}
                     onChange={(e) => setCourtQuery(e.target.value)}
                     placeholder="Search courts, benches, cities, territorial districts..."
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#CBD5E1] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:bg-white shadow-xs"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#CBD5E1] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] shadow-xs"
                   />
                   {courtQuery && (
                     <button
                       onClick={() => setCourtQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#0F172A]"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1693,7 +1693,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         "px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors border",
                         courtTier === t.id
                           ? "bg-[#105B38] text-white border-[#105B38] shadow-xs"
-                          : "bg-white text-[#64748B] border-[#CBD5E1] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                          : "bg-white dark:bg-[#131E2E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-[#CBD5E1] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                       )}
                     >
                       {t.label}
@@ -1707,13 +1707,13 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                 {filteredCourts.length === 0 ? (
                   <div className="p-12 text-center space-y-2">
                     <Landmark className="w-8 h-8 text-[#CBD5E1] mx-auto" />
-                    <p className="text-xs font-semibold text-[#64748B]">No courts match your search</p>
+                    <p className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">No courts match your search</p>
                     <button
                       onClick={() => {
                         setCourtQuery("");
                         setCourtTier("all");
                       }}
-                      className="px-3 py-1.5 text-xs font-semibold text-[#105B38] bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                      className="px-3 py-1.5 text-xs font-semibold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 rounded-lg hover:bg-emerald-100 transition-colors"
                     >
                       Clear Search Filters
                     </button>
@@ -1724,12 +1724,12 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                     return (
                       <div
                         key={court.id}
-                        className="p-4 rounded-xl border border-[#CBD5E1] bg-white hover:border-[#105B38]/50 hover:shadow-xs transition-all space-y-3"
+                        className="p-4 rounded-xl border border-[#CBD5E1] bg-white dark:bg-[#131E2E] hover:border-[#105B38]/50 hover:shadow-xs transition-all space-y-3"
                       >
                         <div className="flex items-start justify-between gap-3 flex-wrap">
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="text-sm font-bold text-[#0F172A]">{court.name}</h4>
+                              <h4 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">{court.name}</h4>
                               <span
                                 className={cn(
                                   "text-[10px] font-bold px-2 py-0.5 rounded-full border",
@@ -1741,12 +1741,12 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                                 {style.label}
                               </span>
                               {court.establishedYear && (
-                                <span className="text-[10px] text-[#64748B] bg-[#F1F5F9] px-2 py-0.5 rounded font-mono">
+                                <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-[#F1F5F9] dark:bg-[#1E2D44] px-2 py-0.5 rounded font-mono">
                                   Est. {court.establishedYear}
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-[#64748B] mt-1">
+                            <div className="flex items-center gap-2 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
                               <span className="flex items-center gap-1 font-medium">
                                 <MapPin className="w-3.5 h-3.5 text-[#105B38]" />
                                 {court.city}, {court.province}
@@ -1761,15 +1761,15 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                           </div>
 
                           {court.contact && (
-                            <div className="flex items-center gap-1 text-xs text-[#64748B] bg-[#F8FAFC] px-2.5 py-1 rounded-lg border border-[#E2E8F0]">
-                              <Phone className="w-3 h-3 text-[#94A3B8]" />
+                            <div className="flex items-center gap-1 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-[#F8FAFC] dark:bg-[#0B131E] px-2.5 py-1 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44]">
+                              <Phone className="w-3 h-3 text-[#94A3B8] dark:text-[#475569]" />
                               <span className="font-mono text-[11px]">{court.contact}</span>
                             </div>
                           )}
                         </div>
 
                         {/* Jurisdiction Notes */}
-                        <p className="text-xs text-[#334155] leading-relaxed bg-[#F8FAFC] p-3 rounded-lg border border-[#E2E8F0]">
+                        <p className="text-xs text-[#334155] dark:text-[#CBD5E1] leading-relaxed bg-[#F8FAFC] dark:bg-[#0B131E] p-3 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44]">
                           {court.jurisdictionNotes}
                         </p>
 
@@ -1777,14 +1777,14 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                           {court.benches && court.benches.length > 0 && (
                             <div className="space-y-1">
-                              <span className="text-[10px] font-bold text-[#64748B] uppercase">
+                              <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">
                                 Divisional / Circuit Benches:
                               </span>
                               <div className="flex items-center gap-1 flex-wrap">
                                 {court.benches.map((b, i) => (
                                   <span
                                     key={i}
-                                    className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 text-[10px] font-medium border border-blue-200"
+                                    className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-800 dark:text-blue-400 text-[10px] font-medium border border-blue-200 dark:border-blue-500/20"
                                   >
                                     {b}
                                   </span>
@@ -1795,14 +1795,14 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
                           {court.territorialJurisdiction && court.territorialJurisdiction.length > 0 && (
                             <div className="space-y-1">
-                              <span className="text-[10px] font-bold text-[#64748B] uppercase">
+                              <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">
                                 Territorial Coverage:
                               </span>
                               <div className="flex items-center gap-1 flex-wrap">
                                 {court.territorialJurisdiction.map((d, i) => (
                                   <span
                                     key={i}
-                                    className="px-2 py-0.5 rounded bg-[#F1F5F9] text-[#475569] text-[10px] border border-[#E2E8F0]"
+                                    className="px-2 py-0.5 rounded bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569] text-[10px] border border-[#E2E8F0] dark:border-[#1E2D44]"
                                   >
                                     {d}
                                   </span>
@@ -1814,7 +1814,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
                         {/* Appellate Authority */}
                         {court.appellateAuthority && (
-                          <div className="text-[11px] text-[#64748B] flex items-center gap-1.5 pt-1">
+                          <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1.5 pt-1">
                             <span className="font-semibold">Appellate Forum:</span>
                             <span className="font-mono text-[#105B38] font-bold">
                               {court.appellateAuthority}

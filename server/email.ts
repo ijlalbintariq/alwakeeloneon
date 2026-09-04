@@ -140,30 +140,30 @@ export async function sendPasswordResetEmail(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background-color:#0f172a;font-family:Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:28px 14px;">
+<body style="margin:0;padding:0;background-color:#F8FAFC;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;padding:28px 14px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#111827;border:1px solid #1f2937;border-radius:18px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:18px;overflow:hidden;">
           <tr>
-            <td style="padding:32px 28px 18px 28px;text-align:center;background:linear-gradient(180deg,#111827 0%,#0b1220 100%);">
-              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 16px;border:1px solid rgba(245,158,11,0.35);" />
-              <h1 style="margin:0;color:#f8fafc;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-0.3px;">Al Wakeelo</h1>
-              <p style="margin:8px 0 0;color:#f59e0b;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Password Reset Request</p>
+            <td style="padding:32px 28px 18px 28px;text-align:center;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);">
+              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 16px;border:1px solid rgba(16,91,56,0.2);" />
+              <h1 style="margin:0;color:#0F172A;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-0.3px;">Al Wakeelo</h1>
+              <p style="margin:8px 0 0;color:#105B38;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Password Reset Request</p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px;">
-              <p style="margin:0 0 10px;color:#e2e8f0;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
-              <p style="margin:0 0 20px;color:#94a3b8;font-size:14px;line-height:1.7;">
+              <p style="margin:0 0 10px;color:#0F172A;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
+              <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.7;">
                 We received a request to reset your Al Wakeelo account password.
                 For your security, use the button below to create a new password.
               </p>
 
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
                 <tr>
-                  <td align="center" bgcolor="#f59e0b" style="border-radius:12px;">
-                    <a href="${safeResetUrl}" style="display:inline-block;padding:14px 28px;color:#0f172a;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
+                  <td align="center" bgcolor="#105B38" style="border-radius:12px;">
+                    <a href="${safeResetUrl}" style="display:inline-block;padding:14px 28px;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
                       Reset Password
                     </a>
                   </td>
@@ -171,24 +171,24 @@ export async function sendPasswordResetEmail(
               </table>
 
               <p style="margin:0 0 12px;color:#64748b;font-size:12px;line-height:1.6;">
-                This secure link expires in <strong style="color:#cbd5e1;">1 hour</strong>.
+                This secure link expires in <strong style="color:#10B981;">1 hour</strong>.
                 If you did not request this, you can ignore this email.
               </p>
 
-              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;line-height:1.6;">
+              <p style="margin:0 0 8px;color:#475569;font-size:12px;line-height:1.6;">
                 If the button does not work, copy and paste this link into your browser:
               </p>
               <p style="margin:0;word-break:break-word;">
-                <a href="${safeResetUrl}" style="color:#fbbf24;font-size:12px;line-height:1.6;text-decoration:underline;">${safeResetUrl}</a>
+                <a href="${safeResetUrl}" style="color:#105B38;font-size:12px;line-height:1.6;text-decoration:underline;">${safeResetUrl}</a>
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:16px 28px;background:#0b1220;border-top:1px solid #1f2937;text-align:center;">
+            <td style="padding:16px 28px;background:#F1F5F9;border-top:1px solid #E2E8F0;text-align:center;">
               <p style="margin:0 0 6px;color:#475569;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
                 Al Wakeelo • Secure Authentication Notice
               </p>
-              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#fbbf24;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
+              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#105B38;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
             </td>
           </tr>
         </table>
@@ -232,52 +232,52 @@ export async function sendEmailVerificationEmail(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background-color:#0a1222;font-family:Inter,Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a1222;padding:28px 14px;">
+<body style="margin:0;padding:0;background-color:#F8FAFC;font-family:Inter,Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;padding:28px 14px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#101b31;border:1px solid #2a3a56;border-radius:20px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:20px;overflow:hidden;">
           <tr>
-            <td style="padding:4px 0 0 0;background:#f4b11e;"></td>
+            <td style="padding:4px 0 0 0;background:#105B38;"></td>
           </tr>
           <tr>
-            <td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#0f172a 0%,#0b1427 100%);border-bottom:1px solid #24344f;">
-              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(244,177,30,0.45);" />
-              <h1 style="margin:0;color:#f8fafc;font-size:28px;line-height:1.15;font-weight:800;">Verify Your Email</h1>
-              <p style="margin:10px 0 0;color:#f4b11e;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+            <td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border-bottom:1px solid #E2E8F0;">
+              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(16,91,56,0.2);" />
+              <h1 style="margin:0;color:#0F172A;font-size:28px;line-height:1.15;font-weight:800;">Verify Your Email</h1>
+              <p style="margin:10px 0 0;color:#105B38;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
                 Al Wakeelo Account Activation
               </p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px;">
-              <p style="margin:0 0 10px;color:#e8eefb;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
-              <p style="margin:0 0 16px;color:#b6c4d9;font-size:14px;line-height:1.7;">
+              <p style="margin:0 0 10px;color:#0F172A;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
+              <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.7;">
                 Please verify your email to activate your Al Wakeelo account and start using your legal workspace.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
                 <tr>
-                  <td align="center" bgcolor="#f4b11e" style="border-radius:12px;box-shadow:0 12px 24px rgba(244,177,30,0.24);">
-                    <a href="${safeVerifyUrl}" style="display:inline-block;padding:14px 28px;color:#0d172a;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
+                  <td align="center" bgcolor="#105B38" style="border-radius:12px;box-shadow:0 12px 24px rgba(16,91,56,0.2);">
+                    <a href="${safeVerifyUrl}" style="display:inline-block;padding:14px 28px;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
                       Verify Email
                     </a>
                   </td>
                 </tr>
               </table>
-              <p style="margin:0 0 10px;color:#9bb0cc;font-size:12px;line-height:1.6;">
+              <p style="margin:0 0 10px;color:#475569;font-size:12px;line-height:1.6;">
                 This verification link expires in 24 hours.
               </p>
               <p style="margin:0;word-break:break-word;">
-                <a href="${safeVerifyUrl}" style="color:#f4b11e;font-size:12px;line-height:1.6;text-decoration:underline;">${safeVerifyUrl}</a>
+                <a href="${safeVerifyUrl}" style="color:#105B38;font-size:12px;line-height:1.6;text-decoration:underline;">${safeVerifyUrl}</a>
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #24344f;text-align:center;">
-              <p style="margin:0 0 6px;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
+            <td style="padding:16px 28px;background:#F1F5F9;border-top:1px solid #E2E8F0;text-align:center;">
+              <p style="margin:0 0 6px;color:#64748b;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
                 Al Wakeelo • Verification Notice
               </p>
-              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
+              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#105B38;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
             </td>
           </tr>
         </table>
@@ -322,49 +322,49 @@ export async function sendWelcomeEmail(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background-color:#0a1222;font-family:'Inter',Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a1222;padding:28px 14px;">
+<body style="margin:0;padding:0;background-color:#F8FAFC;font-family:'Inter',Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;padding:28px 14px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#101b31;border:1px solid #2a3a56;border-radius:20px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:20px;overflow:hidden;">
           <tr>
-            <td style="padding:4px 0 0 0;background:#f4b11e;"></td>
+            <td style="padding:4px 0 0 0;background:#105B38;"></td>
           </tr>
           <tr>
-            <td style="padding:34px 28px 26px 28px;text-align:center;background:linear-gradient(180deg,#0f172a 0%,#0b1427 100%);border-bottom:1px solid #24344f;">
-              <p style="margin:0 0 14px;color:#f4b11e;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+            <td style="padding:34px 28px 26px 28px;text-align:center;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border-bottom:1px solid #E2E8F0;">
+              <p style="margin:0 0 14px;color:#105B38;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
                 Pakistan's First Open-Source Legal AI
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
                 <tr>
-                  <td style="width:86px;height:86px;background:#f4b11e;border-radius:20px;text-align:center;vertical-align:middle;box-shadow:0 14px 30px rgba(244,177,30,0.26);">
+                  <td style="width:86px;height:86px;background:#105B38;border-radius:20px;text-align:center;vertical-align:middle;box-shadow:0 14px 30px rgba(16,91,56,0.2);">
                     <img src="${logoUrl}" alt="Al Wakeelo" width="56" height="56" style="display:inline-block;width:56px;height:56px;border:0;outline:none;text-decoration:none;" />
                   </td>
                 </tr>
               </table>
-              <h1 style="margin:0;color:#f8fafc;font-size:31px;line-height:1.15;font-weight:800;letter-spacing:-0.3px;">Welcome to Al Wakeelo</h1>
-              <p style="margin:10px 0 0;color:#f4b11e;font-size:12px;line-height:1.5;font-weight:700;letter-spacing:1.7px;text-transform:uppercase;">
+              <h1 style="margin:0;color:#0F172A;font-size:31px;line-height:1.15;font-weight:800;letter-spacing:-0.3px;">Welcome to Al Wakeelo</h1>
+              <p style="margin:10px 0 0;color:#105B38;font-size:12px;line-height:1.5;font-weight:700;letter-spacing:1.7px;text-transform:uppercase;">
                 Your Digital Lawyer, Always on Duty
               </p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px;">
-              <p style="margin:0 0 10px;color:#e8eefb;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
-              <p style="margin:0 0 16px;color:#b6c4d9;font-size:14px;line-height:1.7;">
+              <p style="margin:0 0 10px;color:#0F172A;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
+              <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.7;">
                 Your account is now active. You can start legal research, drafting, and AI-assisted workflows on Pakistani law.
               </p>
-              <p style="margin:0 0 18px;color:#b6c4d9;font-size:14px;line-height:1.7;">
+              <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.7;">
                 To continue, open your workspace from the button below.
               </p>
 
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#111e36;border:1px solid #324667;border-radius:12px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;">
                 <tr>
                   <td style="padding:12px 14px;">
-                    <p style="margin:0 0 8px;color:#f4b11e;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;">
+                    <p style="margin:0 0 8px;color:#105B38;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;">
                       Quick Start
                     </p>
-                    <p style="margin:0;color:#d0dbee;font-size:13px;line-height:1.7;">
+                    <p style="margin:0;color:#475569;font-size:13px;line-height:1.7;">
                       • Search case law and citations<br/>
                       • Draft petitions and legal notices<br/>
                       • Generate and review contracts faster
@@ -375,23 +375,23 @@ export async function sendWelcomeEmail(
 
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
                 <tr>
-                  <td align="center" bgcolor="#f4b11e" style="border-radius:12px;box-shadow:0 12px 24px rgba(244,177,30,0.24);">
-                    <a href="${safeLoginUrl}" style="display:inline-block;padding:14px 28px;color:#0d172a;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
+                  <td align="center" bgcolor="#105B38" style="border-radius:12px;box-shadow:0 12px 24px rgba(16,91,56,0.2);">
+                    <a href="${safeLoginUrl}" style="display:inline-block;padding:14px 28px;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
                       Open Al Wakeelo
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0;color:#9bb0cc;font-size:12px;line-height:1.6;">
+              <p style="margin:0;color:#475569;font-size:12px;line-height:1.6;">
                 Need assistance? Contact support at
-                <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a>.
+                <a href="mailto:support@alwakeelo.com" style="color:#105B38;text-decoration:none;font-weight:700;">support@alwakeelo.com</a>.
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #24344f;text-align:center;">
-              <p style="margin:0;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
+            <td style="padding:16px 28px;background:#F1F5F9;border-top:1px solid #E2E8F0;text-align:center;">
+              <p style="margin:0;color:#64748b;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
                 Al Wakeelo • Welcome Notice
               </p>
             </td>
@@ -546,25 +546,25 @@ export function buildSubscriptionInvoiceTemplate(input: SubscriptionInvoiceEmail
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background:#0b1220;font-family:Inter,Arial,sans-serif;color:#e2e8f0;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b1220;">
+<body style="margin:0;padding:0;background:#F8FAFC;font-family:Inter,Arial,sans-serif;color:#0F172A;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#F8FAFC;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;background:#111a2b;border:1px solid #24324a;border-radius:16px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;overflow:hidden;">
           <tr>
-            <td style="padding:22px 24px;border-bottom:1px solid #24324a;background:linear-gradient(180deg,#101a2b 0%,#0d1523 100%);">
+            <td style="padding:22px 24px;border-bottom:1px solid #E2E8F0;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="vertical-align:top;">
-                    <img src="${logoUrl}" alt="Al Wakeelo" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:10px;border:1px solid rgba(245,158,11,0.4);" />
-                    <h1 style="margin:10px 0 0;font-size:20px;line-height:1.2;color:#f8fafc;">Subscription Invoice</h1>
-                    <p style="margin:6px 0 0;font-size:11px;line-height:1.5;letter-spacing:1.3px;text-transform:uppercase;color:#f59e0b;font-weight:700;">Al Wakeelo Billing</p>
+                    <img src="${logoUrl}" alt="Al Wakeelo" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:10px;border:1px solid rgba(16,91,56,0.2);" />
+                    <h1 style="margin:10px 0 0;font-size:20px;line-height:1.2;color:#0F172A;">Subscription Invoice</h1>
+                    <p style="margin:6px 0 0;font-size:11px;line-height:1.5;letter-spacing:1.3px;text-transform:uppercase;color:#105B38;font-weight:700;">Al Wakeelo Billing</p>
                   </td>
                   <td align="right" style="vertical-align:top;">
-                    <p style="margin:0;font-size:12px;color:#94a3b8;">Invoice No.</p>
-                    <p style="margin:2px 0 10px;font-size:14px;font-weight:700;color:#f8fafc;">${safeInvoice}</p>
-                    <p style="margin:0;font-size:12px;color:#94a3b8;">Issue Date</p>
-                    <p style="margin:2px 0 0;font-size:13px;color:#f8fafc;">${safeIssued}</p>
+                    <p style="margin:0;font-size:12px;color:#475569;">Invoice No.</p>
+                    <p style="margin:2px 0 10px;font-size:14px;font-weight:700;color:#0F172A;">${safeInvoice}</p>
+                    <p style="margin:0;font-size:12px;color:#475569;">Issue Date</p>
+                    <p style="margin:2px 0 0;font-size:13px;color:#0F172A;">${safeIssued}</p>
                   </td>
                 </tr>
               </table>
@@ -576,50 +576,50 @@ export function buildSubscriptionInvoiceTemplate(input: SubscriptionInvoiceEmail
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
                 <tr>
                   <td style="padding:0 0 10px 0;">
-                    <p style="margin:0;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Billed To</p>
-                    <p style="margin:6px 0 0;font-size:15px;color:#f8fafc;font-weight:700;">${safeName}</p>
+                    <p style="margin:0;font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:1px;">Billed To</p>
+                    <p style="margin:6px 0 0;font-size:15px;color:#0F172A;font-weight:700;">${safeName}</p>
                   </td>
                 </tr>
               </table>
 
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #24324a;border-radius:12px;overflow:hidden;">
-                <tr style="background:#0f172a;">
-                  <td style="padding:10px 12px;font-size:12px;color:#94a3b8;border-bottom:1px solid #24324a;">Plan</td>
-                  <td style="padding:10px 12px;font-size:12px;color:#94a3b8;border-bottom:1px solid #24324a;">Billing Cycle</td>
-                  <td style="padding:10px 12px;font-size:12px;color:#94a3b8;border-bottom:1px solid #24324a;">Period</td>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
+                <tr style="background:#F8FAFC;">
+                  <td style="padding:10px 12px;font-size:12px;color:#475569;border-bottom:1px solid #E2E8F0;font-weight:700;">Plan</td>
+                  <td style="padding:10px 12px;font-size:12px;color:#475569;border-bottom:1px solid #E2E8F0;font-weight:700;">Billing Cycle</td>
+                  <td style="padding:10px 12px;font-size:12px;color:#475569;border-bottom:1px solid #E2E8F0;font-weight:700;">Period</td>
                 </tr>
                 <tr>
-                  <td style="padding:12px;color:#f8fafc;font-size:13px;font-weight:700;">${safePlan}</td>
-                  <td style="padding:12px;color:#f8fafc;font-size:13px;">${safeCycle}</td>
-                  <td style="padding:12px;color:#f8fafc;font-size:13px;">${safePeriod}</td>
+                  <td style="padding:12px;color:#0F172A;font-size:13px;font-weight:700;">${safePlan}</td>
+                  <td style="padding:12px;color:#0F172A;font-size:13px;">${safeCycle}</td>
+                  <td style="padding:12px;color:#0F172A;font-size:13px;">${safePeriod}</td>
                 </tr>
               </table>
 
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;border:1px solid #24324a;border-radius:12px;overflow:hidden;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
                 <tr>
-                  <td style="padding:10px 12px;font-size:13px;color:#cbd5e1;">Subtotal</td>
-                  <td align="right" style="padding:10px 12px;font-size:13px;color:#f8fafc;">${escapeHtml(formatPkr(subtotal))}</td>
+                  <td style="padding:10px 12px;font-size:13px;color:#475569;">Subtotal</td>
+                  <td align="right" style="padding:10px 12px;font-size:13px;color:#0F172A;">${escapeHtml(formatPkr(subtotal))}</td>
                 </tr>
-                <tr style="background:#0f172a;">
-                  <td style="padding:10px 12px;font-size:13px;color:#cbd5e1;">Discount</td>
-                  <td align="right" style="padding:10px 12px;font-size:13px;color:#f8fafc;">-${escapeHtml(formatPkr(discount))}</td>
+                <tr style="background:#F8FAFC;">
+                  <td style="padding:10px 12px;font-size:13px;color:#475569;">Discount</td>
+                  <td align="right" style="padding:10px 12px;font-size:13px;color:#105B38;font-weight:700;">-${escapeHtml(formatPkr(discount))}</td>
                 </tr>
                 <tr>
-                  <td style="padding:10px 12px;font-size:13px;color:#cbd5e1;">Tax</td>
-                  <td align="right" style="padding:10px 12px;font-size:13px;color:#f8fafc;">${escapeHtml(formatPkr(tax))}</td>
+                  <td style="padding:10px 12px;font-size:13px;color:#475569;">Tax</td>
+                  <td align="right" style="padding:10px 12px;font-size:13px;color:#0F172A;">${escapeHtml(formatPkr(tax))}</td>
                 </tr>
-                <tr style="background:#13223a;border-top:1px solid #2f4668;">
-                  <td style="padding:12px;font-size:14px;color:#f8fafc;font-weight:700;">Total</td>
-                  <td align="right" style="padding:12px;font-size:14px;color:#f8fafc;font-weight:700;">${escapeHtml(formatPkr(total))}</td>
+                <tr style="background:#F1F5F9;border-top:1px solid #E2E8F0;">
+                  <td style="padding:12px;font-size:14px;color:#0F172A;font-weight:800;">Total</td>
+                  <td align="right" style="padding:12px;font-size:15px;color:#105B38;font-weight:800;">${escapeHtml(formatPkr(total))}</td>
                 </tr>
               </table>
 
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;">
                 <tr>
-                  <td style="padding:0;font-size:12px;color:#94a3b8;line-height:1.7;">
-                    Payment Method: <span style="color:#f8fafc;">${safePayment}</span><br/>
-                    Transaction Ref: <span style="color:#f8fafc;">${safeTxn}</span><br/>
-                    Due Date: <span style="color:#f8fafc;">${safeDue}</span>
+                  <td style="padding:0;font-size:12px;color:#475569;line-height:1.7;">
+                    Payment Method: <span style="color:#0F172A;font-weight:600;">${safePayment}</span><br/>
+                    Transaction Ref: <span style="color:#0F172A;font-weight:600;">${safeTxn}</span><br/>
+                    Due Date: <span style="color:#0F172A;font-weight:600;">${safeDue}</span>
                   </td>
                 </tr>
               </table>
@@ -627,8 +627,8 @@ export function buildSubscriptionInvoiceTemplate(input: SubscriptionInvoiceEmail
           </tr>
 
           <tr>
-            <td style="padding:14px 24px;background:#0d1523;border-top:1px solid #24324a;">
-              <p style="margin:0;font-size:11px;color:#64748b;line-height:1.6;">
+            <td style="padding:14px 24px;background:#F1F5F9;border-top:1px solid #E2E8F0;">
+              <p style="margin:0;font-size:11px;color:#64748b;line-height:1.6;text-align:center;">
                 This is a system-generated invoice for subscription billing. For support, contact support@alwakeelo.com.
               </p>
             </td>
@@ -670,17 +670,18 @@ export async function sendResendTestEmail(to: string): Promise<EmailSendResult> 
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:24px;background:#0f172a;font-family:Inter,Arial,sans-serif;color:#e2e8f0;">
+<body style="margin:0;padding:24px;background:#F8FAFC;font-family:Inter,Arial,sans-serif;color:#0F172A;">
   <table width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td align="center">
-        <table width="560" cellpadding="0" cellspacing="0" style="background:#1e293b;border:1px solid #334155;border-radius:16px;overflow:hidden;">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;overflow:hidden;">
+          <tr><td style="padding:4px 0 0 0;background:#105B38;"></td></tr>
           <tr><td style="padding:24px 28px;">
-            <h1 style="margin:0 0 10px;color:#f8fafc;font-size:20px;">Resend Configuration Verified</h1>
-            <p style="margin:0 0 14px;color:#94a3b8;font-size:14px;line-height:1.6;">
+            <h1 style="margin:0 0 10px;color:#0F172A;font-size:20px;font-weight:800;">Resend Configuration Verified</h1>
+            <p style="margin:0 0 14px;color:#475569;font-size:14px;line-height:1.6;">
               This is a test email from Al Wakeelo. Your Resend integration is working.
             </p>
-            <p style="margin:0;color:#cbd5e1;font-size:13px;line-height:1.6;">
+            <p style="margin:0;color:#105B38;font-size:13px;line-height:1.6;font-weight:600;">
               Provider: <strong>${providerStatus.provider}</strong><br/>
               From: <strong>${providerStatus.fromEmail}</strong>
             </p>
@@ -735,47 +736,47 @@ export async function sendBroadcastEmail(args: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background-color:#0a1222;font-family:'Inter',Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a1222;padding:28px 14px;">
+<body style="margin:0;padding:0;background-color:#F8FAFC;font-family:'Inter',Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;padding:28px 14px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#101b31;border:1px solid #2a3a56;border-radius:20px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:20px;overflow:hidden;">
           <tr>
-            <td style="padding:4px 0 0 0;background:#f4b11e;"></td>
+            <td style="padding:4px 0 0 0;background:#105B38;"></td>
           </tr>
           <tr>
-            <td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#0f172a 0%,#0b1427 100%);border-bottom:1px solid #24344f;">
-              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(244,177,30,0.45);" />
-              <h1 style="margin:0;color:#f8fafc;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-0.3px;">${safeSubject}</h1>
-              <p style="margin:10px 0 0;color:#f4b11e;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+            <td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border-bottom:1px solid #E2E8F0;">
+              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(16,91,56,0.2);" />
+              <h1 style="margin:0;color:#0F172A;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-0.3px;">${safeSubject}</h1>
+              <p style="margin:10px 0 0;color:#105B38;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
                 Al Wakeelo • Official Announcement
               </p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px;">
-              <p style="margin:0 0 10px;color:#e8eefb;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
-              <div style="margin:0 0 20px;color:#b6c4d9;font-size:14px;line-height:1.8;">
+              <p style="margin:0 0 10px;color:#0F172A;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
+              <div style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.8;">
                 ${safeBodyHtml}
               </div>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
                 <tr>
-                  <td align="center" bgcolor="#f4b11e" style="border-radius:12px;box-shadow:0 12px 24px rgba(244,177,30,0.24);">
-                    <a href="https://alwakeelo.com/dashboard" style="display:inline-block;padding:14px 28px;color:#0d172a;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
+                  <td align="center" bgcolor="#105B38" style="border-radius:12px;box-shadow:0 12px 24px rgba(16,91,56,0.2);">
+                    <a href="https://alwakeelo.com/dashboard" style="display:inline-block;padding:14px 28px;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
                       Open Al Wakeelo
                     </a>
                   </td>
                 </tr>
               </table>
-              <p style="margin:0;color:#9bb0cc;font-size:12px;line-height:1.6;">
+              <p style="margin:0;color:#475569;font-size:12px;line-height:1.6;">
                 Need assistance? Contact support at
-                <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a>.
+                <a href="mailto:support@alwakeelo.com" style="color:#105B38;text-decoration:none;font-weight:700;">support@alwakeelo.com</a>.
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #24344f;text-align:center;">
-              <p style="margin:0;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
+            <td style="padding:16px 28px;background:#F1F5F9;border-top:1px solid #E2E8F0;text-align:center;">
+              <p style="margin:0;color:#64748b;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
                 Al Wakeelo • Official Communication
               </p>
             </td>
@@ -817,25 +818,25 @@ export async function sendCaseLeadNotification(args: {
   const urgColor = urgencyColors[args.urgency] || "#3b82f6";
 
   const row = (label: string, value: string) =>
-    `<tr><td style="padding:8px 12px;font-size:12px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #1e2d47;width:140px;">${escapeHtml(label)}</td><td style="padding:8px 12px;font-size:14px;color:#e8eefb;border-bottom:1px solid #1e2d47;">${escapeHtml(value)}</td></tr>`;
+    `<tr><td style="padding:8px 12px;font-size:12px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #E2E8F0;width:140px;">${escapeHtml(label)}</td><td style="padding:8px 12px;font-size:14px;color:#0F172A;border-bottom:1px solid #E2E8F0;">${escapeHtml(value)}</td></tr>`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#0a1222;font-family:'Inter',Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a1222;padding:28px 14px;">
+<body style="margin:0;padding:0;background-color:#F8FAFC;font-family:'Inter',Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;padding:28px 14px;">
     <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#101b31;border:1px solid #2a3a56;border-radius:20px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:20px;overflow:hidden;">
         <tr><td style="padding:4px 0 0 0;background:${urgColor};"></td></tr>
-        <tr><td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#0f172a 0%,#0b1427 100%);border-bottom:1px solid #24344f;">
-          <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(244,177,30,0.45);" />
-          <h1 style="margin:0;color:#f8fafc;font-size:22px;line-height:1.2;font-weight:800;">New Case Submitted</h1>
+        <tr><td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border-bottom:1px solid #E2E8F0;">
+          <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(16,91,56,0.2);" />
+          <h1 style="margin:0;color:#0F172A;font-size:22px;line-height:1.2;font-weight:800;">New Case Submitted</h1>
           <p style="margin:10px 0 0;color:${urgColor};font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
             ${escapeHtml(args.urgency)} Priority • ${escapeHtml(args.caseType)}
           </p>
         </td></tr>
         <tr><td style="padding:24px 28px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1e2d47;border-radius:12px;overflow:hidden;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
             ${row("Name", args.name)}
             ${row("Phone", args.phone)}
             ${row("Email", args.email)}
@@ -844,14 +845,14 @@ export async function sendCaseLeadNotification(args: {
             ${row("Urgency", args.urgency.toUpperCase())}
             ${args.preferredCallbackTime ? row("Callback Time", args.preferredCallbackTime) : ""}
           </table>
-          <div style="margin:20px 0 0;padding:16px;background:#0c1526;border:1px solid #1e2d47;border-radius:12px;">
-            <p style="margin:0 0 8px;color:#94a3b8;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">Case Description</p>
-            <p style="margin:0;color:#e8eefb;font-size:14px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(args.caseDescription)}</p>
+          <div style="margin:20px 0 0;padding:16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;">
+            <p style="margin:0 0 8px;color:#475569;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">Case Description</p>
+            <p style="margin:0;color:#0F172A;font-size:14px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(args.caseDescription)}</p>
           </div>
         </td></tr>
-        <tr><td style="padding:16px 28px 24px;text-align:center;border-top:1px solid #1e2d47;">
+        <tr><td style="padding:16px 28px 24px;text-align:center;border-top:1px solid #E2E8F0;">
           <p style="margin:0 0 6px;color:#475569;font-size:11px;">Al Wakeelo • Case Lead Notification</p>
-          <p style="margin:0;color:#64748b;font-size:11px;">Support: <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
+          <p style="margin:0;color:#64748b;font-size:11px;">Support: <a href="mailto:support@alwakeelo.com" style="color:#105B38;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -890,55 +891,55 @@ export async function sendSubscriptionExpiryWarningEmail(args: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background-color:#0a1222;font-family:'Inter',Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a1222;padding:28px 14px;">
+<body style="margin:0;padding:0;background-color:#F8FAFC;font-family:'Inter',Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;padding:28px 14px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#101b31;border:1px solid #2a3a56;border-radius:20px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:20px;overflow:hidden;">
           <tr>
             <td style="padding:4px 0 0 0;background:#f59e0b;"></td>
           </tr>
           <tr>
-            <td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#0f172a 0%,#0b1427 100%);border-bottom:1px solid #24344f;">
-              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(244,177,30,0.45);" />
-              <h1 style="margin:0;color:#f8fafc;font-size:24px;line-height:1.2;font-weight:800;">Your Subscription is Expiring</h1>
-              <p style="margin:10px 0 0;color:#f59e0b;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+            <td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border-bottom:1px solid #E2E8F0;">
+              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(16,91,56,0.2);" />
+              <h1 style="margin:0;color:#0F172A;font-size:24px;line-height:1.2;font-weight:800;">Your Subscription is Expiring</h1>
+              <p style="margin:10px 0 0;color:#105B38;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
                 Subscription Renewal Notice
               </p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px;">
-              <p style="margin:0 0 10px;color:#e8eefb;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
-              <p style="margin:0 0 16px;color:#b6c4d9;font-size:14px;line-height:1.7;">
-                This is a friendly reminder that your active <strong style="color:#f8fafc;">${safePlan} Plan</strong> subscription on Al Wakeelo is scheduled to expire on <strong style="color:#f59e0b;">${safeDate}</strong>.
+              <p style="margin:0 0 10px;color:#0F172A;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
+              <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.7;">
+                This is a friendly reminder that your active <strong style="color:#0F172A;">${safePlan} Plan</strong> subscription on Al Wakeelo is scheduled to expire on <strong style="color:#105B38;">${safeDate}</strong>.
               </p>
-              <p style="margin:0 0 20px;color:#b6c4d9;font-size:14px;line-height:1.7;">
+              <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.7;">
                 Since Auto-Renew is currently disabled for your account, your access will revert to the free plan once your cycle ends. To avoid any interruptions to your legal AI workspace, workflows, and documents, please click the button below to renew your plan.
               </p>
 
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
                 <tr>
-                  <td align="center" bgcolor="#f59e0b" style="border-radius:12px;box-shadow:0 12px 24px rgba(245,158,11,0.24);">
-                    <a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;padding:14px 28px;color:#0d172a;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
+                  <td align="center" bgcolor="#105B38" style="border-radius:12px;box-shadow:0 12px 24px rgba(245,158,11,0.24);">
+                    <a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;padding:14px 28px;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
                       Renew Subscription Now
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0;color:#9bb0cc;font-size:12px;line-height:1.6;">
+              <p style="margin:0;color:#475569;font-size:12px;line-height:1.6;">
                 If you have any questions or need billing support, please contact us at
-                <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a>.
+                <a href="mailto:support@alwakeelo.com" style="color:#105B38;text-decoration:none;font-weight:700;">support@alwakeelo.com</a>.
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #24344f;text-align:center;">
-              <p style="margin:0 0 4px;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
+            <td style="padding:16px 28px;background:#F1F5F9;border-top:1px solid #E2E8F0;text-align:center;">
+              <p style="margin:0 0 4px;color:#64748b;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
                 Al Wakeelo • Billing Reminder
               </p>
-              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
+              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#105B38;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
             </td>
           </tr>
         </table>
@@ -976,35 +977,35 @@ export async function sendOrgInviteEmail(args: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background-color:#0f172a;font-family:Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:28px 14px;">
+<body style="margin:0;padding:0;background-color:#F8FAFC;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;padding:28px 14px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#111827;border:1px solid #1f2937;border-radius:18px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:18px;overflow:hidden;">
           <tr>
-            <td style="padding:32px 28px 18px 28px;text-align:center;background:linear-gradient(180deg,#111827 0%,#0b1220 100%);">
-              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 16px;border:1px solid rgba(245,158,11,0.35);" />
-              <h1 style="margin:0;color:#f8fafc;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-0.3px;">Al Wakeelo</h1>
-              <p style="margin:8px 0 0;color:#f59e0b;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Team Collaboration Invitation</p>
+            <td style="padding:32px 28px 18px 28px;text-align:center;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);">
+              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 16px;border:1px solid rgba(16,91,56,0.2);" />
+              <h1 style="margin:0;color:#0F172A;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-0.3px;">Al Wakeelo</h1>
+              <p style="margin:8px 0 0;color:#105B38;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Team Collaboration Invitation</p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px;">
-              <p style="margin:0 0 14px;color:#e2e8f0;font-size:15px;line-height:1.6;">Assalam-o-Alaikum,</p>
-              <p style="margin:0 0 20px;color:#94a3b8;font-size:14px;line-height:1.7;">
-                <strong style="color:#f8fafc;">${safeInviterName}</strong> has invited you to join <strong style="color:#f59e0b;">${safeOrgName}</strong> on Al Wakeelo — Pakistan's AI-Powered Digital Lawyer & Case Law Platform.
+              <p style="margin:0 0 14px;color:#0F172A;font-size:15px;line-height:1.6;">Assalam-o-Alaikum,</p>
+              <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.7;">
+                <strong style="color:#0F172A;">${safeInviterName}</strong> has invited you to join <strong style="color:#105B38;">${safeOrgName}</strong> on Al Wakeelo — Pakistan's AI-Powered Digital Lawyer & Case Law Platform.
               </p>
               <div style="margin:24px 0;text-align:center;">
-                <a href="${safeInviteUrl}" style="display:inline-block;padding:14px 32px;background:#f59e0b;color:#0f172a;text-decoration:none;font-size:14px;font-weight:800;border-radius:12px;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(245,158,11,0.3);">Accept Invitation</a>
+                <a href="${safeInviteUrl}" style="display:inline-block;padding:14px 32px;background:#105B38;color:#FFFFFF;text-decoration:none;font-size:14px;font-weight:800;border-radius:12px;letter-spacing:0.5px;box-shadow:0 12px 24px rgba(16,91,56,0.2);">Accept Invitation</a>
               </div>
               <p style="margin:20px 0 0;color:#64748b;font-size:13px;line-height:1.6;">
-                Log in or sign up with <strong style="color:#cbd5e1;">${escapeHtml(args.to)}</strong> to accept the invitation and access shared chamber documents and features.
+                Log in or sign up with <strong style="color:#10B981;">${escapeHtml(args.to)}</strong> to accept the invitation and access shared chamber documents and features.
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #1f2937;text-align:center;">
-              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#f59e0b;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
+            <td style="padding:16px 28px;background:#F1F5F9;border-top:1px solid #E2E8F0;text-align:center;">
+              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#105B38;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
             </td>
           </tr>
         </table>

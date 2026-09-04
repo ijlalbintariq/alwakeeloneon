@@ -1599,7 +1599,7 @@ export default function ContractDraftingPage() {
             </div>
             <h1 className="text-base font-bold tracking-tight text-foreground uppercase italic">Al Wakeelo</h1>
           </div>
-          <div className="hidden md:block h-8 w-px bg-white/10" />
+          <div className="hidden md:block h-8 w-px bg-white dark:bg-[#131E2E]/10" />
           <div className="min-w-0 hidden md:block">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-foreground truncate">{form.title || "Untitled Contract"}</h2>
@@ -1623,7 +1623,7 @@ export default function ContractDraftingPage() {
             <div className="flex flex-col items-start gap-0.5">
               <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-bold">Contract Health</span>
               <div className="flex items-center gap-3">
-                <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div className="w-24 h-1.5 bg-white dark:bg-[#131E2E]/10 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${healthScore >= 75 ? "bg-emerald-400" : healthScore >= 45 ? "bg-primary" : "bg-red-400"}`}
                     style={{ width: `${healthScore}%` }}
@@ -1633,9 +1633,9 @@ export default function ContractDraftingPage() {
               </div>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-1.5 bg-white/5 px-3 py-2 rounded-xl border border-primary/10">
+          <div className="hidden md:flex items-center gap-1.5 bg-white dark:bg-[#131E2E]/5 px-3 py-2 rounded-xl border border-primary/10">
             <button
-              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
+              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white dark:bg-[#131E2E]/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
               onClick={downloadContract}
               data-testid="button-header-export-txt"
             >
@@ -1643,7 +1643,7 @@ export default function ContractDraftingPage() {
               TXT
             </button>
             <button
-              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
+              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white dark:bg-[#131E2E]/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
               onClick={downloadContractAsDocx}
               data-testid="button-header-export-docx"
             >
@@ -1651,7 +1651,7 @@ export default function ContractDraftingPage() {
               DOCX
             </button>
             <button
-              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
+              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white dark:bg-[#131E2E]/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
               onClick={printContract}
               data-testid="button-header-export-print"
             >
@@ -1659,7 +1659,7 @@ export default function ContractDraftingPage() {
               PDF
             </button>
             <button
-              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
+              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white dark:bg-[#131E2E]/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
               onClick={copyToClipboard}
               data-testid="button-header-export-copy"
             >
@@ -1781,8 +1781,8 @@ export default function ContractDraftingPage() {
                               Style
                             </button>
                           </DialogTrigger>
-                          <DialogContent className="sm:max-w-[450px] !p-0 !bg-white border border-zinc-200 shadow-2xl overflow-hidden rounded-2xl">
-                            <div data-ui-preview="macos" data-theme="light" className="p-6 bg-white text-zinc-950">
+                          <DialogContent className="sm:max-w-[450px] !p-0 !bg-white dark:bg-[#131E2E] border border-zinc-200 dark:border-zinc-500/20 shadow-2xl overflow-hidden rounded-2xl">
+                            <div data-ui-preview="macos" data-theme="light" className="p-6 bg-white dark:bg-[#131E2E] text-zinc-950">
                               <DialogHeader>
                                 <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 text-primary">
                                   <Palette size={16} />
@@ -1985,7 +1985,7 @@ export default function ContractDraftingPage() {
                         </button>
                       </div>
                       {selectedClauses.map((c) => (
-                        <div key={c.id} className="flex items-start justify-between gap-1.5 p-1 rounded bg-white/5 border border-white/5">
+                        <div key={c.id} className="flex items-start justify-between gap-1.5 p-1 rounded bg-white dark:bg-[#131E2E]/5 border border-white/5">
                           <div className="min-w-0">
                             <p className="text-[9px] font-semibold text-foreground truncate">{c.title}</p>
                             <p className="text-[7px] text-muted-foreground truncate leading-none">{c.prompt}</p>
@@ -2296,7 +2296,7 @@ export default function ContractDraftingPage() {
 
               <div
                 data-tutorial="editor"
-                className="rounded-2xl border border-[hsl(var(--preview-border))] bg-background/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl p-0 overflow-hidden min-h-[560px] md:min-h-[760px] print:bg-white print:text-black"
+                className="rounded-2xl border border-[hsl(var(--preview-border))] bg-background/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl p-0 overflow-hidden min-h-[560px] md:min-h-[760px] print:bg-white dark:bg-[#131E2E] print:text-black"
                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
                 ref={printRef}
               >

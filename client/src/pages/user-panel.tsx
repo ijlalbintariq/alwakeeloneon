@@ -507,7 +507,7 @@ export default function UserPanelPage() {
                   <p className="text-[9px] text-muted-foreground">Tomorrow's schedule</p>
                 </div>
                 <button onClick={() => { const v = !dailyEnabled; setDailyEnabled(v); updateNotifMutation.mutate({ dailyEmailEnabled: v }); }} className={`w-9 h-[18px] rounded-full transition-colors ${dailyEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}>
-                  <div className={`w-3.5 h-3.5 bg-white rounded-full transition-transform ${dailyEnabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                  <div className={`w-3.5 h-3.5 bg-white dark:bg-[#131E2E] rounded-full transition-transform ${dailyEnabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
                 </button>
               </div>
               <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-background px-2.5 py-1.5 flex items-center justify-between">
@@ -516,7 +516,7 @@ export default function UserPanelPage() {
                   <p className="text-[9px] text-muted-foreground">Saturday overview</p>
                 </div>
                 <button onClick={() => { const v = !weeklyEnabled; setWeeklyEnabled(v); updateNotifMutation.mutate({ weeklyEmailEnabled: v }); }} className={`w-9 h-[18px] rounded-full transition-colors ${weeklyEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}>
-                  <div className={`w-3.5 h-3.5 bg-white rounded-full transition-transform ${weeklyEnabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                  <div className={`w-3.5 h-3.5 bg-white dark:bg-[#131E2E] rounded-full transition-transform ${weeklyEnabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
                 </button>
               </div>
               <div className="flex items-center gap-2">

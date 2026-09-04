@@ -106,8 +106,8 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
     <div className={cn("space-y-3", className)}>
       {/* Top Bar: Quick Enactment Chips & Browse 5,887 Acts Button */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-          <BookOpen className="h-3.5 w-3.5 text-emerald-600" />
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-400">
+          <BookOpen className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>Major Pakistani Enactments:</span>
         </div>
 
@@ -139,7 +139,7 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
                 "flex items-center justify-between gap-3 min-w-[130px] rounded-lg px-3 py-2 text-xs font-medium transition-all shrink-0",
                 isSelected
                   ? "bg-[#1B365D] text-white shadow-xs ring-1 ring-[#1B365D]"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/60"
+                  : "bg-slate-100 text-slate-700 dark:text-slate-400 hover:bg-slate-200 hover:text-slate-900 border border-slate-200 dark:border-slate-500/20/60"
               )}
               title={`${meta.statute} (${meta.count} Sections)`}
             >
@@ -148,8 +148,8 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
                 className={cn(
                   "rounded-full px-1.5 py-0.2 text-[10px] font-semibold shrink-0",
                   isSelected
-                    ? "bg-white/20 text-white"
-                    : "bg-slate-200 text-slate-600"
+                    ? "bg-white dark:bg-[#131E2E]/20 text-white"
+                    : "bg-slate-200 text-slate-600 dark:text-slate-400"
                 )}
               >
                 {meta.count}
@@ -162,11 +162,11 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
       {/* 5,887 Acts Search & Selection Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="relative flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+          <div className="relative flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-slate-200 dark:border-slate-500/20 bg-white dark:bg-[#131E2E] shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-500/20 bg-slate-50/70 dark:bg-slate-500/10 px-5 py-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 dark:text-emerald-400">
                   <BookOpen className="h-5 w-5" />
                 </div>
                 <div>
@@ -181,14 +181,14 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Modal Search Input & Category Filter */}
-            <div className="border-b border-slate-100 p-4 space-y-3 bg-white">
+            <div className="border-b border-slate-100 dark:border-slate-500/20 p-4 space-y-3 bg-white dark:bg-[#131E2E]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
@@ -197,13 +197,13 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search 5,887 Acts by name, year, or acronym (e.g. Penal Code, 1898, Companies, PECA)..."
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50/50 pl-9 pr-8 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-500/30 bg-slate-50/50 dark:bg-slate-500/10 pl-9 pr-8 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white dark:bg-[#131E2E] focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:text-slate-600"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:text-slate-600 dark:text-slate-400"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -221,7 +221,7 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
                       "inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2.5 py-1 font-medium transition-colors",
                       selectedCategory === cat.id
                         ? "bg-emerald-600 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        : "bg-slate-100 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
                     )}
                   >
                     <span>{cat.label}</span>
@@ -229,8 +229,8 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
                       className={cn(
                         "rounded-full px-1.5 py-0.2 text-[10px]",
                         selectedCategory === cat.id
-                          ? "bg-white/20 text-white"
-                          : "bg-slate-200 text-slate-600"
+                          ? "bg-white dark:bg-[#131E2E]/20 text-white"
+                          : "bg-slate-200 text-slate-600 dark:text-slate-400"
                       )}
                     >
                       {cat.count}
@@ -248,7 +248,7 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
 
               {filteredActs.length === 0 ? (
                 <div className="py-12 text-center">
-                  <p className="text-sm font-semibold text-slate-700">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-400">
                     No Pakistani Acts matching &ldquo;{searchQuery}&rdquo;
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
@@ -269,8 +269,8 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
                         className={cn(
                           "flex flex-col items-start justify-between rounded-xl border p-3 text-left transition-all",
                           isSelected
-                            ? "border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500 shadow-xs"
-                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80 shadow-2xs"
+                            ? "border-emerald-500 bg-emerald-50/6 dark:bg-emerald-500/100 dark:bg-emerald-500/10 ring-1 ring-emerald-500 shadow-xs"
+                            : "border-slate-200 dark:border-slate-500/20 bg-white dark:bg-[#131E2E] hover:border-slate-300 dark:border-slate-500/30 hover:bg-slate-50/80 dark:bg-slate-500/10 shadow-2xs"
                         )}
                       >
                         <div className="flex w-full items-start justify-between gap-1.5">
@@ -278,22 +278,22 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
                             {act.title}
                           </span>
                           {isSelected && (
-                            <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+                            <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                           )}
                         </div>
 
                         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
                           {act.shortCode && (
-                            <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 font-bold text-emerald-800">
+                            <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 font-bold text-emerald-800 dark:text-emerald-400">
                               {act.shortCode}
                             </span>
                           )}
-                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 capitalize">
+                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 dark:text-slate-400 capitalize">
                             {act.category}
                           </span>
                           {act.year && <span>{act.year}</span>}
                           <span>•</span>
-                          <span className="font-semibold text-slate-700">
+                          <span className="font-semibold text-slate-700 dark:text-slate-400">
                             {act.sectionCount} {act.sectionCount === 1 ? "section" : "sections"}
                           </span>
                         </div>
@@ -305,14 +305,14 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 flex items-center justify-between text-xs text-slate-500">
+            <div className="border-t border-slate-100 dark:border-slate-500/20 bg-slate-50 dark:bg-slate-800 px-5 py-3 flex items-center justify-between text-xs text-slate-500">
               <span>
                 Showing top results from <strong>{TOTAL_PAKISTANI_ACTS_COUNT.toLocaleString()}</strong> official enactments
               </span>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                className="rounded-lg border border-slate-300 dark:border-slate-500/30 bg-white dark:bg-[#131E2E] px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-400 hover:bg-slate-100"
               >
                 Close
               </button>

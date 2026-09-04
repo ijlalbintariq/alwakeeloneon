@@ -63,7 +63,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
         return {
           label: "Relied Upon",
           color: "#105B38",
-          bg: "bg-emerald-50 text-[#105B38] border-emerald-200",
+          bg: "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20",
           nodeColor: "#105B38",
         };
       case "distinguished":
@@ -71,7 +71,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
         return {
           label: "Distinguished",
           color: "#D97706",
-          bg: "bg-amber-50 text-amber-800 border-amber-200",
+          bg: "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-500/20",
           nodeColor: "#D97706",
         };
       case "overruled":
@@ -80,7 +80,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
         return {
           label: "Overruled",
           color: "#DC2626",
-          bg: "bg-rose-50 text-rose-700 border-rose-200",
+          bg: "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20",
           nodeColor: "#DC2626",
         };
       case "referred_to":
@@ -88,7 +88,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
         return {
           label: "Referred To",
           color: "#2563EB",
-          bg: "bg-blue-50 text-blue-700 border-blue-200",
+          bg: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20",
           nodeColor: "#2563EB",
         };
     }
@@ -217,24 +217,24 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-[#E2E8F0] bg-white p-5 sm:p-6 shadow-xs space-y-4 transition-all",
-        isFullscreen && "fixed inset-4 z-50 overflow-y-auto bg-white shadow-2xl border-[#CBD5E1]"
+        "rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] p-5 sm:p-6 shadow-xs space-y-4 transition-all",
+        isFullscreen && "fixed inset-4 z-50 overflow-y-auto bg-white dark:bg-[#131E2E] shadow-2xl border-[#CBD5E1]"
       )}
     >
       {/* Header with Switcher & Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[#105B38] shadow-xs">
+          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] shadow-xs">
             <Network className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+            <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
               <span>Precedent Citation Network</span>
-              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 {totalCitations} Nodes
               </span>
             </h3>
-            <p className="text-[11px] text-[#64748B]">
+            <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               Interactive bi-directional precedent authority & judicial treatment graph
             </p>
           </div>
@@ -242,15 +242,15 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Treatment Filter Pill Buttons */}
-          <div className="flex items-center gap-1 bg-[#F8FAFC] p-1 rounded-xl border border-[#E2E8F0] text-xs">
+          <div className="flex items-center gap-1 bg-[#F8FAFC] dark:bg-[#0B131E] p-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
             <button
               type="button"
               onClick={() => setSelectedFilter("all")}
               className={cn(
                 "px-2.5 py-1 rounded-lg transition-all text-[11px] font-bold",
                 selectedFilter === "all"
-                  ? "bg-white text-[#105B38] shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-xs"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               )}
             >
               All
@@ -261,8 +261,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               className={cn(
                 "px-2.5 py-1 rounded-lg transition-all text-[11px] font-bold",
                 selectedFilter === "relied_upon"
-                  ? "bg-emerald-50 text-[#105B38] border border-emerald-200"
-                  : "text-[#64748B] hover:text-[#105B38]"
+                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38]"
               )}
             >
               Relied Upon
@@ -273,8 +273,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               className={cn(
                 "px-2.5 py-1 rounded-lg transition-all text-[11px] font-bold",
                 selectedFilter === "distinguished"
-                  ? "bg-amber-50 text-amber-800 border border-amber-200"
-                  : "text-[#64748B] hover:text-amber-800"
+                  ? "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-amber-800 dark:text-amber-400"
               )}
             >
               Distinguished
@@ -285,8 +285,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               className={cn(
                 "px-2.5 py-1 rounded-lg transition-all text-[11px] font-bold",
                 selectedFilter === "overruled"
-                  ? "bg-rose-50 text-rose-700 border border-rose-200"
-                  : "text-[#64748B] hover:text-rose-700"
+                  ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-700 dark:text-rose-400"
               )}
             >
               Overruled
@@ -297,8 +297,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               className={cn(
                 "px-2.5 py-1 rounded-lg transition-all text-[11px] font-bold",
                 selectedFilter === "referred_to"
-                  ? "bg-blue-50 text-blue-700 border border-blue-200"
-                  : "text-[#64748B] hover:text-blue-700"
+                  ? "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-blue-700 dark:text-blue-400"
               )}
             >
               Referred
@@ -306,15 +306,15 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
           </div>
 
           {/* View Mode Switcher */}
-          <div className="flex items-center gap-1 bg-[#F8FAFC] p-1 rounded-xl border border-[#E2E8F0]">
+          <div className="flex items-center gap-1 bg-[#F8FAFC] dark:bg-[#0B131E] p-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
             <button
               type="button"
               onClick={() => setActiveTab("graph")}
               className={cn(
                 "p-1.5 rounded-lg text-xs transition-colors",
                 activeTab === "graph"
-                  ? "bg-white text-[#105B38] font-bold shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  ? "bg-white dark:bg-[#131E2E] text-[#105B38] font-bold shadow-xs"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               )}
               title="Interactive Visual Network Graph"
             >
@@ -326,8 +326,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               className={cn(
                 "p-1.5 rounded-lg text-xs transition-colors",
                 activeTab === "list"
-                  ? "bg-white text-[#105B38] font-bold shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  ? "bg-white dark:bg-[#131E2E] text-[#105B38] font-bold shadow-xs"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               )}
               title="Precedent List Matrix"
             >
@@ -339,7 +339,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
           <button
             type="button"
             onClick={handleExportSummary}
-            className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] transition-colors"
+            className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
             title="Export Citation Tree Summary"
           >
             <Download className="w-4 h-4" />
@@ -349,7 +349,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
           <button
             type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] transition-colors"
+            className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Graph"}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -358,10 +358,10 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
       </div>
 
       {totalCitations === 0 ? (
-        <div className="py-12 text-center space-y-2 text-[#64748B] bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-6">
+        <div className="py-12 text-center space-y-2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-[#F8FAFC] dark:bg-[#0B131E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] p-6">
           <Layers className="w-8 h-8 mx-auto text-[#CBD5E1]" />
-          <p className="text-xs font-bold text-[#0F172A]">No precedent citation links recorded for this judgment yet.</p>
-          <p className="text-[11px] text-[#94A3B8]">Citations and treatment badges will automatically populate upon judicial annotation.</p>
+          <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">No precedent citation links recorded for this judgment yet.</p>
+          <p className="text-[11px] text-[#94A3B8] dark:text-[#475569]">Citations and treatment badges will automatically populate upon judicial annotation.</p>
         </div>
       ) : activeTab === "graph" ? (
         /* Visual Interactive Graph */
@@ -369,32 +369,32 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
           {/* Zoom and Search Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-[#94A3B8] dark:text-[#475569] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={graphSearchQuery}
                 onChange={(e) => setGraphSearchQuery(e.target.value)}
                 placeholder="Filter graph nodes by citation/title..."
-                className="w-full h-8 pl-8 pr-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38]"
+                className="w-full h-8 pl-8 pr-3 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38]"
               />
             </div>
 
-            <div className="flex items-center gap-1.5 bg-[#F8FAFC] p-1 rounded-xl border border-[#E2E8F0] text-xs">
+            <div className="flex items-center gap-1.5 bg-[#F8FAFC] dark:bg-[#0B131E] p-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
               <button
                 type="button"
                 onClick={() => setZoomLevel((z) => Math.max(0.7, Number((z - 0.15).toFixed(2))))}
-                className="p-1 rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-white"
+                className="p-1 rounded-md text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-white dark:bg-[#131E2E]"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="text-[10px] font-mono font-bold text-[#0F172A] px-1">
+              <span className="text-[10px] font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC] px-1">
                 {Math.round(zoomLevel * 100)}%
               </span>
               <button
                 type="button"
                 onClick={() => setZoomLevel((z) => Math.min(1.5, Number((z + 0.15).toFixed(2))))}
-                className="p-1 rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-white"
+                className="p-1 rounded-md text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-white dark:bg-[#131E2E]"
                 title="Zoom In"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
@@ -402,7 +402,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               <button
                 type="button"
                 onClick={handleResetView}
-                className="p-1 rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-white border-l border-[#E2E8F0] ml-0.5 pl-1.5"
+                className="p-1 rounded-md text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-white dark:bg-[#131E2E] border-l border-[#E2E8F0] dark:border-[#1E2D44] ml-0.5 pl-1.5"
                 title="Reset Zoom & Pan"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -416,7 +416,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             className={cn(
-              "relative w-full rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden flex items-center justify-center p-4 transition-all select-none cursor-grab active:cursor-grabbing",
+              "relative w-full rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] overflow-hidden flex items-center justify-center p-4 transition-all select-none cursor-grab active:cursor-grabbing",
               isFullscreen ? "h-[calc(100vh-220px)]" : "h-80 sm:h-96"
             )}
           >
@@ -628,7 +628,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
             })()}
 
             {/* Quick Helper Label */}
-            <div className="absolute bottom-3 left-4 flex items-center gap-1.5 text-[11px] font-semibold text-[#64748B] bg-white/90 backdrop-blur-xs px-3 py-1 rounded-xl border border-[#E2E8F0] shadow-xs pointer-events-none">
+            <div className="absolute bottom-3 left-4 flex items-center gap-1.5 text-[11px] font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-white dark:bg-[#131E2E]/90 backdrop-blur-xs px-3 py-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs pointer-events-none">
               <Info className="w-3.5 h-3.5 text-[#105B38]" />
               <span>Click any node to view judicial reasoning | Drag canvas to pan</span>
             </div>
@@ -636,10 +636,10 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
 
           {/* Selected Node Details Flyout */}
           {selectedNode && (
-            <div className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-3 animate-in fade-in slide-in-from-top-2">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3 animate-in fade-in slide-in-from-top-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold text-[#0F172A]">
+                  <span className="font-mono text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                     {selectedNode.linkedCitation || selectedNode.citationText}
                   </span>
                   <span
@@ -651,7 +651,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                     {treatmentBadge(selectedNode.citationType).label}
                   </span>
                   {selectedNode.court && (
-                    <span className="text-[11px] text-[#64748B] font-medium">
+                    <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">
                       · {selectedNode.court}
                     </span>
                   )}
@@ -666,11 +666,11 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                         selectedNode.linkedCitation || selectedNode.citationText
                       )
                     }
-                    className="p-1.5 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] text-xs transition-colors"
+                    className="p-1.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] text-xs transition-colors"
                     title="Copy Citation"
                   >
                     {copiedNodeId === String(selectedNode.id) ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )}
@@ -690,11 +690,11 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               </div>
 
               {selectedNode.linkedTitle && (
-                <p className="text-xs text-[#0F172A] font-bold">{selectedNode.linkedTitle}</p>
+                <p className="text-xs text-[#0F172A] dark:text-[#F8FAFC] font-bold">{selectedNode.linkedTitle}</p>
               )}
 
               {selectedNode.contextExcerpt && (
-                <p className="text-xs text-[#475569] italic font-serif bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] leading-relaxed">
+                <p className="text-xs text-[#475569] italic font-serif bg-[#F8FAFC] dark:bg-[#0B131E] p-3 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] leading-relaxed">
                   &quot;{selectedNode.contextExcerpt}&quot;
                 </p>
               )}
@@ -707,12 +707,12 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Citations Made */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-[#0F172A] px-1">
+              <div className="flex items-center justify-between text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] px-1">
                 <span>Precedents Relied Upon / Citing ({filteredMade.length})</span>
               </div>
               <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
                 {filteredMade.length === 0 ? (
-                  <p className="text-xs text-[#94A3B8] p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">No outbound citations recorded.</p>
+                  <p className="text-xs text-[#94A3B8] dark:text-[#475569] p-3 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">No outbound citations recorded.</p>
                 ) : (
                   filteredMade.map((item) => (
                     <div
@@ -726,10 +726,10 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                           );
                         }
                       }}
-                      className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#105B38] hover:shadow-xs transition-all cursor-pointer space-y-1.5"
+                      className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] hover:shadow-xs transition-all cursor-pointer space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold text-[#0F172A]">
+                        <span className="font-mono text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                           {item.linkedCitation || item.citationText}
                         </span>
                         <span
@@ -745,7 +745,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                         <p className="text-[11px] text-[#475569] font-medium line-clamp-1">{item.linkedTitle}</p>
                       )}
                       {item.contextExcerpt && (
-                        <p className="text-[11px] text-[#64748B] italic line-clamp-2">&quot;{item.contextExcerpt}&quot;</p>
+                        <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] italic line-clamp-2">&quot;{item.contextExcerpt}&quot;</p>
                       )}
                     </div>
                   ))
@@ -755,12 +755,12 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
 
             {/* Citations Received */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-[#0F172A] px-1">
+              <div className="flex items-center justify-between text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] px-1">
                 <span>Subsequent Judicial Citations ({filteredReceived.length})</span>
               </div>
               <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
                 {filteredReceived.length === 0 ? (
-                  <p className="text-xs text-[#94A3B8] p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">No subsequent citing cases recorded.</p>
+                  <p className="text-xs text-[#94A3B8] dark:text-[#475569] p-3 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">No subsequent citing cases recorded.</p>
                 ) : (
                   filteredReceived.map((item) => (
                     <div
@@ -774,10 +774,10 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                           );
                         }
                       }}
-                      className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#105B38] hover:shadow-xs transition-all cursor-pointer space-y-1.5"
+                      className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] hover:shadow-xs transition-all cursor-pointer space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold text-[#0F172A]">
+                        <span className="font-mono text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                           {item.linkedCitation || item.citationText}
                         </span>
                         <span
@@ -793,7 +793,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                         <p className="text-[11px] text-[#475569] font-medium line-clamp-1">{item.linkedTitle}</p>
                       )}
                       {item.contextExcerpt && (
-                        <p className="text-[11px] text-[#64748B] italic line-clamp-2">&quot;{item.contextExcerpt}&quot;</p>
+                        <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] italic line-clamp-2">&quot;{item.contextExcerpt}&quot;</p>
                       )}
                     </div>
                   ))

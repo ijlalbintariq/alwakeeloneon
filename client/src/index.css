@@ -1284,3 +1284,26 @@ body.legal-drafting-zen .mac-main-layer > div {
   flex-direction: column;
   align-items: center;
 }
+
+/* Admin Panel Dark Mode Overrides */
+.dark .admin-panel-hero,
+.dark .admin-tab-strip {
+  background: #131E2E;
+  border-color: #1E2D44;
+}
+
+.dark .admin-panel-shield-wrap {
+  background: rgba(16, 91, 56, 0.2);
+  border-color: rgba(16, 233, 129, 0.3);
+  color: #10B981;
+}
+
+.dark .admin-panel-premium {
+  --admin-bg: 218 39% 7%;
+  --admin-surface: 216 41% 13%;
+  --admin-surface-2: 218 39% 10%;
+  --admin-border: 217 39% 20%;
+  --admin-text: 210 40% 98%;
+  --admin-muted: 215 20% 65%;
+  color: #F8FAFC;
+}

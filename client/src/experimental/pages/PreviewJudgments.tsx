@@ -445,28 +445,28 @@ export const PreviewJudgments: React.FC = () => {
     <PreviewShell>
       <div className="max-w-7xl mx-auto space-y-5">
         {/* Research Header */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-4">
+        <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-tight flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight flex items-center gap-2.5">
                 <Gavel className="w-6 h-6 text-[#105B38]" />
                 <span>Pakistani Legal Library & Citation Graph Engine</span>
               </h1>
-              <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+              <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
                 Over 600,000+ verified Supreme Court & High Court judgments with interactive precedent treatment graphs and Article 189/201 ratio extraction
               </p>
             </div>
 
             {/* Quick Stats or Action */}
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-emerald-50 text-[#105B38] border border-emerald-200 shadow-xs">
+              <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 shadow-xs">
                 600k+ Precedents Indexed
               </span>
             </div>
           </div>
 
           {/* Navigation Tabs Switcher */}
-          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#E2E8F0] text-xs">
+          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
             <button
               type="button"
               onClick={() => {
@@ -478,7 +478,7 @@ export const PreviewJudgments: React.FC = () => {
                 "px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 shadow-xs",
                 activeTab === "search"
                   ? "bg-[#105B38] text-white shadow-sm"
-                  : "bg-[#F8FAFC] text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A] border border-[#E2E8F0]"
+                  : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#475569] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
               )}
             >
               <Search className="w-4 h-4" />
@@ -496,7 +496,7 @@ export const PreviewJudgments: React.FC = () => {
                 "px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 shadow-xs",
                 activeTab === "pinpoint"
                   ? "bg-[#105B38] text-white shadow-sm"
-                  : "bg-[#F8FAFC] text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A] border border-[#E2E8F0]"
+                  : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#475569] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
               )}
             >
               <Scale className="w-4 h-4" />
@@ -514,7 +514,7 @@ export const PreviewJudgments: React.FC = () => {
                 "px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 shadow-xs",
                 activeTab === "directory"
                   ? "bg-[#105B38] text-white shadow-sm"
-                  : "bg-[#F8FAFC] text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A] border border-[#E2E8F0]"
+                  : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#475569] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
               )}
             >
               <FolderTree className="w-4 h-4" />
@@ -532,7 +532,7 @@ export const PreviewJudgments: React.FC = () => {
                 "px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 shadow-xs",
                 activeTab === "bookmarks"
                   ? "bg-[#105B38] text-white shadow-sm"
-                  : "bg-[#F8FAFC] text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A] border border-[#E2E8F0]"
+                  : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#475569] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
               )}
             >
               <Bookmark className="w-4 h-4" />
@@ -543,9 +543,9 @@ export const PreviewJudgments: React.FC = () => {
 
         {/* Dynamic Content View Area */}
         {loadingDetail ? (
-          <div className="py-24 rounded-2xl bg-white border border-[#E2E8F0] flex flex-col items-center justify-center gap-3 text-[#64748B] font-mono text-xs shadow-xs">
+          <div className="py-24 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] flex flex-col items-center justify-center gap-3 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono text-xs shadow-xs">
             <Loader2 className="w-7 h-7 text-[#105B38] animate-spin" />
-            <span className="font-bold text-sm text-[#0F172A]">Loading judgment precedent record & citation graph...</span>
+            <span className="font-bold text-sm text-[#0F172A] dark:text-[#F8FAFC]">Loading judgment precedent record & citation graph...</span>
           </div>
         ) : activeJudgmentDetail ? (
           /* Full-Text Judgment Reader View */
@@ -570,45 +570,45 @@ export const PreviewJudgments: React.FC = () => {
             {/* Results for Pinpoint Lookup */}
             {hasSearched && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-[#64748B] font-mono">
+                <div className="flex items-center justify-between text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
                   <span>Pinpoint Matches: {searchResults.length}</span>
                 </div>
 
                 {searchResults.length === 0 ? (
-                  <div className="p-8 text-center rounded-2xl bg-white border border-[#E2E8F0] text-[#64748B] space-y-2 shadow-xs">
+                  <div className="p-8 text-center rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] space-y-2 shadow-xs">
                     <AlertTriangle className="w-8 h-8 mx-auto text-amber-500" />
-                    <p className="text-xs font-bold text-[#0F172A]">No judgment found matching this pinpoint citation.</p>
-                    <p className="text-[11px] text-[#94A3B8]">Verify the journal volume, year, and page number.</p>
+                    <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">No judgment found matching this pinpoint citation.</p>
+                    <p className="text-[11px] text-[#94A3B8] dark:text-[#475569]">Verify the journal volume, year, and page number.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
                     {searchResults.map((item, idx) => (
                       <div
                         key={idx}
-                        className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/50 hover:shadow-md transition-all space-y-3.5 group"
+                        className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/50 hover:shadow-md transition-all space-y-3.5 group"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
                               {item.court}
                             </span>
-                            <span className="font-mono font-bold text-xs bg-[#F8FAFC] px-2.5 py-0.5 rounded-md border border-[#E2E8F0] text-[#0F172A]">
+                            <span className="font-mono font-bold text-xs bg-[#F8FAFC] dark:bg-[#0B131E] px-2.5 py-0.5 rounded-md border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC]">
                               {item.citation}
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200 uppercase">
+                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 uppercase">
                             Verified Citation
                           </span>
                         </div>
 
-                        <h3 className="font-bold text-[#0F172A] text-sm sm:text-base group-hover:text-[#105B38] transition-colors leading-snug">
+                        <h3 className="font-bold text-[#0F172A] dark:text-[#F8FAFC] text-sm sm:text-base group-hover:text-[#105B38] transition-colors leading-snug">
                           {item.title}
                         </h3>
-                        <p className="text-xs text-[#64748B] leading-relaxed line-clamp-3">
+                        <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed line-clamp-3">
                           {item.summary}
                         </p>
 
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94A3B8] pt-3 border-t border-[#E2E8F0]">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94A3B8] dark:text-[#475569] pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                           <span>{item.decisionDate ? new Date(item.decisionDate).toLocaleDateString("en-PK") : "Date Recorded"}</span>
                           <button
                             type="button"
@@ -636,13 +636,13 @@ export const PreviewJudgments: React.FC = () => {
         ) : activeTab === "bookmarks" ? (
           /* Bookmarked Precedents Tab */
           <div className="space-y-4">
-            <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
+                <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
                   <Bookmark className="w-5 h-5 text-[#105B38]" />
                   <span>Counsel&apos;s Chambers Bookmarks Vault</span>
                 </h3>
-                <p className="text-xs text-[#64748B] mt-0.5">
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                   Your curated repository of binding High Court and Supreme Court authorities for quick pleading citations
                 </p>
               </div>
@@ -651,36 +651,36 @@ export const PreviewJudgments: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleBatchExportBookmarks}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#0F172A] border border-[#E2E8F0] text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
+                  className="px-3.5 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Batch Export</span>
                 </button>
-                <span className="text-xs font-mono font-bold text-[#105B38] px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                <span className="text-xs font-mono font-bold text-[#105B38] px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
                   {allSavedJudgments.length} Saved Precedents
                 </span>
               </div>
             </div>
 
             {allSavedJudgments.length === 0 ? (
-              <div className="py-16 text-center rounded-2xl bg-white border border-[#E2E8F0] space-y-2 text-[#64748B] shadow-xs">
+              <div className="py-16 text-center rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] shadow-xs">
                 <Bookmark className="w-8 h-8 mx-auto text-[#CBD5E1]" />
-                <p className="text-xs font-bold text-[#0F172A]">No bookmarks saved yet.</p>
-                <p className="text-[11px] text-[#94A3B8]">While reading any judgment or reviewing search results, click &quot;Bookmark&quot; to pin it to your chambers vault.</p>
+                <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">No bookmarks saved yet.</p>
+                <p className="text-[11px] text-[#94A3B8] dark:text-[#475569]">While reading any judgment or reviewing search results, click &quot;Bookmark&quot; to pin it to your chambers vault.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3.5">
                 {allSavedJudgments.map((item) => (
                   <div
                     key={item.id}
-                    className="p-5 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/50 hover:shadow-md transition-all space-y-3 group shadow-xs"
+                    className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/50 hover:shadow-md transition-all space-y-3 group shadow-xs"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
                           {item.court}
                         </span>
-                        <span className="font-mono font-bold text-xs bg-[#F8FAFC] px-2.5 py-0.5 rounded-md border border-[#E2E8F0] text-[#0F172A]">
+                        <span className="font-mono font-bold text-xs bg-[#F8FAFC] dark:bg-[#0B131E] px-2.5 py-0.5 rounded-md border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC]">
                           {item.citation}
                         </span>
                       </div>
@@ -689,11 +689,11 @@ export const PreviewJudgments: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleCopyCitation(String(item.id), item.citation)}
-                          className="text-xs text-[#64748B] hover:text-[#0F172A] font-semibold flex items-center gap-1 p-1"
+                          className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] font-semibold flex items-center gap-1 p-1"
                           title="Copy Citation"
                         >
                           {copiedCitationId === String(item.id) ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
                           )}
@@ -702,23 +702,23 @@ export const PreviewJudgments: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleToggleBookmark(item as any)}
-                          className="text-xs text-[#94A3B8] hover:text-rose-600 transition-colors font-medium p-1"
+                          className="text-xs text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 transition-colors font-medium p-1"
                         >
                           Remove
                         </button>
                       </div>
                     </div>
 
-                    <h3 className="font-bold text-[#0F172A] text-sm sm:text-base leading-snug">{item.title}</h3>
-                    <p className="text-xs text-[#64748B] leading-relaxed line-clamp-2">{item.summary}</p>
+                    <h3 className="font-bold text-[#0F172A] dark:text-[#F8FAFC] text-sm sm:text-base leading-snug">{item.title}</h3>
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed line-clamp-2">{item.summary}</p>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94A3B8] pt-3 border-t border-[#E2E8F0]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94A3B8] dark:text-[#475569] pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                       <span>Saved: {new Date(item.createdAt).toLocaleDateString("en-PK")}</span>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => handleInsertIntoDrafting(item)}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
                           title="Insert Precedent & Ratio into Legal Drafting Studio"
                         >
                           <FileEdit className="w-3.5 h-3.5" />
@@ -752,21 +752,21 @@ export const PreviewJudgments: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab("bookmarks")}
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/40 hover:shadow-xs transition-all text-left shadow-xs"
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/40 hover:shadow-xs transition-all text-left shadow-xs"
               >
                 <div className="flex items-center gap-2.5">
                   <Bookmark className="w-4 h-4 text-[#105B38]" />
-                  <span className="text-xs font-bold text-[#0F172A]">Chambers Bookmarks</span>
+                  <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Chambers Bookmarks</span>
                 </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200">
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                   {allSavedJudgments.length}
                 </span>
               </button>
 
               {/* Jurisdiction / Cases Group */}
-              <div className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-3">
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5">
                     <Gavel className="w-3.5 h-3.5 text-[#105B38]" />
                     Court Jurisdiction
                   </span>
@@ -784,7 +784,7 @@ export const PreviewJudgments: React.FC = () => {
                         "w-full text-left px-3 py-2 rounded-xl text-xs transition-all font-medium",
                         selectedCourt === court
                           ? "bg-[#105B38] text-white font-bold shadow-xs"
-                          : "bg-white text-[#475569] hover:bg-[#F8FAFC] border border-[#E2E8F0]"
+                          : "bg-white dark:bg-[#131E2E] text-[#475569] hover:bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44]"
                       )}
                     >
                       {court}
@@ -794,8 +794,8 @@ export const PreviewJudgments: React.FC = () => {
               </div>
 
               {/* Codes & Acts Group */}
-              <div className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-3">
-                <span className="text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3">
+                <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5">
                   <Scale className="w-3.5 h-3.5 text-[#105B38]" />
                   Statutes & Quick Codes
                 </span>
@@ -819,7 +819,7 @@ export const PreviewJudgments: React.FC = () => {
                         setSearchQuery(code);
                         handleExecuteTwoTierSearch(code, "All", "All Courts", "All Years");
                       }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium bg-white hover:bg-[#F8FAFC] text-[#475569] hover:text-[#105B38] border border-[#E2E8F0] transition-all"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-[#131E2E] hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#475569] hover:text-[#105B38] border border-[#E2E8F0] dark:border-[#1E2D44] transition-all"
                     >
                       {code}
                     </button>
@@ -831,16 +831,16 @@ export const PreviewJudgments: React.FC = () => {
             {/* Right Main Search Results (3 Cols) */}
             <div className="lg:col-span-3 space-y-4">
               {/* Search Bar with Mode Toggle */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-3.5">
+              <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3.5">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 flex items-center px-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] focus-within:border-[#105B38] focus-within:bg-white shadow-xs transition-all">
-                    <Search className="w-4 h-4 text-[#94A3B8] mr-2.5 flex-shrink-0" />
+                  <div className="flex-1 flex items-center px-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] focus-within:border-[#105B38] focus-within:bg-white dark:bg-[#131E2E] shadow-xs transition-all">
+                    <Search className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mr-2.5 flex-shrink-0" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search by Case Title, Legal Issue, Citation (e.g. 2024 SCMR 892), Justice..."
-                      className="w-full h-11 bg-transparent text-xs sm:text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none font-medium"
+                      className="w-full h-11 bg-transparent text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none font-medium"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleExecuteTwoTierSearch();
                       }}
@@ -852,7 +852,7 @@ export const PreviewJudgments: React.FC = () => {
                           setSearchQuery("");
                           handleExecuteTwoTierSearch("");
                         }}
-                        className="p-1 text-[#94A3B8] hover:text-[#0F172A]"
+                        className="p-1 text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -875,9 +875,9 @@ export const PreviewJudgments: React.FC = () => {
                 </div>
 
                 {/* Filter Tags Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#E2E8F0]">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                    <span className="text-[11px] font-bold text-[#64748B] mr-1">Law Journal:</span>
+                    <span className="text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mr-1">Law Journal:</span>
                     {LAW_JOURNALS.map((j) => (
                       <button
                         type="button"
@@ -890,7 +890,7 @@ export const PreviewJudgments: React.FC = () => {
                           "px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all",
                           selectedJournal === j
                             ? "bg-[#105B38] text-white font-bold shadow-xs"
-                            : "bg-[#F8FAFC] text-[#475569] hover:bg-[#F1F5F9] border border-[#E2E8F0]"
+                            : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#475569] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44]"
                         )}
                       >
                         {j}
@@ -900,7 +900,7 @@ export const PreviewJudgments: React.FC = () => {
 
                   {/* Year Dropdown */}
                   <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-[11px] font-bold text-[#64748B]">Year:</span>
+                    <span className="text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Year:</span>
                     <select
                       value={selectedYear}
                       onChange={(e) => {
@@ -908,7 +908,7 @@ export const PreviewJudgments: React.FC = () => {
                         setSelectedYear(newYear);
                         handleExecuteTwoTierSearch(undefined, undefined, undefined, newYear);
                       }}
-                      className="h-8 px-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-mono font-medium text-[#0F172A] focus:outline-none focus:border-[#105B38]"
+                      className="h-8 px-2 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-mono font-medium text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                     >
                       {YEARS_LIST.map((y) => (
                         <option key={y} value={y}>
@@ -922,26 +922,26 @@ export const PreviewJudgments: React.FC = () => {
 
               {/* Search Results List */}
               {isSearching ? (
-                <div className="py-20 flex flex-col items-center justify-center gap-3 text-[#64748B] font-mono text-xs shadow-xs rounded-2xl bg-white border border-[#E2E8F0]">
+                <div className="py-20 flex flex-col items-center justify-center gap-3 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono text-xs shadow-xs rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44]">
                   <Loader2 className="w-6 h-6 text-[#105B38] animate-spin" />
                   <span>Searching 600,000+ Pakistani Precedent Records...</span>
                 </div>
               ) : searchError ? (
-                <div className="py-16 text-center rounded-2xl bg-red-50 border border-red-100 space-y-2 text-red-600 shadow-xs">
+                <div className="py-16 text-center rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 space-y-2 text-red-600 dark:text-red-400 shadow-xs">
                   <AlertTriangle className="w-8 h-8 mx-auto text-red-500" />
                   <p className="text-xs font-bold">Search Failed</p>
                   <p className="text-[11px] opacity-80">{searchError}</p>
                 </div>
               ) : hasSearched && searchResults.length === 0 ? (
-                <div className="py-16 text-center rounded-2xl bg-white border border-[#E2E8F0] space-y-2 text-[#64748B] shadow-xs">
+                <div className="py-16 text-center rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] shadow-xs">
                   <Layers className="w-8 h-8 mx-auto text-[#CBD5E1]" />
-                  <p className="text-xs font-bold text-[#0F172A]">No judgments found matching the query.</p>
-                  <p className="text-[11px] text-[#94A3B8]">Try broader keywords or clear journal filters.</p>
+                  <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">No judgments found matching the query.</p>
+                  <p className="text-[11px] text-[#94A3B8] dark:text-[#475569]">Try broader keywords or clear journal filters.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs text-[#64748B]">
-                    <span className="font-bold text-[#0F172A]">
+                  <div className="flex items-center justify-between text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
+                    <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                       {hasSearched ? `Found ${searchResults.length} reported precedents` : "Leading Landmark Jurisprudence"}
                     </span>
                   </div>
@@ -959,27 +959,27 @@ export const PreviewJudgments: React.FC = () => {
                       return (
                         <div
                           key={caseId}
-                          className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/50 hover:shadow-md transition-all space-y-4 shadow-xs group"
+                          className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/50 hover:shadow-md transition-all space-y-4 shadow-xs group"
                         >
                           {/* Header: Court pill + Citation + Treatment Badge */}
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
                                 {caseItem.court}
                               </span>
-                              <span className="font-mono font-bold text-xs bg-[#F8FAFC] px-2.5 py-0.5 rounded-md border border-[#E2E8F0] text-[#0F172A]">
+                              <span className="font-mono font-bold text-xs bg-[#F8FAFC] dark:bg-[#0B131E] px-2.5 py-0.5 rounded-md border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC]">
                                 {caseItem.citation}
                               </span>
                             </div>
 
                             <div className="flex items-center gap-2">
                               {isOverturned ? (
-                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase bg-rose-50 text-rose-700 border-rose-200 flex items-center gap-1 animate-pulse">
+                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 flex items-center gap-1 animate-pulse">
                                   <ShieldAlert className="w-3 h-3" />
                                   Overruled Authority
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase bg-emerald-50 text-[#105B38] border-emerald-200">
+                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20">
                                   Good Law
                                 </span>
                               )}
@@ -987,7 +987,7 @@ export const PreviewJudgments: React.FC = () => {
                           </div>
 
                           {/* Title */}
-                          <h3 className="font-bold text-[#0F172A] text-sm sm:text-base leading-snug group-hover:text-[#105B38] transition-colors">
+                          <h3 className="font-bold text-[#0F172A] dark:text-[#F8FAFC] text-sm sm:text-base leading-snug group-hover:text-[#105B38] transition-colors">
                             {caseItem.title}
                           </h3>
 
@@ -995,23 +995,23 @@ export const PreviewJudgments: React.FC = () => {
                           {caseItem.bench && (
                             <div className="flex items-center gap-2 text-xs font-semibold text-[#475569]">
                               <Gavel className="w-3.5 h-3.5 text-[#105B38] shrink-0" />
-                              <span>Honorable Bench: <span className="text-[#0F172A]">{caseItem.bench}</span></span>
+                              <span>Honorable Bench: <span className="text-[#0F172A] dark:text-[#F8FAFC]">{caseItem.bench}</span></span>
                             </div>
                           )}
 
                           {/* Summary / Headnotes snippet */}
-                          <p className="text-xs text-[#64748B] leading-relaxed line-clamp-3">
+                          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed line-clamp-3">
                             {caseItem.summary}
                           </p>
 
                           {/* Inline Ratio Decidendi Accordion (if expanded) */}
                           {isRatioExpanded && caseItem.ratioDecidendi && (
-                            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2 text-xs animate-in fade-in">
-                              <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5 text-xs">
+                            <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2 text-xs animate-in fade-in">
+                              <h4 className="font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5 text-xs">
                                 <Scale className="w-3.5 h-3.5 text-[#105B38]" />
                                 <span>Ratio Decidendi Summary</span>
                               </h4>
-                              <p className="text-[#334155] font-medium">{caseItem.ratioDecidendi.result}</p>
+                              <p className="text-[#334155] dark:text-[#CBD5E1] font-medium">{caseItem.ratioDecidendi.result}</p>
                               {caseItem.ratioDecidendi.legalPrinciples?.length > 0 && (
                                 <ul className="space-y-1 text-[#475569] pl-2 list-disc list-inside">
                                   {caseItem.ratioDecidendi.legalPrinciples.slice(0, 2).map((p: string, pIdx: number) => (
@@ -1023,7 +1023,7 @@ export const PreviewJudgments: React.FC = () => {
                           )}
 
                           {/* Result Card Action Buttons Toolbar */}
-                          <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5 border-t border-[#E2E8F0]">
+                          <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                             {/* Action Buttons Group */}
                             <div className="flex flex-wrap items-center gap-2 text-xs">
                               {/* 1. Read Judgment Button */}
@@ -1040,7 +1040,7 @@ export const PreviewJudgments: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleOpenGraphModal(caseItem)}
-                                className="px-3 py-1.5 rounded-xl bg-[#F8FAFC] hover:bg-emerald-50 hover:text-[#105B38] text-[#334155] border border-[#E2E8F0] font-semibold text-xs transition-all flex items-center gap-1.5 shadow-xs"
+                                className="px-3 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-[#105B38] text-[#334155] dark:text-[#CBD5E1] border border-[#E2E8F0] dark:border-[#1E2D44] font-semibold text-xs transition-all flex items-center gap-1.5 shadow-xs"
                               >
                                 <Network className="w-3.5 h-3.5 text-[#105B38]" />
                                 <span>View Graph</span>
@@ -1053,8 +1053,8 @@ export const PreviewJudgments: React.FC = () => {
                                 className={cn(
                                   "px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs",
                                   isRatioExpanded
-                                    ? "bg-emerald-50 text-[#105B38] border-emerald-200 font-bold"
-                                    : "bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#334155] border-[#E2E8F0]"
+                                    ? "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20 font-bold"
+                                    : "bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#334155] dark:text-[#CBD5E1] border-[#E2E8F0] dark:border-[#1E2D44]"
                                 )}
                               >
                                 <Scale className="w-3.5 h-3.5" />
@@ -1069,7 +1069,7 @@ export const PreviewJudgments: React.FC = () => {
                                   "p-2 rounded-xl border text-xs transition-all shadow-xs",
                                   isItemBookmarked
                                     ? "bg-[#105B38] text-white border-[#105B38]"
-                                    : "bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] border-[#E2E8F0]"
+                                    : "bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border-[#E2E8F0] dark:border-[#1E2D44]"
                                 )}
                                 title={isItemBookmarked ? "Bookmarked" : "Save to Chambers Bookmarks"}
                               >
@@ -1084,11 +1084,11 @@ export const PreviewJudgments: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleCopyCitation(caseId, caseItem.citation)}
-                                className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0] transition-all shadow-xs"
+                                className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] transition-all shadow-xs"
                                 title="Copy Formal Citation"
                               >
                                 {copiedCitationId === caseId ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                                 ) : (
                                   <Copy className="w-3.5 h-3.5" />
                                 )}
@@ -1098,7 +1098,7 @@ export const PreviewJudgments: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => loadJudgmentById(caseId)}
-                                className="px-3 py-1.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#475569] hover:text-[#105B38] border border-[#E2E8F0] text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
+                                className="px-3 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569] hover:text-[#105B38] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
                                 title="Open in Reader & AI Sidecar"
                               >
                                 <Sparkles className="w-3.5 h-3.5 text-[#105B38]" />
@@ -1109,7 +1109,7 @@ export const PreviewJudgments: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleInsertIntoDrafting(caseItem)}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
+                                className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
                                 title="Insert Precedent & Ratio into Legal Drafting Studio"
                               >
                                 <FileEdit className="w-3.5 h-3.5" />
@@ -1117,7 +1117,7 @@ export const PreviewJudgments: React.FC = () => {
                               </button>
                             </div>
 
-                            <span className="text-[11px] font-mono text-[#94A3B8]">
+                            <span className="text-[11px] font-mono text-[#94A3B8] dark:text-[#475569]">
                               {caseItem.decisionDate
                                 ? new Date(caseItem.decisionDate).toLocaleDateString("en-PK")
                                 : "Reported Case"}
@@ -1135,7 +1135,7 @@ export const PreviewJudgments: React.FC = () => {
                         type="button"
                         onClick={() => handleExecuteTwoTierSearch(undefined, undefined, undefined, undefined, currentPage + 1)}
                         disabled={isLoadingMore}
-                        className="px-6 py-2.5 rounded-xl bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#105B38] text-[#0F172A] text-xs font-bold transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+                        className="px-6 py-2.5 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-bold transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
                       >
                         {isLoadingMore ? (
                           <><Loader2 className="w-4 h-4 animate-spin text-[#105B38]" /> Loading more records...</>
@@ -1154,22 +1154,22 @@ export const PreviewJudgments: React.FC = () => {
         {/* Standalone Precedent Graph Modal (when clicking 'View Graph' from any result card) */}
         {graphModalTarget && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in">
-            <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-6 shadow-2xl space-y-4 border border-[#CBD5E1]">
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+            <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white dark:bg-[#131E2E] rounded-3xl p-6 shadow-2xl space-y-4 border border-[#CBD5E1]">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3">
                 <div className="flex items-center gap-2">
                   <Network className="w-5 h-5 text-[#105B38]" />
                   <div>
-                    <h3 className="font-bold text-[#0F172A] text-base">
+                    <h3 className="font-bold text-[#0F172A] dark:text-[#F8FAFC] text-base">
                       Precedent Citation Graph: {graphModalTarget.citation}
                     </h3>
-                    <p className="text-xs text-[#64748B]">{graphModalTarget.title}</p>
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{graphModalTarget.title}</p>
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setGraphModalTarget(null)}
-                  className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0] transition-colors"
+                  className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>

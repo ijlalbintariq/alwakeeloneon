@@ -121,18 +121,18 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
+      <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38]">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38]">
               <Briefcase className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#0F172A]">
+              <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 Open New Litigation Case File
               </h2>
-              <p className="text-xs text-[#64748B]">
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 Pakistani Legal Matter Architecture with 6-Pillar Compliance
               </p>
             </div>
@@ -141,7 +141,7 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
+            className="p-1.5 rounded-xl text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -149,7 +149,7 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
         {/* Title */}
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-[#0F172A] block">
+          <label className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] block">
             Case Title / Parties Heading *
           </label>
           <input
@@ -157,20 +157,20 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
             placeholder="e.g. Tariq Mahmood vs. Federation of Pakistan & Others"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3.5 py-2.5 text-xs text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:border-[#105B38] focus:bg-white transition-all"
+            className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3.5 py-2.5 text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] transition-all"
           />
         </div>
 
         {/* Grid: Case Type & Priority */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#0F172A] block">
+            <label className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] block">
               Jurisdiction / Matter Type
             </label>
             <select
               value={caseType}
               onChange={(e) => setCaseType(e.target.value)}
-              className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-xs text-[#0F172A] outline-none focus:border-[#105B38] focus:bg-white transition-all"
+              className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2.5 text-xs text-[#0F172A] dark:text-[#F8FAFC] outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] transition-all"
             >
               {CASE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -181,13 +181,13 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#0F172A] block">
+            <label className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] block">
               Chambers Priority
             </label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-xs text-[#0F172A] outline-none focus:border-[#105B38] focus:bg-white transition-all"
+              className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2.5 text-xs text-[#0F172A] dark:text-[#F8FAFC] outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] transition-all"
             >
               <option value="urgent">🚨 Urgent (Red List / Injunction Hearing)</option>
               <option value="high">High Priority</option>
@@ -199,7 +199,7 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
         {/* Court / Forum */}
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-[#0F172A] block">
+          <label className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] block">
             Judicial Forum / Court
           </label>
           <input
@@ -208,7 +208,7 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
             value={court}
             onChange={(e) => setCourt(e.target.value)}
             list="courts-list"
-            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3.5 py-2.5 text-xs text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:border-[#105B38] focus:bg-white transition-all"
+            className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3.5 py-2.5 text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] transition-all"
           />
           <datalist id="courts-list">
             {PAKISTANI_COURTS.map((c) => (
@@ -220,7 +220,7 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         {/* Grid: Case No & Reference */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#0F172A] block">
+            <label className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] block">
               Court Case / Writ Number
             </label>
             <input
@@ -228,12 +228,12 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               placeholder="e.g. W.P. No. 4921/2024"
               value={caseNumber}
               onChange={(e) => setCaseNumber(e.target.value)}
-              className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-xs font-mono text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:border-[#105B38] focus:bg-white transition-all"
+              className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2.5 text-xs font-mono text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] transition-all"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#0F172A] block">
+            <label className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] block">
               Chambers Internal Ref #
             </label>
             <input
@@ -241,14 +241,14 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               placeholder="e.g. CH-2024-089"
               value={referenceNo}
               onChange={(e) => setReferenceNo(e.target.value)}
-              className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-xs font-mono text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:border-[#105B38] focus:bg-white transition-all"
+              className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2.5 text-xs font-mono text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] transition-all"
             />
           </div>
         </div>
 
         {/* Description / Summary */}
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-[#0F172A] block">
+          <label className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] block">
             Matter Summary / Prayer Relief
           </label>
           <textarea
@@ -256,19 +256,19 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3.5 py-2.5 text-xs text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:border-[#105B38] focus:bg-white resize-none transition-all"
+            className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3.5 py-2.5 text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] resize-none transition-all"
           />
         </div>
 
         {/* 6-Pillars Toggle */}
-        <div className="p-3.5 rounded-2xl bg-emerald-50/50 border border-emerald-200 flex items-center justify-between gap-3">
+        <div className="p-3.5 rounded-2xl bg-emerald-50/5 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <ShieldCheck className="w-5 h-5 text-[#105B38] shrink-0" />
             <div>
-              <p className="text-xs font-bold text-[#0F172A]">
+              <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 Setup 6-Pillar Compliance Framework
               </p>
-              <p className="text-xs text-[#64748B]">
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 Auto-creates CNIC, Wakalatnama, Enquiry, Action Agreed, Care Letter & Conflict Check
               </p>
             </div>
@@ -282,11 +282,11 @@ export const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E2E8F0]">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E] transition-colors"
           >
             Cancel
           </button>

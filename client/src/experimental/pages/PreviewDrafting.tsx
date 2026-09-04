@@ -633,11 +633,11 @@ export const PreviewDrafting: React.FC = () => {
           activeTabTitle={activeTab?.title}
         />
       ) : (
-        <div className="flex h-full w-full overflow-hidden relative bg-white">
+        <div className="flex h-full w-full overflow-hidden relative bg-white dark:bg-[#131E2E]">
           {/* ── Main Full-Width Writing Canvas ─────────────── */}
-          <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-white">
+          <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-white dark:bg-[#131E2E]">
             {/* Document Tabs Bar (Clean & Focused) */}
-            <div className="flex items-center justify-between px-4 py-1.5 bg-white border-b border-[#E2E8F0] shrink-0 h-11">
+            <div className="flex items-center justify-between px-4 py-1.5 bg-white dark:bg-[#131E2E] border-b border-[#E2E8F0] dark:border-[#1E2D44] shrink-0 h-11">
               {/* Tabs List */}
               <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pr-2 py-0.5">
                 {tabs.map((tab) => {
@@ -649,18 +649,18 @@ export const PreviewDrafting: React.FC = () => {
                       className={cn(
                         "group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer border transition-all select-none",
                         isActive
-                          ? "bg-[#F8FAFC] text-[#0F172A] border-[#E2E8F0] shadow-xs"
-                          : "bg-transparent text-[#64748B] border-transparent hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                          ? "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs"
+                          : "bg-transparent text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-transparent hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                       )}
                     >
                       <FileText
-                        className={cn("w-3.5 h-3.5", isActive ? "text-[#105B38]" : "text-[#94A3B8]")}
+                        className={cn("w-3.5 h-3.5", isActive ? "text-[#105B38]" : "text-[#94A3B8] dark:text-[#475569]")}
                       />
                       <span className="max-w-[150px] truncate">{tab.title}</span>
                       <button
                         type="button"
                         onClick={(e) => handleCloseTab(tab.id, e)}
-                        className="opacity-40 group-hover:opacity-100 hover:text-rose-600 rounded transition-opacity"
+                        className="opacity-40 group-hover:opacity-100 hover:text-rose-600 dark:text-rose-400 rounded transition-opacity"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -672,7 +672,7 @@ export const PreviewDrafting: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddNewTab}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#105B38] border-dashed border-[#CBD5E1]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#105B38] border-dashed border-[#CBD5E1]"
                   title="Select a Template or Start New Pleading"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -683,7 +683,7 @@ export const PreviewDrafting: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsSavedDraftsModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#105B38] border-[#CBD5E1]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#105B38] border-[#CBD5E1]"
                   title="View and load saved pleadings from PostgreSQL database"
                 >
                   <FolderOpen className="w-3.5 h-3.5" />
@@ -695,7 +695,7 @@ export const PreviewDrafting: React.FC = () => {
                   type="button"
                   onClick={() => saveDraftToDb(activeTab, true)}
                   disabled={isSavingManual}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#0F172A] border-[#CBD5E1]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] border-[#CBD5E1]"
                   title="Persist current active pleading to PostgreSQL database"
                 >
                   <Save className="w-3.5 h-3.5 text-[#105B38]" />
@@ -705,11 +705,11 @@ export const PreviewDrafting: React.FC = () => {
 
               {/* Right Controls: Auto-save status & Toggle Right Sidebar */}
               <div className="flex items-center gap-3 shrink-0">
-                <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#64748B]">
+                <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   {saveStatus === "saved" ? (
                     <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-600 font-semibold text-[11px]">Saved to DB</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">Saved to DB</span>
                     </>
                   ) : saveStatus === "saving" ? (
                     <>
@@ -717,7 +717,7 @@ export const PreviewDrafting: React.FC = () => {
                       <span className="text-[11px] text-[#105B38] font-medium">Autosaving...</span>
                     </>
                   ) : (
-                    <span className="text-[11px] text-amber-600 font-medium">Unsaved</span>
+                    <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">Unsaved</span>
                   )}
                 </div>
 
@@ -729,7 +729,7 @@ export const PreviewDrafting: React.FC = () => {
                     "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all shadow-xs",
                     isRightSidebarOpen
                       ? "bg-[#105B38] text-white border-[#105B38]"
-                      : "bg-emerald-50 text-[#105B38] border-emerald-200 hover:bg-emerald-100"
+                      : "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-100"
                   )}
                   title="Toggle AI Drafter & Legal Tools (Right Sidebar)"
                 >
@@ -749,7 +749,7 @@ export const PreviewDrafting: React.FC = () => {
               data-editor-width={editorWidthMode}
               className={cn(
                 "flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex justify-center custom-scrollbar",
-                isLightPaperMode ? "bg-[#F8FAFC]" : "bg-[#0F172A]"
+                isLightPaperMode ? "bg-[#F8FAFC] dark:bg-[#0B131E]" : "bg-[#0F172A]"
               )}
             >
               <div className="w-full flex flex-col items-center">
@@ -766,21 +766,21 @@ export const PreviewDrafting: React.FC = () => {
             </div>
 
             {/* Bottom Minimal Status Bar */}
-            <div className="px-4 py-1.5 bg-white border-t border-[#E2E8F0] flex items-center justify-between text-[11px] text-[#64748B] shrink-0 select-none">
+            <div className="px-4 py-1.5 bg-white dark:bg-[#131E2E] border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] shrink-0 select-none">
               <div className="flex items-center gap-3">
-                <span className="font-mono font-bold text-[#0F172A]">{wordCount} words</span>
+                <span className="font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC]">{wordCount} words</span>
                 <span className="text-[#CBD5E1]">•</span>
-                <span className="font-mono text-[#64748B]">{characterCount} chars</span>
+                <span className="font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{characterCount} chars</span>
                 <span className="text-[#CBD5E1]">•</span>
                 <span className="font-mono text-[#105B38] font-bold">~{estimatedPages} Court Page(s)</span>
                 <span className="text-[#CBD5E1] hidden sm:inline">•</span>
-                <span className="hidden sm:inline text-[#64748B]">
+                <span className="hidden sm:inline text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   {estimatedReadingTime} min read
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-[#64748B] font-serif">
+                <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-serif">
                   Times New Roman 13pt · Court Legal 8.5×14&quot;
                 </span>
               </div>
@@ -827,21 +827,21 @@ export const PreviewDrafting: React.FC = () => {
       {/* ── Saved Drafts Modal (PostgreSQL) ─────────────────────────────── */}
       {isSavedDraftsModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xl max-w-2xl w-full p-6 space-y-4 animate-in fade-in zoom-in-95 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3 shrink-0">
+          <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl max-w-2xl w-full p-6 space-y-4 animate-in fade-in zoom-in-95 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3 shrink-0">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#EBF5F0] border border-[#A3D4BC] flex items-center justify-center text-[#105B38]">
+                <div className="w-8 h-8 rounded-lg bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 flex items-center justify-center text-[#105B38]">
                   <Database className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#0F172A]">Saved Pleading Drafts</h3>
-                  <p className="text-xs text-[#64748B]">PostgreSQL live cloud persistence across workstation tabs</p>
+                  <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Saved Pleading Drafts</h3>
+                  <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">PostgreSQL live cloud persistence across workstation tabs</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsSavedDraftsModalOpen(false)}
-                className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -849,14 +849,14 @@ export const PreviewDrafting: React.FC = () => {
 
             <div className="overflow-y-auto space-y-2.5 flex-1 pr-1">
               {isLoadingDrafts ? (
-                <div className="py-12 text-center text-xs text-[#64748B] flex flex-col items-center gap-2">
+                <div className="py-12 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex flex-col items-center gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin text-[#105B38]" />
                   <span>Loading saved pleading drafts...</span>
                 </div>
               ) : !Array.isArray(savedDrafts) || savedDrafts.length === 0 ? (
-                <div className="py-12 text-center text-xs text-[#64748B] space-y-2">
+                <div className="py-12 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] space-y-2">
                   <History className="w-8 h-8 text-slate-300 mx-auto" />
-                  <p className="font-semibold text-slate-700">No saved drafts found in database</p>
+                  <p className="font-semibold text-slate-700 dark:text-slate-400">No saved drafts found in database</p>
                   <p className="text-slate-500">Draft or paste any court pleading to automatically persist to database.</p>
                 </div>
               ) : (
@@ -866,13 +866,13 @@ export const PreviewDrafting: React.FC = () => {
                     className={cn(
                       "p-4 rounded-xl border transition-all flex items-center justify-between gap-3",
                       activeTab.dbDraftId === draft.id
-                        ? "bg-emerald-50/60 border-[#105B38] ring-1 ring-[#105B38]"
-                        : "bg-[#F8FAFC] hover:bg-slate-100/80 border-[#E2E8F0]"
+                        ? "bg-emerald-50/6 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border-[#105B38] ring-1 ring-[#105B38]"
+                        : "bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-slate-100/80 border-[#E2E8F0] dark:border-[#1E2D44]"
                     )}
                   >
                     <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="text-xs font-bold text-[#0F172A] truncate">
+                        <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
                           {draft.title || "Untitled Pleading"}
                         </h4>
                         {activeTab.dbDraftId === draft.id && (
@@ -880,11 +880,11 @@ export const PreviewDrafting: React.FC = () => {
                             Active in Editor
                           </span>
                         )}
-                        <span className="px-2 py-0.5 rounded-md bg-white border border-[#E2E8F0] text-[10px] font-medium text-slate-600">
+                        <span className="px-2 py-0.5 rounded-md bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[10px] font-medium text-slate-600 dark:text-slate-400">
                           {draft.templateType || "Pleading"}
                         </span>
                       </div>
-                      <p className="text-[11px] text-[#64748B] line-clamp-1">
+                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] line-clamp-1">
                         {typeof draft.content === "string"
                           ? draft.content.replace(/<[^>]+>/g, " ").slice(0, 120)
                           : "Pleading content"}
@@ -910,7 +910,7 @@ export const PreviewDrafting: React.FC = () => {
                       <button
                         type="button"
                         onClick={(e) => handleDeleteSavedDraft(draft.id, e)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:bg-rose-500/10 transition-colors"
                         title="Delete from PostgreSQL"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -921,12 +921,12 @@ export const PreviewDrafting: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-[#E2E8F0] shrink-0 text-xs text-[#64748B]">
+            <div className="flex items-center justify-between pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] shrink-0 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               <span>Total Saved: {Array.isArray(savedDrafts) ? savedDrafts.length : 0}</span>
               <button
                 type="button"
                 onClick={() => setIsSavedDraftsModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
               >
                 Close
               </button>

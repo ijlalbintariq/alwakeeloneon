@@ -258,20 +258,20 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
       {/* Top Workstation Action Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs">
         <div className="flex items-center gap-2">
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#0F172A] text-xs font-bold border border-[#E2E8F0] transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-bold border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors shadow-xs"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Library</span>
             </button>
           )}
 
-          <div className="flex items-center gap-1.5 font-mono text-xs text-[#105B38] bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl shadow-xs">
+          <div className="flex items-center gap-1.5 font-mono text-xs text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-3 py-2 rounded-xl shadow-xs">
             <Gavel className="w-3.5 h-3.5" />
             <span className="font-bold">{judgment.citation}</span>
           </div>
@@ -280,21 +280,21 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Font Size Selector */}
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#475569]">
-            <Type className="w-3.5 h-3.5 text-[#64748B] mr-1" />
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#475569]">
+            <Type className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mr-1" />
             <button
               type="button"
               onClick={() => setFontSize((s) => Math.max(13, s - 1))}
-              className="px-1.5 py-0.5 rounded hover:bg-white font-mono text-xs font-bold"
+              className="px-1.5 py-0.5 rounded hover:bg-white dark:bg-[#131E2E] font-mono text-xs font-bold"
               title="Decrease Font Size"
             >
               A-
             </button>
-            <span className="text-[11px] font-mono text-[#0F172A] px-1 font-bold">{fontSize}pt</span>
+            <span className="text-[11px] font-mono text-[#0F172A] dark:text-[#F8FAFC] px-1 font-bold">{fontSize}pt</span>
             <button
               type="button"
               onClick={() => setFontSize((s) => Math.min(18, s + 1))}
-              className="px-1.5 py-0.5 rounded hover:bg-white font-mono text-xs font-bold"
+              className="px-1.5 py-0.5 rounded hover:bg-white dark:bg-[#131E2E] font-mono text-xs font-bold"
               title="Increase Font Size"
             >
               A+
@@ -302,7 +302,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
           </div>
 
           {/* Reading Canvas Theme */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
             <button
               type="button"
               onClick={() => setReadingTheme("obsidian")}
@@ -310,7 +310,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                 "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors",
                 readingTheme === "obsidian"
                   ? "bg-[#0B0F17] text-white shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               )}
             >
               Obsidian
@@ -322,7 +322,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                 "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors",
                 readingTheme === "cream"
                   ? "bg-[#EFE8D8] text-[#78350F] shadow-xs"
-                  : "text-[#64748B] hover:text-[#78350F]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#78350F]"
               )}
             >
               Parchment
@@ -333,8 +333,8 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
               className={cn(
                 "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors",
                 readingTheme === "light"
-                  ? "bg-white text-[#0F172A] shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  ? "bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] shadow-xs"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               )}
             >
               Print Clean
@@ -345,16 +345,16 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
           <button
             type="button"
             onClick={handleCopyCitation}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#0F172A] text-xs font-bold border border-[#E2E8F0] transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-bold border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors shadow-xs"
           >
             {copiedCitation ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-600">Copied</span>
+                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5 text-[#64748B]" />
+                <Copy className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <span>Copy Citation</span>
               </>
             )}
@@ -364,7 +364,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
           <button
             type="button"
             onClick={handleInsertIntoDrafting}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#105B38] text-xs font-bold border border-emerald-200 transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] text-xs font-bold border border-emerald-200 dark:border-emerald-500/20 transition-colors shadow-xs"
             title="Insert Ratio & Precedent into Legal Drafting Studio"
           >
             <FileEdit className="w-3.5 h-3.5" />
@@ -380,7 +380,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                 "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all shadow-xs",
                 isBookmarked
                   ? "bg-[#105B38] text-white border-[#105B38]"
-                  : "bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#0F172A] border-[#E2E8F0]"
+                  : "bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] border-[#E2E8F0] dark:border-[#1E2D44]"
               )}
             >
               {isBookmarked ? (
@@ -390,7 +390,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                 </>
               ) : (
                 <>
-                  <Bookmark className="w-3.5 h-3.5 text-[#64748B]" />
+                  <Bookmark className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                   <span>Bookmark</span>
                 </>
               )}
@@ -413,7 +413,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
               href={judgment.pdfUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-emerald-50 text-[#105B38] text-xs font-bold border border-[#E2E8F0] transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] text-xs font-bold border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors shadow-xs"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>Gazette</span>
@@ -436,42 +436,42 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
           {/* Case Header Card */}
           <div
             ref={headerRef}
-            className="p-6 sm:p-8 rounded-2xl border border-[#E2E8F0] bg-white shadow-xs space-y-4"
+            className="p-6 sm:p-8 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] shadow-xs space-y-4"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
+              <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-3 py-1 rounded-lg">
                 {judgment.citation}
               </span>
               <span className="text-xs text-[#475569] flex items-center gap-1.5 font-bold">
                 <Gavel className="w-3.5 h-3.5 text-[#105B38]" />
                 {judgment.court || "Supreme Court of Pakistan"}
               </span>
-              <span className="text-xs text-[#64748B] flex items-center gap-1.5 font-mono">
+              <span className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1.5 font-mono">
                 <Calendar className="w-3.5 h-3.5 text-[#105B38]" />
                 {formatDate(judgment.decisionDate)}
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-bold font-serif text-[#0F172A] leading-tight">
+            <h1 className="text-xl sm:text-2xl font-bold font-serif text-[#0F172A] dark:text-[#F8FAFC] leading-tight">
               {judgment.title}
             </h1>
 
             {judgment.bench && (
               <p className="text-xs text-[#475569] font-medium flex items-center gap-1.5">
                 <Scale className="w-3.5 h-3.5 text-[#105B38]" />
-                <span>Honorable Bench: <strong className="text-[#0F172A]">{judgment.bench}</strong></span>
+                <span>Honorable Bench: <strong className="text-[#0F172A] dark:text-[#F8FAFC]">{judgment.bench}</strong></span>
               </p>
             )}
 
             {(judgment.petitioner || judgment.respondent) && (
-              <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs sm:text-sm font-serif">
-                <span className="text-[#334155]">
-                  <strong className="text-[#0F172A]">Petitioner / Appellant:</strong>{" "}
+              <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs sm:text-sm font-serif">
+                <span className="text-[#334155] dark:text-[#CBD5E1]">
+                  <strong className="text-[#0F172A] dark:text-[#F8FAFC]">Petitioner / Appellant:</strong>{" "}
                   {judgment.petitioner || "Appellant / Petitioner"}
                 </span>
                 <span className="text-[#105B38] font-bold px-2 self-center sm:self-auto">VS</span>
-                <span className="text-[#334155]">
-                  <strong className="text-[#0F172A]">Respondent / State:</strong>{" "}
+                <span className="text-[#334155] dark:text-[#CBD5E1]">
+                  <strong className="text-[#0F172A] dark:text-[#F8FAFC]">Respondent / State:</strong>{" "}
                   {judgment.respondent || "Respondent / State"}
                 </span>
               </div>
@@ -491,13 +491,13 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
           {judgment.headnotes && (
             <div
               ref={headnotesRef}
-              className="p-5 sm:p-6 rounded-2xl border border-[#E2E8F0] bg-white space-y-3 shadow-xs"
+              className="p-5 sm:p-6 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] space-y-3 shadow-xs"
             >
-              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#0F172A] flex items-center gap-2 border-b border-[#E2E8F0] pb-2.5">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-2.5">
                 <FileText className="w-4 h-4 text-[#105B38]" />
                 Official Reported Headnotes
               </h3>
-              <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs sm:text-sm text-[#334155] font-sans leading-relaxed whitespace-pre-wrap">
+              <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs sm:text-sm text-[#334155] dark:text-[#CBD5E1] font-sans leading-relaxed whitespace-pre-wrap">
                 {judgment.headnotes}
               </div>
             </div>
@@ -531,16 +531,16 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
               "p-6 sm:p-10 rounded-2xl border transition-all shadow-xs space-y-5",
               readingTheme === "obsidian" && "bg-[#0B0F17] text-[#E2E8F0] border-[#1E293B]",
               readingTheme === "cream" && "bg-[#FBF7EE] text-[#1C1917] border-[#E7DEC8]",
-              readingTheme === "light" && "bg-white text-[#0F172A] border-[#E2E8F0]"
+              readingTheme === "light" && "bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] border-[#E2E8F0] dark:border-[#1E2D44]"
             )}
           >
             {/* Header Stamp */}
             <div
               className={cn(
                 "text-center pb-6 border-b space-y-1 font-serif uppercase tracking-widest text-xs sm:text-sm font-bold",
-                readingTheme === "obsidian" && "border-[#1E293B] text-[#94A3B8]",
+                readingTheme === "obsidian" && "border-[#1E293B] text-[#94A3B8] dark:text-[#475569]",
                 readingTheme === "cream" && "border-[#E7DEC8] text-[#78350F]",
-                readingTheme === "light" && "border-[#E2E8F0] text-[#0F172A]"
+                readingTheme === "light" && "border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC]"
               )}
             >
               <div>IN THE {judgment.court?.toUpperCase() || "SUPREME COURT OF PAKISTAN"}</div>
@@ -569,7 +569,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                     <div
                       key={`para-${paraNum}`}
                       id={`para-${paraNum}`}
-                      className="group relative p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                      className="group relative p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white dark:bg-[#131E2E]/5 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 select-text">{para}</div>
@@ -579,8 +579,8 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                           className={cn(
                             "opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-xs font-mono font-semibold shrink-0 flex items-center gap-1",
                             readingTheme === "obsidian"
-                              ? "bg-[#1E293B] text-[#94A3B8] hover:text-white"
-                              : "bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A]"
+                              ? "bg-[#1E293B] text-[#94A3B8] dark:text-[#475569] hover:text-white"
+                              : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                           )}
                           title={`Copy Pinpoint Citation [${paraNum}]`}
                         >
@@ -608,9 +608,9 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
               ref={orderRef}
               className={cn(
                 "pt-6 border-t text-center text-xs font-mono font-bold tracking-wider uppercase",
-                readingTheme === "obsidian" && "border-[#1E293B] text-[#64748B]",
+                readingTheme === "obsidian" && "border-[#1E293B] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]",
                 readingTheme === "cream" && "border-[#E7DEC8] text-[#92400E]",
-                readingTheme === "light" && "border-[#E2E8F0] text-[#64748B]"
+                readingTheme === "light" && "border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
               )}
             >
               *** ORDER OF THE BENCH ACCORDINGLY RECORDED ***
@@ -621,7 +621,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
         {/* Right Sticky Sidecar Column (Col 4): Table of Contents + AI Sidecar */}
         <div className="lg:col-span-4 space-y-4">
           {/* Sidecar Tabs Switcher */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-white border border-[#E2E8F0] text-xs shadow-xs">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs shadow-xs">
             <button
               type="button"
               onClick={() => setActiveSidePanel("ai")}
@@ -629,7 +629,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                 "flex-1 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-xs",
                 activeSidePanel === "ai"
                   ? "bg-[#105B38] text-white shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               )}
             >
               <Bot className="w-3.5 h-3.5" />
@@ -642,7 +642,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                 "flex-1 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-xs",
                 activeSidePanel === "toc"
                   ? "bg-[#105B38] text-white shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               )}
             >
               <List className="w-3.5 h-3.5" />
@@ -660,8 +660,8 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
             />
           ) : (
             /* Table of Contents Navigation Card */
-            <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] space-y-3.5 shadow-xs">
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#0F172A] uppercase tracking-wider border-b border-[#E2E8F0] pb-2.5">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-3.5 shadow-xs">
+              <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC] uppercase tracking-wider border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-2.5">
                 <List className="w-4 h-4 text-[#105B38]" />
                 Judgment Structure Index
               </div>
@@ -670,59 +670,59 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                 <button
                   type="button"
                   onClick={() => scrollToSection(headerRef)}
-                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] text-[#334155] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#334155] dark:text-[#CBD5E1] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
                 >
                   <span>I. Court & Cause Header</span>
-                  <span className="text-[10px] font-mono text-[#94A3B8] group-hover:text-[#105B38]">§ 1</span>
+                  <span className="text-[10px] font-mono text-[#94A3B8] dark:text-[#475569] group-hover:text-[#105B38]">§ 1</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => scrollToSection(ratioRef)}
-                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] text-[#334155] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#334155] dark:text-[#CBD5E1] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
                 >
                   <span>II. AI Ratio Decidendi</span>
-                  <span className="text-[10px] font-mono font-bold text-[#105B38] bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">AI</span>
+                  <span className="text-[10px] font-mono font-bold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-500/20">AI</span>
                 </button>
                 {judgment.headnotes && (
                   <button
                     type="button"
                     onClick={() => scrollToSection(headnotesRef)}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] text-[#334155] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#334155] dark:text-[#CBD5E1] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
                   >
                     <span>III. Reported Headnotes</span>
-                    <span className="text-[10px] font-mono text-[#94A3B8] group-hover:text-[#105B38]">§ 2</span>
+                    <span className="text-[10px] font-mono text-[#94A3B8] dark:text-[#475569] group-hover:text-[#105B38]">§ 2</span>
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => scrollToSection(graphRef)}
-                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] text-[#334155] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#334155] dark:text-[#CBD5E1] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
                 >
                   <span>IV. Precedent Network Graph</span>
-                  <span className="text-[10px] font-mono text-[#64748B]">Nodes</span>
+                  <span className="text-[10px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Nodes</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => scrollToSection(fullTextRef)}
-                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] text-[#334155] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#334155] dark:text-[#CBD5E1] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
                 >
                   <span>V. Full Judgment Opinion</span>
-                  <span className="text-[10px] font-mono text-[#94A3B8] group-hover:text-[#105B38]">Court</span>
+                  <span className="text-[10px] font-mono text-[#94A3B8] dark:text-[#475569] group-hover:text-[#105B38]">Court</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => scrollToSection(orderRef)}
-                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] text-[#334155] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#334155] dark:text-[#CBD5E1] hover:text-[#105B38] flex items-center justify-between group transition-colors font-medium"
                 >
                   <span>VI. Operative Order & Relief</span>
-                  <span className="text-[10px] font-mono text-[#94A3B8] group-hover:text-[#105B38]">Order</span>
+                  <span className="text-[10px] font-mono text-[#94A3B8] dark:text-[#475569] group-hover:text-[#105B38]">Order</span>
                 </button>
               </div>
 
               {/* Paragraph Permalinks Quick Jumps */}
               {paragraphs.length > 1 && (
-                <div className="pt-3 border-t border-[#E2E8F0] space-y-2">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#64748B] font-bold block">
+                <div className="pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-bold block">
                     Jump to Paragraph:
                   </span>
                   <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
@@ -731,7 +731,7 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                         type="button"
                         key={`jump-para-${idx + 1}`}
                         onClick={() => scrollToParagraph(`para-${idx + 1}`)}
-                        className="px-2 py-1 rounded-md bg-[#F8FAFC] hover:bg-emerald-50 hover:text-[#105B38] border border-[#E2E8F0] text-[10px] font-mono font-semibold text-[#475569] transition-colors"
+                        className="px-2 py-1 rounded-md bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-[#105B38] border border-[#E2E8F0] dark:border-[#1E2D44] text-[10px] font-mono font-semibold text-[#475569] transition-colors"
                       >
                         [{idx + 1}]
                       </button>
@@ -743,25 +743,25 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
           )}
 
           {/* Quick Precedent Factsheet Summary */}
-          <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] text-xs space-y-2.5 shadow-xs">
-            <h4 className="font-mono font-bold text-[11px] text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs space-y-2.5 shadow-xs">
+            <h4 className="font-mono font-bold text-[11px] text-[#0F172A] dark:text-[#F8FAFC] uppercase tracking-wider flex items-center gap-1.5">
               <Scale className="w-3.5 h-3.5 text-[#105B38]" />
               Precedent Authority Factsheet
             </h4>
-            <div className="space-y-2 text-[11px] text-[#64748B]">
-              <div className="flex justify-between py-1 border-b border-[#E2E8F0]">
+            <div className="space-y-2 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
+              <div className="flex justify-between py-1 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
                 <span>Binding Under:</span>
-                <span className="text-[#0F172A] font-mono font-bold">Article 189 / 201</span>
+                <span className="text-[#0F172A] dark:text-[#F8FAFC] font-mono font-bold">Article 189 / 201</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#E2E8F0]">
+              <div className="flex justify-between py-1 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
                 <span>Outbound Citations:</span>
-                <span className="text-[#0F172A] font-mono font-bold">
+                <span className="text-[#0F172A] dark:text-[#F8FAFC] font-mono font-bold">
                   {judgment.citations?.made?.length || 0} Authorities
                 </span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#E2E8F0]">
+              <div className="flex justify-between py-1 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
                 <span>Inbound Citing Cases:</span>
-                <span className="text-[#0F172A] font-mono font-bold">
+                <span className="text-[#0F172A] dark:text-[#F8FAFC] font-mono font-bold">
                   {judgment.citations?.received?.length || 0} Subsequent Cases
                 </span>
               </div>
@@ -771,10 +771,10 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                   className={cn(
                     "font-mono font-bold px-2 py-0.5 rounded-md text-[10px] uppercase",
                     overrulingCases.length > 0
-                      ? "bg-rose-50 text-rose-700 border border-rose-200"
+                      ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20"
                       : distinguishedCases.length > 0
-                      ? "bg-amber-50 text-amber-800 border border-amber-200"
-                      : "bg-emerald-50 text-[#105B38] border border-emerald-200"
+                      ? "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20"
+                      : "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20"
                   )}
                 >
                   {overrulingCases.length > 0

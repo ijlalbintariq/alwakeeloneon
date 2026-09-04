@@ -104,25 +104,25 @@ export default function PreviewPublicJudgment() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
-        <header className="bg-white border-b border-slate-200">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B131E] flex flex-col font-sans">
+        <header className="bg-white dark:bg-[#131E2E] border-b border-slate-200 dark:border-slate-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center cursor-pointer" onClick={() => setLocation("/preview")}>
             <img src="/logo.svg" alt="Al Wakeelo" className="w-8 h-8 object-contain mr-3" />
             <span className="font-bold font-serif text-xl text-slate-900 tracking-tight">AL WAKEELO</span>
           </div>
-          <Button onClick={() => setLocation("/preview/login")} variant="outline" className="border-slate-300 text-slate-700">
+          <Button onClick={() => setLocation("/preview/login")} variant="outline" className="border-slate-300 dark:border-slate-500/30 text-slate-700 dark:text-slate-400">
             Sign In
           </Button>
         </div>
       </header>
         <main className="flex-1 flex items-center justify-center p-4">
           <div className="text-center max-w-md">
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-red-100 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-bold mb-2">Record Not Found</h2>
-            <p className="text-slate-600 mb-6">{error}</p>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">{error}</p>
             <Button onClick={() => setLocation('/preview')} className="bg-[#105B38] hover:bg-[#0D4B2E]">
               Return to Homepage
             </Button>
@@ -133,8 +133,8 @@ export default function PreviewPublicJudgment() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans selection:bg-[#105B38]/20">
-      <header className="bg-white border-b border-slate-200">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B131E] flex flex-col font-sans selection:bg-[#105B38]/20">
+      <header className="bg-white dark:bg-[#131E2E] border-b border-slate-200 dark:border-slate-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center cursor-pointer" onClick={() => setLocation("/preview")}>
             <div className="w-8 h-8 rounded-lg bg-[#105B38] flex items-center justify-center mr-3">
@@ -142,14 +142,14 @@ export default function PreviewPublicJudgment() {
             </div>
             <span className="font-bold font-serif text-xl text-slate-900 tracking-tight">AL WAKEELO</span>
           </div>
-          <Button onClick={() => setLocation("/preview/login")} variant="outline" className="border-slate-300 text-slate-700">
+          <Button onClick={() => setLocation("/preview/login")} variant="outline" className="border-slate-300 dark:border-slate-500/30 text-slate-700 dark:text-slate-400">
             Sign In
           </Button>
         </div>
       </header>
       
       {/* Search Header Bar (SEO pattern) */}
-      <div className="bg-white border-b border-slate-200 py-3 px-4 sm:px-6 lg:px-8">
+      <div className="bg-white dark:bg-[#131E2E] border-b border-slate-200 dark:border-slate-500/20 py-3 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center text-xs text-slate-500 font-medium">
             <span className="hover:text-[#105B38] cursor-pointer" onClick={() => setLocation('/preview')}>Library</span>
@@ -173,7 +173,7 @@ export default function PreviewPublicJudgment() {
               <Badge className="bg-[#105B38]/10 text-[#105B38] hover:bg-[#105B38]/20 border-0 rounded-md font-mono">
                 {loading ? <Skeleton className="w-24 h-4 bg-[#105B38]/20" /> : data?.citation}
               </Badge>
-              <Badge variant="outline" className="text-slate-600 border-slate-200">
+              <Badge variant="outline" className="text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-500/20">
                 Public Record
               </Badge>
             </div>
@@ -189,7 +189,7 @@ export default function PreviewPublicJudgment() {
               )}
             </h1>
 
-            <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-600 border-t border-b border-slate-200 py-4">
+            <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-600 dark:text-slate-400 border-t border-b border-slate-200 dark:border-slate-500/20 py-4">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-slate-400" />
                 {loading ? <Skeleton className="w-32 h-4" /> : <span className="font-medium">{data?.court}</span>}
@@ -220,7 +220,7 @@ export default function PreviewPublicJudgment() {
           </div>
 
           {/* Judgment Body */}
-          <Card className="bg-white shadow-sm border-slate-200 rounded-xl overflow-hidden relative">
+          <Card className="bg-white dark:bg-[#131E2E] shadow-sm border-slate-200 dark:border-slate-500/20 rounded-xl overflow-hidden relative">
             <CardContent className="p-8 md:p-12">
               
               {loading ? (
@@ -235,7 +235,7 @@ export default function PreviewPublicJudgment() {
                 <>
                   {/* Parties */}
                   {(data?.petitioner || data?.respondent) && (
-                    <div className="mb-8 p-6 bg-slate-50 rounded-lg border border-slate-100 text-center font-serif text-lg">
+                    <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-500/20 text-center font-serif text-lg">
                       <div className="font-semibold text-slate-900">{data?.petitioner || 'UNKNOWN PETITIONER'}</div>
                       <div className="my-3 text-sm text-slate-400 italic font-sans">— VERSUS —</div>
                       <div className="font-semibold text-slate-900">{data?.respondent || 'UNKNOWN RESPONDENT'}</div>
@@ -248,14 +248,14 @@ export default function PreviewPublicJudgment() {
                       <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
                         <FileText className="w-4 h-4 text-slate-400" /> Headnotes
                       </h4>
-                      <div className="text-slate-700 leading-relaxed text-sm p-5 bg-[#FBFBFA] border-l-4 border-[#105B38] whitespace-pre-wrap rounded-r-lg">
+                      <div className="text-slate-700 dark:text-slate-400 leading-relaxed text-sm p-5 bg-[#FBFBFA] border-l-4 border-[#105B38] whitespace-pre-wrap rounded-r-lg">
                         {data.headnotes}
                       </div>
                     </div>
                   )}
 
                   {/* Body Text */}
-                  <div className="prose prose-slate max-w-none font-serif text-lg leading-loose text-slate-800">
+                  <div className="prose prose-slate max-w-none font-serif text-lg leading-loose text-slate-800 dark:text-slate-400">
                     {formattedParagraphs.map((p, idx) => (
                       <p key={idx} className="mb-6">{p}</p>
                     ))}
@@ -267,15 +267,15 @@ export default function PreviewPublicJudgment() {
             {/* Paywall / Authwall Overlay if truncated */}
             {data?.isTruncated && !loading && (
               <div className="absolute bottom-0 left-0 right-0 h-[400px] flex flex-col justify-end p-8 md:p-12 bg-gradient-to-t from-white via-white to-transparent">
-                <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-2xl p-8 shadow-xl max-w-2xl mx-auto text-center relative overflow-hidden">
+                <div className="bg-white dark:bg-[#131E2E]/90 backdrop-blur-sm border border-slate-200 dark:border-slate-500/20 rounded-2xl p-8 shadow-xl max-w-2xl mx-auto text-center relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#105B38] to-emerald-400"></div>
                   
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-200 shadow-sm">
+                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-200 dark:border-slate-500/20 shadow-sm">
                     <Lock className="w-7 h-7 text-[#105B38]" />
                   </div>
                   
                   <h3 className="text-2xl font-bold text-slate-900 mb-3">Keep reading this judgment</h3>
-                  <p className="text-slate-600 mb-6 max-w-md mx-auto leading-relaxed">
+                  <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto leading-relaxed">
                     You've reached the end of the free preview ({data.previewWordCount.toLocaleString()} of {data.totalWordCount.toLocaleString()} words). 
                     Create a free account to unlock the full text, AI summaries, and citation network.
                   </p>
@@ -290,7 +290,7 @@ export default function PreviewPublicJudgment() {
                     <Button 
                       onClick={() => setLocation('/preview/login')} 
                       variant="outline" 
-                      className="px-8 h-12 text-base font-semibold rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
+                      className="px-8 h-12 text-base font-semibold rounded-lg border-slate-300 dark:border-slate-500/30 text-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:bg-slate-800"
                     >
                       Sign In
                     </Button>
@@ -322,22 +322,22 @@ export default function PreviewPublicJudgment() {
             </CardContent>
           </Card>
 
-          <Card className="border border-slate-200 shadow-sm bg-white">
+          <Card className="border border-slate-200 dark:border-slate-500/20 shadow-sm bg-white dark:bg-[#131E2E]">
             <CardContent className="p-5">
               <h4 className="font-semibold text-slate-900 mb-4 flex items-center">
                 <FileText className="w-4 h-4 mr-2 text-slate-400" />
                 Case Meta
               </h4>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-500/20">
                   <span className="text-slate-500">Citation</span>
                   <span className="font-medium text-slate-900">{loading ? <Skeleton className="w-16 h-4" /> : data?.citation}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-500/20">
                   <span className="text-slate-500">Word Count</span>
                   <span className="font-medium text-slate-900">{loading ? <Skeleton className="w-12 h-4" /> : data?.totalWordCount.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-500/20">
                   <span className="text-slate-500">Citations Made</span>
                   <span className="font-medium text-slate-900">{loading ? <Skeleton className="w-8 h-4" /> : (data?.citations?.made?.length || 0)}</span>
                 </div>

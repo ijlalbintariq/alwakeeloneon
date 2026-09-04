@@ -43,10 +43,10 @@ export const QuotaHealthCard: React.FC<QuotaHealthCardProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-[#E5E4E2] bg-[#F5F4F2] p-5 animate-pulse space-y-4">
-        <div className="h-5 w-32 bg-[#F5F4F2] rounded" />
-        <div className="h-8 w-48 bg-[#F5F4F2] rounded" />
-        <div className="h-2 w-full bg-[#F5F4F2] rounded" />
+      <div className="rounded-xl border border-[#E5E4E2] dark:border-[#1E2D44] bg-[#F5F4F2] dark:bg-[#0B131E] p-5 animate-pulse space-y-4">
+        <div className="h-5 w-32 bg-[#F5F4F2] dark:bg-[#0B131E] rounded" />
+        <div className="h-8 w-48 bg-[#F5F4F2] dark:bg-[#0B131E] rounded" />
+        <div className="h-2 w-full bg-[#F5F4F2] dark:bg-[#0B131E] rounded" />
       </div>
     );
   }
@@ -88,66 +88,66 @@ export const QuotaHealthCard: React.FC<QuotaHealthCardProps> = ({
   const upgradeLabel = getUpgradeActionLabel(usage?.tier);
 
   return (
-    <div className="relative rounded-xl border border-[#1A1A1A]/20 bg-white p-5 backdrop-blur-sm shadow-lg shadow-sm overflow-hidden flex flex-col justify-between group hover:border-[#1A1A1A]/50 transition-all">
+    <div className="relative rounded-xl border border-[#1A1A1A]/20 dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] p-5 backdrop-blur-sm shadow-lg shadow-sm overflow-hidden flex flex-col justify-between group hover:border-[#1A1A1A]/50 transition-all">
       {/* Decorative Gold Sheen Corner */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-[#1A1A1A]/5 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-32 h-32 bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 rounded-full blur-2xl pointer-events-none" />
 
       <div>
         {/* Header: Plan Badge & Tier Name */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1A1A1A]/5 border border-[#1A1A1A]/20 text-[#1A1A1A]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 border border-[#1A1A1A]/20 dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC]">
               <Zap className="h-3.5 w-3.5" />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-mono tracking-wider text-[#1A1A1A]/90 font-bold block">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-[#1A1A1A] dark:text-[#F8FAFC]/90 font-bold block">
                 Subscription & Quota Health
               </span>
-              <span className="text-sm sm:text-base font-bold font-serif text-[#1A1A1A]">
+              <span className="text-sm sm:text-base font-bold font-serif text-[#1A1A1A] dark:text-[#F8FAFC]">
                 {usage?.tierLabel || planInfo.title || "Chambers Plan"}
               </span>
             </div>
           </div>
 
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#1A1A1A]/8 text-[#1A1A1A] border border-[#1A1A1A]/20">
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#1A1A1A]/8 text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#1A1A1A]/20 dark:border-[#1E2D44]">
             {cyclePricing.totalLabel || "PKR Live"}
           </span>
         </div>
 
         {/* Plan Status Row */}
-        <div className="flex items-center justify-between text-xs text-[#666666] mb-3 pb-2.5 border-b border-[#E5E4E2]">
+        <div className="flex items-center justify-between text-xs text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mb-3 pb-2.5 border-b border-[#E5E4E2] dark:border-[#1E2D44]">
           <span className="flex items-center gap-1">
-            <CreditCard className="w-3.5 h-3.5 text-[#666666]" />
+            <CreditCard className="w-3.5 h-3.5 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]" />
             <span>{cycleLabel}</span>
           </span>
-          <span className="font-mono text-[11px] text-[#4A4A4A]">
-            Renews: <strong className="text-[#1A1A1A] font-semibold">{renewalLabel}</strong>
+          <span className="font-mono text-[11px] text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569]">
+            Renews: <strong className="text-[#1A1A1A] dark:text-[#F8FAFC] font-semibold">{renewalLabel}</strong>
           </span>
         </div>
 
         {/* Live Token Progress Bar */}
         <div className="space-y-1.5 mb-3">
           <div className="flex items-center justify-between text-xs font-mono font-medium">
-            <span className="text-[#4A4A4A]">
+            <span className="text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569]">
               Used:{" "}
-              <strong className="text-[#1A1A1A]">
+              <strong className="text-[#1A1A1A] dark:text-[#F8FAFC]">
                 {usage?.used?.toLocaleString() ?? 0}
               </strong>{" "}
               /{" "}
-              <span className="text-[#666666]">
+              <span className="text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
                 {usage?.monthlyLimit === 999999
                   ? "Unlimited"
                   : usage?.monthlyLimit?.toLocaleString() ?? "1,000"}
               </span>
             </span>
-            <span className="text-[#1A1A1A] font-semibold">
+            <span className="text-[#1A1A1A] dark:text-[#F8FAFC] font-semibold">
               {usage?.remaining === 999999
                 ? "Unlimited Capacity"
                 : `${usage?.remaining?.toLocaleString() ?? 0} remaining`}
             </span>
           </div>
 
-          <div className="relative h-2.5 w-full bg-white rounded-full overflow-hidden border border-[#E5E4E2]">
+          <div className="relative h-2.5 w-full bg-white dark:bg-[#131E2E] rounded-full overflow-hidden border border-[#E5E4E2] dark:border-[#1E2D44]">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 isAtLimit
@@ -160,7 +160,7 @@ export const QuotaHealthCard: React.FC<QuotaHealthCardProps> = ({
             />
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-[#666666] font-mono">
+          <div className="flex items-center justify-between text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
             <span>{usagePercentage.toFixed(1)}% consumed</span>
             <span>Monthly reset on 1st</span>
           </div>
@@ -174,23 +174,23 @@ export const QuotaHealthCard: React.FC<QuotaHealthCardProps> = ({
           </div>
         )}
         {!isAtLimit && isNearLimit && (
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-[#1A1A1A]/5 border border-[#1A1A1A]/20 text-[#1A1A1A] text-xs mb-3">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-[#1A1A1A]" />
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 border border-[#1A1A1A]/20 dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] text-xs mb-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-[#1A1A1A] dark:text-[#F8FAFC]" />
             <span>Approaching monthly token quota (80%+ consumed).</span>
           </div>
         )}
       </div>
 
       {/* Action Footers */}
-      <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#E5E4E2]">
-        <div className="text-[11px] text-[#666666]">
-          <span className="text-[#1A1A1A] font-semibold">● Apex & Turbo</span> AI ready
+      <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#E5E4E2] dark:border-[#1E2D44]">
+        <div className="text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
+          <span className="text-[#1A1A1A] dark:text-[#F8FAFC] font-semibold">● Apex & Turbo</span> AI ready
         </div>
 
         {onOpenUpgradeModal ? (
           <button
             onClick={onOpenUpgradeModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A1A1A]/8 hover:bg-[#2D2D2D]/25 border border-[#1A1A1A]/30 text-[#1A1A1A] hover:text-[#666666] text-xs font-semibold font-mono uppercase tracking-wider transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A1A1A]/8 hover:bg-[#2D2D2D]/25 border border-[#1A1A1A]/30 text-[#1A1A1A] dark:text-[#F8FAFC] hover:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] text-xs font-semibold font-mono uppercase tracking-wider transition-all"
           >
             <span>{upgradeLabel}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -198,7 +198,7 @@ export const QuotaHealthCard: React.FC<QuotaHealthCardProps> = ({
         ) : (
           <a
             href={upgradeHref}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A1A1A]/8 hover:bg-[#2D2D2D]/25 border border-[#1A1A1A]/30 text-[#1A1A1A] hover:text-[#666666] text-xs font-semibold font-mono uppercase tracking-wider transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A1A1A]/8 hover:bg-[#2D2D2D]/25 border border-[#1A1A1A]/30 text-[#1A1A1A] dark:text-[#F8FAFC] hover:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] text-xs font-semibold font-mono uppercase tracking-wider transition-all"
           >
             <span>{upgradeLabel}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />

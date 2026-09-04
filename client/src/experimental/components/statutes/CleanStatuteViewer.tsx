@@ -162,29 +162,29 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
   return (
     <div className={cn("space-y-4", className)}>
       {/* 1. Main Verbatim Statutory Enactment Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-500/20 bg-white dark:bg-[#131E2E] p-5 sm:p-6 shadow-xs">
         {/* Top Header Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-500/20 pb-4">
           <div className="flex flex-wrap items-center gap-2">
             {/* Section Pill */}
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#105B38]/10 px-3 py-1 text-xs font-bold text-[#105B38] border border-[#105B38]/20 font-mono">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#105B38]/10 px-3 py-1 text-xs font-bold text-[#105B38] border border-[#105B38]/20 dark:border-[#105B38]/40 font-mono">
               <FileText className="h-3.5 w-3.5" />
               {sanitized.cleanSection}
             </span>
 
             {/* Statute Short Title */}
-            <span className="text-xs font-semibold text-slate-700">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-400">
               {statuteName}
             </span>
 
             {/* Category / Domain Badge */}
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 uppercase tracking-wide">
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
               {category}
             </span>
 
             {/* Live DB Indicator */}
             {isLiveDb && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-200">
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
                 <Database className="h-2.5 w-2.5" />
                 Live DB
               </span>
@@ -200,7 +200,7 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
                 "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-all whitespace-nowrap",
                 copiedCitation
                   ? "bg-emerald-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  : "bg-slate-100 text-slate-700 dark:text-slate-400 hover:bg-slate-200"
               )}
               title="Copy Citation"
             >
@@ -215,7 +215,7 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
                 "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-all whitespace-nowrap",
                 copiedClause
                   ? "bg-emerald-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  : "bg-slate-100 text-slate-700 dark:text-slate-400 hover:bg-slate-200"
               )}
               title="Copy pure statutory clause for pleadings"
             >
@@ -246,16 +246,16 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
         </h3>
 
         {/* Pure Verbatim Statutory Law Body */}
-        <div className="mt-3.5 text-sm leading-relaxed text-slate-800 font-serif whitespace-pre-line tracking-normal">
+        <div className="mt-3.5 text-sm leading-relaxed text-slate-800 dark:text-slate-400 font-serif whitespace-pre-line tracking-normal">
           {sanitized.cleanText || "No statutory text recorded."}
         </div>
       </div>
 
       {/* 2. Statutory Punishment & Penalty Card (Conditional) */}
       {displayPunishment && (
-        <div className="rounded-xl border border-rose-200 bg-gradient-to-r from-rose-50 via-rose-50/70 to-white p-4.5 shadow-xs">
+        <div className="rounded-xl border border-rose-200 dark:border-rose-500/20 bg-gradient-to-r from-rose-50 via-rose-50/70 to-white p-4.5 shadow-xs">
           <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-rose-100 p-2 text-rose-700 shrink-0">
+            <div className="rounded-lg bg-rose-100 p-2 text-rose-700 dark:text-rose-400 shrink-0">
               <Gavel className="h-4 w-4" />
             </div>
             <div className="space-y-1">
@@ -263,7 +263,7 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
                 <span className="text-xs font-bold uppercase tracking-wider text-rose-900">
                   Statutory Punishment & Penalty
                 </span>
-                <span className="rounded-full bg-rose-200/80 px-2 py-0.2 text-[10px] font-semibold text-rose-800">
+                <span className="rounded-full bg-rose-200/80 px-2 py-0.2 text-[10px] font-semibold text-rose-800 dark:text-rose-400">
                   Penal Consequence
                 </span>
               </div>
@@ -277,10 +277,10 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
 
       {/* 3. Statutory Illustrations Card (Conditional) */}
       {sanitized.illustrations.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4.5 shadow-xs">
-          <div className="flex items-center gap-2 border-b border-amber-200/60 pb-2.5 mb-3">
-            <BookOpen className="h-4 w-4 text-amber-700" />
-            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50/4 dark:bg-amber-500/100 dark:bg-amber-500/10 p-4.5 shadow-xs">
+          <div className="flex items-center gap-2 border-b border-amber-200 dark:border-amber-500/20/60 pb-2.5 mb-3">
+            <BookOpen className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
               Statutory Illustrations ({sanitized.illustrations.length})
             </h4>
           </div>
@@ -289,9 +289,9 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
             {sanitized.illustrations.map((ill, idx) => (
               <div
                 key={idx}
-                className="flex items-start gap-2.5 rounded-lg border border-amber-200/80 bg-white p-3 text-xs leading-relaxed text-slate-800 shadow-2xs font-serif"
+                className="flex items-start gap-2.5 rounded-lg border border-amber-200 dark:border-amber-500/20/80 bg-white dark:bg-[#131E2E] p-3 text-xs leading-relaxed text-slate-800 dark:text-slate-400 shadow-2xs font-serif"
               >
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-bold text-amber-900">
+                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-bold text-amber-900 dark:text-amber-300">
                   {ill.match(/^\([a-z]\)/i)?.[0]?.replace(/[\(\)]/g, "") || idx + 1}
                 </span>
                 <p className="pt-0.5">
@@ -305,10 +305,10 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
 
       {/* 4. Judicial Guidance & Case Law Notes Card (Conditional) */}
       {sanitized.proceduralNotes.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4.5 shadow-xs">
-          <div className="flex items-center gap-2 border-b border-slate-200 pb-2.5 mb-3">
-            <Scale className="h-4 w-4 text-slate-700" />
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-slate-50/80 dark:bg-slate-500/10 p-4.5 shadow-xs">
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-500/20 pb-2.5 mb-3">
+            <Scale className="h-4 w-4 text-slate-700 dark:text-slate-400" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-400">
               Judicial Notes & Procedural Doctrines ({sanitized.proceduralNotes.length})
             </h4>
           </div>
@@ -317,7 +317,7 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
             {sanitized.proceduralNotes.map((note, idx) => (
               <div
                 key={idx}
-                className="rounded-lg border border-slate-200 bg-white p-3 text-xs leading-relaxed text-slate-700 font-serif"
+                className="rounded-lg border border-slate-200 dark:border-slate-500/20 bg-white dark:bg-[#131E2E] p-3 text-xs leading-relaxed text-slate-700 dark:text-slate-400 font-serif"
               >
                 <p>{note}</p>
               </div>
@@ -328,11 +328,11 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
 
       {/* 5. Legislative History & Amendments Accordion (Conditional) */}
       {sanitized.amendmentNotes.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-white dark:bg-[#131E2E] shadow-xs overflow-hidden">
           <button
             type="button"
             onClick={() => setShowLegislativeHistory(!showLegislativeHistory)}
-            className="w-full flex items-center justify-between p-3.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-between p-3.5 text-xs font-semibold text-slate-700 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2">
               <History className="h-3.5 w-3.5 text-slate-500" />
@@ -346,7 +346,7 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
           </button>
 
           {showLegislativeHistory && (
-            <div className="p-3.5 border-t border-slate-200 space-y-2 bg-slate-50/40 text-[11px] text-slate-600 font-mono">
+            <div className="p-3.5 border-t border-slate-200 dark:border-slate-500/20 space-y-2 bg-slate-50/40 dark:bg-slate-500/10 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
               {sanitized.amendmentNotes.map((an, idx) => (
                 <div key={idx} className="flex items-start gap-1.5">
                   <span className="text-slate-400">•</span>
@@ -368,14 +368,14 @@ export const CleanStatuteViewer: React.FC<CleanStatuteViewerProps> = ({
             </h4>
           </div>
 
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 border border-emerald-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
             <Sparkles className="h-2.5 w-2.5" />
             Supreme Court & High Court Ratios
           </span>
         </div>
 
         {isLoadingPrecedents ? (
-          <div className="p-4 text-center text-xs text-slate-500 animate-pulse bg-slate-50 rounded-xl border border-slate-200">
+          <div className="p-4 text-center text-xs text-slate-500 animate-pulse bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-500/20">
             Resolving authoritative precedent ratios...
           </div>
         ) : precedents.length > 0 ? (

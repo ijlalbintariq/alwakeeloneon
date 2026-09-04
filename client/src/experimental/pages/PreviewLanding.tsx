@@ -172,7 +172,7 @@ const CORE_FEATURES = [
     title: "Audio Transcription",
     desc: "Convert legal voice notes and recorded audio into text for research, drafting, and case preparation.",
     bgClass: "bg-lime-500/10",
-    iconClass: "text-lime-600",
+    iconClass: "text-lime-600 dark:text-lime-400",
   },
 ];
 
@@ -269,7 +269,7 @@ export default function PreviewLanding() {
   };
 
   return (
-    <div className="preview-theme-scope min-h-screen bg-background text-foreground overflow-x-hidden antialiased selection:bg-[#105B38]/20 selection:text-[#0F172A]">
+    <div className="preview-theme-scope min-h-screen bg-background text-foreground overflow-x-hidden antialiased selection:bg-[#105B38]/20 selection:text-[#0F172A] dark:text-[#F8FAFC]">
       {/* 1. Header Navigation Bar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -527,7 +527,7 @@ export default function PreviewLanding() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#105B38]/3 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#105B38]/10 border border-[#105B38]/20 rounded-full mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 rounded-full mb-8">
             <span className="w-2 h-2 bg-[#105B38] rounded-full animate-pulse" />
             <span className="text-[11px] text-[#105B38] font-bold uppercase tracking-widest">
               Pakistan's First Open-Source Legal AI Platform
@@ -766,7 +766,7 @@ export default function PreviewLanding() {
                 <Sparkles size={12} className="animate-pulse" />
                 New Feature
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-widest">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-widest">
                 <FileText size={14} />
                 Official MS Word Add-in
               </div>
@@ -893,15 +893,15 @@ export default function PreviewLanding() {
                 <span className="text-[10px] text-[#64748B] dark:text-slate-400">Live Workspace</span>
               </div>
               <div className="space-y-3">
-                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white/5 p-3 text-xs text-[#334155] dark:text-slate-200">
+                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white dark:bg-[#131E2E]/5 p-3 text-xs text-[#334155] dark:text-slate-200">
                   Judgment Search:{" "}
                   <span className="text-[#105B38] dark:text-[#10B981] font-semibold">2023 SCMR 1450</span>
                 </div>
-                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white/5 p-3 text-xs text-[#334155] dark:text-slate-200">
+                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white dark:bg-[#131E2E]/5 p-3 text-xs text-[#334155] dark:text-slate-200">
                   Statute Lookup:{" "}
                   <span className="text-[#105B38] dark:text-[#10B981] font-semibold">CPC S.9</span>
                 </div>
-                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white/5 p-3 text-xs text-[#334155] dark:text-slate-200">
+                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white dark:bg-[#131E2E]/5 p-3 text-xs text-[#334155] dark:text-slate-200">
                   AI Summary:{" "}
                   <span className="text-[#0F172A] dark:text-slate-100">
                     Actionable litigation notes generated.
@@ -920,15 +920,15 @@ export default function PreviewLanding() {
                 </span>
               </div>
               <div className="space-y-3">
-                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white/5 p-3 text-xs text-[#334155] dark:text-slate-200">
+                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white dark:bg-[#131E2E]/5 p-3 text-xs text-[#334155] dark:text-slate-200">
                   Legal Draft:{" "}
                   <span className="text-[#105B38] dark:text-[#10B981] font-semibold">Petition structure ready</span>
                 </div>
-                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white/5 p-3 text-xs text-[#334155] dark:text-slate-200">
+                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white dark:bg-[#131E2E]/5 p-3 text-xs text-[#334155] dark:text-slate-200">
                   Contract Risk:{" "}
                   <span className="text-[#105B38] dark:text-[#10B981] font-semibold">Critical clauses flagged</span>
                 </div>
-                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white/5 p-3 text-xs text-[#334155] dark:text-slate-200">
+                <div className="rounded-xl border border-[#105B38]/20 dark:border-[#105B38]/30 bg-[#F8FAFC] dark:bg-white dark:bg-[#131E2E]/5 p-3 text-xs text-[#334155] dark:text-slate-200">
                   Client Intake:{" "}
                   <span className="text-[#0F172A] dark:text-slate-100">
                     Submit case + chamber callback.
@@ -953,7 +953,7 @@ export default function PreviewLanding() {
             >
               Everything You Need in One Platform
             </h2>
-            <p className="text-[#64748B] dark:text-[#94A3B8] mt-4 max-w-xl mx-auto">
+            <p className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-4 max-w-xl mx-auto">
               From case research to contract drafting, AL WAKEELO handles the
               full spectrum of legal work.
             </p>
@@ -1107,7 +1107,7 @@ export default function PreviewLanding() {
               >
                 <p
                   className={`text-[10px] font-black uppercase tracking-widest mb-1 ${
-                    plan.highlighted ? "text-[#105B38] dark:text-[#10B981]" : "text-[#64748B] dark:text-[#94A3B8]"
+                    plan.highlighted ? "text-[#105B38] dark:text-[#10B981]" : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                   }`}
                 >
                   {plan.badge}
@@ -1123,17 +1123,17 @@ export default function PreviewLanding() {
                     : getPlanCyclePricing(plan, billingCycle).totalLabel}
                 </p>
                 {plan.key !== "free" && plan.key !== "enterprise" && (
-                  <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] mb-1">
+                  <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mb-1">
                     {getPlanCyclePricing(plan, billingCycle).effectiveMonthlyLabel}{" "}
                     · {getPlanCyclePricing(plan, billingCycle).savingsLabel}
                   </p>
                 )}
                 {plan.key === "enterprise" && billingCycle !== "monthly" && (
-                  <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] mb-1">
+                  <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mb-1">
                     Enterprise billing remains custom and contact-led.
                   </p>
                 )}
-                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mb-5">
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mb-5">
                   {plan.subtitle}
                 </p>
                 <ul className="space-y-2.5 mb-7">
@@ -1221,7 +1221,7 @@ export default function PreviewLanding() {
                   </span>
                 </p>
               </div>
-              <p className="mt-3 text-[11px] text-[#64748B] dark:text-[#94A3B8]">
+              <p className="mt-3 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 AI action counting: 1 chat/draft/summarize request = 1 action.
                 Audio transcription: every 2 minutes = 1 action.
               </p>
@@ -1492,19 +1492,19 @@ export default function PreviewLanding() {
 
       {/* Floating Version 2.0 Announcement Banner */}
       <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-700 pointer-events-auto">
-        <div className="bg-white border border-[#E2E8F0] shadow-2xl rounded-2xl p-4 md:p-5 max-w-sm flex items-start gap-4 relative">
+        <div className="bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-2xl rounded-2xl p-4 md:p-5 max-w-sm flex items-start gap-4 relative">
           <div className="flex-shrink-0 w-10 h-10 bg-[#105B38]/10 rounded-full flex items-center justify-center text-[#105B38]">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path><path d="m9 12 2 2 4-4"></path></svg>
           </div>
           <div className="pr-4">
-            <h4 className="text-sm font-bold text-[#0F172A] mb-1">AL WAKEELO Version 2.0 is Live!</h4>
-            <p className="text-xs text-[#64748B] leading-relaxed">
+            <h4 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">AL WAKEELO Version 2.0 is Live!</h4>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
               We've completely overhauled the platform. If you experience any issues with the new interface, kindly direct message our support at <a href="tel:00923358341897" className="text-[#105B38] font-bold hover:underline">+92 335 8341897</a>.
             </p>
           </div>
           <button 
             onClick={(e) => e.currentTarget.parentElement?.parentElement?.remove()}
-            className="absolute top-3 right-3 text-[#94A3B8] hover:text-[#0F172A] transition-colors"
+            className="absolute top-3 right-3 text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>

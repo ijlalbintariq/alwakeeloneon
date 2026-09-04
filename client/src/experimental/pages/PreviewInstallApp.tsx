@@ -173,17 +173,17 @@ export default function PreviewInstallApp() {
       <div className="space-y-12 md:space-y-16 max-w-4xl mx-auto">
         {/* ── HEADER ── */}
         <section className="text-center space-y-4 pt-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#EBF5F0] border border-[#A3D4BC] rounded-full text-xs text-[#105B38] font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-wider">
             <Smartphone className="w-3.5 h-3.5 text-[#105B38]" />
             Multi-Platform Installation Guide
           </div>
           <h1
-            className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight leading-tight"
+            className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight leading-tight"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             Install Alwakeelo on Mobile &amp; Desktop
           </h1>
-          <p className="text-sm sm:text-base text-[#334155] leading-relaxed max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-[#334155] dark:text-[#CBD5E1] leading-relaxed max-w-2xl mx-auto">
             Experience lightning-fast legal research with 0ms launch speed. Install Alwakeelo as a native Progressive Web App on your iPhone, Android phone, Windows PC, or Mac — no App Store or Play Store account required.
           </p>
         </section>
@@ -199,19 +199,19 @@ export default function PreviewInstallApp() {
                 className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
                   isSelected
                     ? "bg-[#105B38] text-white border-[#105B38] shadow-md shadow-[#105B38]/20"
-                    : "bg-white border-[#E2E8F0] text-[#334155] hover:border-[#A3D4BC] hover:bg-[#F8FAFC]"
+                    : "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#334155] dark:text-[#CBD5E1] hover:border-[#A3D4BC] dark:border-[#10B981]/30 hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                 }`}
               >
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                  isSelected ? "bg-white/20 text-white" : "bg-[#EBF5F0] text-[#105B38]"
+                  isSelected ? "bg-white dark:bg-[#131E2E]/20 text-white" : "bg-[#EBF5F0] dark:bg-[#105B38]/20 text-[#105B38]"
                 }`}>
                   {p.icon}
                 </div>
                 <div>
-                  <h3 className={`text-xs font-bold ${isSelected ? "text-white" : "text-[#0F172A]"}`}>
+                  <h3 className={`text-xs font-bold ${isSelected ? "text-white" : "text-[#0F172A] dark:text-[#F8FAFC]"}`}>
                     {p.label}
                   </h3>
-                  <p className={`text-[10px] ${isSelected ? "text-white/80" : "text-[#64748B]"}`}>
+                  <p className={`text-[10px] ${isSelected ? "text-white/80" : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"}`}>
                     {p.sublabel}
                   </p>
                 </div>
@@ -222,14 +222,14 @@ export default function PreviewInstallApp() {
 
         {/* ── STEP-BY-STEP CARDS ── */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+          <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3">
             <h2
-              className="text-lg font-bold text-[#0F172A]"
+              className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               Step-by-Step Installation for {platforms.find((p) => p.id === platform)?.label}
             </h2>
-            <span className="text-xs font-bold text-[#105B38] bg-[#EBF5F0] px-2.5 py-1 rounded-full border border-[#A3D4BC]">
+            <span className="text-xs font-bold text-[#105B38] bg-[#EBF5F0] dark:bg-[#105B38]/20 px-2.5 py-1 rounded-full border border-[#A3D4BC] dark:border-[#10B981]/30">
               4 Quick Steps (~30 seconds)
             </span>
           </div>
@@ -238,24 +238,24 @@ export default function PreviewInstallApp() {
             {currentSteps.map((step) => (
               <div
                 key={step.step}
-                className="bg-white border border-[#E2E8F0] rounded-2xl p-5 sm:p-6 flex items-start gap-4 sm:gap-5 shadow-sm hover:border-[#A3D4BC] transition-colors"
+                className="bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl p-5 sm:p-6 flex items-start gap-4 sm:gap-5 shadow-sm hover:border-[#A3D4BC] dark:border-[#10B981]/30 transition-colors"
               >
-                <div className="w-12 h-12 rounded-2xl bg-[#EBF5F0] border border-[#A3D4BC] flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 flex items-center justify-center shrink-0">
                   {step.icon}
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[#105B38] bg-[#EBF5F0] px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#105B38] bg-[#EBF5F0] dark:bg-[#105B38]/20 px-2 py-0.5 rounded">
                       Step {step.step}
                     </span>
-                    <h3 className="text-sm sm:text-base font-bold text-[#0F172A]">
+                    <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                       {step.title}
                     </h3>
                   </div>
-                  <p className="text-xs sm:text-sm text-[#334155] leading-relaxed">
+                  <p className="text-xs sm:text-sm text-[#334155] dark:text-[#CBD5E1] leading-relaxed">
                     {step.description}
                   </p>
-                  <p className="text-[11px] font-medium text-[#64748B] pt-0.5 flex items-center gap-1">
+                  <p className="text-[11px] font-medium text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] pt-0.5 flex items-center gap-1">
                     <span className="text-[#105B38] font-bold">Tip:</span> {step.tip}
                   </p>
                 </div>
@@ -265,46 +265,46 @@ export default function PreviewInstallApp() {
         </section>
 
         {/* ── VALUE PROPOSITIONS GRID ── */}
-        <section className="bg-white border border-[#E2E8F0] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+        <section className="bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
           <div className="text-center space-y-1">
             <h3
-              className="text-lg font-bold text-[#0F172A]"
+              className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               Why Advocates Prefer the PWA Experience
             </h3>
-            <p className="text-xs text-[#64748B]">
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               Engineered for busy courtrooms, High Court libraries, and on-the-go chamber management.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl space-y-2 text-center">
-              <div className="w-10 h-10 rounded-xl bg-[#EBF5F0] flex items-center justify-center text-[#105B38] mx-auto">
+            <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl space-y-2 text-center">
+              <div className="w-10 h-10 rounded-xl bg-[#EBF5F0] dark:bg-[#105B38]/20 flex items-center justify-center text-[#105B38] mx-auto">
                 <Zap className="w-5 h-5" />
               </div>
-              <h4 className="text-xs font-bold text-[#0F172A]">Instant 0ms Launch</h4>
-              <p className="text-[11px] text-[#64748B] leading-relaxed">
+              <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Instant 0ms Launch</h4>
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
                 Cached core assets load instantaneously without waiting for browser navigation.
               </p>
             </div>
 
-            <div className="p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl space-y-2 text-center">
+            <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl space-y-2 text-center">
               <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] flex items-center justify-center text-[#1D4ED8] mx-auto">
                 <Layers className="w-5 h-5" />
               </div>
-              <h4 className="text-xs font-bold text-[#0F172A]">Distraction-Free Fullscreen</h4>
-              <p className="text-[11px] text-[#64748B] leading-relaxed">
+              <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Distraction-Free Fullscreen</h4>
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
                 Hides browser URL bars and tabs for maximum screen real estate during drafting.
               </p>
             </div>
 
-            <div className="p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl space-y-2 text-center">
+            <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl space-y-2 text-center">
               <div className="w-10 h-10 rounded-xl bg-[#FEF3C7] flex items-center justify-center text-[#B45309] mx-auto">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <h4 className="text-xs font-bold text-[#0F172A]">Seamless Auto-Updates</h4>
-              <p className="text-[11px] text-[#64748B] leading-relaxed">
+              <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Seamless Auto-Updates</h4>
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
                 Always runs the newest statute amendments and precedent database silently in the background.
               </p>
             </div>
@@ -314,7 +314,7 @@ export default function PreviewInstallApp() {
         {/* ── SISTER GUIDE: WORD ADD-IN LINK ── */}
         <section className="bg-gradient-to-br from-[#105B38] to-[#0D4A2E] text-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-md">
           <div className="space-y-1.5 text-center sm:text-left">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-wider text-[#A3D4BC]">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white dark:bg-[#131E2E]/10 rounded-full text-[10px] font-bold uppercase tracking-wider text-[#A3D4BC]">
               <FileText className="w-3 h-3" /> Microsoft Word Add-in
             </div>
             <h3
@@ -329,7 +329,7 @@ export default function PreviewInstallApp() {
           </div>
           <Link
             href="/preview/word-addin-guide"
-            className="px-5 py-3 bg-white text-[#105B38] hover:bg-[#EBF5F0] text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0 inline-flex items-center gap-2"
+            className="px-5 py-3 bg-white dark:bg-[#131E2E] text-[#105B38] hover:bg-[#EBF5F0] dark:bg-[#105B38]/20 text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0 inline-flex items-center gap-2"
           >
             <span>Word Add-in Setup Guide</span>
             <ArrowRight className="w-4 h-4" />

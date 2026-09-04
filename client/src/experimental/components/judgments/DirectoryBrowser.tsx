@@ -287,28 +287,28 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
   };
 
   return (
-    <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 sm:p-6 shadow-xs space-y-5">
+    <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] p-5 sm:p-6 shadow-xs space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[#105B38] shadow-xs">
+          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] shadow-xs">
             <FolderTree className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+            <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
               <span>Court Hierarchy Directory & Law Journal Archive</span>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 1947–2026 Archive
               </span>
             </h3>
-            <p className="text-[11px] text-[#64748B]">
+            <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               4-tier hierarchical browsing: Court Jurisdiction → Subject Matter Domain → Annual Volumes & Journals → Reported Judgments
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-bold text-[#105B38] bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+          <span className="text-xs font-mono font-bold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-3 py-1.5 rounded-xl">
             {fetchedCases.length} Precedents Indexed
           </span>
         </div>
@@ -318,7 +318,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Tier 1: Court Filter */}
         <div>
-          <label className="text-[10px] font-mono font-bold text-[#64748B] mb-1 flex items-center gap-1">
+          <label className="text-[10px] font-mono font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mb-1 flex items-center gap-1">
             <Gavel className="w-3 h-3 text-[#105B38]" />
             Tier 1: Court Forum
           </label>
@@ -328,7 +328,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
               setSelectedCourtCode(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:bg-white text-xs font-medium"
+            className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] text-xs font-medium"
           >
             <option value="ALL">All Pakistani Forums</option>
             {COURTS_DIRECTORY.map((c) => (
@@ -341,7 +341,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
 
         {/* Tier 2: Subject Matter Category */}
         <div>
-          <label className="text-[10px] font-mono font-bold text-[#64748B] mb-1 flex items-center gap-1">
+          <label className="text-[10px] font-mono font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mb-1 flex items-center gap-1">
             <Scale className="w-3 h-3 text-[#105B38]" />
             Tier 2: Subject Matter
           </label>
@@ -351,7 +351,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
               setSelectedCategory(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:bg-white text-xs font-medium"
+            className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] text-xs font-medium"
           >
             {CATEGORIES_DIRECTORY.map((cat) => (
               <option key={cat.code} value={cat.code}>
@@ -363,8 +363,8 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
 
         {/* Tier 3A: Journal Filter */}
         <div>
-          <label className="text-[10px] font-mono font-bold text-[#64748B] mb-1 flex items-center gap-1">
-            <BookOpen className="w-3 h-3 text-[#64748B]" />
+          <label className="text-[10px] font-mono font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mb-1 flex items-center gap-1">
+            <BookOpen className="w-3 h-3 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
             Tier 3: Law Journal Reporter
           </label>
           <select
@@ -373,7 +373,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
               setSelectedJournalCode(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:bg-white text-xs font-mono font-medium"
+            className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] text-xs font-mono font-medium"
           >
             <option value="ALL">All Reporters (PLD, SCMR, CLC...)</option>
             {JOURNALS_DIRECTORY.map((j) => (
@@ -386,7 +386,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
 
         {/* Tier 3B: Year Filter */}
         <div>
-          <label className="text-[10px] font-mono font-bold text-[#64748B] mb-1 flex items-center gap-1">
+          <label className="text-[10px] font-mono font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mb-1 flex items-center gap-1">
             <Calendar className="w-3 h-3 text-[#105B38]" />
             Volume Year
           </label>
@@ -396,7 +396,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
               setSelectedYear(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:bg-white text-xs font-mono font-medium"
+            className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] text-xs font-mono font-medium"
           >
             <option value="ALL">All Volume Years (1947–2026)</option>
             {indexData?.years?.map((y) => (
@@ -411,7 +411,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
       {/* Directory Search & Filter Quick Actions */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="flex-1 relative">
-          <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-[#94A3B8] dark:text-[#475569] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={directorySearch}
@@ -420,7 +420,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
               setCurrentPage(1);
             }}
             placeholder="Search directory by title, citation, justice, or keywords..."
-            className="w-full h-10 pl-9 pr-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:bg-white transition-all font-medium"
+            className="w-full h-10 pl-9 pr-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] transition-all font-medium"
           />
         </div>
 
@@ -428,7 +428,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
           <button
             type="button"
             onClick={handleResetFilters}
-            className="px-3.5 py-2 rounded-xl bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#475569] hover:text-[#0F172A] text-xs font-semibold transition-all shrink-0"
+            className="px-3.5 py-2 rounded-xl bg-[#F1F5F9] dark:bg-[#1E2D44] hover:bg-[#E2E8F0] text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] text-xs font-semibold transition-all shrink-0"
           >
             Reset Filters
           </button>
@@ -438,29 +438,29 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
       {/* Directory Results List */}
       <div className="space-y-3 pt-1">
         {isLoading ? (
-          <div className="py-14 text-center space-y-2 text-[#64748B] bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-6">
+          <div className="py-14 text-center space-y-2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-[#F8FAFC] dark:bg-[#0B131E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] p-6">
             <Loader2 className="w-8 h-8 mx-auto text-[#105B38] animate-spin" />
-            <p className="text-xs font-bold text-[#0F172A]">Fetching authoritative directory judgments...</p>
-            <p className="text-[11px] text-[#94A3B8]">Querying Pakistan Law Site & Apex Court Case Law archives</p>
+            <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Fetching authoritative directory judgments...</p>
+            <p className="text-[11px] text-[#94A3B8] dark:text-[#475569]">Querying Pakistan Law Site & Apex Court Case Law archives</p>
           </div>
         ) : fetchError ? (
-          <div className="py-12 text-center space-y-3 text-[#64748B] bg-[#FEF2F2] rounded-2xl border border-[#FCA5A5] p-6">
+          <div className="py-12 text-center space-y-3 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-[#FEF2F2] rounded-2xl border border-[#FCA5A5] p-6">
             <AlertCircle className="w-8 h-8 mx-auto text-[#DC2626]" />
             <p className="text-xs font-bold text-[#991B1B]">{fetchError}</p>
             <button
               type="button"
               onClick={() => setRetryCount((c) => c + 1)}
-              className="px-4 py-1.5 rounded-xl bg-white border border-[#FCA5A5] text-[#991B1B] hover:bg-[#FEE2E2] text-xs font-semibold inline-flex items-center gap-1.5 shadow-xs transition-all"
+              className="px-4 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#FCA5A5] text-[#991B1B] hover:bg-[#FEE2E2] text-xs font-semibold inline-flex items-center gap-1.5 shadow-xs transition-all"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Retry</span>
             </button>
           </div>
         ) : paginatedCases.length === 0 ? (
-          <div className="py-14 text-center space-y-2 text-[#64748B] bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-6">
+          <div className="py-14 text-center space-y-2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-[#F8FAFC] dark:bg-[#0B131E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] p-6">
             <Layers className="w-8 h-8 mx-auto text-[#CBD5E1]" />
-            <p className="text-xs font-bold text-[#0F172A]">No reported judgments match the selected directory criteria.</p>
-            <p className="text-[11px] text-[#94A3B8]">Try selecting &quot;All Pakistani Forums&quot; or resetting the volume year and category filters.</p>
+            <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">No reported judgments match the selected directory criteria.</p>
+            <p className="text-[11px] text-[#94A3B8] dark:text-[#475569]">Try selecting &quot;All Pakistani Forums&quot; or resetting the volume year and category filters.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
@@ -468,30 +468,30 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
               <div
                 key={item.id}
                 onClick={() => onSelectJudgment(item.judgmentId || item.id)}
-                className="p-4 sm:p-5 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/50 hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/50 hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
               >
                 <div className="space-y-1.5 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono font-bold text-[#105B38] text-xs bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                    <span className="font-mono font-bold text-[#105B38] text-xs bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
                       {item.citation}
                     </span>
                     <span className="text-xs font-semibold text-[#475569]">
                       {item.courtName || "Supreme Court of Pakistan"}
                     </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F1F5F9] text-[#64748B]">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       Page {item.page}
                     </span>
                     {item.category && (
-                      <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                      <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
                         {item.category}
                       </span>
                     )}
                   </div>
-                  <h4 className="text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#105B38] transition-colors leading-snug">
+                  <h4 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] transition-colors leading-snug">
                     {item.title}
                   </h4>
                   {item.bench && (
-                    <p className="text-[11px] text-[#64748B] flex items-center gap-1.5">
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1.5">
                       <Gavel className="w-3 h-3 text-[#105B38]" />
                       <span>Bench: {item.bench}</span>
                     </p>
@@ -499,7 +499,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
                 </div>
 
                 <div className="flex items-center gap-2.5 self-start sm:self-center shrink-0">
-                  <span className="text-[11px] font-mono text-[#64748B]">
+                  <span className="text-[11px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                     {item.decisionDate
                       ? new Date(item.decisionDate).toLocaleDateString("en-PK", {
                           year: "numeric",
@@ -508,7 +508,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
                         })
                       : `${item.year}`}
                   </span>
-                  <div className="p-2 rounded-xl bg-[#F8FAFC] group-hover:bg-[#105B38] group-hover:text-white text-[#64748B] transition-all shadow-xs">
+                  <div className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] group-hover:bg-[#105B38] group-hover:text-white text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] transition-all shadow-xs">
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
@@ -519,7 +519,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
 
         {/* Pagination Bar */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-4 border-t border-[#E2E8F0] text-xs text-[#64748B] font-mono">
+          <div className="flex items-center justify-between pt-4 border-t border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
             <span>
               Page {currentPage} of {totalPages} ({fetchedCases.length} judgments)
             </span>
@@ -528,7 +528,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage <= 1}
-                className="p-2 rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] disabled:opacity-40 shadow-xs"
+                className="p-2 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:bg-[#F8FAFC] dark:bg-[#0B131E] disabled:opacity-40 shadow-xs"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -536,7 +536,7 @@ export const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ onSelectJudg
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages}
-                className="p-2 rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] disabled:opacity-40 shadow-xs"
+                className="p-2 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:bg-[#F8FAFC] dark:bg-[#0B131E] disabled:opacity-40 shadow-xs"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

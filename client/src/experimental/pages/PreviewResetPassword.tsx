@@ -48,7 +48,7 @@ export default function PreviewResetPassword() {
 
     let label = "Too Weak";
     let color = "bg-red-500";
-    let textColor = "text-red-600";
+    let textColor = "text-red-600 dark:text-red-400";
 
     if (score >= 100) {
       label = "Chambers Grade Security";
@@ -57,11 +57,11 @@ export default function PreviewResetPassword() {
     } else if (score >= 80) {
       label = "Strong";
       color = "bg-emerald-500";
-      textColor = "text-emerald-600";
+      textColor = "text-emerald-600 dark:text-emerald-400";
     } else if (score >= 60) {
       label = "Good";
       color = "bg-amber-500";
-      textColor = "text-amber-600";
+      textColor = "text-amber-600 dark:text-amber-400";
     } else if (score >= 40) {
       label = "Fair";
       color = "bg-amber-400";
@@ -124,17 +124,17 @@ export default function PreviewResetPassword() {
 
   if (!token) {
     return (
-      <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden text-[#0F172A]">
+      <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] dark:bg-[#0B131E] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden text-[#0F172A] dark:text-[#F8FAFC]">
         <div className="absolute top-[-12%] left-[-12%] w-[48%] h-[48%] bg-[#105B38]/10 rounded-full blur-[140px] pointer-events-none" />
         <div className="absolute bottom-[-14%] right-[-12%] w-[40%] h-[40%] bg-[#105B38]/10 rounded-full blur-[130px] pointer-events-none" />
 
-        <div className="w-full max-w-md bg-white border border-[#E2E8F0] shadow-xl shadow-[#105B38]/5 p-6 sm:p-10 rounded-[1.8rem] sm:rounded-[2.2rem] relative z-10">
+        <div className="w-full max-w-md bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl shadow-[#105B38]/5 p-6 sm:p-10 rounded-[1.8rem] sm:rounded-[2.2rem] relative z-10">
           <div className="text-center space-y-4">
-            <div className="w-14 h-14 bg-red-50 border border-red-200 rounded-full mx-auto flex items-center justify-center">
+            <div className="w-14 h-14 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-full mx-auto flex items-center justify-center">
               <AlertTriangle size={28} className="text-red-500" />
             </div>
-            <h2 className="text-xl font-bold text-[#0F172A]">Invalid or Missing Reset Token</h2>
-            <p className="text-xs text-[#64748B] leading-relaxed">
+            <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">Invalid or Missing Reset Token</h2>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
               This password recovery token is missing, expired, or has already been consumed. Please request a new recovery link.
             </p>
 
@@ -154,18 +154,18 @@ export default function PreviewResetPassword() {
   }
 
   return (
-    <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden text-[#0F172A]">
+    <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] dark:bg-[#0B131E] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden text-[#0F172A] dark:text-[#F8FAFC]">
       {/* Background ambient lighting */}
       <div className="absolute top-[-12%] left-[-12%] w-[48%] h-[48%] bg-[#105B38]/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[-14%] right-[-12%] w-[40%] h-[40%] bg-[#105B38]/10 rounded-full blur-[130px] pointer-events-none" />
 
-      <div className="w-full max-w-md bg-white border border-[#E2E8F0] shadow-xl shadow-[#105B38]/5 p-6 sm:p-10 rounded-[1.8rem] sm:rounded-[2.2rem] relative z-10">
+      <div className="w-full max-w-md bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl shadow-[#105B38]/5 p-6 sm:p-10 rounded-[1.8rem] sm:rounded-[2.2rem] relative z-10">
         {/* Header Branding */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-[#105B38]/30 mb-4 shadow-lg shadow-[#105B38]/15 bg-[#EBF5F0] flex items-center justify-center p-2.5">
+          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-[#105B38]/30 mb-4 shadow-lg shadow-[#105B38]/15 dark:shadow-[#10B981]/10 bg-[#EBF5F0] dark:bg-[#105B38]/20 flex items-center justify-center p-2.5">
             <Scale className="w-8 h-8 text-[#105B38]" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A]" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A] dark:text-[#F8FAFC]" style={{ fontFamily: "'Playfair Display', serif" }}>
             Al Wakeelo
           </h1>
           <p className="text-[11px] uppercase tracking-[0.25em] text-[#105B38] font-bold mt-1">
@@ -175,11 +175,11 @@ export default function PreviewResetPassword() {
 
         {success ? (
           <div className="text-center space-y-4">
-            <div className="w-14 h-14 bg-[#EBF5F0] border border-[#A3D4BC] rounded-full mx-auto flex items-center justify-center shadow-inner">
+            <div className="w-14 h-14 bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 rounded-full mx-auto flex items-center justify-center shadow-inner">
               <CheckCircle size={28} className="text-[#105B38]" />
             </div>
-            <h2 className="text-lg font-bold text-[#0F172A]">Password Reset Complete</h2>
-            <p className="text-xs text-[#64748B] leading-relaxed">
+            <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">Password Reset Complete</h2>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
               Your advocate account password has been updated successfully. You can now sign in with your new credentials.
             </p>
             <Link
@@ -193,14 +193,14 @@ export default function PreviewResetPassword() {
           </div>
         ) : (
           <>
-            <p className="text-xs text-[#64748B] text-center mb-5 leading-relaxed">
-              Enter your new chamber security password for <span className="font-semibold text-[#0F172A]">{emailParam}</span>.
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] text-center mb-5 leading-relaxed">
+              Enter your new chamber security password for <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{emailParam}</span>.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* New Password */}
               <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B]" />
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="New Password (min 8 characters) *"
@@ -209,13 +209,13 @@ export default function PreviewResetPassword() {
                   required
                   minLength={8}
                   data-testid="input-new-password"
-                  className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] placeholder-slate-400 pl-10 pr-11 py-3 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
+                  className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 pl-10 pr-11 py-3 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   data-testid="button-toggle-new-password"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -223,9 +223,9 @@ export default function PreviewResetPassword() {
 
               {/* Password Strength Indicator */}
               {password.length > 0 && (
-                <div className="space-y-1.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
+                <div className="space-y-1.5 p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#64748B] font-medium">Strength:</span>
+                    <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Strength:</span>
                     <span className={`font-bold ${strength.textColor}`}>{strength.label}</span>
                   </div>
                   <div className="w-full bg-[#E2E8F0] h-1.5 rounded-full overflow-hidden">
@@ -234,17 +234,17 @@ export default function PreviewResetPassword() {
                       style={{ width: `${strength.score}%` }}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-1 pt-1 text-[10px] text-[#64748B]">
-                    <span className={`flex items-center gap-1 ${strength.checks.length ? "text-emerald-600 font-semibold" : ""}`}>
+                  <div className="grid grid-cols-2 gap-1 pt-1 text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
+                    <span className={`flex items-center gap-1 ${strength.checks.length ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}`}>
                       {strength.checks.length ? <Check size={10} /> : <X size={10} />} 8+ Characters
                     </span>
-                    <span className={`flex items-center gap-1 ${strength.checks.upper ? "text-emerald-600 font-semibold" : ""}`}>
+                    <span className={`flex items-center gap-1 ${strength.checks.upper ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}`}>
                       {strength.checks.upper ? <Check size={10} /> : <X size={10} />} Uppercase Letter
                     </span>
-                    <span className={`flex items-center gap-1 ${strength.checks.number ? "text-emerald-600 font-semibold" : ""}`}>
+                    <span className={`flex items-center gap-1 ${strength.checks.number ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}`}>
                       {strength.checks.number ? <Check size={10} /> : <X size={10} />} Number
                     </span>
-                    <span className={`flex items-center gap-1 ${strength.checks.special ? "text-emerald-600 font-semibold" : ""}`}>
+                    <span className={`flex items-center gap-1 ${strength.checks.special ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}`}>
                       {strength.checks.special ? <Check size={10} /> : <X size={10} />} Special Character
                     </span>
                   </div>
@@ -253,7 +253,7 @@ export default function PreviewResetPassword() {
 
               {/* Confirm New Password */}
               <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B]" />
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm New Password *"
@@ -262,13 +262,13 @@ export default function PreviewResetPassword() {
                   required
                   minLength={8}
                   data-testid="input-confirm-password"
-                  className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] placeholder-slate-400 pl-10 pr-11 py-3 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
+                  className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 pl-10 pr-11 py-3 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   data-testid="button-toggle-confirm-password"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -276,7 +276,7 @@ export default function PreviewResetPassword() {
 
               {/* Passwords Match Check */}
               {confirmPassword.length > 0 && (
-                <p className={`text-[11px] font-semibold flex items-center gap-1 ${passwordsMatch ? "text-emerald-600" : "text-red-500"}`}>
+                <p className={`text-[11px] font-semibold flex items-center gap-1 ${passwordsMatch ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                   {passwordsMatch ? (
                     <>
                       <Check size={12} /> Passwords match
@@ -308,7 +308,7 @@ export default function PreviewResetPassword() {
           </>
         )}
 
-        <div className="mt-6 pt-4 border-t border-[#F1F5F9] flex items-center justify-center gap-2 text-[10px] text-[#64748B]">
+        <div className="mt-6 pt-4 border-t border-[#F1F5F9] flex items-center justify-center gap-2 text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
           <ShieldCheck className="w-3 h-3 text-[#105B38]" />
           <span>Encrypted High Court Chamber Authentication</span>
         </div>

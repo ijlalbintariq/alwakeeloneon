@@ -126,12 +126,12 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
 
   const getDocIcon = (title: string, sourceType?: string | null) => {
     const ext = (sourceType || title.split(".").pop() || "").toLowerCase();
-    if (ext === "pdf") return "text-rose-600 bg-rose-50 border-rose-200";
+    if (ext === "pdf") return "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20";
     if (ext === "docx" || ext === "doc")
-      return "text-blue-600 bg-blue-50 border-blue-200";
+      return "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20";
     if (ext === "xlsx" || ext === "xls")
-      return "text-emerald-700 bg-emerald-50 border-emerald-200";
-    return "text-[#105B38] bg-emerald-50 border-emerald-200";
+      return "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20";
+    return "text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20";
   };
 
   const handleFiles = (fileList: FileList | null) => {
@@ -156,13 +156,13 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
       />
 
       {/* 1. Header & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs">
         <div>
-          <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+          <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
             <FileText className="w-4 h-4 text-[#105B38]" />
             <span>Case Documents Vault & Annexures</span>
           </h3>
-          <p className="text-xs text-[#64748B] mt-0.5">
+          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
             Secure cloud storage for pleadings, Vakalatnamas, impugned orders, and evidence.
           </p>
         </div>
@@ -171,7 +171,7 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
           <button
             type="button"
             onClick={() => setShowLinkModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#0F172A] text-xs font-bold border border-[#E2E8F0] transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-bold border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors"
           >
             <Link2 className="w-3.5 h-3.5 text-[#105B38]" />
             <span>Link from Vault</span>
@@ -208,30 +208,30 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
         className={cn(
           "p-6 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center space-y-2",
           dragOver
-            ? "border-[#105B38] bg-emerald-50/40 shadow-xs"
-            : "border-[#E2E8F0] hover:border-[#105B38]/50 bg-white"
+            ? "border-[#105B38] bg-emerald-50/4 dark:bg-emerald-500/100 dark:bg-emerald-500/10 shadow-xs"
+            : "border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/50 bg-white dark:bg-[#131E2E]"
         )}
       >
-        <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto text-[#105B38]">
+        <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center mx-auto text-[#105B38]">
           <Upload className="w-5 h-5" />
         </div>
-        <p className="text-xs font-semibold text-[#0F172A]">
+        <p className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC]">
           Drag & drop PDF, Word DOCX, or scanned legal files here, or{" "}
           <span className="text-[#105B38] underline font-bold">browse</span>
         </p>
-        <p className="text-xs text-[#64748B]">
+        <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
           Automatic OCR indexing for Pakistani court documents
         </p>
       </div>
 
       {/* 3. Linked Documents List */}
       {documents.length === 0 ? (
-        <div className="p-8 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] text-center space-y-2">
-          <FileText className="w-8 h-8 text-[#94A3B8] mx-auto" />
-          <p className="text-xs font-bold text-[#0F172A]">
+        <div className="p-8 rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-center space-y-2">
+          <FileText className="w-8 h-8 text-[#94A3B8] dark:text-[#475569] mx-auto" />
+          <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
             No documents linked to this case file yet.
           </p>
-          <p className="text-xs text-[#64748B]">
+          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
             Upload your Vakalatnama, impugned orders, or petition drafts.
           </p>
         </div>
@@ -244,7 +244,7 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
             return (
               <div
                 key={doc.id}
-                className="p-3.5 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/40 hover:shadow-xs transition-all flex items-center justify-between gap-3 group"
+                className="p-3.5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/40 hover:shadow-xs transition-all flex items-center justify-between gap-3 group"
               >
                 <div
                   className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
@@ -266,10 +266,10 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                   </div>
 
                   <div className="min-w-0 space-y-0.5">
-                    <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#105B38] truncate transition-colors">
+                    <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] truncate transition-colors">
                       {title}
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-[#64748B]">
+                    <div className="flex items-center gap-2 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       {doc.label && (
                         <span className="font-semibold text-[#105B38]">
                           {doc.label}
@@ -299,7 +299,7 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                         description: "Document reference copied to clipboard.",
                       });
                     }}
-                    className="p-2 rounded-xl text-[#64748B] hover:text-[#105B38] hover:bg-[#F8FAFC] transition-colors"
+                    className="p-2 rounded-xl text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] hover:bg-[#F8FAFC] dark:bg-[#0B131E] transition-colors"
                     title="Copy Citation"
                   >
                     <Copy className="w-4 h-4" />
@@ -314,7 +314,7 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                         sourceType: doc.docSourceType,
                       })
                     }
-                    className="p-2 rounded-xl text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
+                    className="p-2 rounded-xl text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E] transition-colors"
                     title="Preview Document & OCR"
                   >
                     <Eye className="w-4 h-4" />
@@ -328,7 +328,7 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                       }
                     }}
                     disabled={unlinkMutation.isPending}
-                    className="p-2 rounded-xl text-[#64748B] hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                    className="p-2 rounded-xl text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:bg-rose-500/10 transition-colors disabled:opacity-50"
                     title="Unlink from Case"
                   >
                     <Trash2 className="w-4 h-4" />

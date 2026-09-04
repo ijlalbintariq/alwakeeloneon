@@ -716,7 +716,7 @@ export const PreviewChat: React.FC = () => {
 
   return (
     <PreviewShell noPadding>
-      <div className="flex-1 w-full flex flex-col overflow-hidden bg-white relative">
+      <div className="flex-1 w-full flex flex-col overflow-hidden bg-white dark:bg-[#131E2E] relative">
         {/* ── Slide-Over Overlay: Consultations History Drawer ── */}
         {leftDrawerOpen && (
           <div className="absolute inset-0 z-40 flex">
@@ -746,9 +746,9 @@ export const PreviewChat: React.FC = () => {
         )}
 
         {/* ── CENTER PANE: Full-Width Conversation Canvas & Composer ── */}
-        <div className="flex-1 flex flex-col min-w-0 bg-white relative overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#131E2E] relative overflow-hidden">
           {/* Header Bar */}
-          <div className="px-4 py-3 border-b border-[#E5E4E2] bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="px-4 py-3 border-b border-[#E5E4E2] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] flex flex-wrap items-center justify-between gap-3 shrink-0">
             {/* Left Controls */}
             <div className="flex items-center gap-3">
               <button
@@ -756,8 +756,8 @@ export const PreviewChat: React.FC = () => {
                 className={cn(
                   "p-2 rounded-lg text-xs transition-colors border",
                   leftDrawerOpen
-                    ? "bg-[#F5F4F2] border-[#E5E4E2] text-[#1A1A1A]"
-                    : "bg-white border-[#E5E4E2] text-[#666666] hover:text-[#1A1A1A]"
+                    ? "bg-[#F5F4F2] dark:bg-[#0B131E] border-[#E5E4E2] dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC]"
+                    : "bg-white dark:bg-[#131E2E] border-[#E5E4E2] dark:border-[#1E2D44] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#1A1A1A] dark:text-[#F8FAFC]"
                 )}
                 title="Consultation History"
               >
@@ -765,11 +765,11 @@ export const PreviewChat: React.FC = () => {
               </button>
 
               <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-blue-600/20 text-[#666666] flex items-center justify-center font-bold">
+                <div className="h-7 w-7 rounded-lg bg-blue-600/20 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] flex items-center justify-center font-bold">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-sm font-semibold text-[#1A1A1A] truncate">
+                  <h1 className="text-sm font-semibold text-[#1A1A1A] dark:text-[#F8FAFC] truncate">
                     AI Legal Assistant
                   </h1>
                 </div>
@@ -802,11 +802,11 @@ export const PreviewChat: React.FC = () => {
               {messages.length > 1 && (
                 <button
                   onClick={handleShare}
-                  className="p-2 rounded-lg bg-white border border-[#E5E4E2] text-[#666666] hover:text-[#1A1A1A] text-xs transition-colors"
+                  className="p-2 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#1A1A1A] dark:text-[#F8FAFC] text-xs transition-colors"
                   title="Share Consultation URL"
                 >
                   {copiedShareUrl ? (
-                    <Check className="w-4 h-4 text-[#1A1A1A]" />
+                    <Check className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC]" />
                   ) : (
                     <Share2 className="w-4 h-4" />
                   )}
@@ -815,7 +815,7 @@ export const PreviewChat: React.FC = () => {
 
               <button
                 onClick={handleNewConsultation}
-                className="p-2 rounded-lg bg-white border border-[#E5E4E2] text-[#666666] hover:text-[#1A1A1A] text-xs transition-colors"
+                className="p-2 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#1A1A1A] dark:text-[#F8FAFC] text-xs transition-colors"
                 title="New Chat"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -828,8 +828,8 @@ export const PreviewChat: React.FC = () => {
                   rightDrawerOpen
                     ? "bg-[#105B38] border-[#105B38] text-white shadow-sm"
                     : (inspectorData.citations.length > 0 || inspectorData.statutes.length > 0)
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100 shadow-sm"
-                      : "bg-white border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]"
+                      ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-400 hover:bg-emerald-100 shadow-sm"
+                      : "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                 )}
                 title="Legal Intelligence Inspector & Saved References"
               >
@@ -846,7 +846,7 @@ export const PreviewChat: React.FC = () => {
                 {bookmarks.length > 0 && (
                   <span className={cn(
                     "px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none",
-                    rightDrawerOpen ? "bg-white/20 text-white" : "bg-[#105B38]/10 text-[#105B38]"
+                    rightDrawerOpen ? "bg-white dark:bg-[#131E2E]/20 text-white" : "bg-[#105B38]/10 text-[#105B38]"
                   )}>
                     {bookmarks.length}
                   </span>
@@ -865,10 +865,10 @@ export const PreviewChat: React.FC = () => {
                     <span>⛅</span>
                     <span className="text-sm sm:text-base font-bold text-[#105B38]">Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 17 ? "Afternoon" : "Evening"}, Counsel!</span>
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0F172A]">
+                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0F172A] dark:text-[#F8FAFC]">
                     Let&apos;s find the winning precedent.
                   </h2>
-                  <p className="text-xs sm:text-sm text-[#64748B] max-w-md mx-auto leading-relaxed">
+                  <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-md mx-auto leading-relaxed">
                     Ask any legal question, cross-examine statutory provisions, or search 600,000+ reported Pakistani rulings.
                   </p>
                 </div>
@@ -901,12 +901,12 @@ export const PreviewChat: React.FC = () => {
                       key={i}
                       type="button"
                       onClick={() => handleSend(card.query)}
-                      className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/40 hover:shadow-xs transition-all text-left space-y-1 group"
+                      className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/40 hover:shadow-xs transition-all text-left space-y-1 group"
                     >
-                      <div className="font-bold text-xs sm:text-sm text-[#0F172A] group-hover:text-[#105B38] transition-colors">
+                      <div className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] transition-colors">
                         {card.title}
                       </div>
-                      <p className="text-xs text-[#64748B] leading-relaxed">
+                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
                         {card.desc}
                       </p>
                     </button>
@@ -943,7 +943,7 @@ export const PreviewChat: React.FC = () => {
                 >
                   {/* User Message */}
                   {isUser ? (
-                    <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-xs bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] p-4 sm:p-5 shadow-xs space-y-2">
+                    <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-xs bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] p-4 sm:p-5 shadow-xs space-y-2">
                       <div className="text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap">
                         {msg.content}
                       </div>
@@ -953,7 +953,7 @@ export const PreviewChat: React.FC = () => {
                           {msg.attachments.map((att, attIdx) => (
                             <span
                               key={attIdx}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-mono bg-white border border-[#E2E8F0] text-[#0F172A] font-semibold"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-mono bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] font-semibold"
                             >
                               <FileText className="w-3.5 h-3.5 text-[#105B38]" />
                               {att}
@@ -968,21 +968,21 @@ export const PreviewChat: React.FC = () => {
                       {/* Author Header */}
                       <div className="flex items-center justify-between gap-2 px-1">
                         <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38]">
+                          <div className="h-6 w-6 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38]">
                             <Bot className="w-3.5 h-3.5" />
                           </div>
-                          <span className="text-xs sm:text-sm font-semibold text-[#0F172A]">
+                          <span className="text-xs sm:text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]">
                             {msg.modelName || "Al Wakeelo"}
                           </span>
                           {msg.modeName && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-mono font-semibold bg-emerald-50 text-[#105B38] border border-emerald-200 uppercase">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-mono font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 uppercase">
                               {msg.modeName}
                             </span>
                           )}
                         </div>
 
                         {/* Message Actions */}
-                        <div className="flex items-center gap-1 text-[#64748B]">
+                        <div className="flex items-center gap-1 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                           <button
                             type="button"
                             onClick={() => {
@@ -992,7 +992,7 @@ export const PreviewChat: React.FC = () => {
                             }}
                             className={cn(
                               "p-1.5 rounded-lg transition-colors",
-                              copiedMessageId === msg.id ? "text-[#105B38] bg-emerald-50" : "hover:bg-[#F8FAFC] hover:text-[#0F172A]"
+                              copiedMessageId === msg.id ? "text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10" : "hover:bg-[#F8FAFC] dark:bg-[#0B131E] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                             )}
                             title="Copy Markdown Text"
                           >
@@ -1005,8 +1005,8 @@ export const PreviewChat: React.FC = () => {
                             className={cn(
                               "p-1.5 rounded-lg transition-colors",
                               isBookmarked
-                                ? "text-[#105B38] hover:bg-[#F8FAFC]"
-                                : "hover:bg-[#F8FAFC] hover:text-[#0F172A]"
+                                ? "text-[#105B38] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
+                                : "hover:bg-[#F8FAFC] dark:bg-[#0B131E] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                             )}
                             title="Bookmark Turn"
                           >
@@ -1032,14 +1032,14 @@ export const PreviewChat: React.FC = () => {
                       {/* Statutory References Pill Strip */}
                       {statutoryLaws.length > 0 && (
                         <div className="flex items-center gap-1.5 flex-wrap px-1">
-                          <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#64748B] flex items-center gap-1 mr-1">
+                          <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1 mr-1">
                             <Scale className="w-3 h-3 text-[#105B38]" />
                             Statutes Cited:
                           </span>
                           {statutoryLaws.map((law, lIdx) => (
                             <span
                               key={lIdx}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-emerald-50 text-[#105B38] border border-emerald-200 font-medium"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 font-medium"
                               title={law.description}
                             >
                               <BookOpen className="w-3 h-3" />
@@ -1050,13 +1050,13 @@ export const PreviewChat: React.FC = () => {
                       )}
 
                       {/* AI Markdown Prose Body */}
-                      <div className="p-5 sm:p-6 rounded-2xl bg-[#FFFFFF] border border-[#E5E4E2] text-sm sm:text-base text-[#1A1A1A] leading-relaxed shadow-sm">
+                      <div className="p-5 sm:p-6 rounded-2xl bg-[#FFFFFF] dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-sm sm:text-base text-[#1A1A1A] dark:text-[#F8FAFC] leading-relaxed shadow-sm">
                         <LegalMarkdown content={displayContent} />
 
                         {/* RAG Knowledge Vault Citations strip */}
                         {msg.ragCitations && msg.ragCitations.length > 0 && (
-                          <div className="mt-5 pt-3 border-t border-[#E5E4E2] space-y-2">
-                            <div className="text-xs font-mono font-semibold uppercase tracking-wider text-[#1A1A1A] flex items-center gap-1.5">
+                          <div className="mt-5 pt-3 border-t border-[#E5E4E2] dark:border-[#1E2D44] space-y-2">
+                            <div className="text-xs font-mono font-semibold uppercase tracking-wider text-[#1A1A1A] dark:text-[#F8FAFC] flex items-center gap-1.5">
                               <BookOpen className="w-3.5 h-3.5" />
                               Knowledge Vault Grounding Sources ({msg.ragCitations.length})
                             </div>
@@ -1064,12 +1064,12 @@ export const PreviewChat: React.FC = () => {
                               {msg.ragCitations.map((c, cIdx) => (
                                 <div
                                   key={cIdx}
-                                  className="p-3 rounded-lg bg-[#FFFFFF] border border-[#E5E4E2] text-xs space-y-1"
+                                  className="p-3 rounded-lg bg-[#FFFFFF] dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-xs space-y-1"
                                 >
-                                  <div className="font-semibold text-[#1A1A1A] truncate">
+                                  <div className="font-semibold text-[#1A1A1A] dark:text-[#F8FAFC] truncate">
                                     {c.title}
                                   </div>
-                                  <p className="text-xs text-[#666666] line-clamp-2 italic">
+                                  <p className="text-xs text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] line-clamp-2 italic">
                                     &ldquo;{c.quote}&rdquo;
                                   </p>
                                 </div>
@@ -1086,12 +1086,12 @@ export const PreviewChat: React.FC = () => {
 
             {/* Active Tool Latency & Searching Status Bar */}
             {toolSearchStatus.active && (
-              <div className="max-w-4xl mx-auto p-3 rounded-xl bg-[#1A1A1A]/5 border border-[#1A1A1A]/20 text-[#1A1A1A] flex items-center justify-between text-xs animate-pulse">
+              <div className="max-w-4xl mx-auto p-3 rounded-xl bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 border border-[#1A1A1A]/20 dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] flex items-center justify-between text-xs animate-pulse">
                 <div className="flex items-center gap-2 font-mono">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#1A1A1A]" />
+                  <Loader2 className="w-4 h-4 animate-spin text-[#1A1A1A] dark:text-[#F8FAFC]" />
                   <span>Searching Pakistani Judicial Precedents Database...</span>
                 </div>
-                <span className="font-mono text-[11px] text-[#1A1A1A] font-bold">
+                <span className="font-mono text-[11px] text-[#1A1A1A] dark:text-[#F8FAFC] font-bold">
                   {elapsedMs}ms elapsed
                 </span>
               </div>
@@ -1099,19 +1099,19 @@ export const PreviewChat: React.FC = () => {
 
             {/* Deep Reasoning / Thinking Indicator */}
             {isThinking && (
-              <div className="max-w-4xl mx-auto p-3.5 rounded-xl bg-white border border-[#E5E4E2] text-[#1A1A1A] flex items-center justify-between text-xs animate-pulse">
+              <div className="max-w-4xl mx-auto p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] flex items-center justify-between text-xs animate-pulse">
                 <div className="flex items-center gap-2.5">
-                  <Brain className="w-4 h-4 text-[#1A1A1A] animate-spin" />
+                  <Brain className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC] animate-spin" />
                   <div>
-                    <span className="font-semibold text-[#1A1A1A]">
+                    <span className="font-semibold text-[#1A1A1A] dark:text-[#F8FAFC]">
                       Formulating Legal Reasoning & Statutory Cross-References...
                     </span>
-                    <p className="text-[10px] text-[#999999] font-mono">
+                    <p className="text-[10px] text-[#999999] dark:text-[#475569] font-mono">
                       Chambers High-Dimensional Procedural Engine
                     </p>
                   </div>
                 </div>
-                <span className="font-mono text-xs text-[#1A1A1A]">{elapsedMs}ms</span>
+                <span className="font-mono text-xs text-[#1A1A1A] dark:text-[#F8FAFC]">{elapsedMs}ms</span>
               </div>
             )}
 

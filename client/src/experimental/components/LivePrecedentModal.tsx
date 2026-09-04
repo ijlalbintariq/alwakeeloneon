@@ -361,12 +361,12 @@ LEGAL SUBMISSION & GROUNDS:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white dark:bg-[#131E2E] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-500/20 overflow-hidden"
         role="dialog"
         aria-modal="true"
       >
         {/* Modal Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white">
+        <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-500/20 bg-linear-to-r from-slate-50 to-white">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1.5 flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -375,13 +375,13 @@ LEGAL SUBMISSION & GROUNDS:
                 </span>
 
                 {currentPrecedent.isLiveDb ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 inline-flex items-center gap-1.5 shadow-2xs">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <Database className="w-3 h-3 text-emerald-600" />
+                    <Database className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                     <span>Live Database Record</span>
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 inline-flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 dark:text-slate-400 border border-slate-200 dark:border-slate-500/20 inline-flex items-center gap-1">
                     <BookOpen className="w-3 h-3 text-slate-500" />
                     <span>Compendium Landmark</span>
                   </span>
@@ -398,7 +398,7 @@ LEGAL SUBMISSION & GROUNDS:
                 {currentPrecedent.title}
               </h2>
 
-              <div className="flex items-center gap-3 text-xs text-slate-600 flex-wrap">
+              <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
                 <span className="flex items-center gap-1 font-semibold text-[#105B38]">
                   <Landmark className="w-3.5 h-3.5" />
                   {currentPrecedent.court}
@@ -424,7 +424,7 @@ LEGAL SUBMISSION & GROUNDS:
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all shrink-0"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:text-slate-400 hover:bg-slate-100 transition-all shrink-0"
               title="Close Preview"
             >
               <X className="w-5 h-5" />
@@ -432,16 +432,16 @@ LEGAL SUBMISSION & GROUNDS:
           </div>
 
           {/* Action Hub Buttons Toolbar */}
-          <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100 flex-wrap">
+          <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-500/20 flex-wrap">
             {/* 1. Copy Citation */}
             <button
               onClick={handleCopyCitation}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-500/20 text-xs font-semibold text-slate-800 dark:text-slate-400 shadow-2xs transition-all"
             >
               {copiedCitation ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-700 font-bold">Copied!</span>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">Copied!</span>
                 </>
               ) : (
                 <>
@@ -454,12 +454,12 @@ LEGAL SUBMISSION & GROUNDS:
             {/* 2. Copy Legal Ratio */}
             <button
               onClick={handleCopyRatio}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-500/20 text-xs font-semibold text-slate-800 dark:text-slate-400 shadow-2xs transition-all"
             >
               {copiedRatio ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-700 font-bold">Ratio Copied!</span>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">Ratio Copied!</span>
                 </>
               ) : (
                 <>
@@ -481,7 +481,7 @@ LEGAL SUBMISSION & GROUNDS:
             {/* 4. Open in Judgments Workstation */}
             <button
               onClick={handleOpenInJudgments}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-all ml-auto"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 dark:text-slate-400 transition-all ml-auto"
             >
               <span>Full Workstation</span>
               <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
@@ -490,14 +490,14 @@ LEGAL SUBMISSION & GROUNDS:
         </div>
 
         {/* Modal Segment Navigation */}
-        <div className="flex items-center gap-2 px-5 sm:px-6 pt-3 pb-2 border-b border-slate-200 bg-slate-50/70 overflow-x-auto custom-scrollbar">
+        <div className="flex items-center gap-2 px-5 sm:px-6 pt-3 pb-2 border-b border-slate-200 dark:border-slate-500/20 bg-slate-50/70 dark:bg-slate-500/10 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveSegment("ratio")}
             className={cn(
               "px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all",
               activeSegment === "ratio"
-                ? "bg-white text-[#105B38] shadow-2xs border border-slate-200"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-2xs border border-slate-200 dark:border-slate-500/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
             )}
           >
             Ratio Decidendi & Principles
@@ -507,8 +507,8 @@ LEGAL SUBMISSION & GROUNDS:
             className={cn(
               "px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all",
               activeSegment === "headnotes"
-                ? "bg-white text-[#105B38] shadow-2xs border border-slate-200"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-2xs border border-slate-200 dark:border-slate-500/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
             )}
           >
             Statutory Headnotes
@@ -519,8 +519,8 @@ LEGAL SUBMISSION & GROUNDS:
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all",
                 activeSegment === "fulltext"
-                  ? "bg-white text-[#105B38] shadow-2xs border border-slate-200"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-2xs border border-slate-200 dark:border-slate-500/20"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
               )}
             >
               Verbatim Text Excerpt
@@ -533,8 +533,8 @@ LEGAL SUBMISSION & GROUNDS:
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all",
                 activeSegment === "citations"
-                  ? "bg-white text-[#105B38] shadow-2xs border border-slate-200"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-2xs border border-slate-200 dark:border-slate-500/20"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
               )}
             >
               Citations Graph ({ (currentPrecedent.citationsMade?.length || 0) + (currentPrecedent.citationsReceived?.length || 0) })
@@ -543,7 +543,7 @@ LEGAL SUBMISSION & GROUNDS:
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto max-h-[58vh] space-y-5 custom-scrollbar bg-white">
+        <div className="p-5 sm:p-6 overflow-y-auto max-h-[58vh] space-y-5 custom-scrollbar bg-white dark:bg-[#131E2E]">
           {loading && !data && (
             <div className="flex flex-col items-center justify-center py-12 text-slate-500 space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-[#105B38]" />
@@ -552,11 +552,11 @@ LEGAL SUBMISSION & GROUNDS:
           )}
 
           {error && !data && (
-            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-bold text-amber-900">Precedent Lookup Note</p>
-                <p className="text-xs text-amber-800 mt-0.5">{error}</p>
+                <p className="text-xs font-bold text-amber-900 dark:text-amber-300">Precedent Lookup Note</p>
+                <p className="text-xs text-amber-800 dark:text-amber-400 mt-0.5">{error}</p>
                 <button
                   onClick={handleOpenInJudgments}
                   className="mt-2 text-xs font-bold text-[#105B38] hover:underline inline-flex items-center gap-1"
@@ -572,17 +572,17 @@ LEGAL SUBMISSION & GROUNDS:
           {activeSegment === "ratio" && (
             <div className="space-y-4">
               {/* Primary Ratio Quote Box */}
-              <div className="p-5 rounded-2xl bg-linear-to-br from-emerald-50/60 to-slate-50 border border-emerald-200/80 space-y-3">
+              <div className="p-5 rounded-2xl bg-linear-to-br from-emerald-50/60 to-slate-50 border border-emerald-200 dark:border-emerald-500/20/80 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
                     <Scale className="w-4 h-4 text-[#105B38]" />
                     <span>Binding Ratio Decidendi</span>
                   </span>
-                  <span className="text-[11px] font-mono text-emerald-800 font-semibold">
+                  <span className="text-[11px] font-mono text-emerald-800 dark:text-emerald-400 font-semibold">
                     {currentPrecedent.court}
                   </span>
                 </div>
-                <blockquote className="text-sm text-slate-800 font-serif italic leading-relaxed pl-4 border-l-3 border-[#105B38]">
+                <blockquote className="text-sm text-slate-800 dark:text-slate-400 font-serif italic leading-relaxed pl-4 border-l-3 border-[#105B38]">
                   "{currentPrecedent.ratio || currentPrecedent.headnotes || "Settled ratio decidendi established in this authority."}"
                 </blockquote>
               </div>
@@ -590,7 +590,7 @@ LEGAL SUBMISSION & GROUNDS:
               {/* Legal Principles List if available */}
               {currentPrecedent.legalPrinciples && currentPrecedent.legalPrinciples.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Gavel className="w-3.5 h-3.5 text-[#105B38]" />
                     <span>Key Legal Principles Established</span>
                   </h4>
@@ -598,9 +598,9 @@ LEGAL SUBMISSION & GROUNDS:
                     {currentPrecedent.legalPrinciples.map((principle, idx) => (
                       <div
                         key={idx}
-                        className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 flex items-start gap-2.5"
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-500/20 text-xs text-slate-800 dark:text-slate-400 flex items-start gap-2.5"
                       >
-                        <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 dark:text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                           {idx + 1}
                         </span>
                         <p className="leading-relaxed">{principle}</p>
@@ -614,7 +614,7 @@ LEGAL SUBMISSION & GROUNDS:
               {(currentPrecedent.petitioner || currentPrecedent.respondent) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   {currentPrecedent.petitioner && (
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-500/20">
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
                         Petitioner / Appellant
                       </span>
@@ -622,7 +622,7 @@ LEGAL SUBMISSION & GROUNDS:
                     </div>
                   )}
                   {currentPrecedent.respondent && (
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-500/20">
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
                         Respondent / State
                       </span>
@@ -638,12 +638,12 @@ LEGAL SUBMISSION & GROUNDS:
           {activeSegment === "headnotes" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-[#105B38]" />
                   <span>Verbatim Law Report Headnotes</span>
                 </h4>
               </div>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 font-serif leading-relaxed whitespace-pre-line select-text">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-500/20 text-xs text-slate-800 dark:text-slate-400 font-serif leading-relaxed whitespace-pre-line select-text">
                 {currentPrecedent.headnotes || currentPrecedent.ratio || "No detailed headnotes available for this record."}
               </div>
             </div>
@@ -653,12 +653,12 @@ LEGAL SUBMISSION & GROUNDS:
           {activeSegment === "fulltext" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <BookOpen className="w-3.5 h-3.5 text-[#105B38]" />
                   <span>Judgment Text Excerpt</span>
                 </h4>
               </div>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 font-mono leading-relaxed max-h-[350px] overflow-y-auto whitespace-pre-wrap select-text custom-scrollbar">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-500/20 text-xs text-slate-800 dark:text-slate-400 font-mono leading-relaxed max-h-[350px] overflow-y-auto whitespace-pre-wrap select-text custom-scrollbar">
                 {currentPrecedent.fullText || "Full text not available."}
               </div>
             </div>
@@ -669,26 +669,26 @@ LEGAL SUBMISSION & GROUNDS:
             <div className="space-y-4">
               {currentPrecedent.citationsMade && currentPrecedent.citationsMade.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">
                     Authorities Cited In This Judgment ({currentPrecedent.citationsMade.length})
                   </h4>
                   <div className="space-y-2">
                     {currentPrecedent.citationsMade.map((cit, idx) => (
                       <div
                         key={idx}
-                        className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between gap-3"
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-500/20 text-xs flex items-center justify-between gap-3"
                       >
                         <div className="min-w-0">
                           <span className="font-bold text-[#105B38] font-mono block truncate">
                             {cit.citation || cit.citationText}
                           </span>
                           {cit.contextExcerpt && (
-                            <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                            <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">
                               {cit.contextExcerpt}
                             </p>
                           )}
                         </div>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700 shrink-0">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700 dark:text-slate-400 shrink-0">
                           {cit.treatment || cit.citationType || "cited"}
                         </span>
                       </div>
@@ -699,19 +699,19 @@ LEGAL SUBMISSION & GROUNDS:
 
               {currentPrecedent.citationsReceived && currentPrecedent.citationsReceived.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">
                     Subsequent Judgments Citing This Case ({currentPrecedent.citationsReceived.length})
                   </h4>
                   <div className="space-y-2">
                     {currentPrecedent.citationsReceived.map((cit, idx) => (
                       <div
                         key={idx}
-                        className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between gap-3"
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-500/20 text-xs flex items-center justify-between gap-3"
                       >
                         <span className="font-bold text-[#105B38] font-mono">
                           {cit.citation || cit.citationText}
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 shrink-0">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:text-blue-400 shrink-0">
                           {cit.treatment || cit.citationType || "followed"}
                         </span>
                       </div>
@@ -724,14 +724,14 @@ LEGAL SUBMISSION & GROUNDS:
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
+        <div className="p-4 border-t border-slate-200 dark:border-slate-500/20 bg-slate-50 dark:bg-slate-800 flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-1.5">
             <Scale className="w-3.5 h-3.5 text-[#105B38]" />
             <span>Alwakeelo Case Law & Superior Courts Precedents Engine</span>
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold transition-all"
+            className="px-4 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-slate-100 border border-slate-200 dark:border-slate-500/20 text-slate-700 dark:text-slate-400 font-semibold transition-all"
           >
             Close
           </button>

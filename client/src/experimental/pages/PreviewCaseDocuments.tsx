@@ -446,18 +446,18 @@ export const PreviewCaseDocuments: React.FC = () => {
     <PreviewShell>
       <div className="max-w-7xl mx-auto space-y-6 pb-12">
         {/* Top Header */}
-        <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="bg-white dark:bg-[#131E2E] p-6 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 <Briefcase className="w-5 h-5" />
               </div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#105B38]">
                 Litigation Records & Evidence Vault
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">Case Documents & Annexures</h1>
-            <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">Case Documents & Annexures</h1>
+            <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
               Matter-centric repository for petitions, pleadings, impugned orders, Vakalatnamas, and exhibits with full-text OCR indexing.
             </p>
           </div>
@@ -477,27 +477,27 @@ export const PreviewCaseDocuments: React.FC = () => {
         {/* AI Context Usage & Quick Stats Bar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* AI Context Progress Card */}
-          <div className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38]">
+                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38]">
                   <Zap className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-[#0F172A]">Active AI RAG Context</span>
+                <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Active AI RAG Context</span>
               </div>
-              <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+              <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
                 {activeContextChars.toLocaleString()} / {MAX_CONTEXT_CHARS.toLocaleString()} Chars
               </span>
             </div>
 
             <div className="space-y-1.5">
-              <div className="w-full bg-[#F1F5F9] rounded-full h-2.5 overflow-hidden border border-[#E2E8F0]">
+              <div className="w-full bg-[#F1F5F9] dark:bg-[#1E2D44] rounded-full h-2.5 overflow-hidden border border-[#E2E8F0] dark:border-[#1E2D44]">
                 <div
                   className="bg-[#105B38] h-full rounded-full transition-all duration-300"
                   style={{ width: `${activeContextPercent}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[10px] text-[#64748B]">
+              <div className="flex justify-between text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 <span>{documents.filter((d) => d.inActiveContext).length} Documents Active</span>
                 <span>{activeContextPercent}% Context Window Used</span>
               </div>
@@ -505,33 +505,33 @@ export const PreviewCaseDocuments: React.FC = () => {
           </div>
 
           {/* Matters Count Card */}
-          <div className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 <FolderOpen className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-xl font-bold text-[#0F172A]">{uniqueMatters.length} Active Matters</div>
-                <div className="text-xs text-[#64748B] mt-0.5">Across High Courts & Supreme Court</div>
+                <div className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">{uniqueMatters.length} Active Matters</div>
+                <div className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">Across High Courts & Supreme Court</div>
               </div>
             </div>
-            <span className="text-xs font-bold text-[#105B38] bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#E2E8F0]">
+            <span className="text-xs font-bold text-[#105B38] bg-[#F8FAFC] dark:bg-[#0B131E] px-3 py-1.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
               {documents.length} Total Files
             </span>
           </div>
 
           {/* Procedural Verified Badge */}
-          <div className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-xl font-bold text-[#0F172A]">100% OCR Indexed</div>
-                <div className="text-xs text-[#64748B] mt-0.5">Biometric attestation & stamps scanned</div>
+                <div className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">100% OCR Indexed</div>
+                <div className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">Biometric attestation & stamps scanned</div>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/20">
               <Check className="w-3.5 h-3.5" />
               Audit Ready
             </span>
@@ -539,18 +539,18 @@ export const PreviewCaseDocuments: React.FC = () => {
         </div>
 
         {/* View Mode & Filter Control Bar */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
+        <div className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             {/* View Mode Switcher */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] shrink-0 self-start">
+            <div className="flex items-center gap-1.5 p-1 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] shrink-0 self-start">
               <button
                 type="button"
                 onClick={() => setViewMode("all_documents")}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
                   viewMode === "all_documents"
-                    ? "bg-white text-[#105B38] shadow-xs border border-[#E2E8F0]"
-                    : "text-[#64748B] hover:text-[#0F172A]"
+                    ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-xs border border-[#E2E8F0] dark:border-[#1E2D44]"
+                    : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 )}
               >
                 All Documents List
@@ -561,8 +561,8 @@ export const PreviewCaseDocuments: React.FC = () => {
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
                   viewMode === "matter_folders"
-                    ? "bg-white text-[#105B38] shadow-xs border border-[#E2E8F0]"
-                    : "text-[#64748B] hover:text-[#0F172A]"
+                    ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-xs border border-[#E2E8F0] dark:border-[#1E2D44]"
+                    : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 )}
               >
                 <FolderOpen className="w-3.5 h-3.5" />
@@ -572,12 +572,12 @@ export const PreviewCaseDocuments: React.FC = () => {
 
             {/* Matter Filter Dropdown */}
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                <Briefcase className="w-3.5 h-3.5 text-[#64748B]" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
+                <Briefcase className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <select
                   value={selectedMatterFilter}
                   onChange={(e) => setSelectedMatterFilter(e.target.value)}
-                  className="bg-transparent text-xs text-[#0F172A] font-semibold focus:outline-none cursor-pointer max-w-[220px] truncate"
+                  className="bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none cursor-pointer max-w-[220px] truncate"
                 >
                   <option value="All">All Matters / Files</option>
                   {uniqueMatters.map((m) => (
@@ -589,12 +589,12 @@ export const PreviewCaseDocuments: React.FC = () => {
               </div>
 
               {/* Status Filter */}
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#64748B]" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <select
                   value={selectedStatusFilter}
                   onChange={(e) => setSelectedStatusFilter(e.target.value)}
-                  className="bg-transparent text-xs text-[#0F172A] font-semibold focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none cursor-pointer"
                 >
                   <option value="All">All Statuses</option>
                   <option value="verified">Verified</option>
@@ -607,20 +607,20 @@ export const PreviewCaseDocuments: React.FC = () => {
           </div>
 
           {/* Search Line */}
-          <div className="flex items-center px-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] focus-within:border-[#105B38] focus-within:bg-white transition-all">
-            <Search className="w-4 h-4 text-[#94A3B8] mr-2.5 shrink-0" />
+          <div className="flex items-center px-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] focus-within:border-[#105B38] focus-within:bg-white dark:bg-[#131E2E] transition-all">
+            <Search className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mr-2.5 shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search across case documents, matter numbers, courts, summaries, or OCR text..."
-              className="w-full h-10 bg-transparent text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none"
+              className="w-full h-10 bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="p-1 rounded-md text-[#94A3B8] hover:text-[#0F172A]"
+                className="p-1 rounded-md text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -628,8 +628,8 @@ export const PreviewCaseDocuments: React.FC = () => {
           </div>
 
           {/* Type Filter Buttons */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E2E8F0]/70">
-            <span className="text-[11px] font-bold text-[#64748B] mr-2">Doc Type:</span>
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E2E8F0] dark:border-[#1E2D44]/70">
+            <span className="text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mr-2">Doc Type:</span>
             {docTypes.map((t) => (
               <button
                 key={t}
@@ -639,7 +639,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                   "px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
                   selectedType === t
                     ? "bg-[#105B38] text-white shadow-xs"
-                    : "bg-[#F8FAFC] text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0]"
+                    : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
                 )}
               >
                 {t}
@@ -652,10 +652,10 @@ export const PreviewCaseDocuments: React.FC = () => {
         {viewMode === "matter_folders" && (
           <div className="space-y-6">
             {uniqueMatters.length === 0 ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-[#E2E8F0] space-y-2">
-                <FolderOpen className="w-10 h-10 text-[#94A3B8] mx-auto" />
-                <p className="text-sm font-bold text-[#0F172A]">No Case Documents</p>
-                <p className="text-xs text-[#64748B]">Upload your first case document to organize records by matter.</p>
+              <div className="p-12 text-center bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
+                <FolderOpen className="w-10 h-10 text-[#94A3B8] dark:text-[#475569] mx-auto" />
+                <p className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">No Case Documents</p>
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Upload your first case document to organize records by matter.</p>
               </div>
             ) : (
               uniqueMatters.map((matter) => {
@@ -665,34 +665,34 @@ export const PreviewCaseDocuments: React.FC = () => {
                 return (
                   <div
                     key={matter.caseRef}
-                    className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden"
+                    className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs overflow-hidden"
                   >
                     {/* Folder Header */}
-                    <div className="p-5 bg-[#F8FAFC] border-b border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="p-5 bg-[#F8FAFC] dark:bg-[#0B131E] border-b border-[#E2E8F0] dark:border-[#1E2D44] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38] shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38] shrink-0">
                           <FolderOpen className="w-5 h-5" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-[#105B38] bg-white px-2 py-0.5 rounded-md border border-[#E2E8F0]">
+                            <span className="font-mono text-xs font-bold text-[#105B38] bg-white dark:bg-[#131E2E] px-2 py-0.5 rounded-md border border-[#E2E8F0] dark:border-[#1E2D44]">
                               {matter.caseRef}
                             </span>
-                            <span className="text-xs text-[#64748B]">· {matter.court}</span>
+                            <span className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">· {matter.court}</span>
                           </div>
-                          <h2 className="text-sm font-bold text-[#0F172A] mt-0.5">{matter.matterTitle}</h2>
+                          <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5">{matter.matterTitle}</h2>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
                         <Link
                           href={`/preview/cases`}
-                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
+                          className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                           <span>Open Matter File</span>
                         </Link>
-                        <span className="text-xs font-bold text-[#64748B] bg-white px-2.5 py-1.5 rounded-xl border border-[#E2E8F0]">
+                        <span className="text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-white dark:bg-[#131E2E] px-2.5 py-1.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
                           {matterDocs.length} Documents
                         </span>
                       </div>
@@ -703,23 +703,23 @@ export const PreviewCaseDocuments: React.FC = () => {
                       {matterDocs.map((doc) => (
                         <div
                           key={doc.id}
-                          className="p-4 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/40 hover:shadow-xs transition-all flex flex-col justify-between space-y-3"
+                          className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/40 hover:shadow-xs transition-all flex flex-col justify-between space-y-3"
                         >
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-[#105B38] border border-emerald-200 uppercase">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 uppercase">
                                 {doc.type}
                               </span>
-                              <span className="text-[11px] font-mono text-[#64748B]">
+                              <span className="text-[11px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                                 {doc.pageCount} Pages · {doc.fileSize}
                               </span>
                             </div>
 
-                            <h3 className="font-bold text-xs text-[#0F172A] leading-snug">{doc.title}</h3>
-                            <p className="text-xs text-[#64748B] line-clamp-2">{doc.summary}</p>
+                            <h3 className="font-bold text-xs text-[#0F172A] dark:text-[#F8FAFC] leading-snug">{doc.title}</h3>
+                            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] line-clamp-2">{doc.summary}</p>
                           </div>
 
-                          <div className="pt-2 border-t border-[#E2E8F0] flex items-center justify-between text-xs">
+                          <div className="pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs">
                             <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
@@ -727,8 +727,8 @@ export const PreviewCaseDocuments: React.FC = () => {
                                 className={cn(
                                   "px-2 py-1 rounded-md text-[10px] font-bold border transition-colors flex items-center gap-1",
                                   doc.inActiveContext
-                                    ? "bg-emerald-50 text-[#105B38] border-emerald-200"
-                                    : "bg-[#F8FAFC] text-[#64748B] border-[#E2E8F0]"
+                                    ? "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
+                                    : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44]"
                                 )}
                               >
                                 <Zap className="w-3 h-3" />
@@ -738,7 +738,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setActiveVersionDoc(doc)}
-                                className="px-2 py-1 rounded-md bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[10px] font-bold text-[#475569] flex items-center gap-1"
+                                className="px-2 py-1 rounded-md bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[10px] font-bold text-[#475569] flex items-center gap-1"
                               >
                                 <GitBranch className="w-3 h-3 text-[#105B38]" />
                                 <span>{doc.versions.length} Ver</span>
@@ -769,10 +769,10 @@ export const PreviewCaseDocuments: React.FC = () => {
         {/* 2. ALL DOCUMENTS GRID VIEW */}
         {viewMode === "all_documents" && (
           filteredDocuments.length === 0 ? (
-            <div className="p-12 text-center bg-white rounded-2xl border border-[#E2E8F0] space-y-2">
-              <FileText className="w-10 h-10 text-[#94A3B8] mx-auto" />
-              <p className="text-sm font-bold text-[#0F172A]">No Case Documents Found</p>
-              <p className="text-xs text-[#64748B]">
+            <div className="p-12 text-center bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
+              <FileText className="w-10 h-10 text-[#94A3B8] dark:text-[#475569] mx-auto" />
+              <p className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">No Case Documents Found</p>
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 {searchQuery || selectedType !== "All" || selectedMatterFilter !== "All" || selectedStatusFilter !== "All"
                   ? "Try adjusting your search query or filters."
                   : "Upload pleadings, orders, or annexures to build your case repository."}
@@ -783,16 +783,16 @@ export const PreviewCaseDocuments: React.FC = () => {
               {filteredDocuments.map((doc) => (
                 <div
                   key={doc.id}
-                  className="p-5 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
+                  className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
                 >
                   <div className="space-y-3">
                     {/* Top Bar Badges */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200 uppercase tracking-wider">
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 uppercase tracking-wider">
                           {doc.type}
                         </span>
-                        <span className="font-mono text-xs font-bold text-[#0F172A] bg-[#F8FAFC] px-2 py-0.5 rounded-md border border-[#E2E8F0]">
+                        <span className="font-mono text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] bg-[#F8FAFC] dark:bg-[#0B131E] px-2 py-0.5 rounded-md border border-[#E2E8F0] dark:border-[#1E2D44]">
                           {doc.caseRef}
                         </span>
                       </div>
@@ -804,8 +804,8 @@ export const PreviewCaseDocuments: React.FC = () => {
                           className={cn(
                             "px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors flex items-center gap-1",
                             doc.inActiveContext
-                              ? "bg-emerald-50 text-[#105B38] border-emerald-200"
-                              : "bg-[#F8FAFC] text-[#64748B] hover:text-[#0F172A] border-[#E2E8F0]"
+                              ? "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
+                              : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border-[#E2E8F0] dark:border-[#1E2D44]"
                           )}
                           title="Toggle inclusion in AI Assistant drafting context"
                         >
@@ -813,7 +813,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                           <span>{doc.inActiveContext ? "In Context" : "+ Add Context"}</span>
                         </button>
 
-                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                        <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" />
                           Verified
                         </span>
@@ -822,13 +822,13 @@ export const PreviewCaseDocuments: React.FC = () => {
 
                     {/* Title & Matter */}
                     <div>
-                      <h3 className="font-bold text-sm text-[#0F172A] group-hover:text-[#105B38] transition-colors leading-snug">
+                      <h3 className="font-bold text-sm text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] transition-colors leading-snug">
                         {doc.title}
                       </h3>
-                      <div className="flex items-center gap-2 text-[11px] text-[#64748B] mt-1">
+                      <div className="flex items-center gap-2 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
                         <span className="truncate">{doc.matterTitle}</span>
                         <span>·</span>
-                        <span className="font-semibold text-[#0F172A] shrink-0">{doc.court}</span>
+                        <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] shrink-0">{doc.court}</span>
                       </div>
                     </div>
 
@@ -838,14 +838,14 @@ export const PreviewCaseDocuments: React.FC = () => {
                     </p>
 
                     {/* OCR Snippet Preview */}
-                    <div className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[11px] font-mono text-[#334155] italic line-clamp-2">
+                    <div className="p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[11px] font-mono text-[#334155] dark:text-[#CBD5E1] italic line-clamp-2">
                       &quot;{doc.ocrSnippet}&quot;
                     </div>
                   </div>
 
                   {/* Card Footer */}
-                  <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs">
-                    <div className="text-[10px] font-mono text-[#64748B]">
+                  <div className="pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs">
+                    <div className="text-[10px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       <span>{doc.pageCount}p · {doc.fileSize} · {doc.uploadedDate}</span>
                     </div>
 
@@ -853,7 +853,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setActiveVersionDoc(doc)}
-                        className="px-2.5 py-1 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[11px] font-bold text-[#475569] flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[11px] font-bold text-[#475569] flex items-center gap-1"
                         title="Version History & Changelog"
                       >
                         <GitBranch className="w-3 h-3 text-[#105B38]" />
@@ -872,7 +872,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                       <button
                         type="button"
                         onClick={(e) => handleDeleteDoc(doc.id, doc.title, e)}
-                        className="p-1 rounded-lg bg-[#F8FAFC] hover:bg-rose-50 border border-[#E2E8F0] text-[#94A3B8] hover:text-rose-600 transition-colors"
+                        className="p-1 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-rose-50 dark:bg-rose-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 transition-colors"
                         title="Delete Document"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -894,20 +894,20 @@ export const PreviewCaseDocuments: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Top Bar */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38] shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38] shrink-0">
                     <FileText className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A] truncate">
+                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
                       {activeViewerDoc.title}
                     </h2>
-                    <div className="flex items-center gap-2 text-[11px] text-[#64748B] mt-0.5">
+                    <div className="flex items-center gap-2 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                       <span className="font-mono font-bold text-[#105B38]">{activeViewerDoc.caseRef}</span>
                       <span>·</span>
                       <span>{activeViewerDoc.court}</span>
@@ -927,7 +927,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                         description: "Snippet copied to clipboard for citation.",
                       });
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5"
                   >
                     <Copy className="w-3.5 h-3.5 text-[#105B38]" />
                     <span>Copy Snippet</span>
@@ -936,7 +936,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setActiveViewerDoc(null)}
-                    className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] transition-colors"
+                    className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0] transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -946,18 +946,18 @@ export const PreviewCaseDocuments: React.FC = () => {
               {/* Modal Body with Sidecar Layout */}
               <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-3">
                 {/* Left 2 Cols: Full OCR Reader */}
-                <div className="lg:col-span-2 overflow-y-auto p-6 space-y-4 border-r border-[#E2E8F0]">
+                <div className="lg:col-span-2 overflow-y-auto p-6 space-y-4 border-r border-[#E2E8F0] dark:border-[#1E2D44]">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase text-[#105B38] tracking-wider flex items-center gap-1.5">
                       <FileText className="w-4 h-4" />
                       Extracted OCR Pleading Text
                     </span>
-                    <span className="text-[11px] font-mono text-[#64748B]">
+                    <span className="text-[11px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       {activeViewerDoc.charCount.toLocaleString()} Chars
                     </span>
                   </div>
 
-                  <div className="p-5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] font-mono text-xs text-[#1E293B] leading-relaxed whitespace-pre-wrap">
+                  <div className="p-5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] font-mono text-xs text-[#1E293B] leading-relaxed whitespace-pre-wrap">
                     {activeViewerDoc.fullOcrText}
                   </div>
                 </div>
@@ -965,13 +965,13 @@ export const PreviewCaseDocuments: React.FC = () => {
                 {/* Right 1 Col: Procedural Audit & Matter Controls Sidecar */}
                 <div className="overflow-y-auto p-6 space-y-5 bg-[#FAFAFA]">
                   {/* Procedural Health Shield */}
-                  <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs space-y-3">
+                  <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5">
                         <ShieldCheck className="w-4 h-4 text-[#105B38]" />
                         Procedural Scanner
                       </span>
-                      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
                         Compliant
                       </span>
                     </div>
@@ -980,35 +980,35 @@ export const PreviewCaseDocuments: React.FC = () => {
                       {activeViewerDoc.proceduralChecks.map((chk, i) => (
                         <div
                           key={i}
-                          className="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-xs space-y-1"
+                          className="p-2.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs space-y-1"
                         >
                           <div className="flex items-center justify-between font-bold">
-                            <span className="text-[#0F172A]">{chk.rule}</span>
+                            <span className="text-[#0F172A] dark:text-[#F8FAFC]">{chk.rule}</span>
                             <span
                               className={cn(
                                 "text-[10px] uppercase font-bold px-1.5 py-0.5 rounded",
                                 chk.status === "pass"
-                                  ? "bg-emerald-100 text-emerald-800"
+                                  ? "bg-emerald-100 text-emerald-800 dark:text-emerald-400"
                                   : chk.status === "warning"
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-rose-100 text-rose-800"
+                                  ? "bg-amber-100 text-amber-800 dark:text-amber-400"
+                                  : "bg-rose-100 text-rose-800 dark:text-rose-400"
                               )}
                             >
                               {chk.status}
                             </span>
                           </div>
-                          <p className="text-[11px] text-[#64748B]">{chk.detail}</p>
+                          <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{chk.detail}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Metadata & Matter Assignment Card */}
-                  <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs space-y-3 text-xs">
-                    <span className="font-bold text-[#0F172A] block">Document Assignment</span>
+                  <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3 text-xs">
+                    <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC] block">Document Assignment</span>
 
                     <div>
-                      <span className="text-[10px] font-bold text-[#64748B] uppercase block mb-1">
+                      <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase block mb-1">
                         Linked Matter Reference
                       </span>
                       <select
@@ -1017,7 +1017,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                           handleReassignMatter(activeViewerDoc.id, e.target.value);
                           setActiveViewerDoc({ ...activeViewerDoc, caseRef: e.target.value });
                         }}
-                        className="w-full px-3 py-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold text-[#0F172A] focus:outline-none"
+                        className="w-full px-3 py-2 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none"
                       >
                         {uniqueMatters.map((m) => (
                           <option key={m.caseRef} value={m.caseRef}>
@@ -1028,24 +1028,24 @@ export const PreviewCaseDocuments: React.FC = () => {
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-[#64748B] uppercase block">Assigned Counsel</span>
-                      <span className="font-bold text-[#0F172A]">{activeViewerDoc.assignedCounsel}</span>
+                      <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase block">Assigned Counsel</span>
+                      <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{activeViewerDoc.assignedCounsel}</span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-[#64748B] uppercase block">Filing Timestamp</span>
-                      <span className="font-bold text-[#0F172A]">{activeViewerDoc.uploadedDate}</span>
+                      <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase block">Filing Timestamp</span>
+                      <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{activeViewerDoc.uploadedDate}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between text-xs shrink-0">
+              <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs shrink-0">
                 <div className="flex items-center gap-2">
                   <Link
                     href="/preview/drafting"
-                    className="px-4 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-[#E2E8F0] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-emerald-50 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
                   >
                     <FileSignature className="w-3.5 h-3.5" />
                     <span>Open in Legal Drafting Studio</span>
@@ -1073,24 +1073,24 @@ export const PreviewCaseDocuments: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38]">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38]">
                     <GitBranch className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-[#0F172A]">Document Version History</h2>
-                    <p className="text-xs text-[#64748B]">{activeVersionDoc.title}</p>
+                    <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">Document Version History</h2>
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{activeVersionDoc.title}</p>
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setActiveVersionDoc(null)}
-                  className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0]"
+                  className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0]"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1100,25 +1100,25 @@ export const PreviewCaseDocuments: React.FC = () => {
                 {activeVersionDoc.versions.map((ver, i) => (
                   <div
                     key={ver.version}
-                    className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2"
+                    className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2"
                   >
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-xs bg-white text-[#105B38] px-2 py-0.5 rounded border border-[#E2E8F0]">
+                        <span className="font-mono font-bold text-xs bg-white dark:bg-[#131E2E] text-[#105B38] px-2 py-0.5 rounded border border-[#E2E8F0] dark:border-[#1E2D44]">
                           {ver.version}
                         </span>
-                        <span className="font-bold text-[#0F172A]">{ver.author}</span>
+                        <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{ver.author}</span>
                       </div>
-                      <span className="text-[11px] text-[#64748B]">{ver.uploadedAt}</span>
+                      <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{ver.uploadedAt}</span>
                     </div>
 
-                    <p className="text-xs text-[#334155]">{ver.changeNote}</p>
-                    <span className="text-[10px] font-mono text-[#94A3B8] block">File Size: {ver.fileSize}</span>
+                    <p className="text-xs text-[#334155] dark:text-[#CBD5E1]">{ver.changeNote}</p>
+                    <span className="text-[10px] font-mono text-[#94A3B8] dark:text-[#475569] block">File Size: {ver.fileSize}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="p-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex justify-end">
+              <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border-t border-[#E2E8F0] dark:border-[#1E2D44] flex justify-end">
                 <button
                   type="button"
                   onClick={() => setActiveVersionDoc(null)}
@@ -1142,17 +1142,17 @@ export const PreviewCaseDocuments: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38]">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38]">
                     <Upload className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-[#0F172A]">Upload Case Document</h2>
-                    <p className="text-xs text-[#64748B]">Attach pleadings, impugned orders, or evidence exhibits.</p>
+                    <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">Upload Case Document</h2>
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Attach pleadings, impugned orders, or evidence exhibits.</p>
                   </div>
                 </div>
 
@@ -1160,7 +1160,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsUploadModalOpen(false)}
-                    className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0]"
+                    className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0]"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1170,21 +1170,21 @@ export const PreviewCaseDocuments: React.FC = () => {
               <div className="p-6">
                 {uploadStep !== "idle" ? (
                   <div className="py-8 space-y-6 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#105B38] flex items-center justify-center mx-auto animate-pulse">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] flex items-center justify-center mx-auto animate-pulse">
                       <Sparkles className="w-8 h-8" />
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-[#0F172A]">
+                      <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                         {uploadStep === "uploading" && "Uploading Pleading & Records..."}
                         {uploadStep === "ocr" && "Running High Court OCR & Stamp Verification..."}
                         {uploadStep === "scanning" && "Running Procedural & Limitation Scanner..."}
                         {uploadStep === "done" && "Document Indexed & Ready!"}
                       </h3>
-                      <p className="text-xs text-[#64748B] mt-1">Linking to {uploadForm.caseRef}...</p>
+                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">Linking to {uploadForm.caseRef}...</p>
                     </div>
 
-                    <div className="w-full bg-[#F1F5F9] rounded-full h-3 overflow-hidden border border-[#E2E8F0]">
+                    <div className="w-full bg-[#F1F5F9] dark:bg-[#1E2D44] rounded-full h-3 overflow-hidden border border-[#E2E8F0] dark:border-[#1E2D44]">
                       <div
                         className="bg-[#105B38] h-full transition-all duration-300 rounded-full"
                         style={{ width: `${uploadProgress}%` }}
@@ -1194,20 +1194,20 @@ export const PreviewCaseDocuments: React.FC = () => {
                 ) : (
                   <form onSubmit={handleStartUpload} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-[#0F172A] mb-1">Document Title *</label>
+                      <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Document Title *</label>
                       <input
                         type="text"
                         required
                         value={uploadForm.title}
                         onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
                         placeholder="e.g. Replication / Written Statement with Oath Attestation"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:border-[#105B38] focus:bg-white focus:outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] focus:outline-none"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-[#0F172A] mb-1">Target Matter</label>
+                        <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Target Matter</label>
                         <select
                           value={uploadForm.caseRef}
                           onChange={(e) => {
@@ -1219,7 +1219,7 @@ export const PreviewCaseDocuments: React.FC = () => {
                               court: found?.court || uploadForm.court,
                             });
                           }}
-                          className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] font-semibold focus:outline-none"
+                          className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none"
                         >
                           {uniqueMatters.map((m) => (
                             <option key={m.caseRef} value={m.caseRef}>
@@ -1230,11 +1230,11 @@ export const PreviewCaseDocuments: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#0F172A] mb-1">Document Type</label>
+                        <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">Document Type</label>
                         <select
                           value={uploadForm.type}
                           onChange={(e) => setUploadForm({ ...uploadForm, type: e.target.value as any })}
-                          className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] font-medium focus:outline-none"
+                          className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] font-medium focus:outline-none"
                         >
                           <option value="Pleading">Pleading (Plaint / Petition / Written Statement)</option>
                           <option value="Vakalatnama">Vakalatnama & Power of Attorney</option>
@@ -1246,19 +1246,19 @@ export const PreviewCaseDocuments: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="p-5 border-2 border-dashed border-[#E2E8F0] hover:border-[#105B38] rounded-2xl bg-[#F8FAFC] text-center space-y-2 cursor-pointer transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center mx-auto text-[#105B38]">
+                    <div className="p-5 border-2 border-dashed border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] text-center space-y-2 cursor-pointer transition-colors">
+                      <div className="w-10 h-10 rounded-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-center mx-auto text-[#105B38]">
                         <Upload className="w-5 h-5" />
                       </div>
-                      <div className="text-xs font-bold text-[#0F172A]">Drop Scanned Pleading or Annexure PDF</div>
-                      <p className="text-[11px] text-[#64748B]">Auto-indexes OCR text and verifies court stamp authenticity.</p>
+                      <div className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Drop Scanned Pleading or Annexure PDF</div>
+                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Auto-indexes OCR text and verifies court stamp authenticity.</p>
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2">
                       <button
                         type="button"
                         onClick={() => setIsUploadModalOpen(false)}
-                        className="px-4 py-2 rounded-xl bg-[#F8FAFC] text-xs font-bold text-[#64748B]"
+                        className="px-4 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                       >
                         Cancel
                       </button>

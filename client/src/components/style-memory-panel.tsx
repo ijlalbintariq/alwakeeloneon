@@ -261,7 +261,7 @@ export function StyleMemoryPanel({
 
   if (isSystemDisabled) {
     return (
-      <section className={`rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-4 text-center ${className}`}>
+      <section className={`rounded-xl border border-dashed border-zinc-200 dark:border-zinc-500/20 bg-zinc-50 dark:bg-zinc-500/10 p-4 text-center ${className}`}>
         <div className="flex flex-col items-center justify-center space-y-3">
           <div className="size-10 rounded-full bg-zinc-100 flex items-center justify-center">
             <Brain size={20} className="text-zinc-400" />

@@ -796,7 +796,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
     const paragraphs = documentText.split("\n\n");
 
     return (
-      <div className="space-y-4 text-xs font-mono text-[#0F172A] leading-relaxed select-text">
+      <div className="space-y-4 text-xs font-mono text-[#0F172A] dark:text-[#F8FAFC] leading-relaxed select-text">
         {paragraphs.map((para, pIdx) => {
           let paraContent: React.ReactNode = para;
 
@@ -835,7 +835,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                         document.getElementById(`finding-card-${finding.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                       }}
                       className={cn(
-                        "bg-emerald-50 text-[#0D4A2E] border-b-2 border-emerald-600 px-1 py-0.5 rounded cursor-pointer transition-all inline",
+                        "bg-emerald-50 dark:bg-emerald-500/10 text-[#0D4A2E] border-b-2 border-emerald-600 px-1 py-0.5 rounded cursor-pointer transition-all inline",
                         selectedFindingId === finding.id && "ring-2 ring-[#105B38] font-bold"
                       )}
                       title={`Statutory Redline Applied for Suggestion [${pointerNumber}] - Click to view`}
@@ -867,7 +867,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                         document.getElementById(`finding-card-${finding.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                       }}
                       className={cn(
-                        "bg-rose-50 text-rose-900 border-b-2 border-rose-500 px-1 py-0.5 rounded cursor-pointer transition-all inline",
+                        "bg-rose-50 dark:bg-rose-500/10 text-rose-900 border-b-2 border-rose-500 px-1 py-0.5 rounded cursor-pointer transition-all inline",
                         selectedFindingId === finding.id && "ring-2 ring-rose-500 font-bold"
                       )}
                       title={`Deficiency [${pointerNumber}]: ${finding.title} - Click to view`}
@@ -898,24 +898,24 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
     <PreviewShell>
       <div className="max-w-7xl mx-auto space-y-6 pb-12">
         {/* Header with Clean Horizontal Button Grid & Dynamic Health Indicator */}
-        <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="bg-white dark:bg-[#131E2E] p-6 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#105B38] text-white shadow-xs">
               <FileSearch className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
+                <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                   AI Procedural Compliance & Document Analyzer
                 </h1>
                 <span
                   className={cn(
                     "text-xs font-bold px-3 py-1 rounded-full border shadow-xs flex items-center gap-1.5",
                     proceduralHealth === "Vulnerable"
-                      ? "bg-rose-50 text-rose-700 border-rose-200"
+                      ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
                       : proceduralHealth === "Action Required"
-                      ? "bg-amber-50 text-amber-700 border-amber-200"
-                      : "bg-emerald-50 text-[#105B38] border-emerald-200"
+                      ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                      : "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
                   )}
                 >
                   <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
@@ -926,7 +926,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                     : "Fully Compliant"}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+              <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
                 Audit plaints, writ petitions, leases, and contracts for Order VII R.11 CPC vulnerabilities, SRA Section 24 omissions & limitation risks.
               </p>
             </div>
@@ -937,7 +937,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
             <button
               type="button"
               onClick={() => setShowSavedScansModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5 shadow-xs"
               title="View and load previous scans saved in PostgreSQL"
             >
               <History className="w-4 h-4 text-[#105B38]" />
@@ -948,7 +948,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
               type="button"
               onClick={() => saveScanToDb()}
               disabled={isSavingScan || !documentText.trim()}
-              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
               title="Save current scan and findings to PostgreSQL database"
             >
               <Save className="w-4 h-4 text-[#105B38]" />
@@ -958,17 +958,17 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
             <button
               type="button"
               onClick={handleClearAll}
-              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-rose-50 border border-[#E2E8F0] hover:border-rose-200 text-xs font-bold text-[#64748B] hover:text-rose-700 transition-colors flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-rose-50 dark:bg-rose-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-rose-200 dark:border-rose-500/20 text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-700 dark:text-rose-400 transition-colors flex items-center gap-1.5 shadow-xs"
               title="Clear entire document canvas and reset findings"
             >
-              <Trash2 className="w-4 h-4 text-rose-600" />
+              <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
               <span>Clear Document</span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowUploadModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <Upload className="w-4 h-4 text-[#105B38]" />
               <span>Upload Document</span>
@@ -977,7 +977,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
             <button
               type="button"
               onClick={handleCopyMarkdownReport}
-              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5 shadow-xs"
             >
               {copiedReport ? <Check className="w-4 h-4 text-[#105B38]" /> : <Copy className="w-4 h-4" />}
               <span>{copiedReport ? "Copied" : "Copy Report"}</span>
@@ -986,7 +986,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
             <button
               type="button"
               onClick={handleOpenInDrafting}
-              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <FileCode className="w-4 h-4 text-[#105B38]" />
               <span>Open in Drafting</span>
@@ -1006,8 +1006,8 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
 
         {/* Scan Progress Bar */}
         {isScanning && (
-          <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-2.5 animate-in fade-in">
-            <div className="flex items-center justify-between text-xs font-bold text-[#0F172A]">
+          <div className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-2.5 animate-in fade-in">
+            <div className="flex items-center justify-between text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
               <span className="flex items-center gap-2 text-[#105B38]">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                 <span>{scanPhaseText}</span>
@@ -1025,18 +1025,18 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
 
         {/* Top Summary Metrics Bar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col justify-between space-y-2">
+          <div className="bg-white dark:bg-[#131E2E] p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#64748B]">
+              <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 Procedural Health
               </span>
               <ShieldAlert
                 className={cn(
                   "w-4 h-4",
                   proceduralHealth === "Vulnerable"
-                    ? "text-rose-600"
+                    ? "text-rose-600 dark:text-rose-400"
                     : proceduralHealth === "Action Required"
-                    ? "text-amber-600"
+                    ? "text-amber-600 dark:text-amber-400"
                     : "text-[#105B38]"
                 )}
               />
@@ -1046,64 +1046,64 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                 className={cn(
                   "text-lg sm:text-xl font-bold",
                   proceduralHealth === "Vulnerable"
-                    ? "text-rose-600"
+                    ? "text-rose-600 dark:text-rose-400"
                     : proceduralHealth === "Action Required"
-                    ? "text-amber-600"
+                    ? "text-amber-600 dark:text-amber-400"
                     : "text-[#105B38]"
                 )}
               >
                 {proceduralHealth}
               </div>
-              <p className="text-xs text-[#64748B] mt-0.5">5 Statutory audits</p>
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">5 Statutory audits</p>
             </div>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col justify-between space-y-2">
+          <div className="bg-white dark:bg-[#131E2E] p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#64748B]">
+              <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 Overall Risk Score
               </span>
               <span
                 className={cn(
                   "text-xs font-bold px-2 py-0.5 rounded-full",
                   calculatedScore > 50
-                    ? "bg-rose-50 text-rose-700 border border-rose-200"
+                    ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20"
                     : calculatedScore > 20
-                    ? "bg-amber-50 text-amber-700 border border-amber-200"
-                    : "bg-emerald-50 text-[#105B38] border border-emerald-200"
+                    ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20"
+                    : "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20"
                 )}
               >
                 {calculatedScore > 50 ? "High Risk" : calculatedScore > 20 ? "Moderate" : "Low Risk"}
               </span>
             </div>
             <div>
-              <div className="text-lg sm:text-xl font-mono font-bold text-[#0F172A]">
+              <div className="text-lg sm:text-xl font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 {calculatedScore} / 100
               </div>
-              <p className="text-xs text-[#64748B] mt-0.5">Weighted defect index</p>
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">Weighted defect index</p>
             </div>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col justify-between space-y-2">
+          <div className="bg-white dark:bg-[#131E2E] p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#64748B]">
+              <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 Fatal Risk Clauses
               </span>
-              <AlertTriangle className="w-4 h-4 text-rose-600" />
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
             </div>
             <div>
-              <div className="text-lg sm:text-xl font-mono font-bold text-rose-600">
+              <div className="text-lg sm:text-xl font-mono font-bold text-rose-600 dark:text-rose-400">
                 {riskFindings.length}
               </div>
-              <p className="text-xs text-[#64748B] mt-0.5">
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                 {riskFindings.length === 0 ? "0 Defects remaining" : `${riskFindings.length} Critical defects`}
               </p>
             </div>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col justify-between space-y-2">
+          <div className="bg-white dark:bg-[#131E2E] p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#64748B]">
+              <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 Verified Compliant
               </span>
               <CheckCircle2 className="w-4 h-4 text-[#105B38]" />
@@ -1112,7 +1112,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
               <div className="text-lg sm:text-xl font-mono font-bold text-[#105B38]">
                 {passedFindings.length}
               </div>
-              <p className="text-xs text-[#64748B] mt-0.5">
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                 {passedFindings.length} Clauses conforming
               </p>
             </div>
@@ -1120,9 +1120,9 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
         </div>
 
         {/* Statutory Compliance Checklist Panel with Full Multi-line Readability */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-3">
+        <div className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F172A] flex items-center gap-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
               <CheckSquare className="w-4 h-4 text-[#105B38]" />
               <span>
                 {documentType === "contract" ? "Commercial Contract Compliance Checklist" :
@@ -1132,7 +1132,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                  "Civil Pleading Procedural Checklist"}
               </span>
             </h2>
-            <span className="text-xs font-semibold text-[#64748B]">
+            <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               {activeChecklist.length} Core Statutory Audits
             </span>
           </div>
@@ -1154,25 +1154,25 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                   className={cn(
                     "p-3.5 rounded-2xl border text-xs space-y-1.5 transition-all",
                     hasRisk
-                      ? "bg-rose-50/50 border-rose-200"
-                      : "bg-white border-[#E2E8F0] hover:border-emerald-200"
+                      ? "bg-rose-50/5 dark:bg-rose-500/100 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20"
+                      : "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] hover:border-emerald-200 dark:border-emerald-500/20"
                   )}
                 >
                   <div className="flex items-start justify-between gap-1">
-                    <span className="font-bold text-[#0F172A] leading-tight">
+                    <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC] leading-tight">
                       {rule.section}
                     </span>
                     {hasRisk ? (
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 shrink-0">
                         Deficiency
                       </span>
                     ) : (
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200 shrink-0">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 shrink-0">
                         Checked
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[#64748B] leading-relaxed">
+                  <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
                     {rule.requirement}
                   </p>
                 </div>
@@ -1182,16 +1182,16 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
         </div>
 
         {/* View Control Bar */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-white dark:bg-[#131E2E] p-4 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-1">
             <div className="flex items-center gap-2 shrink-0">
               <FileText className="w-4 h-4 text-[#105B38]" />
-              <span className="text-xs font-bold text-[#0F172A]">Document Type:</span>
+              <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Document Type:</span>
             </div>
             <select
               value={documentType}
               onChange={(e) => setDocumentType(e.target.value as any)}
-              className="w-full max-w-xs h-9 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#105B38]"
+              className="w-full max-w-xs h-9 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
             >
               <option value="pleading">Court Pleading (Plaint/Petition/Appeal)</option>
               <option value="contract">Commercial Contract (Agreement/Deed)</option>
@@ -1209,7 +1209,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                 "px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all shadow-xs",
                 viewMode === "side_by_side"
                   ? "bg-[#105B38] text-white border-[#105B38]"
-                  : "bg-[#F8FAFC] text-[#64748B] border-[#E2E8F0] hover:bg-[#F1F5F9]"
+                  : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44] hover:bg-[#F1F5F9] dark:bg-[#1E2D44]"
               )}
             >
               <Columns className="w-3.5 h-3.5" />
@@ -1222,31 +1222,31 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
         {viewMode === "standard" ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left: Clean Pleading Canvas with Numbered Pointer Chips [1], [2], [3] (5 cols) */}
-            <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col space-y-3">
+            <div className="lg:col-span-5 bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col space-y-3">
               {/* Canvas Header & Mode Switcher */}
-              <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0] gap-2 flex-wrap">
+              <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0] dark:border-[#1E2D44] gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#0F172A] flex items-center gap-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-[#105B38]" />
                     <span>Pleading Canvas</span>
                   </span>
                   {riskFindings.length > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
                       {riskFindings.length} Pointers Active
                     </span>
                   )}
                 </div>
 
                 {/* Canvas Mode Switcher: Annotated Redlines vs Raw Text Edit */}
-                <div className="flex items-center gap-1 bg-[#F8FAFC] p-0.5 rounded-xl border border-[#E2E8F0]">
+                <div className="flex items-center gap-1 bg-[#F8FAFC] dark:bg-[#0B131E] p-0.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
                   <button
                     type="button"
                     onClick={() => setCanvasMode("annotated")}
                     className={cn(
                       "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1",
                       canvasMode === "annotated"
-                        ? "bg-white text-[#105B38] shadow-xs border border-[#E2E8F0]"
-                        : "text-[#64748B] hover:text-[#0F172A]"
+                        ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-xs border border-[#E2E8F0] dark:border-[#1E2D44]"
+                        : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                     )}
                     title="View live redlines and numbered pointer chips [1], [2]..."
                   >
@@ -1259,8 +1259,8 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                     className={cn(
                       "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1",
                       canvasMode === "raw"
-                        ? "bg-white text-[#0F172A] shadow-xs border border-[#E2E8F0]"
-                        : "text-[#64748B] hover:text-[#0F172A]"
+                        ? "bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] shadow-xs border border-[#E2E8F0] dark:border-[#1E2D44]"
+                        : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                     )}
                     title="Edit raw document text directly"
                   >
@@ -1272,13 +1272,13 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
 
               {/* Canvas Body: Clean Document vs Raw Textarea vs Empty State */}
               {!documentText.trim() && canvasMode === "annotated" ? (
-                <div className="w-full flex-1 min-h-[520px] max-h-[620px] p-8 rounded-xl bg-[#F8FAFC] border border-dashed border-[#CBD5E1] flex flex-col items-center justify-center text-center space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-center text-[#105B38]">
+                <div className="w-full flex-1 min-h-[520px] max-h-[620px] p-8 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-dashed border-[#CBD5E1] flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center justify-center text-[#105B38]">
                     <FileText className="w-6 h-6" />
                   </div>
                   <div className="max-w-md space-y-1">
-                    <h3 className="text-sm font-bold text-[#0F172A]">Document Canvas is Empty</h3>
-                    <p className="text-xs text-[#64748B] leading-relaxed">
+                    <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Document Canvas is Empty</h3>
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
                       Paste your plaint, contract, or petition text directly, upload a document, or load a sample template to start procedural scanning.
                     </p>
                   </div>
@@ -1286,7 +1286,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                     <button
                       type="button"
                       onClick={() => setCanvasMode("raw")}
-                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] shadow-xs flex items-center gap-1.5 transition-colors"
+                      className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] shadow-xs flex items-center gap-1.5 transition-colors"
                     >
                       <Edit3 className="w-4 h-4 text-[#105B38]" />
                       <span>Paste / Type Text</span>
@@ -1294,7 +1294,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                     <button
                       type="button"
                       onClick={() => setShowUploadModal(true)}
-                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] shadow-xs flex items-center gap-1.5 transition-colors"
+                      className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] shadow-xs flex items-center gap-1.5 transition-colors"
                     >
                       <Upload className="w-4 h-4 text-[#105B38]" />
                       <span>Upload File</span>
@@ -1302,7 +1302,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                   </div>
                 </div>
               ) : canvasMode === "annotated" ? (
-                <div className="w-full flex-1 min-h-[520px] max-h-[620px] overflow-y-auto p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] custom-scrollbar">
+                <div className="w-full flex-1 min-h-[520px] max-h-[620px] overflow-y-auto p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] custom-scrollbar">
                   {renderCleanAnnotatedDocument()}
                 </div>
               ) : (
@@ -1316,13 +1316,13 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                     persistState(val, findings);
                   }}
                   placeholder="Paste pleading text, plaint, contract, or legal notice to analyze..."
-                  className="w-full flex-1 min-h-[520px] p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-mono text-[#0F172A] leading-relaxed resize-none focus:outline-none focus:border-[#105B38] focus:bg-white custom-scrollbar"
+                  className="w-full flex-1 min-h-[520px] p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-mono text-[#0F172A] dark:text-[#F8FAFC] leading-relaxed resize-none focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] custom-scrollbar"
                 />
               )}
 
               {/* Canvas Footer */}
-              <div className="pt-2 flex items-center justify-between border-t border-[#E2E8F0]">
-                <div className="text-xs font-mono text-[#64748B] flex items-center gap-3">
+              <div className="pt-2 flex items-center justify-between border-t border-[#E2E8F0] dark:border-[#1E2D44]">
+                <div className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-3">
                   <span>{wordCount} Words</span>
                   <span>·</span>
                   <span>{lineCount} Lines</span>
@@ -1332,7 +1332,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                   <button
                     type="button"
                     onClick={handleClearAll}
-                    className="text-xs text-[#64748B] hover:text-rose-600 transition-colors flex items-center gap-1"
+                    className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 transition-colors flex items-center gap-1"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                     <span>Reset & Clear All</span>
@@ -1354,8 +1354,8 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
             {/* Right: Clause-by-Clause Findings & Redlines with Dedicated Scroll Container (7 cols) */}
             <div className="lg:col-span-7 flex flex-col space-y-3">
               {/* Findings Filter Chips */}
-              <div className="bg-white p-3 rounded-2xl border border-[#E2E8F0] shadow-xs flex items-center justify-between gap-2 flex-wrap shrink-0">
-                <span className="text-xs font-bold text-[#0F172A] ml-2">
+              <div className="bg-white dark:bg-[#131E2E] p-3 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center justify-between gap-2 flex-wrap shrink-0">
+                <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] ml-2">
                   Procedural Findings ({filteredFindings.length})
                 </span>
 
@@ -1374,7 +1374,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                         "px-3 py-1 rounded-xl text-xs font-semibold transition-all shadow-xs",
                         filterSeverity === tab.id
                           ? "bg-[#105B38] text-white border border-[#105B38]"
-                          : "bg-[#F8FAFC] text-[#64748B] hover:bg-[#F1F5F9] border border-[#E2E8F0]"
+                          : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44]"
                       )}
                     >
                       {tab.label}
@@ -1397,12 +1397,12 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                       id={`finding-card-${finding.id}`}
                       onClick={() => setSelectedFindingId(finding.id)}
                       className={cn(
-                        "bg-white p-5 rounded-2xl border shadow-xs space-y-3.5 transition-all cursor-pointer",
+                        "bg-white dark:bg-[#131E2E] p-5 rounded-2xl border shadow-xs space-y-3.5 transition-all cursor-pointer",
                         isRisk
-                          ? "border-rose-200 hover:border-rose-400"
+                          ? "border-rose-200 dark:border-rose-500/20 hover:border-rose-400"
                           : isWarning
-                          ? "border-amber-200 hover:border-amber-400"
-                          : "border-emerald-200 hover:border-emerald-400",
+                          ? "border-amber-200 dark:border-amber-500/20 hover:border-amber-400"
+                          : "border-emerald-200 dark:border-emerald-500/20 hover:border-emerald-400",
                         selectedFindingId === finding.id && "ring-2 ring-[#105B38]"
                       )}
                     >
@@ -1418,26 +1418,26 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                               className={cn(
                                 "text-xs font-bold px-2.5 py-0.5 rounded-full uppercase",
                                 isRisk
-                                  ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                  ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20"
                                   : isWarning
-                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                  : "bg-emerald-50 text-[#105B38] border border-emerald-200"
+                                  ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20"
+                                  : "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20"
                               )}
                             >
                               {finding.category}
                             </span>
 
-                            <span className="text-xs font-mono font-bold text-[#64748B]">
+                            <span className="text-xs font-mono font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                               {finding.statutoryBasis}
                             </span>
                           </div>
 
-                          <h3 className="text-sm font-bold text-[#0F172A]">{finding.title}</h3>
+                          <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">{finding.title}</h3>
                         </div>
 
                         {finding.accepted ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200 flex items-center gap-1 shrink-0">
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1 shrink-0">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Redline Applied
                             </span>
                             <button
@@ -1446,7 +1446,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                                 e.stopPropagation();
                                 handleRevertFinding(finding.id);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-white border border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] text-xs font-semibold flex items-center gap-1 transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-xs font-semibold flex items-center gap-1 transition-colors"
                               title="Undo this redline"
                             >
                               <Undo2 className="w-3.5 h-3.5" />
@@ -1460,7 +1460,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                               e.stopPropagation();
                               handleDismissFinding(finding.id);
                             }}
-                            className="p-1 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+                            className="p-1 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44]"
                             title="Dismiss finding"
                           >
                             <X className="w-4 h-4" />
@@ -1468,33 +1468,33 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                         )}
                       </div>
 
-                      <p className="text-xs text-[#64748B] leading-relaxed">{finding.description}</p>
+                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">{finding.description}</p>
 
                       {/* Original vs Redline Comparison Box */}
                       <div className="space-y-2 pt-1">
                         {finding.originalSnippet && (
-                          <div className="p-3 rounded-xl bg-rose-50/50 border border-rose-100 space-y-1">
-                            <span className="text-xs font-bold uppercase tracking-wider text-rose-700 block">
+                          <div className="p-3 rounded-xl bg-rose-50/5 dark:bg-rose-500/100 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 space-y-1">
+                            <span className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 block">
                               Current Pleading Clause (Vulnerable)
                             </span>
-                            <p className="text-xs font-mono text-[#0F172A] leading-relaxed">
+                            <p className="text-xs font-mono text-[#0F172A] dark:text-[#F8FAFC] leading-relaxed">
                               {finding.originalSnippet}
                             </p>
                           </div>
                         )}
 
-                        <div className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-200/80 space-y-1">
+                        <div className="p-3 rounded-xl bg-emerald-50/5 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20/80 space-y-1">
                           <span className="text-xs font-bold uppercase tracking-wider text-[#105B38] block">
                             Recommended Statutory Redline
                           </span>
-                          <p className="text-xs font-mono text-[#0F172A] leading-relaxed">
+                          <p className="text-xs font-mono text-[#0F172A] dark:text-[#F8FAFC] leading-relaxed">
                             {finding.recommendedRedline}
                           </p>
                         </div>
                       </div>
 
                       {/* Precedent Rationale */}
-                      <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-start gap-2.5 text-xs text-[#334155]">
+                      <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] flex items-start gap-2.5 text-xs text-[#334155] dark:text-[#CBD5E1]">
                         <Scale className="w-4 h-4 text-[#105B38] shrink-0 mt-0.5" />
                         <div>
                           <strong>Judicial Ratio & Precedent Authority:</strong> {finding.rationale}
@@ -1503,14 +1503,14 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
 
                       {/* Action Bar */}
                       {!finding.accepted && (
-                        <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-[#E2E8F0]">
+                        <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDismissFinding(finding.id);
                             }}
-                            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F9] transition-colors"
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors"
                           >
                             Reject / Dismiss
                           </button>
@@ -1532,12 +1532,12 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                 })}
 
                 {filteredFindings.length === 0 && (
-                  <div className="bg-white p-12 rounded-2xl border border-[#E2E8F0] shadow-xs text-center space-y-2">
+                  <div className="bg-white dark:bg-[#131E2E] p-12 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs text-center space-y-2">
                     <ShieldCheck className="w-10 h-10 text-[#105B38] mx-auto" />
-                    <h4 className="text-sm font-bold text-[#0F172A]">
+                    <h4 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                       {!documentText.trim() ? "No Document Loaded" : "No Active Vulnerabilities Found"}
                     </h4>
-                    <p className="text-xs text-[#64748B]">
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       {!documentText.trim()
                         ? "Paste or upload a pleading draft to run a comprehensive procedural risk audit."
                         : "All scanned clauses conform with mandatory statutory averments and limitation timelines."}
@@ -1551,13 +1551,13 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
           /* Side-by-Side Dual Comparison Workspace */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in">
             {/* Left: Original / Editable Canvas */}
-            <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-3 flex flex-col">
+            <div className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3 flex flex-col">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#0F172A] flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
                   <FileText className="w-4 h-4 text-[#105B38]" />
                   <span>Original Pleading Canvas</span>
                 </span>
-                <span className="text-xs font-mono text-[#64748B]">{wordCount} words</span>
+                <span className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{wordCount} words</span>
               </div>
               <textarea
                 value={documentText}
@@ -1568,27 +1568,27 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                   }
                   persistState(val, findings);
                 }}
-                className="w-full flex-1 min-h-[540px] p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-mono text-[#0F172A] leading-relaxed resize-none focus:outline-none focus:border-[#105B38] focus:bg-white custom-scrollbar"
+                className="w-full flex-1 min-h-[540px] p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-mono text-[#0F172A] dark:text-[#F8FAFC] leading-relaxed resize-none focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] custom-scrollbar"
               />
             </div>
 
             {/* Right: Redline Applied Preview & Live Diff */}
-            <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4 flex flex-col">
+            <div className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4 flex flex-col">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#105B38] flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-[#105B38]" />
                   <span>Statutory Redlined Pleading (Live Diff)</span>
                 </span>
-                <span className="text-xs font-semibold text-[#105B38] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                <span className="text-xs font-semibold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20">
                   {passedFindings.length} Averments Active
                 </span>
               </div>
 
-              <div className="flex-1 min-h-[540px] p-4 rounded-xl bg-emerald-50/20 border border-emerald-200/60 overflow-y-auto text-xs font-mono text-[#0F172A] leading-relaxed whitespace-pre-wrap space-y-2 custom-scrollbar">
+              <div className="flex-1 min-h-[540px] p-4 rounded-xl bg-emerald-50/2 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20/60 overflow-y-auto text-xs font-mono text-[#0F172A] dark:text-[#F8FAFC] leading-relaxed whitespace-pre-wrap space-y-2 custom-scrollbar">
                 {documentText ? renderCleanAnnotatedDocument() : "No pleading loaded. Paste or upload text on the left."}
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#E2E8F0]">
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                 <button
                   type="button"
                   onClick={handleOpenInDrafting}
@@ -1606,29 +1606,29 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
         {/* Upload Simulation Modal */}
         {showUploadModal && (
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+            <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3">
                 <div className="flex items-center gap-2">
                   <FileUp className="w-5 h-5 text-[#105B38]" />
-                  <h3 className="text-sm font-bold text-[#0F172A]">Upload & Ingest Legal Document</h3>
+                  <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Upload & Ingest Legal Document</h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
-                  className="p-1 rounded-lg text-[#64748B] hover:text-[#0F172A]"
+                  className="p-1 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="space-y-3">
-                <p className="text-xs text-[#64748B]">
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   Simulate direct ingestion of Pakistani court pleadings, registered deeds, or commercial agreements.
                 </p>
 
-                <div className="border-2 border-dashed border-[#E2E8F0] hover:border-[#105B38] rounded-2xl p-6 text-center space-y-2 transition-colors relative">
+                <div className="border-2 border-dashed border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] rounded-2xl p-6 text-center space-y-2 transition-colors relative">
                   <Upload className="w-8 h-8 text-[#105B38] mx-auto" />
-                  <div className="text-xs font-bold text-[#0F172A]">{uploadFile ? uploadFile.name : "Select PDF or DOCX file"}</div>
+                  <div className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">{uploadFile ? uploadFile.name : "Select PDF or DOCX file"}</div>
                   <p className="text-[11px] text-slate-500">Maximum size 50MB</p>
                   <input
                     type="file"
@@ -1639,7 +1639,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                 </div>
 
                 {isUploadingFile && (
-                  <div className="space-y-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <div className="space-y-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
                     <div className="flex items-center justify-between text-xs font-bold text-[#105B38]">
                       <span>{uploadStageText}</span>
                       <span>{uploadProgress}%</span>
@@ -1654,11 +1654,11 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                 >
                   Cancel
                 </button>
@@ -1677,21 +1677,21 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
         {/* Saved Scans History Modal (PostgreSQL Database) */}
         {showSavedScansModal && (
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xl max-w-2xl w-full p-6 space-y-4 animate-in fade-in zoom-in-95 max-h-[85vh] flex flex-col">
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3 shrink-0">
+            <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl max-w-2xl w-full p-6 space-y-4 animate-in fade-in zoom-in-95 max-h-[85vh] flex flex-col">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3 shrink-0">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-[#EBF5F0] border border-[#A3D4BC] flex items-center justify-center text-[#105B38]">
+                  <div className="w-8 h-8 rounded-lg bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 flex items-center justify-center text-[#105B38]">
                     <Database className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-[#0F172A]">Saved Scans & Findings Database</h3>
-                    <p className="text-xs text-[#64748B]">PostgreSQL live persistence across sessions</p>
+                    <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Saved Scans & Findings Database</h3>
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">PostgreSQL live persistence across sessions</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowSavedScansModal(false)}
-                  className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                  className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1699,14 +1699,14 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
 
               <div className="overflow-y-auto space-y-2.5 flex-1 pr-1">
                 {isLoadingScans ? (
-                  <div className="py-12 text-center text-xs text-[#64748B] flex flex-col items-center gap-2">
+                  <div className="py-12 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex flex-col items-center gap-2">
                     <RefreshCw className="w-5 h-5 animate-spin text-[#105B38]" />
                     <span>Loading saved scan sessions...</span>
                   </div>
                 ) : !Array.isArray(savedScans) || savedScans.length === 0 ? (
-                  <div className="py-12 text-center text-xs text-[#64748B] space-y-2">
+                  <div className="py-12 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] space-y-2">
                     <History className="w-8 h-8 text-slate-300 mx-auto" />
-                    <p className="font-semibold text-slate-700">No saved scans found in database</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-400">No saved scans found in database</p>
                     <p className="text-slate-500">Run a Deep Legal Scan or click "Save Scan" to persist analysis sessions.</p>
                   </div>
                 ) : (
@@ -1716,13 +1716,13 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                       className={cn(
                         "p-4 rounded-xl border transition-all flex items-center justify-between gap-3",
                         currentScanId === scan.id
-                          ? "bg-emerald-50/60 border-[#105B38] ring-1 ring-[#105B38]"
-                          : "bg-[#F8FAFC] hover:bg-slate-100/80 border-[#E2E8F0]"
+                          ? "bg-emerald-50/6 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border-[#105B38] ring-1 ring-[#105B38]"
+                          : "bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-slate-100/80 border-[#E2E8F0] dark:border-[#1E2D44]"
                       )}
                     >
                       <div className="space-y-1 min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-xs font-bold text-[#0F172A] truncate">
+                          <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
                             {scan.title || "Untitled Scan"}
                           </h4>
                           {currentScanId === scan.id && (
@@ -1730,7 +1730,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                               Active
                             </span>
                           )}
-                          <span className="px-2 py-0.5 rounded-md bg-white border border-[#E2E8F0] text-[10px] font-medium text-slate-600 uppercase">
+                          <span className="px-2 py-0.5 rounded-md bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[10px] font-medium text-slate-600 dark:text-slate-400 uppercase">
                             {scan.documentType || "Pleading"}
                           </span>
                           {scan.overallRisk && (
@@ -1738,17 +1738,17 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                               className={cn(
                                 "px-2 py-0.5 rounded-md text-[10px] font-bold border",
                                 scan.overallRisk === "Vulnerable"
-                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
                                   : scan.overallRisk === "Action Required"
-                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                                  : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
                               )}
                             >
                               {scan.overallRisk}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-[#64748B] line-clamp-1">
+                        <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] line-clamp-1">
                           {scan.summary || scan.text?.slice(0, 100) || "No summary provided"}
                         </p>
                         <div className="flex items-center gap-3 text-[10px] text-slate-400">
@@ -1772,7 +1772,7 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                         <button
                           type="button"
                           onClick={(e) => handleDeleteScan(scan.id, e)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:bg-rose-500/10 transition-colors"
                           title="Delete from database"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1783,12 +1783,12 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
                 )}
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-[#E2E8F0] shrink-0 text-xs text-[#64748B]">
+              <div className="flex items-center justify-between pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] shrink-0 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 <span>Total Saved: {Array.isArray(savedScans) ? savedScans.length : 0}</span>
                 <button
                   type="button"
                   onClick={() => setShowSavedScansModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                 >
                   Close
                 </button>

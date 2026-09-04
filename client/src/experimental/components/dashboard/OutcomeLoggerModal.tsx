@@ -172,16 +172,16 @@ export const OutcomeLoggerModal: React.FC<OutcomeLoggerModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg bg-white border-[#E5E4E2] text-[#1A1A1A] p-6 shadow-lg">
+      <DialogContent className="sm:max-w-lg bg-white dark:bg-[#131E2E] border-[#E5E4E2] dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] p-6 shadow-lg">
         <DialogHeader>
-          <div className="flex items-center gap-2 text-[#1A1A1A] font-mono text-xs mb-1">
+          <div className="flex items-center gap-2 text-[#1A1A1A] dark:text-[#F8FAFC] font-mono text-xs mb-1">
             <Gavel className="w-4 h-4" />
             <span>COURT HEARING OUTCOME LOGGER</span>
           </div>
-          <DialogTitle className="text-xl font-bold font-serif text-[#1A1A1A]">
+          <DialogTitle className="text-xl font-bold font-serif text-[#1A1A1A] dark:text-[#F8FAFC]">
             {entry.title}
           </DialogTitle>
-          <DialogDescription className="text-xs text-[#666666]">
+          <DialogDescription className="text-xs text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
             {entry.court || "High Court / District Court"} ·{" "}
             {entry.caseTitle || "Litigation Matter"}
           </DialogDescription>
@@ -190,7 +190,7 @@ export const OutcomeLoggerModal: React.FC<OutcomeLoggerModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           {/* Quick Outcome Preset Chips */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#4A4A4A]">
+            <label className="text-xs font-semibold text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569]">
               Select Standard Court Outcome:
             </label>
             <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
@@ -201,8 +201,8 @@ export const OutcomeLoggerModal: React.FC<OutcomeLoggerModalProps> = ({
                   onClick={() => setOutcome(item)}
                   className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all text-left ${
                     outcome === item
-                      ? "bg-[#1A1A1A]/10 text-[#1A1A1A] border-[#1A1A1A]/60 font-semibold"
-                      : "bg-white text-[#666666] border-[#E5E4E2] hover:border-[#E5E4E2] hover:text-[#2D2D2D]"
+                      ? "bg-[#1A1A1A]/10 text-[#1A1A1A] dark:text-[#F8FAFC] border-[#1A1A1A]/60 font-semibold"
+                      : "bg-white dark:bg-[#131E2E] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] border-[#E5E4E2] dark:border-[#1E2D44] hover:border-[#E5E4E2] dark:border-[#1E2D44] hover:text-[#2D2D2D] dark:text-[#CBD5E1]"
                   }`}
                 >
                   {item}
@@ -213,7 +213,7 @@ export const OutcomeLoggerModal: React.FC<OutcomeLoggerModalProps> = ({
 
           {/* Custom Outcome Textarea / Input */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#4A4A4A]">
+            <label className="text-xs font-semibold text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569]">
               Judicial Order / Outcome Summary:
             </label>
             <input
@@ -221,7 +221,7 @@ export const OutcomeLoggerModal: React.FC<OutcomeLoggerModalProps> = ({
               value={outcome}
               onChange={(e) => setOutcome(e.target.value)}
               placeholder="e.g. Adjourned on request of AGP, interim stay continued"
-              className="w-full px-3 py-2 rounded-lg bg-white border border-[#E5E4E2] text-[#1A1A1A] placeholder-slate-500 text-xs focus:outline-none focus:border-[#1A1A1A]"
+              className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] placeholder-slate-500 text-xs focus:outline-none focus:border-[#1A1A1A]"
               required
             />
           </div>
@@ -229,34 +229,34 @@ export const OutcomeLoggerModal: React.FC<OutcomeLoggerModalProps> = ({
           {/* Next Date Chaining */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#4A4A4A] flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#1A1A1A]" />
+              <label className="text-xs font-semibold text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#1A1A1A] dark:text-[#F8FAFC]" />
                 <span>Next Hearing Date:</span>
               </label>
               <input
                 type="date"
                 value={nextDate}
                 onChange={(e) => setNextDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-white border border-[#E5E4E2] text-[#1A1A1A] text-xs font-mono focus:outline-none focus:border-[#1A1A1A]"
+                className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] text-xs font-mono focus:outline-none focus:border-[#1A1A1A]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#4A4A4A] flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#1A1A1A]" />
+              <label className="text-xs font-semibold text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#1A1A1A] dark:text-[#F8FAFC]" />
                 <span>Hearing Status:</span>
               </label>
-              <div className="flex items-center gap-2 h-9 px-3 rounded-lg bg-white border border-[#E5E4E2] text-xs">
+              <div className="flex items-center gap-2 h-9 px-3 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-xs">
                 <input
                   type="checkbox"
                   id="hearing-complete"
                   checked={completed}
                   onChange={(e) => setCompleted(e.target.checked)}
-                  className="rounded border-[#E5E4E2] text-[#1A1A1A] focus:ring-[#1A1A1A]"
+                  className="rounded border-[#E5E4E2] dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] focus:ring-[#1A1A1A]"
                 />
                 <label
                   htmlFor="hearing-complete"
-                  className="text-[#4A4A4A] cursor-pointer"
+                  className="text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] cursor-pointer"
                 >
                   Mark hearing completed
                 </label>
@@ -266,7 +266,7 @@ export const OutcomeLoggerModal: React.FC<OutcomeLoggerModalProps> = ({
 
           {/* Chamber Notes */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#4A4A4A]">
+            <label className="text-xs font-semibold text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569]">
               Chambers Internal Notes (optional):
             </label>
             <textarea
@@ -274,15 +274,15 @@ export const OutcomeLoggerModal: React.FC<OutcomeLoggerModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Instructions for junior counsel, missing affidavits, or required citation preparation..."
-              className="w-full px-3 py-2 rounded-lg bg-white border border-[#E5E4E2] text-[#1A1A1A] placeholder-slate-500 text-xs focus:outline-none focus:border-[#1A1A1A] resize-none"
+              className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] placeholder-slate-500 text-xs focus:outline-none focus:border-[#1A1A1A] resize-none"
             />
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-[#E5E4E2]">
+          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-[#E5E4E2] dark:border-[#1E2D44]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-[#F5F4F2] hover:bg-[#EBEBEB] text-[#4A4A4A] text-xs font-semibold transition-colors"
+              className="px-4 py-2 rounded-lg bg-[#F5F4F2] dark:bg-[#0B131E] hover:bg-[#EBEBEB] dark:bg-[#1E2D44] text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] text-xs font-semibold transition-colors"
             >
               Cancel
             </button>

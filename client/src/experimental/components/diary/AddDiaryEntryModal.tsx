@@ -73,20 +73,20 @@ export const AddDiaryEntryModal: React.FC<AddDiaryEntryModalProps> = ({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
       <div
-        className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#105B38]/10 border border-[#105B38]/20 flex items-center justify-center text-[#105B38]">
+            <div className="w-8 h-8 rounded-lg bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 flex items-center justify-center text-[#105B38]">
               <CalendarDays className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-[#0F172A]">
+              <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 Schedule Court Hearing / Diary Event
               </h2>
-              <p className="text-[11px] text-[#64748B]">
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 Asia/Karachi timezone with automated Google Calendar sync
               </p>
             </div>
@@ -94,7 +94,7 @@ export const AddDiaryEntryModal: React.FC<AddDiaryEntryModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+            className="p-1 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -102,7 +102,7 @@ export const AddDiaryEntryModal: React.FC<AddDiaryEntryModalProps> = ({
 
         {/* Title */}
         <div className="space-y-1">
-          <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+          <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
             Hearing Title / Cause List Stage *
           </label>
           <input
@@ -110,33 +110,33 @@ export const AddDiaryEntryModal: React.FC<AddDiaryEntryModalProps> = ({
             placeholder="e.g. Arguments on Injunction / Evidence of IO"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3.5 py-2.5 text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
+            className="w-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3.5 py-2.5 text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
           />
         </div>
 
         {/* Date & Time */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+            <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
               Hearing Date *
             </label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
+              className="w-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2 text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+            <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
               Court Call Time (PKT)
             </label>
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] font-mono shadow-xs"
+              className="w-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2 text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] font-mono shadow-xs"
             />
           </div>
         </div>
@@ -144,13 +144,13 @@ export const AddDiaryEntryModal: React.FC<AddDiaryEntryModalProps> = ({
         {/* Linked Case File & Priority */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+            <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
               Link to Case File (Optional)
             </label>
             <select
               value={caseId}
               onChange={(e) => setCaseId(e.target.value ? Number(e.target.value) : "")}
-              className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
+              className="w-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2 text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] shadow-xs"
             >
               <option value="">No case file linked</option>
               {cases.map((c) => (
@@ -163,13 +163,13 @@ export const AddDiaryEntryModal: React.FC<AddDiaryEntryModalProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+            <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
               Hearing Priority
             </label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as any)}
-              className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] font-mono shadow-xs"
+              className="w-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3 py-2 text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] font-mono shadow-xs"
             >
               <option value="urgent">🚨 Red List / Urgent Motion</option>
               <option value="high">High Priority</option>
@@ -181,7 +181,7 @@ export const AddDiaryEntryModal: React.FC<AddDiaryEntryModalProps> = ({
 
         {/* Description / Instructions */}
         <div className="space-y-1">
-          <label className="text-[10px] font-mono uppercase text-[#64748B] block font-bold">
+          <label className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block font-bold">
             Chambers Instructions & Court Room Notes
           </label>
           <textarea
@@ -189,15 +189,15 @@ export const AddDiaryEntryModal: React.FC<AddDiaryEntryModalProps> = ({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3.5 py-2 text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] resize-none shadow-xs"
+            className="w-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3.5 py-2 text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38] resize-none shadow-xs"
           />
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E8F0]">
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-xl transition-colors"
+            className="px-4 py-2 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] rounded-xl transition-colors"
           >
             Cancel
           </button>

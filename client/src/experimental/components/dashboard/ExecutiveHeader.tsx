@@ -147,14 +147,14 @@ export const ExecutiveHeader: React.FC<ExecutiveHeaderProps> = ({
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="rounded-xl border border-[#E5E4E2] bg-[#FFFFFF] p-5 sm:p-6 shadow-sm">
+    <div className="rounded-xl border border-[#E5E4E2] dark:border-[#1E2D44] bg-[#FFFFFF] dark:bg-[#131E2E] p-5 sm:p-6 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left: Greeting */}
         <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-[#1A1A1A]">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-[#1A1A1A] dark:text-[#F8FAFC]">
             {greeting}, {counselName}
           </h1>
-          <p className="text-xs sm:text-sm text-[#666666]">
+          <p className="text-xs sm:text-sm text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
             Litigation docket, precedent intelligence, and chambers compliance.
           </p>
         </div>
@@ -171,9 +171,9 @@ export const ExecutiveHeader: React.FC<ExecutiveHeaderProps> = ({
 
           <Link
             href="/preview/drafting"
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#F5F4F2] hover:bg-[#EBEBEB] text-[#1A1A1A] font-medium text-xs border border-[#E5E4E2] transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#F5F4F2] dark:bg-[#0B131E] hover:bg-[#EBEBEB] dark:bg-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] font-medium text-xs border border-[#E5E4E2] dark:border-[#1E2D44] transition-colors"
           >
-            <FileSignature className="w-3.5 h-3.5 text-[#1A1A1A]" />
+            <FileSignature className="w-3.5 h-3.5 text-[#1A1A1A] dark:text-[#F8FAFC]" />
             <span>Draft</span>
           </Link>
 
@@ -181,7 +181,7 @@ export const ExecutiveHeader: React.FC<ExecutiveHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenAddHearing}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#F5F4F2] hover:bg-[#EBEBEB] text-[#1A1A1A] font-medium text-xs border border-[#E5E4E2] transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#F5F4F2] dark:bg-[#0B131E] hover:bg-[#EBEBEB] dark:bg-[#1E2D44] text-[#1A1A1A] dark:text-[#F8FAFC] font-medium text-xs border border-[#E5E4E2] dark:border-[#1E2D44] transition-colors"
               title="Add Hearing"
             >
               <Plus className="w-3.5 h-3.5" />

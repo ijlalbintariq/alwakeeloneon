@@ -98,7 +98,7 @@ export function GoogleCalendarButton({
           onClick={handleOpenGoogleCalendar}
           className="cursor-pointer gap-2 text-xs py-2"
         >
-          <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+          <ExternalLink className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>Google Calendar</span>
         </DropdownMenuItem>
         <DropdownMenuItem

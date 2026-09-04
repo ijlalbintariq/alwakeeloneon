@@ -55,7 +55,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
             return (
-              <h1 id={sectionId} data-section-heading={text} className="text-lg sm:text-xl font-extrabold text-[#105B38] mt-4 mb-3 pb-2 border-b-2 border-[#105B38]/20" data-testid="text-heading-h1">
+              <h1 id={sectionId} data-section-heading={text} className="text-lg sm:text-xl font-extrabold text-[#105B38] mt-4 mb-3 pb-2 border-b-2 border-[#105B38]/20 dark:border-[#105B38]/40" data-testid="text-heading-h1">
                 {children}
               </h1>
             );
@@ -64,7 +64,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
             return (
-              <h2 id={sectionId} data-section-heading={text} className="text-base sm:text-lg font-bold text-[#105B38] mt-4 mb-2 pb-2 border-b border-[#105B38]/20" data-testid="text-heading-h2">
+              <h2 id={sectionId} data-section-heading={text} className="text-base sm:text-lg font-bold text-[#105B38] mt-4 mb-2 pb-2 border-b border-[#105B38]/20 dark:border-[#105B38]/40" data-testid="text-heading-h2">
                 {children}
               </h2>
             );

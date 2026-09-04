@@ -87,21 +87,21 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. MATTER OVERVIEW HERO CARD */}
-      <div className="p-5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-4">
+      <div className="p-5 rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+              <span className="font-mono text-xs font-bold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-500/20">
                 {caseFile.caseNumber || `REF: ${caseFile.referenceNo || caseFile.id}`}
               </span>
-              <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-white text-[#64748B] border border-[#E2E8F0]">
+              <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-white dark:bg-[#131E2E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                 {caseFile.caseType}
               </span>
-              <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 Status: {caseFile.status}
               </span>
             </div>
-            <h2 className="text-base sm:text-lg font-bold text-[#0F172A]">
+            <h2 className="text-base sm:text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">
               {caseFile.title}
             </h2>
           </div>
@@ -111,10 +111,10 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
               className={cn(
                 "text-xs font-bold px-3 py-1 rounded-xl border",
                 caseFile.priority === "urgent"
-                  ? "bg-rose-50 text-rose-700 border-rose-200 animate-pulse"
+                  ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 animate-pulse"
                   : caseFile.priority === "high"
-                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                  : "bg-emerald-50 text-[#105B38] border-emerald-200"
+                  ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                  : "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
               )}
             >
               Priority: {caseFile.priority.toUpperCase()}
@@ -123,31 +123,31 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
         </div>
 
         {/* Key Metadata Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#E2E8F0] text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Court Forum</span>
-            <p className="font-semibold text-[#0F172A] mt-0.5 truncate flex items-center gap-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Court Forum</span>
+            <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5 truncate flex items-center gap-1">
               <MapPin className="w-3 h-3 text-[#105B38]" />
               <span>{caseFile.court || "Lahore High Court, Principal Seat"}</span>
             </p>
           </div>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Bench Roster</span>
-            <p className="font-semibold text-[#0F172A] mt-0.5 truncate flex items-center gap-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Bench Roster</span>
+            <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5 truncate flex items-center gap-1">
               <Scale className="w-3 h-3 text-[#105B38]" />
               <span>Single Bench / DB-I</span>
             </p>
           </div>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Filing Date</span>
-            <p className="font-semibold text-[#0F172A] mt-0.5 truncate flex items-center gap-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Filing Date</span>
+            <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5 truncate flex items-center gap-1">
               <Clock className="w-3 h-3 text-[#105B38]" />
               <span>{formatDate(caseFile.createdAt)}</span>
             </p>
           </div>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Chamber Counsel</span>
-            <p className="font-semibold text-[#0F172A] mt-0.5 truncate flex items-center gap-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Chamber Counsel</span>
+            <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5 truncate flex items-center gap-1">
               <User className="w-3 h-3 text-[#105B38]" />
               <span>Principal Counsel (AOR)</span>
             </p>
@@ -155,7 +155,7 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
         </div>
 
         {caseFile.description && (
-          <p className="text-xs text-[#64748B] pt-2 border-t border-[#E2E8F0] leading-relaxed">
+          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] leading-relaxed">
             {caseFile.description}
           </p>
         )}
@@ -168,17 +168,17 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
         <div className="lg:col-span-7 space-y-5">
           
           {/* A. 6-PILLAR PROCEDURAL HEALTH GAUGE */}
-          <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-4">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A]">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC]">
                     6-Pillar Procedural Health Gauge
                   </h3>
-                  <p className="text-[11px] text-[#64748B]">
+                  <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                     Procedural integrity, statutory compliance, and defense readiness
                   </p>
                 </div>
@@ -188,7 +188,7 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
                 <span className="text-xl font-mono font-black text-[#105B38]">
                   {healthPercentage}%
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                   {verifiedPillarsCount}/6 Ready
                 </span>
               </div>
@@ -196,7 +196,7 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
 
             {/* Visual Gauge Bar */}
             <div className="space-y-1">
-              <div className="w-full h-2 rounded-full bg-[#F1F5F9] overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-[#F1F5F9] dark:bg-[#1E2D44] overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-500",
@@ -223,14 +223,14 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
                     className={cn(
                       "p-2 rounded-xl border text-[11px] flex items-center gap-2 transition-all",
                       isVerified
-                        ? "bg-emerald-50/50 border-emerald-200 text-[#105B38]"
-                        : "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B]"
+                        ? "bg-emerald-50/5 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-[#105B38]"
+                        : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                     )}
                   >
                     {isVerified ? (
                       <CheckCircle2 className="w-3.5 h-3.5 text-[#105B38] shrink-0" />
                     ) : (
-                      <Clock className="w-3.5 h-3.5 text-[#94A3B8] shrink-0" />
+                      <Clock className="w-3.5 h-3.5 text-[#94A3B8] dark:text-[#475569] shrink-0" />
                     )}
                     <span className="font-semibold truncate">{pillar.title.split(" ")[0]} {pillar.title.split(" ")[1] || ""}</span>
                   </div>
@@ -239,22 +239,22 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
             </div>
 
             {/* Order VII Rule 11 & Limitation Safeguards */}
-            <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2 text-xs">
+            <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[#0F172A] font-bold">
+                <div className="flex items-center gap-1.5 text-[#0F172A] dark:text-[#F8FAFC] font-bold">
                   <Scale className="w-3.5 h-3.5 text-[#105B38]" />
                   <span>Order VII Rule 11 CPC Shield</span>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                   Cause of Action Verified
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[#0F172A] font-bold">
+                <div className="flex items-center gap-1.5 text-[#0F172A] dark:text-[#F8FAFC] font-bold">
                   <Clock className="w-3.5 h-3.5 text-[#105B38]" />
                   <span>Limitation Act 1908 Status</span>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                   Within Statutory Limitation
                 </span>
               </div>
@@ -263,7 +263,7 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
             {/* Jump Action */}
             <button
               onClick={() => onNavigateTab("compliance")}
-              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white hover:bg-[#F8FAFC] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
+              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
             >
               <span>Open 6-Pillar Compliance Audit</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -271,24 +271,24 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
           </div>
 
           {/* B. CASE DOCUMENTS VAULT SUMMARY */}
-          <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-3.5">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                   <FileText className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC]">
                   Documents & Annexures Vault
                 </h3>
               </div>
-              <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]">
+              <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                 {docs.length} Attached
               </span>
             </div>
 
             {docs.length === 0 ? (
-              <div className="p-4 rounded-xl bg-[#F8FAFC] border border-dashed border-[#CBD5E1] text-center space-y-1">
-                <p className="text-xs text-[#64748B]">No documents uploaded or linked yet.</p>
+              <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-dashed border-[#CBD5E1] text-center space-y-1">
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">No documents uploaded or linked yet.</p>
                 <button
                   onClick={() => onNavigateTab("documents")}
                   className="text-xs font-bold text-[#105B38] hover:underline"
@@ -301,15 +301,15 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
                 {recentDocs.map((doc: any) => (
                   <div
                     key={doc.id}
-                    className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between text-xs"
+                    className="p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <FileText className="w-3.5 h-3.5 text-[#105B38] shrink-0" />
-                      <span className="font-semibold text-[#0F172A] truncate">
+                      <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] truncate">
                         {doc.docTitle || doc.label || `Document #${doc.documentId}`}
                       </span>
                     </div>
-                    <span className="text-[10px] text-[#64748B] font-mono shrink-0">
+                    <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono shrink-0">
                       {formatDate(doc.addedAt)}
                     </span>
                   </div>
@@ -319,7 +319,7 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
 
             <button
               onClick={() => onNavigateTab("documents")}
-              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white hover:bg-[#F8FAFC] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
+              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
             >
               <span>View All Documents Vault ({docs.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -331,59 +331,59 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
         <div className="lg:col-span-5 space-y-5">
           
           {/* C. NEXT HEARING FIXATION SUMMARY */}
-          <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-3.5">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                   <CalendarDays className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC]">
                   Next Court Hearing
                 </h3>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 Fixation Scheduled
               </span>
             </div>
 
             {nextHearing ? (
-              <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2.5">
+              <div className="p-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-0.5">
-                    <h4 className="text-xs font-bold text-[#0F172A]">
+                    <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                       {nextHearing.title}
                     </h4>
-                    <p className="text-[11px] text-[#64748B] flex items-center gap-1">
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1">
                       <Clock className="w-3 h-3 text-[#105B38]" />
                       <span>{formatDate(nextHearing.dueDate)} at 09:30 AM</span>
                     </p>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-[#E2E8F0] grid grid-cols-2 gap-2 text-[11px] text-[#64748B]">
+                <div className="pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] grid grid-cols-2 gap-2 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-[#94A3B8]">Judge / Bench</span>
-                    <p className="font-semibold text-[#0F172A] truncate">
+                    <span className="text-[10px] uppercase font-bold text-[#94A3B8] dark:text-[#475569]">Judge / Bench</span>
+                    <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] truncate">
                       {nextHearing.judge || "Hon'ble Single Bench"}
                     </p>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-[#94A3B8]">Court Room</span>
-                    <p className="font-semibold text-[#0F172A] truncate">
+                    <span className="text-[10px] uppercase font-bold text-[#94A3B8] dark:text-[#475569]">Court Room</span>
+                    <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] truncate">
                       {nextHearing.court || caseFile.court || "Court Room 4"}
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="p-4 rounded-xl bg-[#F8FAFC] border border-dashed border-[#CBD5E1] text-center space-y-1 text-xs text-[#64748B]">
+              <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-dashed border-[#CBD5E1] text-center space-y-1 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 <p>No upcoming hearing currently fixed.</p>
               </div>
             )}
 
             <button
               onClick={() => onNavigateTab("hearings")}
-              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white hover:bg-[#F8FAFC] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
+              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
             >
               <span>{nextHearing ? "Manage / Reschedule Hearings" : "Schedule Next Hearing Date"}</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -391,32 +391,32 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
           </div>
 
           {/* D. KEY PARTIES SUMMARY */}
-          <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-3.5">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                   <Users className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC]">
                   Parties & Litigants
                 </h3>
               </div>
-              <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]">
+              <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                 {clients.length} Parties
               </span>
             </div>
 
             <div className="space-y-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1">
+              <div className="p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-1">
                 <span className="text-[10px] font-bold uppercase text-[#105B38]">Petitioner / Plaintiff (Client)</span>
-                <p className="font-semibold text-[#0F172A]">
+                <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">
                   {petitioners.length > 0 ? petitioners.map((p: any) => p.name).join(", ") : "Client not designated"}
                 </p>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1">
-                <span className="text-[10px] font-bold uppercase text-rose-700">Respondent / Opponent</span>
-                <p className="font-semibold text-[#0F172A]">
+              <div className="p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-1">
+                <span className="text-[10px] font-bold uppercase text-rose-700 dark:text-rose-400">Respondent / Opponent</span>
+                <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">
                   {respondents.length > 0 ? respondents.map((r: any) => r.name).join(", ") : "Opponent not recorded"}
                 </p>
               </div>
@@ -424,7 +424,7 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
 
             <button
               onClick={() => onNavigateTab("parties")}
-              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white hover:bg-[#F8FAFC] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
+              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
             >
               <span>Manage Parties & Litigants ({clients.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -432,37 +432,37 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
           </div>
 
           {/* E. CHAMBERS STRATEGY NOTES */}
-          <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-3.5">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                   <StickyNote className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC]">
                   Chambers Strategy Notes
                 </h3>
               </div>
-              <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]">
+              <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                 {notes.length} Notes
               </span>
             </div>
 
             {latestNote ? (
-              <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs space-y-1">
-                <p className="text-[#0F172A] line-clamp-2 italic font-serif">
+              <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs space-y-1">
+                <p className="text-[#0F172A] dark:text-[#F8FAFC] line-clamp-2 italic font-serif">
                   "{latestNote.content}"
                 </p>
-                <span className="text-[10px] text-[#64748B] font-mono">
+                <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
                   {formatDate(latestNote.createdAt)}
                 </span>
               </div>
             ) : (
-              <p className="text-xs text-[#64748B]">No chamber notes recorded yet.</p>
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">No chamber notes recorded yet.</p>
             )}
 
             <button
               onClick={() => onNavigateTab("notes")}
-              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white hover:bg-[#F8FAFC] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
+              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#105B38] border border-[#105B38]/30 font-bold text-xs transition-all shadow-xs"
             >
               <span>Open Chambers Notes ({notes.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -472,53 +472,53 @@ export const CaseDossierOverview: React.FC<CaseDossierOverviewProps> = ({
       </div>
 
       {/* 3. CHAMBERS WORKSTATION QUICK LAUNCHPAD ACTION ROW */}
-      <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
+      <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
           Quick Workstation Actions
         </span>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <button
             onClick={() => onNavigateTab("compliance")}
-            className="p-3 rounded-xl bg-white hover:bg-emerald-50/40 border border-[#E2E8F0] hover:border-[#105B38] text-left space-y-1 transition-all group"
+            className="p-3 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-emerald-50/4 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] text-left space-y-1 transition-all group"
           >
-            <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] w-fit border border-emerald-200 group-hover:bg-[#105B38] group-hover:text-white transition-all">
+            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] w-fit border border-emerald-200 dark:border-emerald-500/20 group-hover:bg-[#105B38] group-hover:text-white transition-all">
               <ShieldCheck className="w-4 h-4" />
             </div>
-            <h4 className="text-xs font-bold text-[#0F172A]">Open Compliance Audit</h4>
-            <p className="text-[10px] text-[#64748B]">Verify 6 Pillars & O. VII R. 11</p>
+            <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Open Compliance Audit</h4>
+            <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Verify 6 Pillars & O. VII R. 11</p>
           </button>
 
           <button
             onClick={() => onNavigateTab("documents")}
-            className="p-3 rounded-xl bg-white hover:bg-emerald-50/40 border border-[#E2E8F0] hover:border-[#105B38] text-left space-y-1 transition-all group"
+            className="p-3 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-emerald-50/4 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] text-left space-y-1 transition-all group"
           >
-            <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] w-fit border border-emerald-200 group-hover:bg-[#105B38] group-hover:text-white transition-all">
+            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] w-fit border border-emerald-200 dark:border-emerald-500/20 group-hover:bg-[#105B38] group-hover:text-white transition-all">
               <FileText className="w-4 h-4" />
             </div>
-            <h4 className="text-xs font-bold text-[#0F172A]">View Documents Vault</h4>
-            <p className="text-[10px] text-[#64748B]">Pleadings, OCR & Annexures</p>
+            <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">View Documents Vault</h4>
+            <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Pleadings, OCR & Annexures</p>
           </button>
 
           <button
             onClick={() => onNavigateTab("hearings")}
-            className="p-3 rounded-xl bg-white hover:bg-emerald-50/40 border border-[#E2E8F0] hover:border-[#105B38] text-left space-y-1 transition-all group"
+            className="p-3 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-emerald-50/4 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] text-left space-y-1 transition-all group"
           >
-            <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] w-fit border border-emerald-200 group-hover:bg-[#105B38] group-hover:text-white transition-all">
+            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] w-fit border border-emerald-200 dark:border-emerald-500/20 group-hover:bg-[#105B38] group-hover:text-white transition-all">
               <CalendarDays className="w-4 h-4" />
             </div>
-            <h4 className="text-xs font-bold text-[#0F172A]">Schedule Hearing</h4>
-            <p className="text-[10px] text-[#64748B]">Sync diary & court cause list</p>
+            <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Schedule Hearing</h4>
+            <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Sync diary & court cause list</p>
           </button>
 
           <button
             onClick={() => onNavigateTab("notes")}
-            className="p-3 rounded-xl bg-white hover:bg-emerald-50/40 border border-[#E2E8F0] hover:border-[#105B38] text-left space-y-1 transition-all group"
+            className="p-3 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-emerald-50/4 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] text-left space-y-1 transition-all group"
           >
-            <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] w-fit border border-emerald-200 group-hover:bg-[#105B38] group-hover:text-white transition-all">
+            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] w-fit border border-emerald-200 dark:border-emerald-500/20 group-hover:bg-[#105B38] group-hover:text-white transition-all">
               <StickyNote className="w-4 h-4" />
             </div>
-            <h4 className="text-xs font-bold text-[#0F172A]">Add Chamber Note</h4>
-            <p className="text-[10px] text-[#64748B]">Strategy & trial conferences</p>
+            <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Add Chamber Note</h4>
+            <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Strategy & trial conferences</p>
           </button>
         </div>
       </div>

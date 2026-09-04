@@ -178,35 +178,35 @@ export const PinpointCitationParser: React.FC<PinpointCitationParserProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+    <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] p-5 sm:p-6 shadow-xs space-y-4">
       {/* Header & Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[#105B38] shadow-xs">
+          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] shadow-xs">
             <Search className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+            <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
               <span>Pinpoint Citation Lookup</span>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 Regex Engine
               </span>
             </h3>
-            <p className="text-[11px] text-[#64748B]">
+            <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               Direct volume & page resolver across reported Pakistani Law Journals (PLD, SCMR, CLC, PCrLJ, YLR, MLD, CLD, PTD, PLC, LHC)
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 bg-[#F8FAFC] p-1 rounded-xl border border-[#E2E8F0] text-xs">
+        <div className="flex items-center gap-1 bg-[#F8FAFC] dark:bg-[#0B131E] p-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
           <button
             type="button"
             onClick={() => setMode("smart")}
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all text-xs font-semibold",
               mode === "smart"
-                ? "bg-white text-[#105B38] font-bold shadow-xs"
-                : "text-[#64748B] hover:text-[#0F172A]"
+                ? "bg-white dark:bg-[#131E2E] text-[#105B38] font-bold shadow-xs"
+                : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
             )}
           >
             Smart Parser
@@ -217,8 +217,8 @@ export const PinpointCitationParser: React.FC<PinpointCitationParserProps> = ({
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all text-xs font-semibold",
               mode === "manual"
-                ? "bg-white text-[#105B38] font-bold shadow-xs"
-                : "text-[#64748B] hover:text-[#0F172A]"
+                ? "bg-white dark:bg-[#131E2E] text-[#105B38] font-bold shadow-xs"
+                : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
             )}
           >
             Field Matrix
@@ -230,14 +230,14 @@ export const PinpointCitationParser: React.FC<PinpointCitationParserProps> = ({
         <div className="space-y-4">
           {/* Smart Input Bar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-            <div className="flex-1 flex items-center px-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] focus-within:border-[#105B38] focus-within:bg-white shadow-xs transition-all">
-              <BookOpen className="w-4 h-4 text-[#94A3B8] mr-2.5 flex-shrink-0" />
+            <div className="flex-1 flex items-center px-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] focus-within:border-[#105B38] focus-within:bg-white dark:bg-[#131E2E] shadow-xs transition-all">
+              <BookOpen className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mr-2.5 flex-shrink-0" />
               <input
                 type="text"
                 value={citationText}
                 onChange={(e) => setCitationText(e.target.value)}
                 placeholder="Type citation (e.g. 2024 SCMR 1085, 2026 LHC 2169, 2026 CLD 569, 2024 PLJ 379)..."
-                className="w-full h-11 bg-transparent text-xs sm:text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none font-mono font-medium"
+                className="w-full h-11 bg-transparent text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none font-mono font-medium"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && parsedTokens?.isValid) {
                     handleExecuteSmartSearch();
@@ -248,7 +248,7 @@ export const PinpointCitationParser: React.FC<PinpointCitationParserProps> = ({
                 <button
                   type="button"
                   onClick={() => setCitationText("")}
-                  className="p-1 text-[#94A3B8] hover:text-[#0F172A]"
+                  className="p-1 text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -268,29 +268,29 @@ export const PinpointCitationParser: React.FC<PinpointCitationParserProps> = ({
 
           {/* Live Regex Token Feedback Chips */}
           {citationText && (
-            <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="p-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] flex flex-wrap items-center justify-between gap-2 text-xs">
               {parsedTokens?.isValid ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex items-center gap-1 text-[11px] font-mono text-[#105B38] bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md font-bold">
+                  <span className="flex items-center gap-1 text-[11px] font-mono text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-2.5 py-0.5 rounded-md font-bold">
                     <CheckCircle2 className="w-3 h-3" /> Valid Citation Syntax
                   </span>
-                  <span className="font-mono text-[#0F172A] bg-white border border-[#E2E8F0] px-2.5 py-0.5 rounded-md shadow-xs">
+                  <span className="font-mono text-[#0F172A] dark:text-[#F8FAFC] bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] px-2.5 py-0.5 rounded-md shadow-xs">
                     Year: <strong>{parsedTokens.year}</strong>
                   </span>
-                  <span className="font-mono text-[#0F172A] bg-white border border-[#E2E8F0] px-2.5 py-0.5 rounded-md shadow-xs">
+                  <span className="font-mono text-[#0F172A] dark:text-[#F8FAFC] bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] px-2.5 py-0.5 rounded-md shadow-xs">
                     Journal: <strong>{parsedTokens.journal}</strong>
                   </span>
-                  <span className="font-mono text-[#0F172A] bg-white border border-[#E2E8F0] px-2.5 py-0.5 rounded-md shadow-xs">
+                  <span className="font-mono text-[#0F172A] dark:text-[#F8FAFC] bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] px-2.5 py-0.5 rounded-md shadow-xs">
                     Page: <strong>{parsedTokens.page}</strong>
                   </span>
                   {parsedTokens.court && (
-                    <span className="font-mono text-[#0F172A] bg-white border border-[#E2E8F0] px-2.5 py-0.5 rounded-md shadow-xs">
+                    <span className="font-mono text-[#0F172A] dark:text-[#F8FAFC] bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] px-2.5 py-0.5 rounded-md shadow-xs">
                       Court: <strong>{parsedTokens.court}</strong>
                     </span>
                   )}
                 </div>
               ) : (
-                <span className="text-[11px] font-mono text-[#94A3B8]">
+                <span className="text-[11px] font-mono text-[#94A3B8] dark:text-[#475569]">
                   Awaiting complete citation pattern (e.g. &quot;2024 SCMR 1085&quot; or &quot;2026 LHC 2169&quot;)...
                 </span>
               )}
@@ -299,7 +299,7 @@ export const PinpointCitationParser: React.FC<PinpointCitationParserProps> = ({
 
           {/* Common Landmark Citation Shortcuts */}
           <div className="space-y-2 pt-1">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#64748B] font-bold block">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-bold block">
               Quick Pinpoint Benchmark Chips:
             </span>
             <div className="flex flex-wrap gap-2">
@@ -319,7 +319,7 @@ export const PinpointCitationParser: React.FC<PinpointCitationParserProps> = ({
                       });
                     }
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#105B38] hover:bg-emerald-50/50 text-[#334155] hover:text-[#105B38] text-[11px] font-mono font-medium transition-all shadow-xs"
+                  className="px-3 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] hover:bg-emerald-50/5 dark:bg-emerald-500/100 dark:bg-emerald-500/10 text-[#334155] dark:text-[#CBD5E1] hover:text-[#105B38] text-[11px] font-mono font-medium transition-all shadow-xs"
                   title={ex.desc}
                 >
                   {ex.label}
@@ -333,12 +333,12 @@ export const PinpointCitationParser: React.FC<PinpointCitationParserProps> = ({
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
             <div>
-              <label className="text-[10px] font-mono font-bold text-[#64748B] block mb-1">Journal Reporter</label>
+              <label className="text-[10px] font-mono font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block mb-1">Journal Reporter</label>
               <select
                 value={manualJournal}
                 onChange={(e) => setManualJournal(e.target.value)}
                 disabled={loadingJournals}
-                className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:bg-white font-mono text-xs font-medium disabled:opacity-50"
+                className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] font-mono text-xs font-medium disabled:opacity-50"
               >
                 {journals.length > 0 ? <option value="ALL">All Journals</option> : <option value="ALL">Loading...</option>}
                 {journals.map((j) => (
@@ -350,26 +350,26 @@ export const PinpointCitationParser: React.FC<PinpointCitationParserProps> = ({
             </div>
 
             <div>
-              <label className="text-[10px] font-mono font-bold text-[#64748B] block mb-1">Year (1947–2026)</label>
+              <label className="text-[10px] font-mono font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block mb-1">Year (1947–2026)</label>
               <input
                 type="number"
                 min={1947}
                 max={2026}
                 value={manualYear}
                 onChange={(e) => setManualYear(Number(e.target.value))}
-                className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:bg-white font-mono text-xs font-medium"
+                className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] font-mono text-xs font-medium"
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-mono font-bold text-[#64748B] block mb-1">Page Number</label>
+              <label className="text-[10px] font-mono font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block mb-1">Page Number</label>
               <input
                 type="number"
                 min={1}
                 value={manualPage}
                 onChange={(e) => setManualPage(e.target.value)}
                 placeholder="e.g. 451"
-                className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] focus:outline-none focus:border-[#105B38] focus:bg-white font-mono text-xs font-medium"
+                className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] font-mono text-xs font-medium"
               />
             </div>
 

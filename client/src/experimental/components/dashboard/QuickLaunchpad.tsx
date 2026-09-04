@@ -22,7 +22,7 @@ export const QuickLaunchpad: React.FC = () => {
       badgeColor: "emerald",
       href: "/preview/chat",
       icon: Bot,
-      iconBg: "bg-[#1A1A1A]/5 text-[#1A1A1A] border-[#1A1A1A]/20",
+      iconBg: "bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 text-[#1A1A1A] dark:text-[#F8FAFC] border-[#1A1A1A]/20 dark:border-[#1E2D44]",
       borderHover: "hover:border-[#1A1A1A]/50",
       actionLabel: "Launch Consultation",
       tag: "Apex / Turbo",
@@ -35,7 +35,7 @@ export const QuickLaunchpad: React.FC = () => {
       badgeColor: "blue",
       href: "/preview/drafting",
       icon: FileSignature,
-      iconBg: "bg-[#F5F4F2] text-[#666666] border-[#E5E4E2]",
+      iconBg: "bg-[#F5F4F2] dark:bg-[#0B131E] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] border-[#E5E4E2] dark:border-[#1E2D44]",
       borderHover: "hover:border-[#D9D8D6]",
       actionLabel: "Draft Court Petition",
       tag: "Tiptap Engine",
@@ -48,7 +48,7 @@ export const QuickLaunchpad: React.FC = () => {
       badgeColor: "purple",
       href: "/preview/drafting",
       icon: Scroll,
-      iconBg: "bg-[#F5F4F2] text-[#666666] border-[#E5E4E2]",
+      iconBg: "bg-[#F5F4F2] dark:bg-[#0B131E] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] border-[#E5E4E2] dark:border-[#1E2D44]",
       borderHover: "hover:border-[#D9D8D6]",
       actionLabel: "Draft Agreement",
       tag: "Clause Library",
@@ -61,7 +61,7 @@ export const QuickLaunchpad: React.FC = () => {
       badgeColor: "gold",
       href: "/preview/judgments",
       icon: Gavel,
-      iconBg: "bg-[#1A1A1A]/5 text-[#1A1A1A] border-[#1A1A1A]/20",
+      iconBg: "bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 text-[#1A1A1A] dark:text-[#F8FAFC] border-[#1A1A1A]/20 dark:border-[#1E2D44]",
       borderHover: "hover:border-[#1A1A1A]/50",
       actionLabel: "Search Precedents",
       tag: "PLD · SCMR · CLC",
@@ -74,7 +74,7 @@ export const QuickLaunchpad: React.FC = () => {
       badgeColor: "emerald",
       href: "/preview/cases",
       icon: Briefcase,
-      iconBg: "bg-[#F5F4F2] text-[#1A1A1A] border-[#E5E4E2]",
+      iconBg: "bg-[#F5F4F2] dark:bg-[#0B131E] text-[#1A1A1A] dark:text-[#F8FAFC] border-[#E5E4E2] dark:border-[#1E2D44]",
       borderHover: "hover:border-[#D9D8D6]",
       actionLabel: "Open Case Registry",
       tag: "Court Dossiers",
@@ -87,7 +87,7 @@ export const QuickLaunchpad: React.FC = () => {
       badgeColor: "gold",
       href: "/preview/diary",
       icon: CalendarDays,
-      iconBg: "bg-[#1A1A1A]/5 text-[#1A1A1A] border-[#1A1A1A]/20",
+      iconBg: "bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 text-[#1A1A1A] dark:text-[#F8FAFC] border-[#1A1A1A]/20 dark:border-[#1E2D44]",
       borderHover: "hover:border-[#1A1A1A]/50",
       actionLabel: "Open Hearing Docket",
       tag: "Dual Calendar Sync",
@@ -98,12 +98,12 @@ export const QuickLaunchpad: React.FC = () => {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#1A1A1A]" />
-          <h2 className="text-sm font-semibold font-mono uppercase tracking-wider text-[#4A4A4A]">
+          <Sparkles className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC]" />
+          <h2 className="text-sm font-semibold font-mono uppercase tracking-wider text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569]">
             Workspace Quick Launchpad
           </h2>
         </div>
-        <span className="text-xs text-[#666666] hidden sm:inline font-mono">
+        <span className="text-xs text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hidden sm:inline font-mono">
           6 Dedicated Chambers Studios
         </span>
       </div>
@@ -115,7 +115,7 @@ export const QuickLaunchpad: React.FC = () => {
             <Link
               key={item.id}
               href={item.href}
-              className={`group relative flex flex-col justify-between rounded-xl p-5 bg-white border border-[#E5E4E2]/90 backdrop-blur-sm shadow-lg transition-all duration-300 hover:-translate-y-1 ${item.borderHover} hover:shadow-sm`}
+              className={`group relative flex flex-col justify-between rounded-xl p-5 bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44]/90 backdrop-blur-sm shadow-lg transition-all duration-300 hover:-translate-y-1 ${item.borderHover} hover:shadow-sm`}
             >
               <div className="space-y-3">
                 {/* Header: Icon + Badge */}
@@ -127,18 +127,18 @@ export const QuickLaunchpad: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#F5F4F2] text-[#4A4A4A] border border-[#E5E4E2]">
+                    <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#F5F4F2] dark:bg-[#0B131E] text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E5E4E2] dark:border-[#1E2D44]">
                       {item.tag}
                     </span>
                     <span
                       className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full ${
                         item.badgeColor === "emerald"
-                          ? "bg-[#F5F4F2] text-[#1A1A1A] border border-[#E5E4E2]"
+                          ? "bg-[#F5F4F2] dark:bg-[#0B131E] text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#E5E4E2] dark:border-[#1E2D44]"
                           : item.badgeColor === "blue"
-                          ? "bg-[#F5F4F2] text-[#666666] border border-[#E5E4E2]"
+                          ? "bg-[#F5F4F2] dark:bg-[#0B131E] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E5E4E2] dark:border-[#1E2D44]"
                           : item.badgeColor === "purple"
-                          ? "bg-[#F5F4F2] text-[#666666] border border-[#E5E4E2]"
-                          : "bg-[#1A1A1A]/5 text-[#1A1A1A] border border-[#1A1A1A]/20"
+                          ? "bg-[#F5F4F2] dark:bg-[#0B131E] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E5E4E2] dark:border-[#1E2D44]"
+                          : "bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#1A1A1A]/20 dark:border-[#1E2D44]"
                       }`}
                     >
                       {item.badge}
@@ -148,19 +148,19 @@ export const QuickLaunchpad: React.FC = () => {
 
                 {/* Content */}
                 <div>
-                  <h3 className="font-semibold text-[#1A1A1A] text-sm group-hover:text-[#1A1A1A] transition-colors font-serif">
+                  <h3 className="font-semibold text-[#1A1A1A] dark:text-[#F8FAFC] text-sm group-hover:text-[#1A1A1A] dark:text-[#F8FAFC] transition-colors font-serif">
                     {item.title}
                   </h3>
-                  <p className="text-xs text-[#666666] mt-1.5 leading-relaxed line-clamp-2">
+                  <p className="text-xs text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mt-1.5 leading-relaxed line-clamp-2">
                     {item.subtitle}
                   </p>
                 </div>
               </div>
 
               {/* Footer CTA */}
-              <div className="flex items-center justify-between pt-3 mt-4 border-t border-[#E5E4E2]/70 text-xs font-semibold text-[#1A1A1A]/90 group-hover:text-[#1A1A1A]">
+              <div className="flex items-center justify-between pt-3 mt-4 border-t border-[#E5E4E2] dark:border-[#1E2D44]/70 text-xs font-semibold text-[#1A1A1A] dark:text-[#F8FAFC]/90 group-hover:text-[#1A1A1A] dark:text-[#F8FAFC]">
                 <span>{item.actionLabel}</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform text-[#1A1A1A]" />
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform text-[#1A1A1A] dark:text-[#F8FAFC]" />
               </div>
             </Link>
           );

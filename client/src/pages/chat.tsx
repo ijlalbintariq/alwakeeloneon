@@ -1419,7 +1419,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 data-testid="button-share-chat"
                 className={`px-3 py-2 rounded-lg text-[9px] md:text-[10px] font-semibold uppercase tracking-wide flex items-center gap-2 transition-all duration-150 ${
                   shareUrl
-                    ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
                     : "hover:bg-primary/10 text-muted-foreground hover:text-primary"
                 }`}
               >
@@ -1486,7 +1486,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               <span className={`text-[7px] font-semibold uppercase tracking-wider ${
                                 m.modeName === "Turbo" ? "text-amber-700 dark:text-amber-500" :
                                 m.modeName === "Standard" ? "text-muted-foreground" :
-                                "text-emerald-600"
+                                "text-emerald-600 dark:text-emerald-400"
                               }`}>
                                 {m.modeName === "Turbo" && <Zap size={8} className="inline mr-0.5" />}
                                 {m.modeName !== "Turbo" && m.modeName !== "Standard" && <Sparkles size={8} className="inline mr-0.5" />}
@@ -1542,8 +1542,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       {m.attachments && m.attachments.length > 0 && (
                         <div className="flex flex-col gap-2 mt-3 pt-2.5 border-t border-white/10">
                           {m.attachments.map((name, i) => (
-                            <div key={i} className="flex items-center gap-2.5 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 hover:bg-white/15 transition-colors">
-                              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                            <div key={i} className="flex items-center gap-2.5 px-3 py-2 bg-white dark:bg-[#131E2E]/10 backdrop-blur-sm rounded-xl border border-white/10 hover:bg-white dark:bg-[#131E2E]/15 transition-colors">
+                              <div className="w-8 h-8 rounded-lg bg-white dark:bg-[#131E2E]/10 flex items-center justify-center flex-shrink-0">
                                 {getFileIcon(name, 16)}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -1627,7 +1627,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   normalizedAiMode === "turbo"
                     ? "bg-amber-600/10 text-amber-700 dark:text-amber-500 border-amber-600/30"
                     : isApexMode
-                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
                       : "text-muted-foreground border-border hover:border-primary hover:text-primary"
                 }`}
                 data-testid="button-model-selector"

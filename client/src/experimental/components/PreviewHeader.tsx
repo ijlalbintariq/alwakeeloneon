@@ -85,7 +85,7 @@ export const PreviewHeader: React.FC<PreviewHeaderProps> = ({
     <header
       className={cn(
         "sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b px-4 transition-colors",
-        "bg-white/95 backdrop-blur-sm border-[#E2E8F0] text-[#0F172A]",
+        "bg-white dark:bg-[#131E2E]/95 backdrop-blur-sm border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC]",
         className
       )}
     >
@@ -94,7 +94,7 @@ export const PreviewHeader: React.FC<PreviewHeaderProps> = ({
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors md:hidden"
+            className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:hover:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:hover:bg-[#1E2D44] transition-colors md:hidden"
             aria-label="Toggle navigation menu"
           >
             <Menu className="w-5 h-5" />
@@ -103,11 +103,11 @@ export const PreviewHeader: React.FC<PreviewHeaderProps> = ({
 
         {/* Breadcrumb Trail */}
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-[#64748B] font-medium hidden sm:inline">
+          <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium hidden sm:inline">
             {routeInfo.module}
           </span>
-          <ChevronRight className="w-3.5 h-3.5 text-[#CBD5E1] hidden sm:inline" />
-          <span className="text-[#0F172A] font-bold">
+          <ChevronRight className="w-3.5 h-3.5 text-[#CBD5E1] dark:text-[#475569] hidden sm:inline" />
+          <span className="text-[#0F172A] dark:text-[#F8FAFC] font-bold">
             {routeInfo.page}
           </span>
         </div>
@@ -117,13 +117,14 @@ export const PreviewHeader: React.FC<PreviewHeaderProps> = ({
       <div className="flex-1 max-w-sm mx-4 hidden md:block">
         <button
           onClick={onOpenCommandPalette}
-          className="w-full flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#64748B] text-xs shadow-xs transition-all"
+          className="w-full flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:hover:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] text-xs shadow-xs transition-all"
+          data-tour="command-palette"
         >
           <div className="flex items-center gap-2">
             <Search className="w-3.5 h-3.5 text-[#105B38]" />
             <span>Search statutes, cases & drafts...</span>
           </div>
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white text-[10px] font-mono text-[#475569] border border-[#E2E8F0] shadow-xs">
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white dark:bg-[#131E2E] text-[10px] font-mono text-[#475569] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs">
             ⌘K
           </kbd>
         </button>
@@ -134,7 +135,7 @@ export const PreviewHeader: React.FC<PreviewHeaderProps> = ({
         {/* Mobile Search Button */}
         <button
           onClick={onOpenCommandPalette}
-          className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] transition-colors md:hidden"
+          className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:hover:text-[#F8FAFC] transition-colors md:hidden"
           aria-label="Open search"
         >
           <Search className="w-4 h-4" />
@@ -143,7 +144,7 @@ export const PreviewHeader: React.FC<PreviewHeaderProps> = ({
         {/* Legal Reference Shelf */}
         <button
           onClick={() => setLocation("/preview/statutes")}
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#105B38]/10 hover:bg-[#105B38]/15 text-[#105B38] text-xs font-semibold border border-[#105B38]/20 transition-all"
+          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#105B38]/10 hover:bg-[#105B38]/15 text-[#105B38] dark:text-[#10B981] text-xs font-semibold border border-[#105B38]/20 dark:border-[#105B38]/40 transition-all"
           title="Statutes, Major Codes, Limitation Calculator & Courts Directory"
           aria-label="Open legal reference compendium"
         >
@@ -151,8 +152,17 @@ export const PreviewHeader: React.FC<PreviewHeaderProps> = ({
           <span>Statutes & Codes</span>
         </button>
 
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:hover:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:hover:bg-[#1E2D44] transition-colors"
+          aria-label="Toggle theme"
+        >
+          {resolvedTheme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
+
         {/* PKT Clock */}
-        <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#475569] font-mono bg-[#F1F5F9] px-2.5 py-1 rounded-lg border border-[#E2E8F0]">
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#475569] dark:text-[#94A3B8] dark:text-[#475569] font-mono bg-[#F1F5F9] dark:bg-[#0B131E] px-2.5 py-1 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44]">
           <Clock className="w-3.5 h-3.5 text-[#105B38]" />
           <span>{currentTime || "10:00 AM"} PKT</span>
         </div>

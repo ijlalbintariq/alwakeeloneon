@@ -348,9 +348,9 @@ export default function PreviewCheckout() {
 
   if (isAuthLoading) {
     return (
-      <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-3">
+      <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] dark:bg-[#0B131E] flex flex-col items-center justify-center gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-[#105B38]" />
-        <span className="text-xs font-mono text-[#64748B]">Verifying session...</span>
+        <span className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Verifying session...</span>
       </div>
     );
   }
@@ -360,22 +360,22 @@ export default function PreviewCheckout() {
   }
 
   return (
-    <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#105B38]/20 selection:text-[#0F172A]">
+    <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] flex flex-col font-sans selection:bg-[#105B38]/20 selection:text-[#0F172A] dark:text-[#F8FAFC]">
       {/* 1. Header Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-white dark:bg-[#131E2E]/95 backdrop-blur-md border-b border-[#E2E8F0] dark:border-[#1E2D44] px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/preview/pricing" className="flex items-center gap-2 text-xs font-bold text-[#64748B] hover:text-[#105B38] transition-colors">
+          <Link href="/preview/pricing" className="flex items-center gap-2 text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] transition-colors">
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Pricing</span>
           </Link>
           <span className="text-[#CBD5E1]">|</span>
           <div className="flex items-center gap-2">
             <img src="/logo.svg" alt="Al Wakeelo" className="w-5 h-5 object-contain" />
-            <span className="font-bold text-[#0F172A] font-serif text-sm">AL WAKEELO SECURE CHECKOUT</span>
+            <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC] font-serif text-sm">AL WAKEELO SECURE CHECKOUT</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-[11px] font-mono font-semibold px-3 py-1 rounded-full bg-[#EBF5F0] text-[#105B38] border border-[#A3D4BC]">
+        <div className="flex items-center gap-2 text-[11px] font-mono font-semibold px-3 py-1 rounded-full bg-[#EBF5F0] dark:bg-[#105B38]/20 text-[#105B38] border border-[#A3D4BC] dark:border-[#10B981]/30">
           <Lock className="w-3.5 h-3.5 text-[#105B38]" />
           <span>256-BIT SSL ENCRYPTED</span>
         </div>
@@ -387,21 +387,21 @@ export default function PreviewCheckout() {
           {/* Left Column: Plan Customizer & Safepay Gateway (7 Cols) */}
           <div className="lg:col-span-7 space-y-6">
             {/* Step 1: Select Plan & Billing Cycle */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 sm:p-6 shadow-sm">
+            <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] p-5 sm:p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-[#105B38] text-white text-xs font-bold font-mono flex items-center justify-center">
                     1
                   </span>
-                  <h2 className="text-base font-bold text-[#0F172A] font-serif">
+                  <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] font-serif">
                     Select Chamber Plan & Billing Frequency
                   </h2>
                 </div>
-                <span className="text-xs font-mono text-[#64748B]">Step 1 of 2</span>
+                <span className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Step 1 of 2</span>
               </div>
 
               {/* Billing Cycle Selector Tabs */}
-              <div className="grid grid-cols-3 gap-2 p-1 bg-[#F1F5F9] rounded-xl mb-5">
+              <div className="grid grid-cols-3 gap-2 p-1 bg-[#F1F5F9] dark:bg-[#1E2D44] rounded-xl mb-5">
                 {(["monthly", "quarterly", "yearly"] as BillingCycle[]).map((cycle) => {
                   const isSelected = selectedCycle === cycle;
                   const discount = cycle === "quarterly" ? "10% Off" : cycle === "yearly" ? "20% Off" : null;
@@ -412,13 +412,13 @@ export default function PreviewCheckout() {
                       onClick={() => handleCycleChange(cycle)}
                       className={`py-2 px-3 rounded-lg text-xs font-bold transition-all capitalize flex items-center justify-center gap-1.5 ${
                         isSelected
-                          ? "bg-white text-[#105B38] shadow-sm border border-[#E2E8F0]"
-                          : "text-[#64748B] hover:text-[#0F172A]"
+                          ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-sm border border-[#E2E8F0] dark:border-[#1E2D44]"
+                          : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                       }`}
                     >
                       <span>{cycle}</span>
                       {discount && (
-                        <span className="text-[10px] bg-[#EBF5F0] text-[#105B38] px-1.5 py-0.2 rounded font-mono font-bold">
+                        <span className="text-[10px] bg-[#EBF5F0] dark:bg-[#105B38]/20 text-[#105B38] px-1.5 py-0.2 rounded font-mono font-bold">
                           {discount}
                         </span>
                       )}
@@ -430,7 +430,7 @@ export default function PreviewCheckout() {
               {/* Plan Options Grid */}
               <div className="space-y-3">
                 {isPlansLoading ? (
-                  <div className="p-8 text-center text-xs text-[#64748B]">
+                  <div className="p-8 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                     <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#105B38]" />
                     <span>Loading live pricing plans...</span>
                   </div>
@@ -448,8 +448,8 @@ export default function PreviewCheckout() {
                         onClick={() => handlePlanChange(plan.id)}
                         className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
                           isSelected
-                            ? "bg-[#EBF5F0]/50 border-[#105B38] ring-1 ring-[#105B38]"
-                            : "bg-white border-[#E2E8F0] hover:border-[#CBD5E1]"
+                            ? "bg-[#EBF5F0] dark:bg-[#105B38]/20/50 border-[#105B38] ring-1 ring-[#105B38]"
+                            : "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#CBD5E1]"
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -458,22 +458,22 @@ export default function PreviewCheckout() {
                               isSelected ? "border-[#105B38] bg-[#105B38]" : "border-[#94A3B8]"
                             }`}
                           >
-                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-[#131E2E]" />}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-[#0F172A]">{plan.name}</span>
-                              <span className="text-[10px] font-mono font-semibold px-2 py-0.2 rounded bg-slate-100 text-slate-700">
+                              <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">{plan.name}</span>
+                              <span className="text-[10px] font-mono font-semibold px-2 py-0.2 rounded bg-slate-100 text-slate-700 dark:text-slate-400">
                                 {plan.badge}
                               </span>
                             </div>
-                            <span className="text-[11px] text-[#64748B]">
+                            <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                               {plan.seats} · {plan.aiActions}
                             </span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs font-mono font-bold text-[#0F172A]">{price}</span>
+                          <span className="text-xs font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC]">{price}</span>
                         </div>
                       </div>
                     );
@@ -483,26 +483,26 @@ export default function PreviewCheckout() {
             </div>
 
             {/* Step 2: Safepay Secure Payment Gateway */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 sm:p-6 shadow-sm">
+            <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] p-5 sm:p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-[#105B38] text-white text-xs font-bold font-mono flex items-center justify-center">
                     2
                   </span>
-                  <h2 className="text-base font-bold text-[#0F172A] font-serif">
+                  <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] font-serif">
                     Secure Payment Gateway (Safepay)
                   </h2>
                 </div>
-                <span className="text-xs font-mono text-[#64748B]">Step 2 of 2</span>
+                <span className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Step 2 of 2</span>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+              <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
                   <div className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-[#105B38]" />
-                    <span className="text-xs font-bold text-[#0F172A]">Debit & Credit Card Checkout</span>
+                    <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Debit & Credit Card Checkout</span>
                   </div>
-                  <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
+                  <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded font-bold">
                     Safepay Verified
                   </span>
                 </div>
@@ -512,45 +512,45 @@ export default function PreviewCheckout() {
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                  <div className="p-3 bg-white rounded-xl border border-[#E2E8F0] flex items-center gap-2.5">
+                  <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-2.5">
                     <ShieldCheck className="w-4 h-4 text-[#105B38] shrink-0" />
                     <div>
-                      <span className="text-[11px] font-bold text-[#0F172A] block">PCI-DSS Compliant</span>
-                      <span className="text-[10px] text-[#64748B]">Zero card data stored</span>
+                      <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] block">PCI-DSS Compliant</span>
+                      <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Zero card data stored</span>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-white rounded-xl border border-[#E2E8F0] flex items-center gap-2.5">
+                  <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-2.5">
                     <Lock className="w-4 h-4 text-[#105B38] shrink-0" />
                     <div>
-                      <span className="text-[11px] font-bold text-[#0F172A] block">3D-Secure 2.0</span>
-                      <span className="text-[10px] text-[#64748B]">OTP verification</span>
+                      <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] block">3D-Secure 2.0</span>
+                      <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">OTP verification</span>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-white rounded-xl border border-[#E2E8F0] flex items-center gap-2.5">
+                  <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-2.5">
                     <Sparkles className="w-4 h-4 text-[#105B38] shrink-0" />
                     <div>
-                      <span className="text-[11px] font-bold text-[#0F172A] block">Instant Activation</span>
-                      <span className="text-[10px] text-[#64748B]">Automated provisioning</span>
+                      <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] block">Instant Activation</span>
+                      <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Automated provisioning</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-center justify-between text-[11px] text-[#64748B]">
+                <div className="pt-2 flex items-center justify-between text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   <span>Supported Cards: Visa, Mastercard, PayPak, UnionPay</span>
                   <span className="font-mono text-[#105B38] font-semibold">PKR Settlement</span>
                 </div>
               </div>
 
               {/* Wire Transfer Support Notice */}
-              <div className="mt-4 p-4 rounded-xl bg-amber-50/90 border border-amber-200 flex items-start gap-3">
-                <Building2 className="w-5 h-5 text-amber-800 shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-950">
-                  <p className="font-bold text-amber-900 mb-1">
+              <div className="mt-4 p-4 rounded-xl bg-amber-50/9 dark:bg-amber-500/100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-start gap-3">
+                <Building2 className="w-5 h-5 text-amber-800 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-950 dark:text-amber-300">
+                  <p className="font-bold text-amber-900 dark:text-amber-300 mb-1">
                     To buy through wire transfer:
                   </p>
-                  <p className="text-[11.5px] leading-relaxed text-amber-900/90">
+                  <p className="text-[11.5px] leading-relaxed text-amber-900 dark:text-amber-300/90">
                     Kindly contact on our chamber support number via WhatsApp or call:{" "}
                     <a
                       href="https://wa.me/923358341897"
@@ -561,7 +561,7 @@ export default function PreviewCheckout() {
                       <span>0335 8341897</span>
                       <PhoneCall className="w-3 h-3 inline" />
                     </a>{" "}
-                    (or email <a href="mailto:support@alwakeelo.com" className="font-semibold underline text-amber-900 hover:text-black">support@alwakeelo.com</a>) for manual bank details & instant activation.
+                    (or email <a href="mailto:support@alwakeelo.com" className="font-semibold underline text-amber-900 dark:text-amber-300 hover:text-black">support@alwakeelo.com</a>) for manual bank details & instant activation.
                   </p>
                 </div>
               </div>
@@ -570,44 +570,44 @@ export default function PreviewCheckout() {
 
           {/* Right Column: Order Summary & Action Card (5 Cols) */}
           <div className="lg:col-span-5 space-y-5">
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 sm:p-6 shadow-sm sticky top-20">
-              <div className="flex items-center justify-between pb-4 border-b border-[#E2E8F0]">
+            <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] p-5 sm:p-6 shadow-sm sticky top-20">
+              <div className="flex items-center justify-between pb-4 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
                 <div className="flex items-center gap-2">
                   <Receipt className="w-5 h-5 text-[#105B38]" />
-                  <h3 className="text-base font-bold font-serif text-[#0F172A]">
+                  <h3 className="text-base font-bold font-serif text-[#0F172A] dark:text-[#F8FAFC]">
                     Order Summary
                   </h3>
                 </div>
-                <span className="text-xs font-mono font-bold text-[#105B38] bg-[#EBF5F0] px-2 py-0.5 rounded-full border border-[#A3D4BC]">
+                <span className="text-xs font-mono font-bold text-[#105B38] bg-[#EBF5F0] dark:bg-[#105B38]/20 px-2 py-0.5 rounded-full border border-[#A3D4BC] dark:border-[#10B981]/30">
                   LIVE BILLING
                 </span>
               </div>
 
               {/* Selected Plan Details */}
-              <div className="py-4 border-b border-[#E2E8F0]">
+              <div className="py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-sm text-[#0F172A] font-serif">{currentPlan.name} Plan</span>
-                  <span className="font-mono text-xs font-bold text-[#0F172A]">
+                  <span className="font-bold text-sm text-[#0F172A] dark:text-[#F8FAFC] font-serif">{currentPlan.name} Plan</span>
+                  <span className="font-mono text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                     PKR {currentPlan.monthlyPricePkr.toLocaleString("en-US")}/mo
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-[#64748B]">
+                <div className="flex items-center justify-between text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   <span>Billing Frequency:</span>
-                  <span className="font-semibold text-[#0F172A] capitalize">
+                  <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] capitalize">
                     {selectedCycle} ({cycleMonths} {cycleMonths === 1 ? "month" : "months"})
                   </span>
                 </div>
               </div>
 
               {/* Promo Code Input with Real Backend Validation */}
-              <div className="py-4 border-b border-[#E2E8F0]">
-                <label className="text-xs font-bold text-[#334155] block mb-1.5 flex items-center gap-1.5">
+              <div className="py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
+                <label className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1.5 flex items-center gap-1.5">
                   <Tag className="w-3.5 h-3.5 text-[#105B38]" />
                   <span>Promo Code / Advocate Voucher</span>
                 </label>
 
                 {appliedPromo ? (
-                  <div className="flex items-center justify-between p-2.5 bg-[#EBF5F0] border border-[#A3D4BC] rounded-xl">
+                  <div className="flex items-center justify-between p-2.5 bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 rounded-xl">
                     <div className="flex items-center gap-2 text-xs">
                       <Percent className="w-4 h-4 text-[#105B38]" />
                       <div>
@@ -618,7 +618,7 @@ export default function PreviewCheckout() {
                     <button
                       type="button"
                       onClick={handleRemovePromo}
-                      className="text-xs text-red-600 hover:text-red-800 font-bold px-2 py-1"
+                      className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:text-red-400 font-bold px-2 py-1"
                     >
                       Remove
                     </button>
@@ -630,7 +630,7 @@ export default function PreviewCheckout() {
                       value={promoInput}
                       onChange={(e) => setPromoInput(e.target.value)}
                       placeholder="Try CHAMBERS2026 or ADVOCATE10"
-                      className="flex-1 px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38] font-mono uppercase"
+                      className="flex-1 px-3 py-2 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38] font-mono uppercase"
                     />
                     <button
                       type="submit"
@@ -643,7 +643,7 @@ export default function PreviewCheckout() {
                 )}
 
                 {promoError && (
-                  <p className="text-[11px] text-red-600 mt-1.5 flex items-center gap-1">
+                  <p className="text-[11px] text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>{promoError}</span>
                   </p>
@@ -654,7 +654,7 @@ export default function PreviewCheckout() {
               <div className="py-4 space-y-2.5 text-xs">
                 <div className="flex items-center justify-between text-[#475569]">
                   <span>Base Price ({cycleMonths} mos × PKR {currentPlan.monthlyPricePkr.toLocaleString("en-US")}):</span>
-                  <span className="font-mono font-semibold text-[#0F172A]">PKR {basePrice.toLocaleString("en-US")}</span>
+                  <span className="font-mono font-semibold text-[#0F172A] dark:text-[#F8FAFC]">PKR {basePrice.toLocaleString("en-US")}</span>
                 </div>
 
                 {cycleSavings > 0 && (
@@ -671,16 +671,16 @@ export default function PreviewCheckout() {
                   </div>
                 )}
 
-                <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between">
+                <div className="pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between">
                   <div>
-                    <span className="text-sm font-bold font-serif text-[#0F172A] block">Net Payable Amount</span>
-                    <span className="text-[10px] text-[#64748B]">Instant activation</span>
+                    <span className="text-sm font-bold font-serif text-[#0F172A] dark:text-[#F8FAFC] block">Net Payable Amount</span>
+                    <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Instant activation</span>
                   </div>
                   <div className="text-right">
                     <span className="text-xl font-mono font-black text-[#105B38] block">
                       PKR {finalTotal.toLocaleString("en-US")}
                     </span>
-                    <span className="text-[10px] font-mono text-[#64748B]">
+                    <span className="text-[10px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       {selectedCycle} settlement
                     </span>
                   </div>
@@ -688,12 +688,12 @@ export default function PreviewCheckout() {
               </div>
 
               {/* Auto-renew Toggle */}
-              <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] mb-4 flex items-center justify-between gap-3">
+              <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-start gap-2">
                   <RefreshCw className="w-3.5 h-3.5 text-[#105B38] mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-xs font-bold text-[#0F172A] block">Auto-Renew Subscription</span>
-                    <span className="text-[10px] text-[#64748B] block leading-tight">
+                    <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block">Auto-Renew Subscription</span>
+                    <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block leading-tight">
                       Cancel anytime with 1-click in Chamber Settings.
                     </span>
                   </div>
@@ -702,7 +702,7 @@ export default function PreviewCheckout() {
                   type="checkbox"
                   checked={autoRenew}
                   onChange={(e) => setAutoRenew(e.target.checked)}
-                  className="w-4 h-4 text-[#105B38] rounded border-gray-300 focus:ring-[#105B38]"
+                  className="w-4 h-4 text-[#105B38] rounded border-gray-300 dark:border-gray-500/30 focus:ring-[#105B38]"
                 />
               </div>
 
@@ -731,13 +731,13 @@ export default function PreviewCheckout() {
               </button>
 
               {isProcessing && (
-                <div className="mt-3 p-3 bg-[#EBF5F0] border border-[#A3D4BC] rounded-xl text-center text-xs font-mono text-[#105B38] animate-pulse">
+                <div className="mt-3 p-3 bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 rounded-xl text-center text-xs font-mono text-[#105B38] animate-pulse">
                   {processingPhase}
                 </div>
               )}
 
               {/* Trust Badge Guarantee */}
-              <div className="mt-4 pt-3 border-t border-[#F1F5F9] flex items-center justify-center gap-2 text-[11px] text-[#64748B]">
+              <div className="mt-4 pt-3 border-t border-[#F1F5F9] flex items-center justify-center gap-2 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 <ShieldCheck className="w-4 h-4 text-[#105B38]" />
                 <span>7-Day Unconditional Chamber Refund Policy</span>
               </div>

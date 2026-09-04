@@ -22,9 +22,11 @@ import {
   LogOut,
   Users,
   Trophy,
+  PlayCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { useTour } from "./tour/TourContext";
 
 interface PreviewSidebarProps {
   collapsed: boolean;
@@ -53,6 +55,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
   onOpenReference,
   className,
 }) => {
+  const { startTour } = useTour();
   const [designation, setDesignation] = useState(() => typeof window !== "undefined" ? (window.localStorage.getItem("alwakeelo_user_designation") || "Legal Professional") : "Legal Professional");
   useEffect(() => {
     const onStorage = () => setDesignation(window.localStorage.getItem("alwakeelo_user_designation") || "Legal Professional");
@@ -210,15 +213,16 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
       aria-label="Experimental Workstation Navigation Sidebar"
       className={cn(
         "relative flex flex-col border-r transition-all duration-300 ease-in-out select-none",
-        "bg-white border-[#E2E8F0] text-[#0F172A]",
+        "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC]",
         collapsed ? "w-16" : "w-64",
         className
       )}
+      data-tour="sidebar-nav"
     >
       {/* Brand Header */}
       <div
         className={cn(
-          "flex h-16 items-center border-b border-[#E2E8F0] transition-all",
+          "flex h-16 items-center border-b border-[#E2E8F0] dark:border-[#1E2D44] transition-all",
           collapsed ? "justify-center px-2" : "justify-between px-4"
         )}
       >
@@ -227,10 +231,10 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
             <Link href="/preview/dashboard" className="flex items-center gap-2.5 overflow-hidden group">
               <img src="/logo.svg" alt="Al Wakeelo" className="h-9 w-9 shrink-0 object-contain transition-transform group-hover:scale-105" />
               <div className="flex flex-col leading-tight">
-                <span className="text-base font-bold tracking-tight text-[#0F172A]">
+                <span className="text-base font-bold tracking-tight text-[#0F172A] dark:text-[#F8FAFC]">
                   Al Wakeelo
                 </span>
-                <span className="text-xs font-bold text-[#105B38] tracking-wide">
+                <span className="text-xs font-bold text-[#105B38] dark:text-[#10B981] tracking-wide">
                   Legal AI Chambers
                 </span>
               </div>
@@ -239,7 +243,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="hidden md:flex h-7 w-7 items-center justify-center rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+              className="hidden md:flex h-7 w-7 items-center justify-center rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:hover:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:hover:bg-[#1E2D44] transition-colors"
               title="Collapse sidebar"
               aria-label="Collapse sidebar"
             >
@@ -250,7 +254,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
           <button
             type="button"
             onClick={onToggleCollapse}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#64748B] hover:text-[#105B38] transition-colors shadow-xs"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:hover:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] dark:hover:text-[#10B981] transition-colors shadow-xs"
             title="Expand sidebar"
             aria-label="Expand sidebar"
           >
@@ -264,7 +268,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
         {navigationGroups.map((group) => (
           <div key={group.label} className="space-y-1">
             {!collapsed && (
-              <div className="px-3 py-1 text-xs font-bold tracking-wider text-[#64748B] uppercase">
+              <div className="px-3 py-1 text-xs font-bold tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase">
                 {group.label}
               </div>
             )}
@@ -280,7 +284,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
                     <item.icon
                       className={cn(
                         "h-4 w-4 shrink-0 transition-colors",
-                        isActive ? "text-white" : "text-[#64748B] group-hover:text-[#0F172A]"
+                        isActive ? "text-white" : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] group-hover:text-[#0F172A] dark:group-hover:text-[#F8FAFC]"
                       )}
                     />
 
@@ -297,7 +301,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
                   collapsed ? "justify-center px-2" : "gap-3 px-3",
                   isActive
                     ? "bg-[#105B38] text-white font-semibold shadow-xs"
-                    : "text-[#334155] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+                    : "text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:hover:bg-[#1E2D44]"
                 );
 
                 if (item.onClick) {
@@ -308,6 +312,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
                       onClick={item.onClick}
                       title={collapsed ? item.title : undefined}
                       className={itemClasses}
+                      data-tour={item.id}
                     >
                       {content}
                     </button>
@@ -320,6 +325,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
                     href={item.href || "#"}
                     title={collapsed ? item.title : undefined}
                     className={itemClasses}
+                    data-tour={item.id}
                   >
                     {content}
                   </Link>
@@ -332,23 +338,23 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
 
       {/* Chambers Status & AI Quota Pill */}
       {!collapsed ? (
-        <div className="px-3 py-2 border-t border-[#E2E8F0] bg-white">
-          <div className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
+        <div className="px-3 py-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E]">
+          <div className="p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
             <div className="flex items-center justify-between text-[11px]">
-              <div className="flex items-center gap-1.5 font-bold text-[#0F172A]">
+              <div className="flex items-center gap-1.5 font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 <Shield className="w-3.5 h-3.5 text-[#105B38]" />
                 <span>{tierDisplay}</span>
               </div>
-              <span className="text-[10px] font-mono font-bold text-[#105B38]">Active</span>
+              <span className="text-[10px] font-mono font-bold text-[#105B38] dark:text-[#10B981]">Active</span>
             </div>
 
             {/* Quota Progress Bar */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] text-[#64748B]">
+              <div className="flex items-center justify-between text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 <span>AI Quota</span>
-                <span className="font-semibold text-[#0F172A]">{quotaAvailable}% Available</span>
+                <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{quotaAvailable}% Available</span>
               </div>
-              <div className="w-full h-1.5 rounded-full bg-[#E2E8F0] overflow-hidden">
+              <div className="w-full h-1.5 rounded-full bg-[#E2E8F0] dark:bg-[#1E2D44] overflow-hidden">
                 <div className="h-full bg-[#105B38] rounded-full transition-all" style={{ width: `${quotaAvailable}%` }} />
               </div>
             </div>
@@ -357,25 +363,26 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
       ) : null}
 
       {/* Footer Profile & Sign Out */}
-      <div className="p-2 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between gap-1">
+      <div className="p-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] flex items-center justify-between gap-1">
         <Link
           href="/preview/settings"
           title="Chambers Profile & Settings"
           className={cn(
-            "flex items-center gap-2.5 p-1.5 rounded-xl text-xs hover:bg-[#F1F5F9] transition-colors group cursor-pointer flex-1 min-w-0",
+            "flex items-center gap-2.5 p-1.5 rounded-xl text-xs hover:bg-[#F1F5F9] dark:hover:bg-[#1E2D44] transition-colors group cursor-pointer flex-1 min-w-0",
             collapsed ? "justify-center" : "justify-start"
           )}
+          data-tour="user-profile"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#105B38]/10 border border-[#105B38]/20 text-xs font-bold text-[#105B38] group-hover:bg-[#105B38] group-hover:text-white transition-colors">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 text-xs font-bold text-[#105B38] dark:text-[#10B981] group-hover:bg-[#105B38] group-hover:text-white transition-colors">
               {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || "U"}
             </div>
             {!collapsed && (
               <div className="flex flex-col min-w-0 text-left">
-                <span className="font-semibold text-[#0F172A] truncate text-xs group-hover:text-[#105B38] transition-colors">
+                <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] truncate text-xs group-hover:text-[#105B38] dark:group-hover:text-[#10B981] transition-colors">
                   {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Advocate"}
                 </span>
-                <span className="text-[10px] text-[#64748B] truncate">
+                <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] truncate">
                   {designation}
                 </span>
               </div>
@@ -384,21 +391,31 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
         </Link>
 
         {!collapsed && (
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-              } catch {}
-              localStorage.removeItem("alwakeelo_preview_auth");
-              localStorage.removeItem("alwakeelo_preview_user");
-              window.location.href = "/auth";
-            }}
-            title="Sign Out"
-            className="p-2 rounded-xl text-[#64748B] hover:text-rose-600 hover:bg-rose-50 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={startTour}
+              title="Replay Interactive Tour"
+              className="p-2 rounded-xl text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] dark:hover:text-[#10B981] hover:bg-[#105B38]/10 transition-colors"
+            >
+              <PlayCircle className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                } catch {}
+                localStorage.removeItem("alwakeelo_preview_auth");
+                localStorage.removeItem("alwakeelo_preview_user");
+                window.location.href = "/auth";
+              }}
+              title="Sign Out"
+              className="p-2 rounded-xl text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </div>
     </aside>

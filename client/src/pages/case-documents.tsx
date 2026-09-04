@@ -305,7 +305,7 @@ export default function CaseDocumentsPage() {
               </div>
             </div>
 
-            <div className="hidden md:block h-8 w-px bg-white/10" />
+            <div className="hidden md:block h-8 w-px bg-white dark:bg-[#131E2E]/10" />
 
             <div className="min-w-0 shrink-0">
               <h2 className="text-lg md:text-2xl font-bold">Case Documents</h2>
@@ -318,7 +318,7 @@ export default function CaseDocumentsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search case files, evidence, or specific clauses..."
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-white dark:bg-[#131E2E]/5 py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none"
                 />
               </div>
             </div>
@@ -357,7 +357,7 @@ export default function CaseDocumentsPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-primary/40 hover:bg-primary/10 text-sm font-bold"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-[#131E2E]/5 border border-white/10 hover:border-primary/40 hover:bg-primary/10 text-sm font-bold"
                 >
                   <Upload size={15} />
                   {uploading ? "Uploading..." : "Upload"}
@@ -401,12 +401,12 @@ export default function CaseDocumentsPage() {
                       >
                         View
                       </button>
-                      <button onClick={() => handleDownload(doc)} className="p-2 rounded-lg hover:bg-white/10 text-foreground" title="Download">
+                      <button onClick={() => handleDownload(doc)} className="p-2 rounded-lg hover:bg-white dark:bg-[#131E2E]/10 text-foreground" title="Download">
                         <Download size={16} />
                       </button>
                       <button
                         onClick={() => toggleContext(doc.id)}
-                        className={`p-2 rounded-lg ${active ? "bg-primary/20 text-primary" : "text-foreground hover:bg-white/10"}`}
+                        className={`p-2 rounded-lg ${active ? "bg-primary/20 text-primary" : "text-foreground hover:bg-white dark:bg-[#131E2E]/10"}`}
                         title="Toggle AI context"
                       >
                         <Brain size={16} />
@@ -424,7 +424,7 @@ export default function CaseDocumentsPage() {
               })}
 
               {!isLoading && filteredDocuments.length === 0 && (
-                <div className="col-span-full py-16 text-center border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+                <div className="col-span-full py-16 text-center border border-dashed border-white/10 rounded-2xl bg-white dark:bg-[#131E2E]/[0.02]">
                   <FileSearch size={40} className="mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">No documents match this filter.</p>
                 </div>
@@ -458,12 +458,12 @@ export default function CaseDocumentsPage() {
             ))}
           </div>
 
-          <div className="mt-auto p-3 rounded-xl border border-white/10 bg-white/5">
+          <div className="mt-auto p-3 rounded-xl border border-white/10 bg-white dark:bg-[#131E2E]/5">
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="text-muted-foreground">Context Window</span>
               <span className="text-primary font-bold">{contextUsagePercent}% Used</span>
             </div>
-            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-2 rounded-full bg-white dark:bg-[#131E2E]/10 overflow-hidden">
               <div className="h-full bg-primary" style={{ width: `${contextUsagePercent}%` }} />
             </div>
             <p className="text-[11px] text-muted-foreground mt-2">Large files are summarized automatically to fit within AI context.</p>
@@ -483,10 +483,10 @@ export default function CaseDocumentsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => handleDownload(previewDoc)} className="p-2 rounded-lg hover:bg-white/10 text-foreground" title="Download">
+                <button onClick={() => handleDownload(previewDoc)} className="p-2 rounded-lg hover:bg-white dark:bg-[#131E2E]/10 text-foreground" title="Download">
                   <Download size={18} />
                 </button>
-                <button onClick={() => handleShare(previewDoc)} className="p-2 rounded-lg hover:bg-white/10 text-foreground" title="Share">
+                <button onClick={() => handleShare(previewDoc)} className="p-2 rounded-lg hover:bg-white dark:bg-[#131E2E]/10 text-foreground" title="Share">
                   <Share2 size={18} />
                 </button>
                 <button onClick={() => setPreviewDoc(null)} className="p-2 rounded-full bg-primary text-primary-foreground hover:brightness-110" title="Close">
@@ -497,7 +497,7 @@ export default function CaseDocumentsPage() {
 
             <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_320px]">
               <div className="overflow-auto p-4 md:p-6 bg-[hsl(var(--preview-bg)/0.55)]">
-                <div className="mx-auto max-w-[760px] min-h-full bg-white text-[#1b1b1b] rounded-sm shadow-2xl p-6 md:p-10 legal-draft-font whitespace-pre-wrap leading-relaxed">
+                <div className="mx-auto max-w-[760px] min-h-full bg-white dark:bg-[#131E2E] text-[#1b1b1b] rounded-sm shadow-2xl p-6 md:p-10 legal-draft-font whitespace-pre-wrap leading-relaxed">
                   {previewDoc.content || "No document content available."}
                 </div>
               </div>
@@ -513,7 +513,7 @@ export default function CaseDocumentsPage() {
                     <span className="text-foreground">Confidence Score</span>
                     <span className="font-bold text-primary">{analysis?.confidence ?? 0}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-2 rounded-full bg-white dark:bg-[#131E2E]/10 overflow-hidden">
                     <div className="h-full bg-primary" style={{ width: `${analysis?.confidence ?? 0}%` }} />
                   </div>
                 </div>

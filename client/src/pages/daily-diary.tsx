@@ -556,7 +556,7 @@ export default function DailyDiaryPage() {
                         size="icon"
                         variant="ghost"
                         showLabel={false}
-                        className="h-7 w-7 text-muted-foreground/50 hover:text-emerald-600"
+                        className="h-7 w-7 text-muted-foreground/50 hover:text-emerald-600 dark:text-emerald-400"
                       />
                       {item.source === "manual" && typeof item.id === "number" && editingId !== item.id && (
                         <button

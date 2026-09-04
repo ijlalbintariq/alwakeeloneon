@@ -236,26 +236,26 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. Header & Segmented Compliance Meter */}
-      <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-4">
+      <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#105B38]" />
-              <h2 className="text-base font-bold text-[#0F172A]">
+              <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 6-Pillar Matter Compliance Architecture
               </h2>
             </div>
-            <p className="text-xs text-[#64748B]">
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               Mandatory procedural safeguards and client care protocol for Pakistani legal practice.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <span className="text-xl font-bold font-mono text-[#0F172A]">
+              <span className="text-xl font-bold font-mono text-[#0F172A] dark:text-[#F8FAFC]">
                 {compliancePercentage}%
               </span>
-              <p className="text-xs text-[#64748B]">
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 {verifiedCount} of 6 Verified
               </p>
             </div>
@@ -279,7 +279,7 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
         </div>
 
         {/* Segmented 6-Block Progress Bar with Tick Marks & Labels */}
-        <div className="space-y-2 pt-2 border-t border-[#E2E8F0]">
+        <div className="space-y-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
           <div className="grid grid-cols-6 gap-1.5">
             {pillarStatusMap.map(({ pillar, isDone }, idx) => (
               <div key={pillar.key} className="space-y-1">
@@ -292,14 +292,14 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
                   )}
                   title={`Pillar ${idx + 1}: ${pillar.title} (${isDone ? "Verified" : "Pending"})`}
                 />
-                <p className="text-[11px] font-mono text-center truncate text-[#64748B]">
+                <p className="text-[11px] font-mono text-center truncate text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   P{idx + 1}
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-[#64748B] pt-1">
+          <div className="flex items-center justify-between text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] pt-1">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-[#105B38]" />
               <span>Verified ({verifiedCount})</span>
@@ -324,10 +324,10 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
               className={cn(
                 "rounded-2xl border transition-all p-4 space-y-3",
                 isDone
-                  ? "bg-white border-[#E2E8F0] shadow-xs"
+                  ? "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs"
                   : isExists
-                  ? "bg-white border-amber-200 shadow-xs"
-                  : "bg-[#F8FAFC] border-[#E2E8F0]"
+                  ? "bg-white dark:bg-[#131E2E] border-amber-200 dark:border-amber-500/20 shadow-xs"
+                  : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44]"
               )}
             >
               {/* Header */}
@@ -337,10 +337,10 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
                     className={cn(
                       "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border",
                       isDone
-                        ? "bg-emerald-50 text-[#105B38] border-emerald-200"
+                        ? "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
                         : isExists
-                        ? "bg-amber-50 text-amber-700 border-amber-200"
-                        : "bg-white text-[#64748B] border-[#E2E8F0]"
+                        ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                        : "bg-white dark:bg-[#131E2E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44]"
                     )}
                   >
                     <Icon className="w-4 h-4" />
@@ -350,11 +350,11 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
                       <span className="text-xs font-mono font-bold text-[#105B38]">
                         Pillar #{pillar.pillarNumber}
                       </span>
-                      <span className="text-xs text-[#64748B]">
+                      <span className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                         {pillar.urduTitle}
                       </span>
                     </div>
-                    <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] mt-0.5">
+                    <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] mt-0.5">
                       {pillar.title}
                     </h3>
                   </div>
@@ -373,7 +373,7 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
                         })
                       }
                       title="Click to mark pending"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-[#105B38] border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold hover:bg-emerald-100 transition-colors"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>Verified</span>
@@ -389,7 +389,7 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
                         })
                       }
                       title="Click to mark verified"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold hover:bg-amber-100 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 text-xs font-bold hover:bg-amber-100 transition-colors"
                     >
                       <AlertCircle className="w-3.5 h-3.5" />
                       <span>Pending</span>
@@ -405,7 +405,7 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
                           status: "done",
                         })
                       }
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#F8FAFC] text-[#0F172A] border border-[#E2E8F0] text-xs font-bold transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Initialize</span>
@@ -415,13 +415,13 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
               </div>
 
               {/* Description */}
-              <p className="text-xs text-[#334155] leading-relaxed">
+              <p className="text-xs text-[#334155] dark:text-[#CBD5E1] leading-relaxed">
                 {pillar.description}
               </p>
 
               {/* Regulatory Basis & Details Toggle */}
-              <div className="pt-2 border-t border-[#E2E8F0] flex items-center justify-between text-xs">
-                <span className="text-[#64748B] truncate max-w-[240px]">
+              <div className="pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs">
+                <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] truncate max-w-[240px]">
                   Basis: {pillar.regulatoryBasis}
                 </span>
                 <button
@@ -440,16 +440,16 @@ export const SixPillarChecklist: React.FC<SixPillarChecklistProps> = ({
 
               {/* Expanded Details */}
               {isExpanded && (
-                <div className="pt-2.5 space-y-2 text-xs bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
+                <div className="pt-2.5 space-y-2 text-xs bg-[#F8FAFC] dark:bg-[#0B131E] p-3 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
                   <div className="flex items-center justify-between">
-                    <span className="text-[#64748B]">Record Title:</span>
-                    <span className="font-semibold text-[#0F172A]">
+                    <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Record Title:</span>
+                    <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">
                       {item?.title || pillar.defaultTitle}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[#64748B]">Regulatory Authority:</span>
-                    <span className="text-[#334155] font-mono text-[11px]">
+                    <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Regulatory Authority:</span>
+                    <span className="text-[#334155] dark:text-[#CBD5E1] font-mono text-[11px]">
                       {pillar.regulatoryBasis}
                     </span>
                   </div>

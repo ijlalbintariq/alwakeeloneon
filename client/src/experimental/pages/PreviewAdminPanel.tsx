@@ -182,11 +182,11 @@ export default function AdminPanelPage() {
             <div className="admin-panel-shield-wrap">
               <Shield size={18} className="text-[#105B38]" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100" style={{ fontFamily: "'Playfair Display', serif" }}>
               Admin Control Panel
             </h1>
           </div>
-          <p className="text-xs uppercase tracking-[0.3em] text-gray-600 font-black">
+          <p className="text-xs uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400 font-black">
             Platform Management Command Center
           </p>
         </div>
@@ -267,7 +267,7 @@ function PaginationStrip({
 
   return (
     <div className="flex items-center justify-between gap-3 pt-2">
-      <span className="text-[10px] text-gray-600 font-bold">
+      <span className="text-[10px] text-gray-600 dark:text-gray-400 font-bold">
         Showing {start}-{end} of {total}
       </span>
       <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ function PaginationStrip({
         >
           Prev
         </Button>
-        <span className="text-[10px] text-gray-600 font-bold">
+        <span className="text-[10px] text-gray-600 dark:text-gray-400 font-bold">
           Page {page} / {totalPages}
         </span>
         <Button
@@ -386,22 +386,22 @@ function GlobalRagIndexCard() {
   const status = reindexStatusResponse?.status;
 
   return (
-    <Card className="bg-white border-slate-200 rounded-[2rem]" data-testid="global-rag-index-card">
+    <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]" data-testid="global-rag-index-card">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[#105B38]">
               Global RAG Indexing
             </p>
-            <p className="text-xs text-gray-600 mt-1">
-              Use <span className="text-emerald-700 font-semibold">Index Missing Only</span> for faster backfills, or <span className="text-foreground font-semibold">Index All</span> for full rebuild.
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              Use <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Index Missing Only</span> for faster backfills, or <span className="text-foreground font-semibold">Index All</span> for full rebuild.
             </p>
           </div>
           <div className="flex items-center gap-2">
             {status?.running ? (
               <Button
                 variant="ghost"
-                className="text-red-700 border border-red-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                className="text-red-700 dark:text-red-400 border border-red-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
                 onClick={() => stopMutation.mutate()}
                 disabled={stopMutation.isPending}
                 data-testid="button-stop-global-rag-index"
@@ -413,7 +413,7 @@ function GlobalRagIndexCard() {
               <>
                 <Button
                   variant="ghost"
-                  className="text-emerald-700 border border-emerald-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  className="text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
                   onClick={() => startIncrementalStatutesMutation.mutate()}
                   disabled={startIncrementalStatutesMutation.isPending || startIncrementalMutation.isPending || startMutation.isPending || isLoading}
                   data-testid="button-start-global-rag-index-statutes"
@@ -423,7 +423,7 @@ function GlobalRagIndexCard() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className="text-blue-700 border border-blue-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  className="text-blue-700 dark:text-blue-400 border border-blue-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
                   onClick={() => startIncrementalMutation.mutate()}
                   disabled={startIncrementalMutation.isPending || startIncrementalStatutesMutation.isPending || startMutation.isPending || isLoading}
                   data-testid="button-start-global-rag-index-incremental"
@@ -446,32 +446,32 @@ function GlobalRagIndexCard() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center gap-2 text-gray-600 text-xs">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-xs">
             <Loader2 className="animate-spin" size={14} />
             <span>Loading status...</span>
           </div>
         ) : status ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest font-black text-gray-600">Total Docs</p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400">Total Docs</p>
                 <p className="text-sm font-bold text-foreground">{(status.aggregate.totalDocuments || 0).toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest font-black text-gray-600">Processed</p>
-                <p className="text-sm font-bold text-blue-700">{(status.aggregate.processed || 0).toLocaleString()}</p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400">Processed</p>
+                <p className="text-sm font-bold text-blue-700 dark:text-blue-400">{(status.aggregate.processed || 0).toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest font-black text-gray-600">Indexed</p>
-                <p className="text-sm font-bold text-emerald-700">{(status.aggregate.indexed || 0).toLocaleString()}</p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400">Indexed</p>
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{(status.aggregate.indexed || 0).toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest font-black text-gray-600">Failed</p>
-                <p className="text-sm font-bold text-red-700">{(status.aggregate.failed || 0).toLocaleString()}</p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400">Failed</p>
+                <p className="text-sm font-bold text-red-700 dark:text-red-400">{(status.aggregate.failed || 0).toLocaleString()}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] text-gray-600">
+            <div className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400">
               <span className={status.running ? "text-[#105B38] font-bold" : "text-foreground font-bold"}>
                 {status.running ? "Running" : "Idle"}
               </span>
@@ -483,14 +483,14 @@ function GlobalRagIndexCard() {
 
             <div className="space-y-2">
               {(status.sources || []).map((source) => (
-                <div key={source.key} className="rounded-xl border border-slate-200 bg-background px-3 py-2">
+                <div key={source.key} className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] font-bold text-foreground">{source.label}</p>
-                    <p className="text-[10px] text-gray-600">
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400">
                       {source.processed.toLocaleString()} / {source.totalDocuments.toLocaleString()}
                     </p>
                   </div>
-                  <p className="text-[10px] text-gray-600 mt-1">
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-1">
                     Indexed {source.indexed.toLocaleString()} • Failed {source.failed.toLocaleString()} • {status.mode === "incremental"
                       ? `Cursor ${(source.nextCursorId || 0).toLocaleString()}`
                       : `Next offset ${source.nextOffset.toLocaleString()}`}
@@ -523,13 +523,13 @@ function StatsSection() {
   }
 
   const statItems = [
-    { label: "Total Users", value: stats?.totalUsers || 0, icon: Users, color: "text-blue-700" },
-    { label: "Chat Threads", value: stats?.totalThreads || 0, icon: FileText, color: "text-emerald-700" },
+    { label: "Total Users", value: stats?.totalUsers || 0, icon: Users, color: "text-blue-700 dark:text-blue-400" },
+    { label: "Chat Threads", value: stats?.totalThreads || 0, icon: FileText, color: "text-emerald-700 dark:text-emerald-400" },
     { label: "Messages", value: stats?.totalMessages || 0, icon: BarChart3, color: "text-[#105B38]" },
     { label: "Documents", value: stats?.totalDocuments || 0, icon: Database, color: "text-[#105B38]" },
-    { label: "Knowledge Entries", value: stats?.totalKnowledge || 0, icon: Database, color: "text-cyan-700" },
-    { label: "Cache Entries", value: stats?.totalCacheEntries || 0, icon: BarChart3, color: "text-pink-700" },
-    { label: "Usage This Month", value: stats?.totalUsageThisMonth || 0, icon: BarChart3, color: "text-orange-700" },
+    { label: "Knowledge Entries", value: stats?.totalKnowledge || 0, icon: Database, color: "text-cyan-700 dark:text-cyan-400" },
+    { label: "Cache Entries", value: stats?.totalCacheEntries || 0, icon: BarChart3, color: "text-pink-700 dark:text-pink-400" },
+    { label: "Usage This Month", value: stats?.totalUsageThisMonth || 0, icon: BarChart3, color: "text-orange-700 dark:text-orange-400" },
   ];
 
   return (
@@ -539,11 +539,11 @@ function StatsSection() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4" data-testid="stats-grid">
         {statItems.map((item) => (
-          <Card key={item.label} className="bg-white border-slate-200 rounded-[2rem]">
+          <Card key={item.label} className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-3">
                 <item.icon size={16} className={item.color} />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400">
                   {item.label}
                 </span>
               </div>
@@ -558,7 +558,7 @@ function StatsSection() {
       <div data-testid="seo-status-section">
         <div className="flex items-center gap-3 mb-4">
           <Globe size={16} className="text-[#105B38]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
             SEO Readiness
           </span>
         </div>
@@ -567,21 +567,21 @@ function StatsSection() {
             <Loader2 className="animate-spin text-[#105B38]" size={20} />
           </div>
         ) : (
-          <Card className="bg-white border-slate-200 rounded-[2rem]">
+          <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
                   <p className="text-sm font-bold text-foreground">
                     {(seoStatus?.healthyChecks || 0).toLocaleString()} / {(seoStatus?.totalChecks || 0).toLocaleString()} checks passed
                   </p>
-                  <p className="text-[11px] text-gray-600 mt-1">{seoStatus?.siteBase || "N/A"}</p>
+                  <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-1">{seoStatus?.siteBase || "N/A"}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <a
                     href={seoStatus?.urls.robots || "#"}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-[#105B38] hover:text-[#105B38]"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-[#105B38] hover:text-[#105B38]"
                   >
                     robots.txt <ExternalLink size={11} />
                   </a>
@@ -589,7 +589,7 @@ function StatsSection() {
                     href={seoStatus?.urls.sitemap || "#"}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-[#105B38] hover:text-[#105B38]"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-[#105B38] hover:text-[#105B38]"
                   >
                     sitemap.xml <ExternalLink size={11} />
                   </a>
@@ -598,24 +598,24 @@ function StatsSection() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {(seoStatus?.checks || []).map((check) => (
-                  <div key={check.key} className="rounded-xl border border-slate-200 bg-background px-3 py-2.5">
+                  <div key={check.key} className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2.5">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <span className="text-[11px] font-bold text-foreground">{check.label}</span>
-                      <Badge className={check.ok ? "bg-emerald-500/20 text-emerald-700 border-emerald-500/30" : "bg-red-500/20 text-red-700 border-red-500/30"}>
+                      <Badge className={check.ok ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" : "bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30"}>
                         {check.ok ? "Pass" : "Fix"}
                       </Badge>
                     </div>
-                    <p className="text-[10px] text-gray-600 leading-relaxed">{check.detail}</p>
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">{check.detail}</p>
                   </div>
                 ))}
               </div>
 
               {seoStatus?.recommendations && seoStatus.recommendations.length > 0 && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-widest font-black text-red-700 mb-1">
+                  <p className="text-[10px] uppercase tracking-widest font-black text-red-700 dark:text-red-400 mb-1">
                     Needs Attention
                   </p>
-                  <p className="text-[11px] text-red-700 leading-relaxed">
+                  <p className="text-[11px] text-red-700 dark:text-red-400 leading-relaxed">
                     {seoStatus.recommendations.join(" • ")}
                   </p>
                 </div>
@@ -628,7 +628,7 @@ function StatsSection() {
       <div data-testid="cost-analytics-section">
         <div className="flex items-center gap-3 mb-4">
           <BarChart3 size={16} className="text-[#105B38]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
             Cost Analytics (This Month)
           </span>
         </div>
@@ -640,29 +640,29 @@ function StatsSection() {
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <Card className="bg-white border-slate-200 rounded-[2rem]">
+              <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
                 <CardContent className="p-6">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">
                     Est. Total Cost
                   </span>
-                  <p className="text-2xl font-bold text-emerald-700" data-testid="text-total-cost">
+                  <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400" data-testid="text-total-cost">
                     ${costData?.totalCost || "0.0000"}
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-white border-slate-200 rounded-[2rem]">
+              <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
                 <CardContent className="p-6">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">
                     Total Tokens
                   </span>
-                  <p className="text-2xl font-bold text-blue-700" data-testid="text-total-tokens">
+                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-400" data-testid="text-total-tokens">
                     {(costData?.totalTokens || 0).toLocaleString()}
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-white border-slate-200 rounded-[2rem]">
+              <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
                 <CardContent className="p-6">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">
                     Active Features
                   </span>
                   <p className="text-2xl font-bold text-[#105B38]">
@@ -673,9 +673,9 @@ function StatsSection() {
             </div>
 
             {costData?.byFeature && costData.byFeature.length > 0 && (
-              <Card className="bg-white border-slate-200 rounded-[2rem]">
+              <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
                 <CardContent className="p-6">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-4">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-4">
                     Cost Breakdown by Feature
                   </span>
                   <div className="space-y-3">
@@ -690,18 +690,18 @@ function StatsSection() {
                               {FEATURE_LABELS[f.feature] || f.feature}
                             </span>
                             <div className="flex items-center gap-4 flex-wrap">
-                              <span className="text-[10px] text-gray-600">
+                              <span className="text-[10px] text-gray-600 dark:text-gray-400">
                                 {f.totalQueries} queries
                               </span>
-                              <span className="text-[10px] text-gray-600">
+                              <span className="text-[10px] text-gray-600 dark:text-gray-400">
                                 {(f.totalInputTokens + f.totalOutputTokens).toLocaleString()} tokens
                               </span>
-                              <span className="text-xs font-bold text-emerald-700">
+                              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
                                 ${f.totalCost}
                               </span>
                             </div>
                           </div>
-                          <div className="w-full bg-white rounded-full h-1.5">
+                          <div className="w-full bg-white dark:bg-[#131E2E] rounded-full h-1.5">
                             <div
                               className="bg-[#105B38] h-1.5 rounded-full transition-all"
                               style={{ width: `${Math.max(costPercent, 2)}%` }}
@@ -945,7 +945,7 @@ function UsersSection() {
       <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
         <div className="flex items-center gap-3">
           <Users size={16} className="text-[#105B38]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
             {allUsers?.length || 0} Registered Users
           </span>
         </div>
@@ -961,7 +961,7 @@ function UsersSection() {
           </Button>
           <Button
             variant={showAddForm ? "ghost" : "default"}
-            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-gray-600" : "bg-[#105B38] text-white"}`}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-gray-600 dark:text-gray-400" : "bg-[#105B38] text-white"}`}
             onClick={() => setShowAddForm(!showAddForm)}
             data-testid="button-toggle-add-user"
           >
@@ -972,9 +972,9 @@ function UsersSection() {
       </div>
 
       {showAddForm && (
-        <Card className="bg-white border-slate-200 rounded-[2rem]" data-testid="add-user-form">
+        <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]" data-testid="add-user-form">
           <CardContent className="p-6 space-y-4">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 block">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400 block">
               Create New User
             </span>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1041,7 +1041,7 @@ function UsersSection() {
               </Select>
               <Button
                 variant="ghost"
-                className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${newIsAdmin ? "text-[#105B38]" : "text-gray-600"}`}
+                className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${newIsAdmin ? "text-[#105B38]" : "text-gray-600 dark:text-gray-400"}`}
                 onClick={() => setNewIsAdmin(!newIsAdmin)}
                 data-testid="button-new-admin-toggle"
               >
@@ -1064,23 +1064,23 @@ function UsersSection() {
 
       <div className="space-y-3">
         {allUsers?.map((u) => (
-          <Card key={u.id} className="bg-white border-slate-200 rounded-[1.5rem]" data-testid={`user-row-${u.id}`}>
+          <Card key={u.id} className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[1.5rem]" data-testid={`user-row-${u.id}`}>
             <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#131E2E] border border-slate-200 dark:border-slate-500/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {u.profileImageUrl ? (
                     <img src={u.profileImageUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <Users size={16} className="text-gray-600" />
+                    <Users size={16} className="text-gray-600 dark:text-gray-400" />
                   )}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-foreground truncate" data-testid={`text-user-name-${u.id}`}>
                     {u.firstName || u.email || "Unknown"}
                   </p>
-                  <p className="text-[10px] text-gray-600 truncate">{u.email}</p>
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400 truncate">{u.email}</p>
                   {u.phoneNumber && (
-                    <p className="text-[10px] text-gray-600 truncate flex items-center gap-1.5 mt-0.5" data-testid={`text-user-phone-${u.id}`}>
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400 truncate flex items-center gap-1.5 mt-0.5" data-testid={`text-user-phone-${u.id}`}>
                       <Phone size={10} className="text-[#105B38] flex-shrink-0" />
                       <span>{u.phoneNumber}</span>
                     </p>
@@ -1095,11 +1095,11 @@ function UsersSection() {
                   </Badge>
                 )}
                 {u.isBanned && (
-                  <Badge className="bg-red-500/20 text-red-700 border-red-500/30 rounded-lg text-[9px]">
+                  <Badge className="bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30 rounded-lg text-[9px]">
                     SUSPENDED
                   </Badge>
                 )}
-                <span className="text-[10px] text-gray-600">
+                <span className="text-[10px] text-gray-600 dark:text-gray-400">
                   Cycle: {String(u.subscriptionCycle || "monthly").toLowerCase() === "yearly"
                     ? "Yearly"
                     : String(u.subscriptionCycle || "monthly").toLowerCase() === "quarterly"
@@ -1142,7 +1142,7 @@ function UsersSection() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-sky-700 text-[9px] uppercase tracking-widest font-black"
+                  className="text-sky-700 dark:text-sky-400 text-[9px] uppercase tracking-widest font-black"
                   onClick={() => resetQuotaMutation.mutate(u.id)}
                   disabled={resetQuotaMutation.isPending}
                   data-testid={`button-reset-quota-${u.id}`}
@@ -1154,7 +1154,7 @@ function UsersSection() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-blue-700 text-[9px] uppercase tracking-widest font-black"
+                  className="text-blue-700 dark:text-blue-400 text-[9px] uppercase tracking-widest font-black"
                   onClick={() => setActivityUserId(activityUserId === u.id ? null : u.id)}
                   data-testid={`button-view-activity-${u.id}`}
                 >
@@ -1169,7 +1169,7 @@ function UsersSection() {
                   disabled={u.isAdmin && u.id === currentUser?.id}
                   title={u.isAdmin && u.id === currentUser?.id ? "You cannot remove your own admin access" : u.isAdmin ? "Remove admin access" : "Grant admin access"}
                   data-testid={`button-toggle-admin-${u.id}`}
-                  className={u.isAdmin ? "text-[#105B38]" : "text-gray-600"}
+                  className={u.isAdmin ? "text-[#105B38]" : "text-gray-600 dark:text-gray-400"}
                 >
                   {u.isAdmin ? <UserCheck size={16} /> : <UserX size={16} />}
                 </Button>
@@ -1179,7 +1179,7 @@ function UsersSection() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-emerald-700 text-[9px] uppercase tracking-widest font-black"
+                      className="text-emerald-700 dark:text-emerald-400 text-[9px] uppercase tracking-widest font-black"
                       onClick={() => reactivateUserMutation.mutate(u.id)}
                       disabled={reactivateUserMutation.isPending}
                       data-testid={`button-reactivate-user-${u.id}`}
@@ -1191,7 +1191,7 @@ function UsersSection() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-red-700 text-[9px] uppercase tracking-widest font-black"
+                      className="text-red-700 dark:text-red-400 text-[9px] uppercase tracking-widest font-black"
                       onClick={() => {
                         const reason = (banReasons[u.id] || "").trim();
                         suspendUserMutation.mutate({ userId: u.id, reason });
@@ -1211,7 +1211,7 @@ function UsersSection() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-red-700 text-[10px] uppercase tracking-widest font-black"
+                        className="text-red-700 dark:text-red-400 text-[10px] uppercase tracking-widest font-black"
                         onClick={() => deleteUserMutation.mutate(u.id)}
                         disabled={deleteUserMutation.isPending}
                         data-testid={`button-confirm-delete-${u.id}`}
@@ -1222,7 +1222,7 @@ function UsersSection() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-gray-600 text-[10px] uppercase tracking-widest font-black"
+                        className="text-gray-600 dark:text-gray-400 text-[10px] uppercase tracking-widest font-black"
                         onClick={() => setConfirmDeleteId(null)}
                         data-testid={`button-cancel-delete-${u.id}`}
                       >
@@ -1233,7 +1233,7 @@ function UsersSection() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="text-gray-600"
+                      className="text-gray-600 dark:text-gray-400"
                       onClick={() => setConfirmDeleteId(u.id)}
                       title="Remove user"
                       data-testid={`button-delete-user-${u.id}`}
@@ -1256,14 +1256,14 @@ function UsersSection() {
               )}
               {u.isBanned && (
                 <div className="w-full">
-                  <p className="text-[10px] text-red-700">
+                  <p className="text-[10px] text-red-700 dark:text-red-400">
                     Reason: {u.banReason || "No reason provided"}
                   </p>
                 </div>
               )}
             </CardContent>
             {activityUserId === u.id && (
-              <div className="border-t border-slate-200">
+              <div className="border-t border-slate-200 dark:border-slate-500/20">
                 <UserActivityPanel userId={u.id} />
               </div>
             )}
@@ -1342,15 +1342,15 @@ function UserActivityPanel({ userId }: { userId: string }) {
       {/* Summary Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Threads", value: activity.threadCount, icon: MessageSquare, color: "text-blue-700" },
-          { label: "Messages", value: activity.messageCount, icon: FileText, color: "text-emerald-700" },
+          { label: "Threads", value: activity.threadCount, icon: MessageSquare, color: "text-blue-700 dark:text-blue-400" },
+          { label: "Messages", value: activity.messageCount, icon: FileText, color: "text-emerald-700 dark:text-emerald-400" },
           { label: "AI Queries", value: activity.totalQueries, icon: BarChart3, color: "text-[#105B38]" },
-          { label: "Est. Cost", value: `$${activity.totalCost}`, icon: Scale, color: "text-cyan-700" },
+          { label: "Est. Cost", value: `$${activity.totalCost}`, icon: Scale, color: "text-cyan-700 dark:text-cyan-400" },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-slate-200 bg-background px-3 py-2.5">
+          <div key={s.label} className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2.5">
             <div className="flex items-center gap-1.5 mb-1">
               <s.icon size={12} className={s.color} />
-              <span className="text-[8px] uppercase tracking-widest font-black text-gray-600">{s.label}</span>
+              <span className="text-[8px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400">{s.label}</span>
             </div>
             <p className="text-lg font-bold text-foreground">{typeof s.value === "number" ? s.value.toLocaleString() : s.value}</p>
           </div>
@@ -1358,7 +1358,7 @@ function UserActivityPanel({ userId }: { userId: string }) {
       </div>
 
       {/* Last Active */}
-      <div className="flex items-center gap-2 text-[11px] text-gray-600">
+      <div className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400">
         <Clock size={12} />
         <span>Last active: {fmtDate(activity.lastActive)}</span>
         <span>•</span>
@@ -1367,16 +1367,16 @@ function UserActivityPanel({ userId }: { userId: string }) {
 
       {/* Usage By Feature */}
       {activity.usageByFeature.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-background p-4">
-          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-gray-600 mb-3">Usage by Feature</p>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background p-4">
+          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-gray-600 dark:text-gray-400 mb-3">Usage by Feature</p>
           <div className="space-y-2">
             {activity.usageByFeature.map((f) => (
               <div key={f.feature} className="flex items-center justify-between gap-3 text-xs">
                 <span className="font-bold text-foreground">{FEATURE_LABELS[f.feature] || f.feature}</span>
-                <div className="flex items-center gap-4 text-[10px] text-gray-600">
+                <div className="flex items-center gap-4 text-[10px] text-gray-600 dark:text-gray-400">
                   <span>{f.totalQueries} queries</span>
                   <span>{(f.totalInputTokens + f.totalOutputTokens).toLocaleString()} tokens</span>
-                  <span className="text-emerald-700 font-bold">${f.totalCost}</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">${f.totalCost}</span>
                 </div>
               </div>
             ))}
@@ -1401,11 +1401,11 @@ function UserActivityPanel({ userId }: { userId: string }) {
         const searchItems: RosterItem[] = (activity.recentSearches || []).map(s => {
           const icons: Record<string, string> = { judgment: "⚖️", draft: "📝", statute: "📜", contract: "📄", chat: "💬" };
           const colors: Record<string, string> = {
-            judgment: "bg-blue-500/20 text-blue-700 border-blue-500/30",
-            draft: "bg-purple-500/20 text-purple-700 border-purple-500/30",
-            statute: "bg-emerald-500/20 text-emerald-700 border-emerald-500/30",
-            contract: "bg-cyan-500/20 text-cyan-700 border-cyan-500/30",
-            chat: "bg-white border-slate-200 text-gray-600",
+            judgment: "bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30",
+            draft: "bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/30",
+            statute: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+            contract: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border-cyan-500/30",
+            chat: "bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 text-gray-600 dark:text-gray-400",
           };
           return {
             key: `s-${s.id}`,
@@ -1439,12 +1439,12 @@ function UserActivityPanel({ userId }: { userId: string }) {
         if (allItems.length === 0) return null;
 
         return (
-          <div className="rounded-xl border border-slate-200 bg-background p-4">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[9px] uppercase tracking-[0.2em] font-black text-gray-600">
+              <p className="text-[9px] uppercase tracking-[0.2em] font-black text-gray-600 dark:text-gray-400">
                 📋 Recent Activity Roster ({allItems.length})
               </p>
-              <span className="text-[8px] text-gray-600">
+              <span className="text-[8px] text-gray-600 dark:text-gray-400">
                 All searches, messages & prompts — chronological
               </span>
             </div>
@@ -1459,14 +1459,14 @@ function UserActivityPanel({ userId }: { userId: string }) {
                   .trim();
 
                 return (
-                  <div key={item.key} className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+                  <div key={item.key} className="rounded-lg border border-slate-200 dark:border-slate-500/20 bg-white dark:bg-[#131E2E] overflow-hidden">
                     <button
                       className="w-full text-left px-3 py-2 hover:bg-muted/30 transition-colors"
                       onClick={() => setExpandedSearches(prev => ({ ...prev, [item.key]: !isExp }))}
                     >
                       <div className="flex items-start gap-2">
                         {/* Time column */}
-                        <span className="text-[9px] text-gray-600 flex-shrink-0 w-[100px] pt-0.5 font-mono">
+                        <span className="text-[9px] text-gray-600 dark:text-gray-400 flex-shrink-0 w-[100px] pt-0.5 font-mono">
                           {item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-PK", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
                         </span>
 
@@ -1477,7 +1477,7 @@ function UserActivityPanel({ userId }: { userId: string }) {
 
                         {/* Thread title for messages */}
                         {item.meta && (
-                          <span className="text-[9px] text-gray-600 flex-shrink-0 bg-muted/50 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] text-gray-600 dark:text-gray-400 flex-shrink-0 bg-muted/50 px-1.5 py-0.5 rounded">
                             {item.meta.length > 30 ? item.meta.slice(0, 30) + "…" : item.meta}
                           </span>
                         )}
@@ -1490,19 +1490,19 @@ function UserActivityPanel({ userId }: { userId: string }) {
                         {/* Expand indicator */}
                         {isLong && (
                           <span className="flex-shrink-0">
-                            {isExp ? <ChevronUp size={10} className="text-gray-600" /> : <ChevronDown size={10} className="text-gray-600" />}
+                            {isExp ? <ChevronUp size={10} className="text-gray-600 dark:text-gray-400" /> : <ChevronDown size={10} className="text-gray-600 dark:text-gray-400" />}
                           </span>
                         )}
                       </div>
                     </button>
 
                     {isExp && (
-                      <div className="px-3 pb-3 border-t border-slate-200/50 bg-muted/20">
+                      <div className="px-3 pb-3 border-t border-slate-200 dark:border-slate-500/20/50 bg-muted/20">
                         <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap break-words pt-2">
                           {cleanText}
                         </p>
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="text-[8px] text-gray-600">{item.text.length.toLocaleString()} chars</span>
+                          <span className="text-[8px] text-gray-600 dark:text-gray-400">{item.text.length.toLocaleString()} chars</span>
                           {item.kind === "message" && item.meta && (
                             <span className="text-[8px] text-[#105B38]">Thread: {item.meta}</span>
                           )}
@@ -1518,15 +1518,15 @@ function UserActivityPanel({ userId }: { userId: string }) {
       })()}
 
       {/* Threads */}
-      <div className="rounded-xl border border-slate-200 bg-background p-4">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background p-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-gray-600">
+          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-gray-600 dark:text-gray-400">
             Consultation Threads ({threadsData?.total || 0})
           </p>
           {threadsData && threadsData.total > 10 && (
             <div className="flex items-center gap-2">
               <Button size="sm" variant="ghost" className="text-[9px] text-foreground" onClick={() => setThreadPage(Math.max(0, threadPage - 1))} disabled={threadPage === 0}>Prev</Button>
-              <span className="text-[9px] text-gray-600">Page {threadPage + 1}</span>
+              <span className="text-[9px] text-gray-600 dark:text-gray-400">Page {threadPage + 1}</span>
               <Button size="sm" variant="ghost" className="text-[9px] text-foreground" onClick={() => setThreadPage(threadPage + 1)} disabled={(threadPage + 1) * 10 >= (threadsData?.total || 0)}>Next</Button>
             </div>
           )}
@@ -1538,7 +1538,7 @@ function UserActivityPanel({ userId }: { userId: string }) {
             {(threadsData?.items || []).map((t) => (
               <div key={t.id}>
                 <button
-                  className="w-full text-left rounded-lg border border-slate-200 hover:border-[#105B38]/30 bg-white px-3 py-2 transition-all"
+                  className="w-full text-left rounded-lg border border-slate-200 dark:border-slate-500/20 hover:border-[#105B38]/30 bg-white dark:bg-[#131E2E] px-3 py-2 transition-all"
                   onClick={() => setExpandedThreadId(expandedThreadId === t.id ? null : t.id)}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -1547,16 +1547,16 @@ function UserActivityPanel({ userId }: { userId: string }) {
                       <span className="text-[11px] font-bold text-foreground truncate">{t.title}</span>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-[9px] text-gray-600">{t.messageCount} msgs</span>
-                      <span className="text-[9px] text-gray-600">{fmtDate(t.updatedAt)}</span>
-                      {expandedThreadId === t.id ? <ChevronUp size={12} className="text-gray-600" /> : <ChevronDown size={12} className="text-gray-600" />}
+                      <span className="text-[9px] text-gray-600 dark:text-gray-400">{t.messageCount} msgs</span>
+                      <span className="text-[9px] text-gray-600 dark:text-gray-400">{fmtDate(t.updatedAt)}</span>
+                      {expandedThreadId === t.id ? <ChevronUp size={12} className="text-gray-600 dark:text-gray-400" /> : <ChevronDown size={12} className="text-gray-600 dark:text-gray-400" />}
                     </div>
                   </div>
                 </button>
 
                 {/* Expanded Messages */}
                 {expandedThreadId === t.id && (
-                  <div className="ml-4 mt-1.5 border-l-2 border-[#105B38]/20 pl-4 space-y-2 max-h-[400px] overflow-y-auto scrollbar-hide">
+                  <div className="ml-4 mt-1.5 border-l-2 border-[#105B38]/20 dark:border-[#105B38]/40 pl-4 space-y-2 max-h-[400px] overflow-y-auto scrollbar-hide">
                     {messagesLoading ? (
                       <div className="flex items-center justify-center py-4"><Loader2 className="animate-spin text-[#105B38]" size={14} /></div>
                     ) : (
@@ -1567,13 +1567,13 @@ function UserActivityPanel({ userId }: { userId: string }) {
                           .replace(/```json\s*\n[\s\S]*?\n```/g, "\n[📎 JSON data block]\n")
                           .trim();
                         return (
-                        <div key={m.id} className={`rounded-lg px-3 py-2 ${m.role === "user" ? "bg-[#105B38]/10 border border-[#105B38]/20" : m.role === "assistant" ? "bg-muted border border-slate-200" : "bg-white border border-slate-200 opacity-50"}`}>
+                        <div key={m.id} className={`rounded-lg px-3 py-2 ${m.role === "user" ? "bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40" : m.role === "assistant" ? "bg-muted border border-slate-200 dark:border-slate-500/20" : "bg-white dark:bg-[#131E2E] border border-slate-200 dark:border-slate-500/20 opacity-50"}`}>
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge className={`text-[8px] rounded-md ${m.role === "user" ? "bg-[#105B38]/20 text-[#105B38] border-[#105B38]/30" : m.role === "assistant" ? "bg-emerald-500/20 text-emerald-700 border-emerald-500/30" : "bg-white text-gray-600 border-slate-200"}`}>
+                            <Badge className={`text-[8px] rounded-md ${m.role === "user" ? "bg-[#105B38]/20 text-[#105B38] border-[#105B38]/30" : m.role === "assistant" ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" : "bg-white dark:bg-[#131E2E] text-gray-600 dark:text-gray-400 border-slate-200 dark:border-slate-500/20"}`}>
                               {m.role.toUpperCase()}
                             </Badge>
-                            <span className="text-[9px] text-gray-600">{fmtDate(m.createdAt)}</span>
-                            <span className="text-[8px] text-gray-600/50">{m.content.length.toLocaleString()} chars</span>
+                            <span className="text-[9px] text-gray-600 dark:text-gray-400">{fmtDate(m.createdAt)}</span>
+                            <span className="text-[8px] text-gray-600 dark:text-gray-400/50">{m.content.length.toLocaleString()} chars</span>
                           </div>
                           {(() => {
                             const isExpanded = !!expandedMessages[m.id];
@@ -1605,7 +1605,7 @@ function UserActivityPanel({ userId }: { userId: string }) {
               </div>
             ))}
             {(threadsData?.items || []).length === 0 && (
-              <p className="text-[11px] text-gray-600 text-center py-4">No threads found</p>
+              <p className="text-[11px] text-gray-600 dark:text-gray-400 text-center py-4">No threads found</p>
             )}
           </div>
         )}
@@ -1613,8 +1613,8 @@ function UserActivityPanel({ userId }: { userId: string }) {
 
       {/* Recent Searches — Judgment, Draft, Statute, Contract, Chat */}
       {activity.recentSearches.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-background p-4">
-          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-gray-600 mb-3">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background p-4">
+          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-gray-600 dark:text-gray-400 mb-3">
             Recent Searches ({activity.recentSearches.length})
           </p>
           <div className="space-y-1.5">
@@ -1622,11 +1622,11 @@ function UserActivityPanel({ userId }: { userId: string }) {
               const isExpanded = !!expandedSearches[s.id];
               const isLong = s.query.length > 120;
               const typeBadgeColor: Record<string, string> = {
-                judgment: "bg-blue-500/20 text-blue-700 border-blue-500/30",
-                draft: "bg-purple-500/20 text-purple-700 border-purple-500/30",
-                statute: "bg-emerald-500/20 text-emerald-700 border-emerald-500/30",
-                contract: "bg-cyan-500/20 text-cyan-700 border-cyan-500/30",
-                chat: "bg-white border-slate-200 text-gray-600",
+                judgment: "bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30",
+                draft: "bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/30",
+                statute: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+                contract: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border-cyan-500/30",
+                chat: "bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 text-gray-600 dark:text-gray-400",
               };
               const typeIcon: Record<string, string> = {
                 judgment: "⚖️",
@@ -1636,7 +1636,7 @@ function UserActivityPanel({ userId }: { userId: string }) {
                 chat: "💬",
               };
               return (
-                <div key={s.id} className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+                <div key={s.id} className="rounded-lg border border-slate-200 dark:border-slate-500/20 bg-white dark:bg-[#131E2E] overflow-hidden">
                   <button
                     className="w-full text-left px-3 py-2 hover:bg-muted/30 transition-colors"
                     onClick={() => setExpandedSearches(prev => ({ ...prev, [s.id]: !isExpanded }))}
@@ -1651,13 +1651,13 @@ function UserActivityPanel({ userId }: { userId: string }) {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[9px] text-gray-600">{fmtDate(s.createdAt)}</span>
-                        {isLong && (isExpanded ? <ChevronUp size={10} className="text-gray-600" /> : <ChevronDown size={10} className="text-gray-600" />)}
+                        <span className="text-[9px] text-gray-600 dark:text-gray-400">{fmtDate(s.createdAt)}</span>
+                        {isLong && (isExpanded ? <ChevronUp size={10} className="text-gray-600 dark:text-gray-400" /> : <ChevronDown size={10} className="text-gray-600 dark:text-gray-400" />)}
                       </div>
                     </div>
                   </button>
                   {isExpanded && (
-                    <div className="px-3 pb-2.5 border-t border-slate-200/50 bg-muted/20">
+                    <div className="px-3 pb-2.5 border-t border-slate-200 dark:border-slate-500/20/50 bg-muted/20">
                       <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap break-words pt-2">
                         {s.query}
                       </p>
@@ -1700,11 +1700,11 @@ type QualityLogItem = {
 };
 
 const SCORE_COLORS: Record<number, string> = {
-  5: "bg-emerald-500/20 text-emerald-700 border-emerald-500/30",
-  4: "bg-blue-500/20 text-blue-700 border-blue-500/30",
-  3: "bg-yellow-500/20 text-yellow-700 border-yellow-500/30",
-  2: "bg-orange-500/20 text-orange-700 border-orange-500/30",
-  1: "bg-red-500/20 text-red-700 border-red-500/30",
+  5: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  4: "bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30",
+  3: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30",
+  2: "bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30",
+  1: "bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30",
 };
 
 const SCORE_LABELS: Record<number, string> = {
@@ -1716,16 +1716,16 @@ const SCORE_LABELS: Record<number, string> = {
 };
 
 const FLAG_LABELS: Record<string, { label: string; color: string }> = {
-  too_short: { label: "Too Short", color: "text-red-700" },
-  possibly_truncated: { label: "Truncated", color: "text-orange-700" },
-  error_detected: { label: "Error", color: "text-red-700" },
-  no_citations: { label: "No Citations", color: "text-yellow-700" },
-  has_citations: { label: "Citations ✓", color: "text-emerald-700" },
-  poor_formatting: { label: "Poor Format", color: "text-orange-700" },
-  well_structured: { label: "Well Structured", color: "text-emerald-700" },
-  comprehensive: { label: "Comprehensive", color: "text-blue-700" },
-  raw_code_block: { label: "Raw Code", color: "text-orange-700" },
-  malformed_output: { label: "Malformed", color: "text-red-700" },
+  too_short: { label: "Too Short", color: "text-red-700 dark:text-red-400" },
+  possibly_truncated: { label: "Truncated", color: "text-orange-700 dark:text-orange-400" },
+  error_detected: { label: "Error", color: "text-red-700 dark:text-red-400" },
+  no_citations: { label: "No Citations", color: "text-yellow-700 dark:text-yellow-400" },
+  has_citations: { label: "Citations ✓", color: "text-emerald-700 dark:text-emerald-400" },
+  poor_formatting: { label: "Poor Format", color: "text-orange-700 dark:text-orange-400" },
+  well_structured: { label: "Well Structured", color: "text-emerald-700 dark:text-emerald-400" },
+  comprehensive: { label: "Comprehensive", color: "text-blue-700 dark:text-blue-400" },
+  raw_code_block: { label: "Raw Code", color: "text-orange-700 dark:text-orange-400" },
+  malformed_output: { label: "Malformed", color: "text-red-700 dark:text-red-400" },
 };
 
 function OutputQualitySection() {
@@ -1770,41 +1770,41 @@ function OutputQualitySection() {
       ) : stats ? (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">Total Outputs</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">Total Outputs</span>
                 <p className="text-2xl font-bold text-foreground">{(stats.totalLogs || 0).toLocaleString()}</p>
               </CardContent>
             </Card>
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">Avg Score</span>
-                <p className={`text-2xl font-bold ${stats.avgScore >= 4 ? "text-emerald-700" : stats.avgScore >= 3 ? "text-yellow-700" : "text-red-700"}`}>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">Avg Score</span>
+                <p className={`text-2xl font-bold ${stats.avgScore >= 4 ? "text-emerald-700 dark:text-emerald-400" : stats.avgScore >= 3 ? "text-yellow-700 dark:text-yellow-400" : "text-red-700 dark:text-red-400"}`}>
                   {stats.avgScore}/5
                 </p>
-                <span className="text-[9px] text-gray-600 mt-1 block">
+                <span className="text-[9px] text-gray-600 dark:text-gray-400 mt-1 block">
                   {stats.avgScore >= 4.5 ? "Excellent" : stats.avgScore >= 4 ? "Good" : stats.avgScore >= 3 ? "Needs Improvement" : "Critical"}
                 </span>
               </CardContent>
             </Card>
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">Good+ Rate</span>
-                <p className="text-2xl font-bold text-blue-700">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">Good+ Rate</span>
+                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
                   {stats.totalLogs > 0 ? Math.round((((stats.scoreDistribution || {})[4] || 0) + ((stats.scoreDistribution || {})[5] || 0)) / stats.totalLogs * 100) : 0}%
                 </p>
-                <span className="text-[9px] text-gray-600 mt-1 block">
+                <span className="text-[9px] text-gray-600 dark:text-gray-400 mt-1 block">
                   {(((stats.scoreDistribution || {})[4] || 0) + ((stats.scoreDistribution || {})[5] || 0)).toLocaleString()} outputs scored 4-5
                 </span>
               </CardContent>
             </Card>
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">Issues Rate</span>
-                <p className="text-2xl font-bold text-red-700">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">Issues Rate</span>
+                <p className="text-2xl font-bold text-red-700 dark:text-red-400">
                   {stats.totalLogs > 0 ? Math.round((((stats.scoreDistribution || {})[1] || 0) + ((stats.scoreDistribution || {})[2] || 0)) / stats.totalLogs * 100) : 0}%
                 </p>
-                <span className="text-[9px] text-gray-600 mt-1 block">
+                <span className="text-[9px] text-gray-600 dark:text-gray-400 mt-1 block">
                   {(((stats.scoreDistribution || {})[1] || 0) + ((stats.scoreDistribution || {})[2] || 0)).toLocaleString()} outputs scored 1-2
                 </span>
               </CardContent>
@@ -1813,55 +1813,55 @@ function OutputQualitySection() {
 
           {/* Additional Score Insight Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">Fair Rate (Score 3)</span>
-                <p className="text-2xl font-bold text-yellow-700">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">Fair Rate (Score 3)</span>
+                <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">
                   {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution || {})[3] || 0) / stats.totalLogs * 100) : 0}%
                 </p>
-                <span className="text-[9px] text-gray-600 mt-1 block">
+                <span className="text-[9px] text-gray-600 dark:text-gray-400 mt-1 block">
                   {((stats.scoreDistribution || {})[3] || 0).toLocaleString()} outputs — room for improvement
                 </span>
               </CardContent>
             </Card>
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">Excellent Rate (5/5)</span>
-                <p className="text-2xl font-bold text-emerald-700">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">Excellent Rate (5/5)</span>
+                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
                   {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution || {})[5] || 0) / stats.totalLogs * 100) : 0}%
                 </p>
-                <span className="text-[9px] text-gray-600 mt-1 block">
+                <span className="text-[9px] text-gray-600 dark:text-gray-400 mt-1 block">
                   {((stats.scoreDistribution || {})[5] || 0).toLocaleString()} perfect score outputs
                 </span>
               </CardContent>
             </Card>
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">Top Feature</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">Top Feature</span>
                 {(() => {
                   const sorted = [...(stats.byFeature || [])].sort((a, b) => b.avgScore - a.avgScore);
                   const best = sorted[0];
-                  if (!best) return <p className="text-lg font-bold text-gray-600">—</p>;
+                  if (!best) return <p className="text-lg font-bold text-gray-600 dark:text-gray-400">—</p>;
                   return (
                     <>
-                      <p className="text-lg font-bold text-emerald-700">{FEATURE_LABELS[best.feature] || best.feature}</p>
-                      <span className="text-[9px] text-gray-600 mt-1 block">Avg {best.avgScore.toFixed(1)}/5 across {best.count.toLocaleString()} outputs</span>
+                      <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{FEATURE_LABELS[best.feature] || best.feature}</p>
+                      <span className="text-[9px] text-gray-600 dark:text-gray-400 mt-1 block">Avg {best.avgScore.toFixed(1)}/5 across {best.count.toLocaleString()} outputs</span>
                     </>
                   );
                 })()}
               </CardContent>
             </Card>
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-2">Worst Feature</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-2">Worst Feature</span>
                 {(() => {
                   const sorted = [...(stats.byFeature || [])].filter(f => f.count >= 3).sort((a, b) => a.avgScore - b.avgScore);
                   const worst = sorted[0];
-                  if (!worst) return <p className="text-lg font-bold text-gray-600">—</p>;
+                  if (!worst) return <p className="text-lg font-bold text-gray-600 dark:text-gray-400">—</p>;
                   return (
                     <>
-                      <p className="text-lg font-bold text-red-700">{FEATURE_LABELS[worst.feature] || worst.feature}</p>
-                      <span className="text-[9px] text-gray-600 mt-1 block">Avg {worst.avgScore.toFixed(1)}/5 across {worst.count.toLocaleString()} outputs</span>
+                      <p className="text-lg font-bold text-red-700 dark:text-red-400">{FEATURE_LABELS[worst.feature] || worst.feature}</p>
+                      <span className="text-[9px] text-gray-600 dark:text-gray-400 mt-1 block">Avg {worst.avgScore.toFixed(1)}/5 across {worst.count.toLocaleString()} outputs</span>
                     </>
                   );
                 })()}
@@ -1871,9 +1871,9 @@ function OutputQualitySection() {
 
           {/* Score Distribution + Feature Breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-4">Score Distribution</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-4">Score Distribution</span>
                 <div className="space-y-2">
                   {[5, 4, 3, 2, 1].map((score) => {
                     const cnt = (stats.scoreDistribution || {})[score] || 0;
@@ -1881,10 +1881,10 @@ function OutputQualitySection() {
                     return (
                       <div key={score} className="flex items-center gap-3">
                         <Badge className={`${SCORE_COLORS[score]} text-[9px] w-20 justify-center`}>{SCORE_LABELS[score]}</Badge>
-                        <div className="flex-1 bg-white rounded-full h-2">
+                        <div className="flex-1 bg-white dark:bg-[#131E2E] rounded-full h-2">
                           <div className={`h-2 rounded-full transition-all ${score >= 4 ? "bg-emerald-500" : score === 3 ? "bg-yellow-500" : "bg-red-500"}`} style={{ width: `${Math.max(pct, 1)}%` }} />
                         </div>
-                        <span className="text-[10px] text-gray-600 w-16 text-right">{cnt.toLocaleString()} ({pct}%)</span>
+                        <span className="text-[10px] text-gray-600 dark:text-gray-400 w-16 text-right">{cnt.toLocaleString()} ({pct}%)</span>
                       </div>
                     );
                   })}
@@ -1892,9 +1892,9 @@ function OutputQualitySection() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-4">Quality by Feature</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-4">Quality by Feature</span>
                 <div className="space-y-3">
                   {[...(stats.byFeature || [])].sort((a, b) => b.avgScore - a.avgScore).map((f) => {
                     const pct = Math.round((f.avgScore / 5) * 100);
@@ -1904,7 +1904,7 @@ function OutputQualitySection() {
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-xs font-bold text-foreground">{FEATURE_LABELS[f.feature] || f.feature}</span>
                           <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-gray-600">{f.count.toLocaleString()} outputs</span>
+                            <span className="text-[10px] text-gray-600 dark:text-gray-400">{f.count.toLocaleString()} outputs</span>
                             <Badge className={`${SCORE_COLORS[Math.round(f.avgScore)] || SCORE_COLORS[3]} text-[9px]`}>
                               {f.avgScore.toFixed(1)}
                             </Badge>
@@ -1923,14 +1923,14 @@ function OutputQualitySection() {
 
           {/* Common Flags */}
           {Object.keys(stats.flagCounts || {}).length > 0 && (
-            <Card className="bg-white border-slate-200 rounded-[2rem]">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
               <CardContent className="p-6">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block mb-3">Common Quality Flags (Recent 500)</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block mb-3">Common Quality Flags (Recent 500)</span>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(stats.flagCounts).sort((a, b) => b[1] - a[1]).map(([flag, cnt]) => {
-                    const info = FLAG_LABELS[flag] || { label: flag, color: "text-gray-600" };
+                    const info = FLAG_LABELS[flag] || { label: flag, color: "text-gray-600 dark:text-gray-400" };
                     return (
-                      <Badge key={flag} className={`${info.color} bg-white border-slate-200 text-[9px]`}>
+                      <Badge key={flag} className={`${info.color} bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 text-[9px]`}>
                         {info.label}: {cnt}
                       </Badge>
                     );
@@ -1943,15 +1943,15 @@ function OutputQualitySection() {
       ) : null}
 
       {/* Output Log Table */}
-      <Card className="bg-white border-slate-200 rounded-[2rem]">
+      <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
         <CardContent className="p-6">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400">
               Output Log ({logsData?.total || 0})
             </span>
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={featureFilter} onValueChange={(v) => { setFeatureFilter(v === "all" ? "" : v); setPage(0); }}>
-                <SelectTrigger className="w-32 bg-background border-slate-200 text-foreground rounded-xl text-xs">
+                <SelectTrigger className="w-32 bg-background border-slate-200 dark:border-slate-500/20 text-foreground rounded-xl text-xs">
                   <SelectValue placeholder="All Features" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1967,7 +1967,7 @@ function OutputQualitySection() {
                 </SelectContent>
               </Select>
               <Select value={scoreFilter} onValueChange={(v) => { setScoreFilter(v === "all" ? "" : v); setPage(0); }}>
-                <SelectTrigger className="w-28 bg-background border-slate-200 text-foreground rounded-xl text-xs">
+                <SelectTrigger className="w-28 bg-background border-slate-200 dark:border-slate-500/20 text-foreground rounded-xl text-xs">
                   <SelectValue placeholder="All Scores" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1988,7 +1988,7 @@ function OutputQualitySection() {
               {(logsData?.items || []).map((log) => (
                 <div key={log.id}>
                   <button
-                    className="w-full text-left rounded-xl border border-slate-200 hover:border-[#105B38]/30 bg-background px-4 py-3 transition-all"
+                    className="w-full text-left rounded-xl border border-slate-200 dark:border-slate-500/20 hover:border-[#105B38]/30 bg-background px-4 py-3 transition-all"
                     onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
                   >
                     <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1997,60 +1997,60 @@ function OutputQualitySection() {
                           {log.qualityScore}/5
                         </Badge>
                         <span className="text-[10px] font-bold text-foreground">{FEATURE_LABELS[log.feature] || log.feature}</span>
-                        <span className="text-[10px] text-gray-600 truncate max-w-[300px]">{(log.userQuery || log.inputSnippet || "").slice(0, 100)}</span>
+                        <span className="text-[10px] text-gray-600 dark:text-gray-400 truncate max-w-[300px]">{(log.userQuery || log.inputSnippet || "").slice(0, 100)}</span>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
                         {log.responseTimeMs != null && log.responseTimeMs > 0 && (
-                          <Badge className={`text-[8px] ${log.responseTimeMs > 10000 ? 'bg-red-500/20 text-red-700 border-red-500/30' : log.responseTimeMs > 5000 ? 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30' : 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30'}`}>
+                          <Badge className={`text-[8px] ${log.responseTimeMs > 10000 ? 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30' : log.responseTimeMs > 5000 ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30' : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'}`}>
                             ⚡ {log.responseTimeMs >= 1000 ? `${(log.responseTimeMs / 1000).toFixed(1)}s` : `${log.responseTimeMs}ms`}
                           </Badge>
                         )}
                         {(log.qualityFlags || []).slice(0, 3).map((f) => {
-                          const info = FLAG_LABELS[f] || { label: f, color: "text-gray-600" };
+                          const info = FLAG_LABELS[f] || { label: f, color: "text-gray-600 dark:text-gray-400" };
                           return <span key={f} className={`text-[8px] font-bold ${info.color}`}>{info.label}</span>;
                         })}
-                        <span className="text-[9px] text-gray-600">{log.userEmail || "Unknown"}</span>
+                        <span className="text-[9px] text-gray-600 dark:text-gray-400">{log.userEmail || "Unknown"}</span>
                         {log.userSubscriptionTier && (
-                          <Badge className={`text-[8px] uppercase px-1.5 py-0 min-h-0 h-4 ${log.userSubscriptionTier === 'free' ? 'bg-slate-100 text-slate-600 border-slate-200' : log.userSubscriptionTier === 'chamber' ? 'bg-[#105B38]/10 text-[#105B38] border-[#105B38]/30' : 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30'}`}>
+                          <Badge className={`text-[8px] uppercase px-1.5 py-0 min-h-0 h-4 ${log.userSubscriptionTier === 'free' ? 'bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-500/20' : log.userSubscriptionTier === 'chamber' ? 'bg-[#105B38]/10 text-[#105B38] border-[#105B38]/30' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'}`}>
                             {log.userSubscriptionTier}
                           </Badge>
                         )}
-                        <span className="text-[9px] text-gray-600">{log.model}</span>
-                        <span className="text-[9px] text-gray-600">
+                        <span className="text-[9px] text-gray-600 dark:text-gray-400">{log.model}</span>
+                        <span className="text-[9px] text-gray-600 dark:text-gray-400">
                           {log.createdAt ? new Date(log.createdAt).toLocaleDateString("en-PK", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
                         </span>
-                        {expandedId === log.id ? <ChevronUp size={12} className="text-gray-600" /> : <ChevronDown size={12} className="text-gray-600" />}
+                        {expandedId === log.id ? <ChevronUp size={12} className="text-gray-600 dark:text-gray-400" /> : <ChevronDown size={12} className="text-gray-600 dark:text-gray-400" />}
                       </div>
                     </div>
                   </button>
 
                   {expandedId === log.id && (
-                    <div className="mx-4 mt-1 border-l-2 border-[#105B38]/20 pl-4 space-y-3 py-3">
+                    <div className="mx-4 mt-1 border-l-2 border-[#105B38]/20 dark:border-[#105B38]/40 pl-4 space-y-3 py-3">
                       {/* Metadata row */}
                       <div className="flex items-center gap-3 flex-wrap mb-4">
-                        <Badge className="bg-white border-slate-200 text-[9px] text-gray-600 px-2 py-0.5">
+                        <Badge className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 text-[9px] text-gray-600 dark:text-gray-400 px-2 py-0.5">
                           📊 Score: {log.qualityScore}/5 — {SCORE_LABELS[log.qualityScore] || "Unknown"}
                         </Badge>
-                        <Badge className="bg-white border-slate-200 text-[9px] text-gray-600 px-2 py-0.5">
+                        <Badge className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 text-[9px] text-gray-600 dark:text-gray-400 px-2 py-0.5">
                           🤖 {log.model}
                         </Badge>
-                        <Badge className="bg-white border-slate-200 text-[9px] text-gray-600 px-2 py-0.5">
+                        <Badge className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 text-[9px] text-gray-600 dark:text-gray-400 px-2 py-0.5">
                           📝 {(log.outputLength || 0).toLocaleString()} chars
                         </Badge>
                         {log.responseTimeMs != null && log.responseTimeMs > 0 && (
-                          <Badge className={`text-[9px] px-2 py-0.5 ${log.responseTimeMs > 10000 ? 'bg-red-500/20 text-red-700 border-red-500/30' : log.responseTimeMs > 5000 ? 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30' : 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30'}`}>
+                          <Badge className={`text-[9px] px-2 py-0.5 ${log.responseTimeMs > 10000 ? 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30' : log.responseTimeMs > 5000 ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30' : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'}`}>
                             ⚡ {log.responseTimeMs >= 1000 ? `${(log.responseTimeMs / 1000).toFixed(1)}s` : `${log.responseTimeMs}ms`}
                           </Badge>
                         )}
-                        <Badge className="bg-white border-slate-200 text-[9px] text-gray-600 px-2 py-0.5">
+                        <Badge className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 text-[9px] text-gray-600 dark:text-gray-400 px-2 py-0.5">
                           👤 {log.userFirstName || ""} {log.userEmail ? `(${log.userEmail})` : "Unknown"}
                         </Badge>
                         {log.userSubscriptionTier && (
-                          <Badge className={`text-[9px] uppercase px-2 py-0.5 ${log.userSubscriptionTier === 'free' ? 'bg-slate-100 text-slate-600 border-slate-200' : log.userSubscriptionTier === 'chamber' ? 'bg-[#105B38]/10 text-[#105B38] border-[#105B38]/30' : 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30'}`}>
+                          <Badge className={`text-[9px] uppercase px-2 py-0.5 ${log.userSubscriptionTier === 'free' ? 'bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-500/20' : log.userSubscriptionTier === 'chamber' ? 'bg-[#105B38]/10 text-[#105B38] border-[#105B38]/30' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'}`}>
                             👑 {log.userSubscriptionTier}
                           </Badge>
                         )}
-                        <Badge className="bg-white border-slate-200 text-[9px] text-gray-600 px-2 py-0.5">
+                        <Badge className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 text-[9px] text-gray-600 dark:text-gray-400 px-2 py-0.5">
                           🏷️ {FEATURE_LABELS[log.feature] || log.feature}
                         </Badge>
                       </div>
@@ -2060,7 +2060,7 @@ function OutputQualitySection() {
                         {log.userQuery && log.userQuery.length > 0 && (
                           <div className="flex flex-col items-end w-full pl-12">
                             <div className="flex items-center gap-2 mb-1 justify-end w-full">
-                              <span className="text-[10px] font-bold text-gray-600">User Query</span>
+                              <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400">User Query</span>
                             </div>
                             <div className="rounded-2xl rounded-tr-sm bg-blue-600 text-white px-4 py-3 text-[13px] leading-relaxed max-w-[90%] shadow-sm whitespace-pre-wrap break-words">
                               {log.userQuery}
@@ -2074,7 +2074,7 @@ function OutputQualitySection() {
                             <div className="flex items-center gap-2 mb-1 justify-end w-full">
                               <span className="text-[9px] uppercase tracking-wider text-gray-500">System Context / Prompt</span>
                             </div>
-                            <div className="rounded-2xl rounded-tr-sm bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2 text-[11px] font-mono leading-relaxed max-w-[90%] opacity-80 whitespace-pre-wrap break-words">
+                            <div className="rounded-2xl rounded-tr-sm bg-slate-100 border border-slate-200 dark:border-slate-500/20 text-slate-700 dark:text-slate-400 px-4 py-2 text-[11px] font-mono leading-relaxed max-w-[90%] opacity-80 whitespace-pre-wrap break-words">
                               {log.inputSnippet}
                             </div>
                           </div>
@@ -2086,10 +2086,10 @@ function OutputQualitySection() {
                             <span className="text-[10px] font-bold text-[#105B38]">Al Wakeelo AI</span>
                             <span className="text-[9px] text-gray-400">{(log.outputLength || 0).toLocaleString()} chars</span>
                             {log.outputSnippet && log.outputSnippet.length >= 149000 && (
-                              <span className="text-[9px] text-yellow-600 font-bold bg-yellow-100 px-1.5 rounded-sm">TRUNCATED IN LOGS</span>
+                              <span className="text-[9px] text-yellow-600 dark:text-yellow-400 font-bold bg-yellow-100 px-1.5 rounded-sm">TRUNCATED IN LOGS</span>
                             )}
                           </div>
-                          <div className="rounded-2xl rounded-tl-sm bg-white border border-slate-200 text-slate-800 px-4 py-3 text-[13px] leading-relaxed max-w-[90%] shadow-sm whitespace-pre-wrap break-words">
+                          <div className="rounded-2xl rounded-tl-sm bg-white dark:bg-[#131E2E] border border-slate-200 dark:border-slate-500/20 text-slate-800 dark:text-slate-400 px-4 py-3 text-[13px] leading-relaxed max-w-[90%] shadow-sm whitespace-pre-wrap break-words">
                             {log.outputSnippet}
                           </div>
                         </div>
@@ -2097,9 +2097,9 @@ function OutputQualitySection() {
 
                       {/* Score Breakdown (if score is low) */}
                       {log.qualityScore < 4 && (
-                        <div className="mt-4 pt-3 border-t border-slate-100">
-                          <span className="text-[10px] font-bold text-red-600 block mb-2">Why was this score {log.qualityScore}/5? (Quality Deductions)</span>
-                          <ul className="text-[11px] text-gray-600 space-y-1 pl-4 list-disc marker:text-red-400">
+                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-500/20">
+                          <span className="text-[10px] font-bold text-red-600 dark:text-red-400 block mb-2">Why was this score {log.qualityScore}/5? (Quality Deductions)</span>
+                          <ul className="text-[11px] text-gray-600 dark:text-gray-400 space-y-1 pl-4 list-disc marker:text-red-400">
                             {(log.qualityFlags || []).includes('too_short') && <li>Output was unusually short for this feature (-1 or -2)</li>}
                             {(log.qualityFlags || []).includes('error_detected') && <li>AI apologized or reported an error generating (-2)</li>}
                             {(log.qualityFlags || []).includes('no_citations') && <li>Missing legal citations or case law references (-1)</li>}
@@ -2111,14 +2111,14 @@ function OutputQualitySection() {
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2 flex-wrap mt-4 pt-3 border-t border-slate-100">
-                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-600">Flags:</span>
+                      <div className="flex items-center gap-2 flex-wrap mt-4 pt-3 border-t border-slate-100 dark:border-slate-500/20">
+                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-600 dark:text-gray-400">Flags:</span>
                         {(log.qualityFlags || []).length === 0 && (
-                          <span className="text-[9px] text-gray-600 italic">No flags</span>
+                          <span className="text-[9px] text-gray-600 dark:text-gray-400 italic">No flags</span>
                         )}
                         {(log.qualityFlags || []).map((f) => {
-                          const info = FLAG_LABELS[f] || { label: f, color: "text-gray-600" };
-                          return <Badge key={f} className={`${info.color} bg-white border-slate-200 text-[8px]`}>{info.label}</Badge>;
+                          const info = FLAG_LABELS[f] || { label: f, color: "text-gray-600 dark:text-gray-400" };
+                          return <Badge key={f} className={`${info.color} bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 text-[8px]`}>{info.label}</Badge>;
                         })}
                       </div>
                     </div>
@@ -2127,20 +2127,20 @@ function OutputQualitySection() {
               ))}
 
               {(logsData?.items || []).length === 0 && (
-                <p className="text-sm text-gray-600 text-center py-8">No output logs yet. Logs will appear after users make AI queries.</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-8">No output logs yet. Logs will appear after users make AI queries.</p>
               )}
             </div>
           )}
 
           {/* Pagination */}
           {logsData && logsData.total > 20 && (
-            <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200 mt-4">
-              <span className="text-[10px] text-gray-600">
+            <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-500/20 mt-4">
+              <span className="text-[10px] text-gray-600 dark:text-gray-400">
                 Showing {page * 20 + 1}-{Math.min((page + 1) * 20, logsData.total)} of {logsData.total}
               </span>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="ghost" className="text-[10px] text-foreground" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>Prev</Button>
-                <span className="text-[10px] text-gray-600">Page {page + 1}</span>
+                <span className="text-[10px] text-gray-600 dark:text-gray-400">Page {page + 1}</span>
                 <Button size="sm" variant="ghost" className="text-[10px] text-foreground" onClick={() => setPage(page + 1)} disabled={(page + 1) * 20 >= logsData.total}>Next</Button>
               </div>
             </div>
@@ -2179,28 +2179,28 @@ function AuditLogsSection() {
     <div className="space-y-4" data-testid="audit-logs-section">
       <div className="flex items-center gap-3">
         <Shield size={16} className="text-[#105B38]" />
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
           Audit Events ({logs?.length || 0})
         </span>
       </div>
 
       {!logs || logs.length === 0 ? (
-        <Card className="bg-white border-slate-200 rounded-[2rem]">
+        <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
           <CardContent className="p-12 text-center">
             <Shield size={32} className="text-foreground mx-auto mb-3" />
-            <p className="text-sm text-gray-600">No audit events yet</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">No audit events yet</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           {logs.map((log) => (
-            <Card key={log.id} className="bg-white border-slate-200 rounded-[1.5rem]" data-testid={`audit-log-${log.id}`}>
+            <Card key={log.id} className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[1.5rem]" data-testid={`audit-log-${log.id}`}>
               <CardContent className="p-5 space-y-2">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <Badge className="bg-white text-foreground border-slate-200 rounded-lg text-[9px]">
+                  <Badge className="bg-white dark:bg-[#131E2E] text-foreground border-slate-200 dark:border-slate-500/20 rounded-lg text-[9px]">
                     {log.action}
                   </Badge>
-                  <span className="text-[10px] text-gray-600">
+                  <span className="text-[10px] text-gray-600 dark:text-gray-400">
                     {new Date(log.createdAt).toLocaleString()}
                   </span>
                 </div>
@@ -2209,7 +2209,7 @@ function AuditLogsSection() {
                   <span>Target: {log.targetUserId || "-"}</span>
                 </div>
                 {log.metadata && (
-                  <pre className="text-[10px] text-gray-600 bg-background border border-slate-200 rounded-xl p-3 overflow-x-auto whitespace-pre-wrap break-words">
+                  <pre className="text-[10px] text-gray-600 dark:text-gray-400 bg-background border border-slate-200 dark:border-slate-500/20 rounded-xl p-3 overflow-x-auto whitespace-pre-wrap break-words">
                     {JSON.stringify(log.metadata, null, 2)}
                   </pre>
                 )}
@@ -2219,10 +2219,10 @@ function AuditLogsSection() {
         </div>
       )}
 
-      <div className="pt-4 border-t border-slate-200">
+      <div className="pt-4 border-t border-slate-200 dark:border-slate-500/20">
         <div className="flex items-center gap-3 mb-3">
           <AlertTriangle size={16} className="text-[#105B38]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
             Security Event Stream ({securityEvents?.length || 0})
           </span>
         </div>
@@ -2232,24 +2232,24 @@ function AuditLogsSection() {
             <Loader2 className="animate-spin text-[#105B38]" size={20} />
           </div>
         ) : !securityEvents || securityEvents.length === 0 ? (
-          <Card className="bg-white border-slate-200 rounded-[1.5rem]">
-            <CardContent className="p-6 text-center text-gray-600 text-sm">
+          <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[1.5rem]">
+            <CardContent className="p-6 text-center text-gray-600 dark:text-gray-400 text-sm">
               No recent security alerts.
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-2">
             {securityEvents.map((event) => (
-              <Card key={`security-event-${event.id}-${event.lastSeenAt}`} className="bg-white border-slate-200 rounded-[1.2rem]">
+              <Card key={`security-event-${event.id}-${event.lastSeenAt}`} className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[1.2rem]">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <Badge className="bg-red-500/20 text-red-700 border-red-500/30 rounded-lg text-[9px]">
+                    <Badge className="bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30 rounded-lg text-[9px]">
                       {event.type}
                     </Badge>
-                    <span className="text-[10px] text-gray-600">Count: {event.count}</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Count: {event.count}</span>
                   </div>
                   <p className="text-[11px] text-foreground break-all">Key: {event.key}</p>
-                  <p className="text-[10px] text-gray-600">
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400">
                     First: {new Date(event.firstSeenAt).toLocaleString()} | Last: {new Date(event.lastSeenAt).toLocaleString()}
                   </p>
                 </CardContent>
@@ -2402,10 +2402,10 @@ function KnowledgeSection() {
 
   return (
     <div className="space-y-8" data-testid="knowledge-section">
-      <Card className="bg-white border-slate-200 rounded-[2rem]">
+      <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
         <CardHeader className="flex flex-row items-center gap-3 pb-2">
           <Upload size={16} className="text-[#105B38]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
             Mass Upload to Knowledge Vault
           </span>
         </CardHeader>
@@ -2424,7 +2424,7 @@ function KnowledgeSection() {
           </Select>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block">
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block">
               Select Files (.txt, .json, .csv, .pdf, .docx — select multiple)
             </label>
             <Input
@@ -2432,7 +2432,7 @@ function KnowledgeSection() {
               accept=".txt,.json,.csv,.pdf,.doc,.docx"
               multiple
               onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
-              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs file:text-gray-600 file:mr-4"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs file:text-gray-600 dark:text-gray-400 file:mr-4"
               data-testid="input-knowledge-files"
             />
             {selectedFiles.length > 0 && (
@@ -2445,14 +2445,14 @@ function KnowledgeSection() {
           {isUploading && uploadProgress.total > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-gray-600">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
+                <span className="text-gray-600 dark:text-gray-400">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
                 <span className="text-[#105B38] font-bold">{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
               </div>
-              <div className="w-full h-2 bg-white rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-white dark:bg-[#131E2E] rounded-full overflow-hidden">
                 <div className="h-full bg-[#105B38] rounded-full transition-all duration-300" style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} />
               </div>
               {uploadProgress.uploaded > 0 && (
-                <p className="text-[9px] text-emerald-700">{uploadProgress.uploaded} uploaded{uploadProgress.errors > 0 ? `, ${uploadProgress.errors} failed` : ""}</p>
+                <p className="text-[9px] text-emerald-700 dark:text-emerald-400">{uploadProgress.uploaded} uploaded{uploadProgress.errors > 0 ? `, ${uploadProgress.errors} failed` : ""}</p>
               )}
             </div>
           )}
@@ -2473,7 +2473,7 @@ function KnowledgeSection() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Database size={16} className="text-[#105B38]" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
               Vault Documents ({totalDocs})
             </span>
           </div>
@@ -2481,7 +2481,7 @@ function KnowledgeSection() {
             <Button
               size="sm"
               variant="ghost"
-              className="text-red-700 hover:text-red-700 hover:bg-red-500/10 text-[9px] font-bold uppercase tracking-widest gap-1.5"
+              className="text-red-700 dark:text-red-400 hover:text-red-700 dark:text-red-400 hover:bg-red-500/10 text-[9px] font-bold uppercase tracking-widest gap-1.5"
               onClick={() => setShowDeleteAllConfirm(true)}
             >
               <Trash2 size={12} /> Delete All
@@ -2489,8 +2489,8 @@ function KnowledgeSection() {
           )}
           {showDeleteAllConfirm && (
             <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
-              <AlertOctagon size={14} className="text-red-700 flex-shrink-0" />
-              <span className="text-[10px] text-red-700 font-bold">Delete all {totalDocs} documents?</span>
+              <AlertOctagon size={14} className="text-red-700 dark:text-red-400 flex-shrink-0" />
+              <span className="text-[10px] text-red-700 dark:text-red-400 font-bold">Delete all {totalDocs} documents?</span>
               <Button
                 size="sm"
                 className="bg-red-600 hover:bg-red-700 text-foreground text-[9px] font-bold h-7 px-3 rounded-lg"
@@ -2502,7 +2502,7 @@ function KnowledgeSection() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-gray-600 text-[9px] h-7 px-2 rounded-lg"
+                className="text-gray-600 dark:text-gray-400 text-[9px] h-7 px-2 rounded-lg"
                 onClick={() => setShowDeleteAllConfirm(false)}
               >
                 Cancel
@@ -2516,26 +2516,26 @@ function KnowledgeSection() {
             <Loader2 className="animate-spin text-[#105B38]" size={24} />
           </div>
         ) : docs.length === 0 ? (
-          <Card className="bg-white border-slate-200 rounded-[2rem]">
+          <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
             <CardContent className="p-12 text-center">
               <Database size={32} className="text-foreground mx-auto mb-3" />
-              <p className="text-sm text-gray-600">No documents in vault yet</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">No documents in vault yet</p>
             </CardContent>
           </Card>
         ) : (
           docs.map((doc) => (
-            <Card key={doc.id} className="bg-white border-slate-200 rounded-[1.5rem]" data-testid={`knowledge-doc-${doc.id}`}>
+            <Card key={doc.id} className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[1.5rem]" data-testid={`knowledge-doc-${doc.id}`}>
               <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
-                  <FileText size={18} className="text-gray-600 flex-shrink-0" />
+                  <FileText size={18} className="text-gray-600 dark:text-gray-400 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-foreground truncate">{doc.title}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className="bg-white text-gray-600 border-slate-200 rounded-lg text-[8px]">
+                      <Badge className="bg-white dark:bg-[#131E2E] text-gray-600 dark:text-gray-400 border-slate-200 dark:border-slate-500/20 rounded-lg text-[8px]">
                         {doc.category}
                       </Badge>
-                      <span className="text-[9px] text-gray-600">{doc.filename}</span>
-                      <span className="text-[9px] text-gray-600">
+                      <span className="text-[9px] text-gray-600 dark:text-gray-400">{doc.filename}</span>
+                      <span className="text-[9px] text-gray-600 dark:text-gray-400">
                         {new Date(doc.createdAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -2545,7 +2545,7 @@ function KnowledgeSection() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="text-gray-600"
+                  className="text-gray-600 dark:text-gray-400"
                   onClick={() => deleteMutation.mutate(doc.id)}
                   data-testid={`button-delete-knowledge-${doc.id}`}
                 >
@@ -2777,12 +2777,12 @@ function CaseLawBadIndexAuditCard() {
   const badIndexJobStatus = badIndexStatusData?.status || badIndexAuditData?.jobStatus || null;
 
   return (
-    <Card className="bg-white border-slate-200 rounded-[2rem]" data-testid="case-law-bad-index-audit-card">
+    <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]" data-testid="case-law-bad-index-audit-card">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#105B38]">Bad Index Audit</p>
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
               Detect duplicate/noisy source docs and run targeted re-extract without full reindex.
             </p>
           </div>
@@ -2802,7 +2802,7 @@ function CaseLawBadIndexAuditCard() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-red-700 border border-red-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                className="text-red-700 dark:text-red-400 border border-red-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
                 onClick={() => stopBadIndexReextractMutation.mutate()}
                 disabled={stopBadIndexReextractMutation.isPending}
                 data-testid="button-stop-bad-index-reextract"
@@ -2827,7 +2827,7 @@ function CaseLawBadIndexAuditCard() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
-            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 mb-1">Source</p>
+            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400 mb-1">Source</p>
             <Select value={badIndexSource} onValueChange={(value: CaseLawBadIndexSourceKind) => setBadIndexSource(value)}>
               <SelectTrigger className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs" data-testid="select-bad-index-source">
                 <SelectValue />
@@ -2842,7 +2842,7 @@ function CaseLawBadIndexAuditCard() {
             </Select>
           </div>
           <div>
-            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 mb-1">Min Rows</p>
+            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400 mb-1">Min Rows</p>
             <Input
               value={badIndexMinRows}
               onChange={(e) => setBadIndexMinRows(e.target.value)}
@@ -2851,7 +2851,7 @@ function CaseLawBadIndexAuditCard() {
             />
           </div>
           <div>
-            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 mb-1">Target Limit</p>
+            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400 mb-1">Target Limit</p>
             <Input
               value={badIndexLimit}
               onChange={(e) => setBadIndexLimit(e.target.value)}
@@ -2860,7 +2860,7 @@ function CaseLawBadIndexAuditCard() {
             />
           </div>
           <div>
-            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 mb-1">Max Citations/Doc</p>
+            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400 mb-1">Max Citations/Doc</p>
             <Input
               value={badIndexMaxCitations}
               onChange={(e) => setBadIndexMaxCitations(e.target.value)}
@@ -2871,29 +2871,29 @@ function CaseLawBadIndexAuditCard() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600">Total Rows</p>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400">Total Rows</p>
             <p className="text-sm font-bold text-foreground">{(badIndexAuditData?.duplicateStats?.totalRows || 0).toLocaleString()}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600">Duplicate Groups</p>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400">Duplicate Groups</p>
             <p className="text-sm font-bold text-[#105B38]">{(badIndexAuditData?.duplicateStats?.duplicateGroups || 0).toLocaleString()}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600">Duplicate Rows</p>
-            <p className="text-sm font-bold text-red-700">{(badIndexAuditData?.duplicateStats?.duplicateRows || 0).toLocaleString()}</p>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+            <p className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400">Duplicate Rows</p>
+            <p className="text-sm font-bold text-red-700 dark:text-red-400">{(badIndexAuditData?.duplicateStats?.duplicateRows || 0).toLocaleString()}</p>
           </div>
         </div>
 
         {badIndexJobStatus && (
-          <div className="rounded-xl border border-slate-200 bg-background px-3 py-2 text-[11px] text-foreground">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2 text-[11px] text-foreground">
             <p className="font-bold text-foreground">
               Job: {badIndexJobStatus.running ? "Running" : "Idle"} · {badIndexJobStatus.processedTargets}/{badIndexJobStatus.totalTargets} processed
             </p>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
               Reindexed {badIndexJobStatus.reindexedTargets} · Skipped(no source) {badIndexJobStatus.skippedNoSource} · Skipped(no extract) {badIndexJobStatus.skippedNoExtract}
             </p>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Replaced rows {badIndexJobStatus.replacedRows.toLocaleString()} · Inserted rows {badIndexJobStatus.insertedRows.toLocaleString()}
             </p>
             {badIndexJobStatus.activeTarget && (
@@ -2902,33 +2902,33 @@ function CaseLawBadIndexAuditCard() {
               </p>
             )}
             {badIndexJobStatus.lastError && (
-              <p className="text-red-700 mt-1">Last error: {badIndexJobStatus.lastError}</p>
+              <p className="text-red-700 dark:text-red-400 mt-1">Last error: {badIndexJobStatus.lastError}</p>
             )}
           </div>
         )}
 
         {badIndexAuditLoading ? (
-          <div className="flex items-center gap-2 text-gray-600 text-xs">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-xs">
             <Loader2 className="animate-spin" size={14} />
             <span>Loading bad-index targets...</span>
           </div>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {(badIndexAuditData?.targets || []).length === 0 ? (
-              <p className="text-xs text-gray-600">No problematic source documents found for current filters.</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">No problematic source documents found for current filters.</p>
             ) : (
               (badIndexAuditData?.targets || []).map((target, idx) => (
-                <div key={`${target.sourceType}-${target.sourceDocId}-${idx}`} className="rounded-xl border border-slate-200 bg-background px-3 py-2">
+                <div key={`${target.sourceType}-${target.sourceDocId}-${idx}`} className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] font-bold text-foreground">
                       {target.sourceType}:{target.sourceDocId}
                     </p>
-                    <p className="text-[10px] text-gray-600">
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400">
                       dup {target.duplicateRows} · rows {target.totalRows}
                     </p>
                   </div>
-                  <p className="text-[10px] text-gray-600 truncate mt-1">{target.sourceFilename || "Unnamed source"}</p>
-                  <p className="text-[10px] text-gray-600 mt-1">
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400 truncate mt-1">{target.sourceFilename || "Unnamed source"}</p>
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-1">
                     primary {target.primaryRows} · cited {target.citedRows} · unique {target.uniqueKeys}
                   </p>
                 </div>
@@ -3471,13 +3471,13 @@ function CaseLawSection() {
   };
 
   const CaseLawForm = ({ isEdit }: { isEdit: boolean }) => (
-    <Card className="bg-white border-slate-200 rounded-[2rem]">
+    <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#105B38]">
             {isEdit ? "Edit Case Law" : "Add Case Law Entry"}
           </span>
-          <Button size="icon" variant="ghost" className="text-gray-600" onClick={() => isEdit ? cancelEdit() : setShowAddForm(false)} data-testid="button-cancel-form">
+          <Button size="icon" variant="ghost" className="text-gray-600 dark:text-gray-400" onClick={() => isEdit ? cancelEdit() : setShowAddForm(false)} data-testid="button-cancel-form">
             <X size={14} />
           </Button>
         </div>
@@ -3537,7 +3537,7 @@ function CaseLawSection() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <Scale size={16} className="text-[#105B38]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
             Case Law Database ({totalCaseLawEntries})
           </span>
         </div>
@@ -3564,7 +3564,7 @@ function CaseLawSection() {
           </Button>
           <Button
             variant="ghost"
-            className="text-rose-700 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="text-rose-700 dark:text-rose-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => stopProcessPendingFilesMutation.mutate()}
             disabled={stopProcessPendingFilesMutation.isPending || !Boolean(processPendingStatus?.running)}
             data-testid="button-stop-process-pending-caselaw-files"
@@ -3625,67 +3625,67 @@ function CaseLawSection() {
         </div>
       </div>
 
-      <Card className="bg-white border-slate-200 rounded-[2rem]" data-testid="case-law-pending-diagnostics-card">
+      <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]" data-testid="case-law-pending-diagnostics-card">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#105B38]">Pending Pipeline Diagnostics</span>
             {processPendingDiagnostics?.generatedAt ? (
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-gray-600 dark:text-gray-400">
                 Updated {new Date(processPendingDiagnostics.generatedAt).toLocaleTimeString()}
               </span>
             ) : (
-              <span className="text-[10px] text-gray-600">Waiting for diagnostics...</span>
+              <span className="text-[10px] text-gray-600 dark:text-gray-400">Waiting for diagnostics...</span>
             )}
           </div>
 
           {processPendingDiagnosticsLoading && !processPendingDiagnostics ? (
-            <div className="flex items-center gap-2 text-xs text-gray-600">
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
               <Loader2 className="animate-spin" size={14} />
               <span>Loading pending diagnostics...</span>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px]">
-                <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                  <p className="text-gray-600 uppercase tracking-wider">Actionable Pending</p>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                  <p className="text-gray-600 dark:text-gray-400 uppercase tracking-wider">Actionable Pending</p>
                   <p className="text-[#105B38] font-bold text-sm">{(processPendingDiagnostics?.summary.actionablePending || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                  <p className="text-gray-600 uppercase tracking-wider">Legacy No Extract</p>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                  <p className="text-gray-600 dark:text-gray-400 uppercase tracking-wider">Legacy No Extract</p>
                   <p className="text-foreground font-bold text-sm">{(processPendingDiagnostics?.summary.pendingLegacy || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                  <p className="text-gray-600 uppercase tracking-wider">Terminal No Extract</p>
-                  <p className="text-rose-700 font-bold text-sm">{(processPendingDiagnostics?.summary.terminalNoExtract || 0).toLocaleString()}</p>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                  <p className="text-gray-600 dark:text-gray-400 uppercase tracking-wider">Terminal No Extract</p>
+                  <p className="text-rose-700 dark:text-rose-400 font-bold text-sm">{(processPendingDiagnostics?.summary.terminalNoExtract || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                  <p className="text-gray-600 uppercase tracking-wider">Processing (Fresh)</p>
-                  <p className="text-sky-700 font-bold text-sm">{(processPendingDiagnostics?.summary.processingFresh || 0).toLocaleString()}</p>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                  <p className="text-gray-600 dark:text-gray-400 uppercase tracking-wider">Processing (Fresh)</p>
+                  <p className="text-sky-700 dark:text-sky-400 font-bold text-sm">{(processPendingDiagnostics?.summary.processingFresh || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                  <p className="text-gray-600 uppercase tracking-wider">Max Attempts</p>
-                  <p className="text-orange-700 font-bold text-sm">{(processPendingDiagnostics?.summary.maxAttemptsReached || 0).toLocaleString()}</p>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                  <p className="text-gray-600 dark:text-gray-400 uppercase tracking-wider">Max Attempts</p>
+                  <p className="text-orange-700 dark:text-orange-400 font-bold text-sm">{(processPendingDiagnostics?.summary.maxAttemptsReached || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                  <p className="text-gray-600 uppercase tracking-wider">Extracted Docs</p>
-                  <p className="text-emerald-700 font-bold text-sm">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                  <p className="text-gray-600 dark:text-gray-400 uppercase tracking-wider">Extracted Docs</p>
+                  <p className="text-emerald-700 dark:text-emerald-400 font-bold text-sm">
                     {(processPendingDiagnostics?.summary.extractedDocs || 0).toLocaleString()}
-                    <span className="text-gray-600 font-normal"> / {(processPendingDiagnostics?.summary.totalDocs || 0).toLocaleString()}</span>
+                    <span className="text-gray-600 dark:text-gray-400 font-normal"> / {(processPendingDiagnostics?.summary.totalDocs || 0).toLocaleString()}</span>
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Status Breakdown</p>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Status Breakdown</p>
                   {(processPendingDiagnostics?.statusCounts || []).length === 0 ? (
-                    <p className="text-[10px] text-gray-600">No status rows yet.</p>
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400">No status rows yet.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {(processPendingDiagnostics?.statusCounts || []).slice(0, 8).map((row) => (
                         <div key={row.status} className="flex items-center justify-between gap-2 text-[10px]">
                           <span className="text-foreground font-semibold">{row.status}</span>
-                          <span className="text-gray-600">
+                          <span className="text-gray-600 dark:text-gray-400">
                             total {row.documents.toLocaleString()} · no-extract {row.noExtractDocuments.toLocaleString()}
                           </span>
                         </div>
@@ -3693,16 +3693,16 @@ function CaseLawSection() {
                     </div>
                   )}
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-background px-3 py-2">
-                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Top Failure Reasons</p>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background px-3 py-2">
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Top Failure Reasons</p>
                   {(processPendingDiagnostics?.topErrors || []).length === 0 ? (
-                    <p className="text-[10px] text-gray-600">No failure reasons available.</p>
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400">No failure reasons available.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {(processPendingDiagnostics?.topErrors || []).slice(0, 8).map((row, idx) => (
                         <div key={`${idx}-${row.error.slice(0, 40)}`} className="flex items-start justify-between gap-2 text-[10px]">
                           <span className="text-foreground line-clamp-2">{row.error}</span>
-                          <span className="text-rose-700 font-semibold shrink-0">{row.documents.toLocaleString()}</span>
+                          <span className="text-rose-700 dark:text-rose-400 font-semibold shrink-0">{row.documents.toLocaleString()}</span>
                         </div>
                       ))}
                     </div>
@@ -3711,7 +3711,7 @@ function CaseLawSection() {
               </div>
 
               {processPendingDiagnostics && (
-                <p className="text-[10px] text-gray-600">
+                <p className="text-[10px] text-gray-600 dark:text-gray-400">
                   Rules: actionable uses max attempts {processPendingDiagnostics.maxAttempts} and stale processing threshold {processPendingDiagnostics.staleProcessingMinutes} min.
                 </p>
               )}
@@ -3726,17 +3726,17 @@ function CaseLawSection() {
       {editingId && <CaseLawForm isEdit={true} />}
 
       {showBulkUpload && (
-        <Card className="bg-white border-slate-200 rounded-[2rem]">
+        <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
           <CardContent className="p-6 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#105B38]">
                 AI-Powered Case Law Extraction
               </span>
-              <Button size="icon" variant="ghost" className="text-gray-600" onClick={() => { setShowBulkUpload(false); setExtractedCases([]); setRetryExtractFiles([]); setAutoSaveFailed(false); }} data-testid="button-cancel-bulk">
+              <Button size="icon" variant="ghost" className="text-gray-600 dark:text-gray-400" onClick={() => { setShowBulkUpload(false); setExtractedCases([]); setRetryExtractFiles([]); setAutoSaveFailed(false); }} data-testid="button-cancel-bulk">
                 <X size={14} />
               </Button>
             </div>
-            <p className="text-xs text-gray-600">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               Upload one or multiple <span className="text-[#105B38] font-bold">PDF</span>, <span className="text-[#105B38] font-bold">DOC/DOCX</span>, <span className="text-[#105B38] font-bold">TXT/MD</span>, <span className="text-[#105B38] font-bold">JSON</span>, or <span className="text-[#105B38] font-bold">CSV</span> files containing case law.
               Select multiple files at once for batch processing. The AI will extract individual cases with citations, court names, summaries, and keywords.
               JSON and CSV files with proper columns are imported instantly without AI processing.
@@ -3751,7 +3751,7 @@ function CaseLawSection() {
               data-testid="input-bulk-document-file"
             />
             {!isExtracting && retryExtractFiles.length > 0 && (
-              <div className="flex items-center justify-between gap-3 bg-background border border-slate-200 rounded-xl px-3 py-2">
+              <div className="flex items-center justify-between gap-3 bg-background border border-slate-200 dark:border-slate-500/20 rounded-xl px-3 py-2">
                 <p className="text-[10px] text-[#105B38] font-bold">
                   {retryExtractFiles.length} file{retryExtractFiles.length !== 1 ? "s" : ""} failed in the last run.
                 </p>
@@ -3776,13 +3776,13 @@ function CaseLawSection() {
                       ? `Processing file ${extractProgress.current} of ${extractProgress.total}...`
                       : "AI is reading your document..."}
                   </p>
-                  <p className="text-[10px] text-gray-600">
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400">
                     {extractProgress.currentFile && extractProgress.total > 1
                       ? extractProgress.currentFile
                       : "Extracting citations, summaries, and keywords. This may take a minute for large documents."}
                   </p>
                   {extractProgress.total > 1 && (
-                    <div className="mt-2 w-full bg-white rounded-full h-1.5">
+                    <div className="mt-2 w-full bg-white dark:bg-[#131E2E] rounded-full h-1.5">
                       <div
                         className="bg-[#105B38] h-1.5 rounded-full transition-all duration-300"
                         style={{ width: `${(extractProgress.current / extractProgress.total) * 100}%` }}
@@ -3800,7 +3800,7 @@ function CaseLawSection() {
                       {extractedCases.length} cases extracted{autoSaveFailed ? " — auto-save failed, review and save manually" : ""}
                     </span>
                     {extractedCases.some(e => e._sourceDocId) && (
-                      <span className="block text-[10px] text-emerald-700 mt-0.5">Document saved to Knowledge Base — cases will be linked for document preview</span>
+                      <span className="block text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.5">Document saved to Knowledge Base — cases will be linked for document preview</span>
                     )}
                   </div>
                   <Button
@@ -3815,23 +3815,23 @@ function CaseLawSection() {
                 </div>
                 <div className="max-h-96 overflow-y-auto space-y-2">
                   {extractedCases.map((entry, idx) => (
-                    <Card key={idx} className="bg-background border-slate-200 rounded-xl" data-testid={`extracted-case-${idx}`}>
+                    <Card key={idx} className="bg-background border-slate-200 dark:border-slate-500/20 rounded-xl" data-testid={`extracted-case-${idx}`}>
                       <CardContent className="p-3">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-bold text-foreground">{entry.citation}</p>
                             <p className="text-[10px] text-[#105B38]">{entry.court}</p>
                             <p className="text-[10px] text-foreground mt-1">{entry.title}</p>
-                            <p className="text-[10px] text-gray-600 mt-1">{entry.summary}</p>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-1">{entry.summary}</p>
                             {entry.keywords.length > 0 && (
                               <div className="flex gap-1 mt-1 flex-wrap">
                                 {entry.keywords.map((kw, i) => (
-                                  <Badge key={i} className="bg-white text-gray-600 border-slate-200 rounded-lg text-[7px]">{kw}</Badge>
+                                  <Badge key={i} className="bg-white dark:bg-[#131E2E] text-gray-600 dark:text-gray-400 border-slate-200 dark:border-slate-500/20 rounded-lg text-[7px]">{kw}</Badge>
                                 ))}
                               </div>
                             )}
                           </div>
-                          <Button size="icon" variant="ghost" className="text-gray-600 flex-shrink-0" onClick={() => removeExtractedCase(idx)} data-testid={`button-remove-extracted-${idx}`}>
+                          <Button size="icon" variant="ghost" className="text-gray-600 dark:text-gray-400 flex-shrink-0" onClick={() => removeExtractedCase(idx)} data-testid={`button-remove-extracted-${idx}`}>
                             <X size={12} />
                           </Button>
                         </div>
@@ -3848,7 +3848,7 @@ function CaseLawSection() {
       <div className="flex items-center justify-between gap-3 mt-4">
         <div className="flex items-center gap-3">
           <Scale size={16} className="text-[#105B38]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
             Case Law Entries ({totalCaseLawEntries})
           </span>
         </div>
@@ -3856,7 +3856,7 @@ function CaseLawSection() {
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-700 hover:text-red-700 hover:bg-red-500/10 text-[9px] font-bold uppercase tracking-widest gap-1.5"
+            className="text-red-700 dark:text-red-400 hover:text-red-700 dark:text-red-400 hover:bg-red-500/10 text-[9px] font-bold uppercase tracking-widest gap-1.5"
             onClick={() => setShowDeleteAllConfirm(true)}
           >
             <Trash2 size={12} /> Delete All
@@ -3864,8 +3864,8 @@ function CaseLawSection() {
         )}
         {showDeleteAllConfirm && (
           <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
-            <AlertOctagon size={14} className="text-red-700 flex-shrink-0" />
-            <span className="text-[10px] text-red-700 font-bold">Delete all {totalCaseLawEntries} entries?</span>
+            <AlertOctagon size={14} className="text-red-700 dark:text-red-400 flex-shrink-0" />
+            <span className="text-[10px] text-red-700 dark:text-red-400 font-bold">Delete all {totalCaseLawEntries} entries?</span>
             <Button
               size="sm"
               className="bg-red-600 hover:bg-red-700 text-foreground text-[9px] font-bold h-7 px-3 rounded-lg"
@@ -3877,7 +3877,7 @@ function CaseLawSection() {
             <Button
               size="sm"
               variant="ghost"
-              className="text-gray-600 text-[9px] h-7 px-2 rounded-lg"
+              className="text-gray-600 dark:text-gray-400 text-[9px] h-7 px-2 rounded-lg"
               onClick={() => setShowDeleteAllConfirm(false)}
             >
               Cancel
@@ -3891,27 +3891,27 @@ function CaseLawSection() {
           <Loader2 className="animate-spin text-[#105B38]" size={24} />
         </div>
       ) : caseLawEntries.length === 0 ? (
-        <Card className="bg-white border-slate-200 rounded-[2rem]">
+        <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
           <CardContent className="p-12 text-center">
             <Scale size={32} className="text-foreground mx-auto mb-3" />
-            <p className="text-sm text-gray-600">No case law entries yet. Add individual entries or upload a CSV file.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">No case law entries yet. Add individual entries or upload a CSV file.</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           {caseLawEntries.map((entry) => (
-            <Card key={entry.id} className="bg-white border-slate-200 rounded-[1.5rem]" data-testid={`caselaw-entry-${entry.id}`}>
+            <Card key={entry.id} className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[1.5rem]" data-testid={`caselaw-entry-${entry.id}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-foreground">{entry.citation}</p>
                     <p className="text-xs text-[#105B38] mt-1">{entry.court}</p>
                     <p className="text-xs text-foreground mt-1">{entry.title}</p>
-                    <p className="text-[10px] text-gray-600 mt-1 line-clamp-2">{entry.summary}</p>
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{entry.summary}</p>
                     {entry.keywords.length > 0 && (
                       <div className="flex gap-1 mt-2 flex-wrap">
                         {entry.keywords.map((kw, i) => (
-                          <Badge key={i} className="bg-white text-gray-600 border-slate-200 rounded-lg text-[8px]">
+                          <Badge key={i} className="bg-white dark:bg-[#131E2E] text-gray-600 dark:text-gray-400 border-slate-200 dark:border-slate-500/20 rounded-lg text-[8px]">
                             {kw}
                           </Badge>
                         ))}
@@ -3919,10 +3919,10 @@ function CaseLawSection() {
                     )}
                   </div>
                   <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" className="text-gray-600" onClick={() => startEdit(entry)} data-testid={`button-edit-caselaw-${entry.id}`}>
+                    <Button size="icon" variant="ghost" className="text-gray-600 dark:text-gray-400" onClick={() => startEdit(entry)} data-testid={`button-edit-caselaw-${entry.id}`}>
                       <Pencil size={14} />
                     </Button>
-                    <Button size="icon" variant="ghost" className="text-gray-600" onClick={() => deleteMutation.mutate(entry.id)} data-testid={`button-delete-caselaw-${entry.id}`}>
+                    <Button size="icon" variant="ghost" className="text-gray-600 dark:text-gray-400" onClick={() => deleteMutation.mutate(entry.id)} data-testid={`button-delete-caselaw-${entry.id}`}>
                       <Trash2 size={14} />
                     </Button>
                   </div>
@@ -4092,12 +4092,12 @@ function ClientLeadsSection() {
 
   return (
     <div className="space-y-4" data-testid="client-leads-section">
-      <Card className="bg-white border-slate-200 rounded-[2rem]">
+      <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
               <FileText size={16} className="text-[#105B38]" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
                 Client Leads ({totalLeads})
               </span>
             </div>
@@ -4128,13 +4128,13 @@ function ClientLeadsSection() {
             </div>
           ) : leads.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-sm text-gray-600">No leads found</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">No leads found</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left min-w-[1200px]">
                 <thead>
-                  <tr className="text-gray-600 border-b border-slate-200">
+                  <tr className="text-gray-600 dark:text-gray-400 border-b border-slate-200 dark:border-slate-500/20">
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Lead ID</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Name</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Phone</th>
@@ -4151,8 +4151,8 @@ function ClientLeadsSection() {
                 </thead>
                 <tbody>
                   {leads.map((lead) => (
-                    <tr key={lead.id} className="border-b border-slate-200">
-                      <td className="py-2 pr-3 text-gray-600">{lead.id.slice(0, 8)}...</td>
+                    <tr key={lead.id} className="border-b border-slate-200 dark:border-slate-500/20">
+                      <td className="py-2 pr-3 text-gray-600 dark:text-gray-400">{lead.id.slice(0, 8)}...</td>
                       <td className="py-2 pr-3 text-foreground font-semibold">{lead.name}</td>
                       <td className="py-2 pr-3 text-foreground">{lead.phone}</td>
                       <td className="py-2 pr-3 text-foreground">{lead.email}</td>
@@ -4161,15 +4161,15 @@ function ClientLeadsSection() {
                       <td className="py-2 pr-3 text-foreground uppercase">{lead.urgency}</td>
                       <td className="py-2 pr-3">
                         <Badge className={lead.status === "completed"
-                          ? "bg-emerald-500/20 text-emerald-700 border-emerald-500/40 rounded-md"
+                          ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/40 rounded-md"
                           : "bg-[#105B38]/15 text-[#105B38] border-[#105B38]/40 rounded-md"}
                         >
                           {lead.status === "completed" ? "Completed" : "Open"}
                         </Badge>
                       </td>
-                      <td className="py-2 pr-3 text-gray-600 max-w-[260px] truncate">{lead.caseDescription}</td>
-                      <td className="py-2 pr-3 text-gray-600">{lead.ipAddress}</td>
-                      <td className="py-2 pr-3 text-gray-600">{new Date(lead.createdAt).toLocaleString()}</td>
+                      <td className="py-2 pr-3 text-gray-600 dark:text-gray-400 max-w-[260px] truncate">{lead.caseDescription}</td>
+                      <td className="py-2 pr-3 text-gray-600 dark:text-gray-400">{lead.ipAddress}</td>
+                      <td className="py-2 pr-3 text-gray-600 dark:text-gray-400">{new Date(lead.createdAt).toLocaleString()}</td>
                       <td className="py-2">
                         <div className="flex items-center gap-2">
                           <Button
@@ -4185,7 +4185,7 @@ function ClientLeadsSection() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-emerald-700 text-[10px] h-7 px-2"
+                              className="text-emerald-700 dark:text-emerald-400 text-[10px] h-7 px-2"
                               onClick={() => completeMutation.mutate(lead.id)}
                               disabled={completeMutation.isPending}
                               data-testid={`button-complete-lead-${lead.id}`}
@@ -4196,7 +4196,7 @@ function ClientLeadsSection() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-red-700 text-[10px] h-7 px-2"
+                            className="text-red-700 dark:text-red-400 text-[10px] h-7 px-2"
                             onClick={() => deleteMutation.mutate(lead.id)}
                             disabled={deleteMutation.isPending}
                             data-testid={`button-delete-lead-${lead.id}`}
@@ -4216,15 +4216,15 @@ function ClientLeadsSection() {
       </Card>
 
       {selectedLeadId && (
-        <Card className="bg-white border-slate-200 rounded-[1.5rem]">
+        <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[1.5rem]">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
               Lead Details
             </span>
             <Button
               size="sm"
               variant="ghost"
-              className="text-gray-600"
+              className="text-gray-600 dark:text-gray-400"
               onClick={() => setSelectedLeadId(null)}
             >
               <X size={14} />
@@ -4232,28 +4232,28 @@ function ClientLeadsSection() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {leadLoading || !selectedLead ? (
-              <div className="flex items-center gap-2 text-gray-600">
+              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                 <Loader2 size={14} className="animate-spin" /> Loading...
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <p className="text-foreground"><span className="text-gray-600">Name:</span> {selectedLead.name}</p>
-                  <p className="text-foreground"><span className="text-gray-600">Phone:</span> {selectedLead.phone}</p>
-                  <p className="text-foreground"><span className="text-gray-600">Email:</span> {selectedLead.email}</p>
-                  <p className="text-foreground"><span className="text-gray-600">Case Type:</span> {selectedLead.caseType}</p>
-                  <p className="text-foreground"><span className="text-gray-600">City:</span> {selectedLead.city || "-"}</p>
-                  <p className="text-foreground"><span className="text-gray-600">Urgency:</span> <span className="uppercase">{selectedLead.urgency}</span></p>
-                  <p className="text-foreground"><span className="text-gray-600">Preferred Callback:</span> {selectedLead.preferredCallbackTime || "Not provided"}</p>
-                  <p className="text-foreground"><span className="text-gray-600">Consent:</span> {selectedLead.consentToContact ? "Yes" : "No"}</p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">Name:</span> {selectedLead.name}</p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">Phone:</span> {selectedLead.phone}</p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">Email:</span> {selectedLead.email}</p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">Case Type:</span> {selectedLead.caseType}</p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">City:</span> {selectedLead.city || "-"}</p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">Urgency:</span> <span className="uppercase">{selectedLead.urgency}</span></p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">Preferred Callback:</span> {selectedLead.preferredCallbackTime || "Not provided"}</p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">Consent:</span> {selectedLead.consentToContact ? "Yes" : "No"}</p>
                   <p className="text-foreground">
-                    <span className="text-gray-600">Status:</span>{" "}
-                    <span className={selectedLead.status === "completed" ? "text-emerald-700 font-semibold" : "text-[#105B38] font-semibold"}>
+                    <span className="text-gray-600 dark:text-gray-400">Status:</span>{" "}
+                    <span className={selectedLead.status === "completed" ? "text-emerald-700 dark:text-emerald-400 font-semibold" : "text-[#105B38] font-semibold"}>
                       {selectedLead.status === "completed" ? "Completed" : "Open"}
                     </span>
                   </p>
-                  <p className="text-foreground"><span className="text-gray-600">IP Address:</span> {selectedLead.ipAddress}</p>
-                  <p className="text-foreground"><span className="text-gray-600">Submitted:</span> {new Date(selectedLead.createdAt).toLocaleString()}</p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">IP Address:</span> {selectedLead.ipAddress}</p>
+                  <p className="text-foreground"><span className="text-gray-600 dark:text-gray-400">Submitted:</span> {new Date(selectedLead.createdAt).toLocaleString()}</p>
                 </div>
                 {selectedLead.status === "open" && (
                   <div className="flex justify-end">
@@ -4267,8 +4267,8 @@ function ClientLeadsSection() {
                     </Button>
                   </div>
                 )}
-                <div className="rounded-xl border border-slate-200 bg-background p-3">
-                  <p className="text-[11px] text-gray-600 mb-1 uppercase tracking-wider font-bold">Case Description</p>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-background p-3">
+                  <p className="text-[11px] text-gray-600 dark:text-gray-400 mb-1 uppercase tracking-wider font-bold">Case Description</p>
                   <p className="text-foreground whitespace-pre-wrap text-sm">{selectedLead.caseDescription}</p>
                 </div>
               </>
@@ -4414,20 +4414,20 @@ function StatuteDocumentsSection() {
 
   return (
     <div className="space-y-8" data-testid="statute-docs-section">
-      <Card className="bg-white border-slate-200 rounded-[2rem]">
+      <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
         <CardHeader className="flex flex-row items-center gap-3 pb-2">
           <Upload size={16} className="text-[#105B38]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
             Upload Statute Documents
           </span>
         </CardHeader>
         <CardContent className="space-y-4 pt-2">
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-600 dark:text-gray-400">
             Upload full statute documents that users can search and read in the PDF viewer. Supports .txt, .pdf, .json, .csv files (up to 500 files, 50 MB each).
           </p>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 block">
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 dark:text-gray-400 block">
               Select Files (.txt, .json, .csv, .pdf)
             </label>
             <Input
@@ -4435,7 +4435,7 @@ function StatuteDocumentsSection() {
               accept=".txt,.json,.csv,.pdf"
               multiple
               onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
-              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs file:text-gray-600 file:mr-4"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs file:text-gray-600 dark:text-gray-400 file:mr-4"
               data-testid="input-statute-doc-files"
             />
             {selectedFiles.length > 0 && (
@@ -4448,19 +4448,19 @@ function StatuteDocumentsSection() {
           {isUploading && uploadProgress.total > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-gray-600">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
+                <span className="text-gray-600 dark:text-gray-400">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
                 <span className="text-[#105B38] font-bold">{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
               </div>
-              <div className="w-full h-2 bg-white rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-white dark:bg-[#131E2E] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#105B38] rounded-full transition-all duration-300"
                   style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
                 />
               </div>
               <div className="text-[9px] flex flex-wrap gap-3">
-                <span className="text-emerald-700 font-bold">Uploaded: {uploadProgress.uploaded}</span>
-                <span className="text-red-700 font-bold">Failed: {uploadProgress.errors}</span>
-                <span className="text-gray-600 font-bold">Remaining: {Math.max(uploadProgress.total - uploadProgress.current, 0)}</span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold">Uploaded: {uploadProgress.uploaded}</span>
+                <span className="text-red-700 dark:text-red-400 font-bold">Failed: {uploadProgress.errors}</span>
+                <span className="text-gray-600 dark:text-gray-400 font-bold">Remaining: {Math.max(uploadProgress.total - uploadProgress.current, 0)}</span>
               </div>
             </div>
           )}
@@ -4481,7 +4481,7 @@ function StatuteDocumentsSection() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <FileText size={16} className="text-[#105B38]" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
               Statute Library ({totalDocs})
             </span>
           </div>
@@ -4489,7 +4489,7 @@ function StatuteDocumentsSection() {
             <Button
               size="sm"
               variant="ghost"
-              className="text-red-700 hover:text-red-700 hover:bg-red-500/10 text-[9px] font-bold uppercase tracking-widest gap-1.5"
+              className="text-red-700 dark:text-red-400 hover:text-red-700 dark:text-red-400 hover:bg-red-500/10 text-[9px] font-bold uppercase tracking-widest gap-1.5"
               onClick={() => setShowDeleteAllConfirm(true)}
             >
               <Trash2 size={12} /> Delete All
@@ -4497,8 +4497,8 @@ function StatuteDocumentsSection() {
           )}
           {showDeleteAllConfirm && (
             <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
-              <AlertOctagon size={14} className="text-red-700 flex-shrink-0" />
-              <span className="text-[10px] text-red-700 font-bold">Delete all {totalDocs} documents?</span>
+              <AlertOctagon size={14} className="text-red-700 dark:text-red-400 flex-shrink-0" />
+              <span className="text-[10px] text-red-700 dark:text-red-400 font-bold">Delete all {totalDocs} documents?</span>
               <Button
                 size="sm"
                 className="bg-red-600 hover:bg-red-700 text-foreground text-[9px] font-bold h-7 px-3 rounded-lg"
@@ -4510,7 +4510,7 @@ function StatuteDocumentsSection() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-gray-600 text-[9px] h-7 px-2 rounded-lg"
+                className="text-gray-600 dark:text-gray-400 text-[9px] h-7 px-2 rounded-lg"
                 onClick={() => setShowDeleteAllConfirm(false)}
               >
                 Cancel
@@ -4524,26 +4524,26 @@ function StatuteDocumentsSection() {
             <Loader2 className="animate-spin text-[#105B38]" size={24} />
           </div>
         ) : docs.length === 0 ? (
-          <Card className="bg-white border-slate-200 rounded-[2rem]">
+          <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
             <CardContent className="p-12 text-center">
               <FileText size={32} className="text-foreground mx-auto mb-3" />
-              <p className="text-sm text-gray-600">No statute documents uploaded yet</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">No statute documents uploaded yet</p>
             </CardContent>
           </Card>
         ) : (
           docs.map((doc) => (
-            <Card key={doc.id} className="bg-white border-slate-200 rounded-[1.5rem]" data-testid={`statute-doc-${doc.id}`}>
+            <Card key={doc.id} className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[1.5rem]" data-testid={`statute-doc-${doc.id}`}>
               <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
-                  <FileText size={18} className="text-gray-600 flex-shrink-0" />
+                  <FileText size={18} className="text-gray-600 dark:text-gray-400 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-foreground truncate">{doc.title}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className="bg-white text-gray-600 border-slate-200 rounded-lg text-[8px]">
+                      <Badge className="bg-white dark:bg-[#131E2E] text-gray-600 dark:text-gray-400 border-slate-200 dark:border-slate-500/20 rounded-lg text-[8px]">
                         {doc.category}
                       </Badge>
-                      <span className="text-[9px] text-gray-600">{doc.filename}</span>
-                      <span className="text-[9px] text-gray-600">
+                      <span className="text-[9px] text-gray-600 dark:text-gray-400">{doc.filename}</span>
+                      <span className="text-[9px] text-gray-600 dark:text-gray-400">
                         {new Date(doc.createdAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -4553,7 +4553,7 @@ function StatuteDocumentsSection() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="text-gray-600"
+                  className="text-gray-600 dark:text-gray-400"
                   onClick={() => deleteMutation.mutate(doc.id)}
                   data-testid={`button-delete-statute-doc-${doc.id}`}
                 >
@@ -4622,19 +4622,19 @@ function BroadcastEmailSection() {
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-2">
         <Mail size={16} className="text-[#105B38]" />
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
           Broadcast Email to All Users
         </span>
       </div>
 
-      <Card className="bg-white border-slate-200 rounded-[2rem]">
+      <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
         <CardContent className="p-6 space-y-5">
-          <div className="rounded-2xl border border-[#105B38]/20 bg-[#105B38]/5 px-4 py-3">
+          <div className="rounded-2xl border border-[#105B38]/20 dark:border-[#105B38]/40 bg-[#105B38]/5 px-4 py-3">
             <div className="flex items-center gap-2">
               <Shield size={15} className="text-[#105B38] flex-shrink-0" />
               <div>
                 <p className="text-xs font-bold text-[#105B38]">Super Admin Only</p>
-                <p className="text-[11px] text-gray-600">
+                <p className="text-[11px] text-gray-600 dark:text-gray-400">
                   This email will be sent to <span className="text-foreground font-bold">{usersLoading ? "..." : recipientCount}</span> registered users using the Al Wakeelo branded template.
                 </p>
               </div>
@@ -4642,20 +4642,20 @@ function BroadcastEmailSection() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-600">
+            <label className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-600 dark:text-gray-400">
               Email Subject
             </label>
             <Input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="e.g. Important Update from Al Wakeelo"
-              className="bg-background border-slate-200 text-foreground"
+              className="bg-background border-slate-200 dark:border-slate-500/20 text-foreground"
               data-testid="broadcast-subject"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-600">
+            <label className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-600 dark:text-gray-400">
               Email Body
             </label>
             <Textarea
@@ -4663,23 +4663,23 @@ function BroadcastEmailSection() {
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write your announcement here. Line breaks will be preserved in the email."
               rows={10}
-              className="bg-background border-slate-200 text-foreground resize-y"
+              className="bg-background border-slate-200 dark:border-slate-500/20 text-foreground resize-y"
               data-testid="broadcast-body"
             />
-            <p className="text-[10px] text-gray-600">
+            <p className="text-[10px] text-gray-600 dark:text-gray-400">
               The email will include the Al Wakeelo branding, personalized greeting, and a link to the dashboard.
             </p>
           </div>
 
           {(subject.trim() || body.trim()) && (
-            <div className="rounded-2xl border border-slate-200 bg-background p-4 space-y-2">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-500/20 bg-background p-4 space-y-2">
               <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#105B38]">Preview</p>
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-500/20 bg-white dark:bg-[#131E2E] p-4">
                 <p className="text-xs font-bold text-foreground mb-1">
                   Subject: {subject.trim() || "(empty)"}
                 </p>
-                <hr className="border-slate-200 my-2" />
-                <p className="text-[11px] text-gray-600 italic mb-2">Assalam-o-Alaikum [Name],</p>
+                <hr className="border-slate-200 dark:border-slate-500/20 my-2" />
+                <p className="text-[11px] text-gray-600 dark:text-gray-400 italic mb-2">Assalam-o-Alaikum [Name],</p>
                 <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
                   {body.trim() || "(empty body)"}
                 </p>

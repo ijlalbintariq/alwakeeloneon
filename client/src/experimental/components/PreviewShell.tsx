@@ -3,6 +3,8 @@ import { PreviewHeader } from "./PreviewHeader";
 import { PreviewSidebar } from "./PreviewSidebar";
 import { PreviewCommandPalette } from "./PreviewCommandPalette";
 import { LegalReferenceModal } from "./LegalReferenceModal";
+import { TourProvider } from "./tour/TourContext";
+import { OnboardingTour } from "./tour/OnboardingTour";
 import "@/experimental/styles/preview-theme.css";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -40,7 +42,7 @@ export const PreviewShell: React.FC<PreviewShellProps> = ({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [referenceOpen, setReferenceOpen] = useState<boolean>(false);
   const [authChecked, setAuthChecked] = useState<boolean>(false);
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   // Auth guard — redirect to /preview/auth if not authenticated
   useEffect(() => {
@@ -62,7 +64,7 @@ export const PreviewShell: React.FC<PreviewShellProps> = ({
       .catch(() => {
         setLocation("/preview/auth");
       });
-  }, [setLocation, standalone]);
+  }, [location, standalone, setLocation]);
 
   const shouldHideSidebar = standalone || hideSidebar;
   const shouldHideHeader = standalone || hideHeader;
@@ -71,82 +73,87 @@ export const PreviewShell: React.FC<PreviewShellProps> = ({
   // Show loading state while checking auth on protected pages
   if (!authChecked) {
     return (
-      <div className="preview-theme-scope h-screen flex items-center justify-center bg-[#F8FAFC]">
+      <div className="preview-theme-scope h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-[#0B131E]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-3 border-[#105B38] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[#64748B] font-medium">Verifying session...</p>
+          <p className="text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Verifying session...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="preview-theme-scope h-screen max-h-screen flex flex-col bg-[#F8FAFC] text-[#0F172A] antialiased selection:bg-[#105B38]/20 selection:text-[#0F172A] overflow-hidden">
-      {/* 1. Global Sandbox Status Banner */}
-      
-      {/* 2. Main Workstation Shell Area */}
-      <div className="flex-1 flex overflow-hidden relative min-h-0">
-        {/* Desktop Sidebar */}
-        {!shouldHideSidebar && (
-          <div className="hidden md:flex">
-            <PreviewSidebar
-              collapsed={sidebarCollapsed}
-              onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
-              onOpenReference={() => setReferenceOpen(true)}
-            />
-          </div>
-        )}
-
-        {/* Mobile Sidebar Overlay */}
-        {!shouldHideSidebar && mobileSidebarOpen && (
-          <div className="fixed inset-0 z-50 flex md:hidden">
-            <div
-              className="fixed inset-0 bg-black/30 transition-opacity"
-              onClick={() => setMobileSidebarOpen(false)}
-            />
-            <div className="relative z-10 w-64 max-w-[80vw]">
+    <TourProvider>
+      <div className="preview-theme-scope h-screen max-h-screen flex flex-col bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] antialiased selection:bg-[#105B38]/20 dark:selection:bg-[#105B38]/40 selection:text-[#0F172A] dark:selection:text-[#F8FAFC] overflow-hidden">
+        {/* 1. Global Sandbox Status Banner */}
+        
+        {/* 2. Main Workstation Shell Area */}
+        <div className="flex-1 flex overflow-hidden relative min-h-0">
+          {/* Desktop Sidebar */}
+          {!shouldHideSidebar && (
+            <div className="hidden md:flex">
               <PreviewSidebar
-                collapsed={false}
-                onToggleCollapse={() => setMobileSidebarOpen(false)}
+                collapsed={sidebarCollapsed}
+                onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
                 onOpenReference={() => setReferenceOpen(true)}
               />
             </div>
-          </div>
-        )}
-
-        {/* Workstation Right Viewport */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[#F8FAFC]">
-          {/* Workstation Header */}
-          {!shouldHideHeader && (
-            <PreviewHeader
-              onToggleSidebar={() => setMobileSidebarOpen((prev) => !prev)}
-              onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-              onOpenReference={() => setReferenceOpen(true)}
-            />
           )}
 
-          {/* Main Page Content */}
-          <main
-            role="main"
-            className={cn(
-              "flex-1 min-h-0 flex flex-col",
-              shouldRemovePadding ? "p-0 overflow-hidden" : "overflow-y-auto overflow-x-hidden px-4 sm:px-6 md:px-8 py-5",
-              className
+          {/* Mobile Sidebar Overlay */}
+          {!shouldHideSidebar && mobileSidebarOpen && (
+            <div className="fixed inset-0 z-50 flex md:hidden">
+              <div
+                className="fixed inset-0 bg-black/30 transition-opacity"
+                onClick={() => setMobileSidebarOpen(false)}
+              />
+              <div className="relative z-10 w-64 max-w-[80vw]">
+                <PreviewSidebar
+                  collapsed={false}
+                  onToggleCollapse={() => setMobileSidebarOpen(false)}
+                  onOpenReference={() => setReferenceOpen(true)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Workstation Right Viewport */}
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[#F8FAFC] dark:bg-[#0B131E]">
+            {/* Workstation Header */}
+            {!shouldHideHeader && (
+              <PreviewHeader
+                onToggleSidebar={() => setMobileSidebarOpen((prev) => !prev)}
+                onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+                onOpenReference={() => setReferenceOpen(true)}
+              />
             )}
-          >
-            {children}
-          </main>
+
+            {/* Main Page Content */}
+            <main
+              role="main"
+              className={cn(
+                "flex-1 min-h-0 flex flex-col",
+                shouldRemovePadding ? "p-0 overflow-hidden" : "overflow-y-auto overflow-x-hidden px-4 sm:px-6 md:px-8 py-5",
+                className
+              )}
+            >
+              {children}
+            </main>
+          </div>
         </div>
+
+        {/* 3. Global Command Palette Modal */}
+        <PreviewCommandPalette
+          isOpen={commandPaletteOpen}
+          onOpenChange={setCommandPaletteOpen}
+        />
+
+        {/* 4. Legal Reference Shelf (Limitation Act + Courts Directory) */}
+        <LegalReferenceModal isOpen={referenceOpen} onClose={() => setReferenceOpen(false)} />
+
+        {/* 5. Onboarding Tour System */}
+        <OnboardingTour />
       </div>
-
-      {/* 3. Global Command Palette Modal */}
-      <PreviewCommandPalette
-        isOpen={commandPaletteOpen}
-        onOpenChange={setCommandPaletteOpen}
-      />
-
-      {/* 4. Legal Reference Shelf (Limitation Act + Courts Directory) */}
-      <LegalReferenceModal isOpen={referenceOpen} onClose={() => setReferenceOpen(false)} />
-    </div>
+    </TourProvider>
   );
 };

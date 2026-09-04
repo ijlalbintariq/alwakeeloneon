@@ -548,8 +548,8 @@ export default function CauseListsPage() {
                 variant="secondary"
                 className={`text-[10px] px-1.5 py-0.5 font-bold ${
                   selectedCourt === c.code
-                    ? "bg-white/20 text-white"
-                    : "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-transparent"
+                    ? "bg-white dark:bg-[#131E2E]/20 text-white"
+                    : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-transparent"
                 }`}
               >
                 Auto Sync
@@ -562,12 +562,12 @@ export default function CauseListsPage() {
         <div className="mt-6">
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <TabsList className={`grid ${isAdmin ? "grid-cols-3 max-w-md" : "grid-cols-2 max-w-xs"} bg-slate-200/80 dark:bg-muted p-1 border border-slate-300/80 dark:border-border rounded-xl`}>
-                <TabsTrigger value="roster" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
+              <TabsList className={`grid ${isAdmin ? "grid-cols-3 max-w-md" : "grid-cols-2 max-w-xs"} bg-slate-200/80 dark:bg-muted p-1 border border-slate-300 dark:border-slate-500/30/80 dark:border-border rounded-xl`}>
+                <TabsTrigger value="roster" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white dark:bg-[#131E2E] data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
                   <FileText className="w-4 h-4" />
                   Court Rosters
                 </TabsTrigger>
-                <TabsTrigger value="trackers" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
+                <TabsTrigger value="trackers" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white dark:bg-[#131E2E] data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
                   <Bell className="w-4 h-4" />
                   My Trackers
                   {trackersData?.trackers && trackersData.trackers.length > 0 && (
@@ -577,7 +577,7 @@ export default function CauseListsPage() {
                   )}
                 </TabsTrigger>
                 {isAdmin && (
-                  <TabsTrigger value="audit" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
+                  <TabsTrigger value="audit" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white dark:bg-[#131E2E] data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
                     <Activity className="w-4 h-4" />
                     Scrape Audit
                   </TabsTrigger>
@@ -705,7 +705,7 @@ export default function CauseListsPage() {
 
                   {isSearchLoading ? (
                     <div className="flex justify-center py-12">
-                      <RefreshCw className="w-8 h-8 animate-spin text-teal-600" />
+                      <RefreshCw className="w-8 h-8 animate-spin text-teal-600 dark:text-teal-400" />
                     </div>
                   ) : searchData?.items && searchData.items.length > 0 ? (
                     <div className="grid grid-cols-1 gap-3">
@@ -736,13 +736,13 @@ export default function CauseListsPage() {
                                   className="h-8 gap-1 text-xs text-slate-700 dark:text-foreground hover:bg-slate-100 dark:hover:bg-muted"
                                   onClick={() => copyToClipboard(item.caseNumber)}
                                 >
-                                  {copiedCase === item.caseNumber ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                  {copiedCase === item.caseNumber ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                                   Copy
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 gap-1 text-xs border-teal-600/50 bg-teal-50/50 dark:bg-transparent text-teal-800 dark:text-teal-300 hover:bg-teal-100 font-semibold"
+                                  className="h-8 gap-1 text-xs border-teal-600/50 bg-teal-50/5 dark:bg-teal-500/100 dark:bg-transparent text-teal-800 dark:text-teal-300 hover:bg-teal-100 font-semibold"
                                   onClick={() => addToDiaryMutation.mutate(item)}
                                 >
                                   <CalendarPlus className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400" />
@@ -823,7 +823,7 @@ export default function CauseListsPage() {
 
                   {isListsLoading ? (
                     <div className="flex justify-center py-16">
-                      <RefreshCw className="w-8 h-8 animate-spin text-teal-600" />
+                      <RefreshCw className="w-8 h-8 animate-spin text-teal-600 dark:text-teal-400" />
                     </div>
                   ) : causeListData?.causeLists && causeListData.causeLists.length > 0 ? (
                     <div className="grid grid-cols-1 gap-4">
@@ -865,7 +865,7 @@ export default function CauseListsPage() {
                             </CardHeader>
 
                             {isExpanded && (
-                              <CardContent className="p-4 pt-0 border-t border-slate-200 dark:border-border bg-slate-50/50 dark:bg-card">
+                              <CardContent className="p-4 pt-0 border-t border-slate-200 dark:border-border bg-slate-50/5 dark:bg-slate-500/100 dark:bg-card">
                                 <RosterItemsList causeListId={roster.id} onAddToDiary={addToDiaryMutation.mutate} onTrack={handleQuickAddTracker} />
                               </CardContent>
                             )}
@@ -917,7 +917,7 @@ export default function CauseListsPage() {
 
               {isTrackersLoading ? (
                 <div className="flex justify-center py-12">
-                  <RefreshCw className="w-8 h-8 animate-spin text-teal-600" />
+                  <RefreshCw className="w-8 h-8 animate-spin text-teal-600 dark:text-teal-400" />
                 </div>
               ) : trackersData?.trackers && trackersData.trackers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -931,7 +931,7 @@ export default function CauseListsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            className="h-7 w-7 p-0 text-red-500 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10"
                             onClick={() => deleteTrackerMutation.mutate(tracker.id)}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -944,7 +944,7 @@ export default function CauseListsPage() {
                       </CardHeader>
                       <CardContent className="p-4 pt-2 text-xs text-slate-600 dark:text-muted-foreground flex items-center gap-3 border-t border-slate-100 dark:border-border mt-2">
                         <span className="flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                           Daily Diary Sync Active
                         </span>
                       </CardContent>
@@ -1006,7 +1006,7 @@ export default function CauseListsPage() {
 
                 {isRunsLoading ? (
                   <div className="flex justify-center py-12">
-                    <RefreshCw className="w-8 h-8 animate-spin text-teal-600" />
+                    <RefreshCw className="w-8 h-8 animate-spin text-teal-600 dark:text-teal-400" />
                   </div>
                 ) : runsData?.runs && runsData.runs.length > 0 ? (
                   <div className="overflow-x-auto border border-slate-200 dark:border-border rounded-xl bg-white dark:bg-card shadow-xs">
@@ -1253,7 +1253,7 @@ function RosterItemsList({
   if (isLoading) {
     return (
       <div className="flex justify-center py-6">
-        <RefreshCw className="w-5 h-5 animate-spin text-teal-600" />
+        <RefreshCw className="w-5 h-5 animate-spin text-teal-600 dark:text-teal-400" />
       </div>
     );
   }
@@ -1273,7 +1273,7 @@ function RosterItemsList({
           key={item.id}
           className={`p-3.5 rounded-xl border text-sm transition-all shadow-xs ${
             item.isRedList
-              ? "border-red-300 dark:border-red-500/40 bg-red-50/90 dark:bg-red-500/10 text-slate-900 dark:text-foreground"
+              ? "border-red-300 dark:border-red-500/40 bg-red-50/9 dark:bg-red-500/100 dark:bg-red-500/10 text-slate-900 dark:text-foreground"
               : "bg-white dark:bg-card/90 hover:bg-slate-50 dark:hover:bg-muted/40 border-slate-200 dark:border-border text-slate-900 dark:text-foreground"
           }`}
         >
@@ -1325,7 +1325,7 @@ function RosterItemsList({
                 size="sm"
                 variant="ghost"
                 showLabel={false}
-                className="h-7 w-7 p-0 text-slate-600 dark:text-muted-foreground hover:text-emerald-600"
+                className="h-7 w-7 p-0 text-slate-600 dark:text-muted-foreground hover:text-emerald-600 dark:text-emerald-400"
               />
               <Button
                 variant="ghost"

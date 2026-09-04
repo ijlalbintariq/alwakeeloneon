@@ -152,8 +152,8 @@ export const LandmarkAuthorityCard: React.FC<LandmarkAuthorityCardProps> = ({
       className={cn(
         "group relative rounded-xl border transition-all duration-200",
         isApex
-          ? "border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 shadow-xs hover:border-emerald-300 hover:shadow-md"
-          : "border-slate-200 bg-white shadow-xs hover:border-slate-300 hover:shadow-md",
+          ? "border-emerald-200 dark:border-emerald-500/20/80 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 shadow-xs hover:border-emerald-300 dark:border-emerald-500/30 hover:shadow-md"
+          : "border-slate-200 dark:border-slate-500/20 bg-white dark:bg-[#131E2E] shadow-xs hover:border-slate-300 dark:border-slate-500/30 hover:shadow-md",
         compact ? "p-3.5" : "p-4.5",
         className
       )}
@@ -166,34 +166,34 @@ export const LandmarkAuthorityCard: React.FC<LandmarkAuthorityCardProps> = ({
             className={cn(
               "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold tracking-tight transition-colors",
               isApex
-                ? "bg-emerald-100/90 text-emerald-900 border border-emerald-300/80 group-hover:bg-emerald-200/90"
-                : "bg-slate-100 text-slate-800 border border-slate-300 group-hover:bg-slate-200"
+                ? "bg-emerald-100/90 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30/80 group-hover:bg-emerald-200/90"
+                : "bg-slate-100 text-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-500/30 group-hover:bg-slate-200"
             )}
           >
-            <Gavel className="h-3.5 w-3.5 text-emerald-700" />
+            <Gavel className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
             <span className="font-mono">{citation}</span>
           </div>
 
           {/* Court & Year Hierarchy Badge */}
-          <div className="inline-flex items-center gap-1 text-xs text-slate-600">
+          <div className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
             <Landmark className="h-3 w-3 text-slate-400" />
-            <span className="font-medium text-slate-700">{court}</span>
+            <span className="font-medium text-slate-700 dark:text-slate-400">{court}</span>
             <span className="text-slate-400">•</span>
-            <span className="font-semibold text-slate-600">{year}</span>
+            <span className="font-semibold text-slate-600 dark:text-slate-400">{year}</span>
           </div>
 
           {/* Tier / Source Badge */}
           {source === "tier1_curated" ? (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
               <Sparkles className="h-2.5 w-2.5" />
               Apex Ruling (0ms)
             </span>
           ) : source === "cached" ? (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-200">
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
               Cached (0ms)
             </span>
           ) : (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 border border-indigo-200">
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
               <Layers className="h-2.5 w-2.5" />
               Live DB
             </span>
@@ -214,7 +214,7 @@ export const LandmarkAuthorityCard: React.FC<LandmarkAuthorityCardProps> = ({
       </h4>
 
       {/* Ratio Decidendi Quote Block */}
-      <div className="relative mt-2.5 rounded-lg border-l-3 border-emerald-500 bg-emerald-50/50 p-3 text-xs leading-relaxed text-slate-800">
+      <div className="relative mt-2.5 rounded-lg border-l-3 border-emerald-500 bg-emerald-50/5 dark:bg-emerald-500/100 dark:bg-emerald-500/10 p-3 text-xs leading-relaxed text-slate-800 dark:text-slate-400">
         <Quote className="absolute right-2.5 top-2.5 h-4 w-4 text-emerald-300 opacity-60" />
         <p className="font-serif italic tracking-wide pr-4">
           &ldquo;{ratio}&rdquo;
@@ -222,7 +222,7 @@ export const LandmarkAuthorityCard: React.FC<LandmarkAuthorityCardProps> = ({
       </div>
 
       {/* Action Hub Buttons Toolbar */}
-      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-3">
+      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 dark:border-slate-500/20 pt-3">
         <div className="flex flex-wrap items-center gap-2">
           {/* Copy Ratio Button */}
           <button
@@ -232,7 +232,7 @@ export const LandmarkAuthorityCard: React.FC<LandmarkAuthorityCardProps> = ({
               "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-all whitespace-nowrap",
               copiedRatio
                 ? "bg-emerald-600 text-white"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+                : "bg-slate-100 text-slate-700 dark:text-slate-400 hover:bg-slate-200 hover:text-slate-900"
             )}
             title="Copy ratio decidendi text with citation"
           >
@@ -257,7 +257,7 @@ export const LandmarkAuthorityCard: React.FC<LandmarkAuthorityCardProps> = ({
               "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-all whitespace-nowrap",
               copiedCitation
                 ? "bg-emerald-600 text-white"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+                : "bg-slate-100 text-slate-700 dark:text-slate-400 hover:bg-slate-200 hover:text-slate-900"
             )}
             title="Copy legal citation"
           >
@@ -284,7 +284,7 @@ export const LandmarkAuthorityCard: React.FC<LandmarkAuthorityCardProps> = ({
               "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-all whitespace-nowrap",
               isInserting
                 ? "bg-emerald-700 text-white"
-                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-500/20"
             )}
             title="Insert ratio into Legal Drafting Studio"
           >

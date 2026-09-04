@@ -35,17 +35,17 @@ import { PostHearingOutcomeModal, DiaryHearingItem } from "@/experimental/compon
 import { AddDiaryEntryModal } from "@/experimental/components/diary/AddDiaryEntryModal";
 
 const PRIORITY_CARD_STYLES: Record<string, string> = {
-  urgent: "bg-rose-50/50 border-rose-200 hover:border-rose-300 shadow-xs",
-  high: "bg-amber-50/50 border-amber-200 hover:border-amber-300",
-  normal: "bg-white border-[#E2E8F0] hover:border-[#105B38]/30",
-  low: "bg-white border-[#E2E8F0] hover:border-[#105B38]/30",
+  urgent: "bg-rose-50/5 dark:bg-rose-500/100 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 hover:border-rose-300 dark:border-rose-500/30 shadow-xs",
+  high: "bg-amber-50/5 dark:bg-amber-500/100 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 hover:border-amber-300 dark:border-amber-500/30",
+  normal: "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/30",
+  low: "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/30",
 };
 
 const PRIORITY_BADGES: Record<string, string> = {
-  urgent: "bg-rose-50 text-rose-700 border-rose-200 font-bold animate-pulse",
-  high: "bg-amber-50 text-amber-700 border-amber-200 font-bold",
-  normal: "bg-[#F1F5F9] text-[#475569] border-[#E2E8F0]",
-  low: "bg-white text-[#64748B] border-[#E2E8F0]",
+  urgent: "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 font-bold animate-pulse",
+  high: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 font-bold",
+  normal: "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44]",
+  low: "bg-white dark:bg-[#131E2E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44]",
 };
 
 function formatDateHeading(dStr: string): string {
@@ -181,29 +181,29 @@ export const PreviewDailyDiary: React.FC = () => {
     <PreviewShell>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* 1. Header Banner */}
-        <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-[#0F172A] tracking-tight flex items-center gap-2">
+            <h1 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-[#105B38]" />
               <span>Daily Court Diary & Cause Lists</span>
             </h1>
-            <p className="text-xs text-[#64748B] mt-0.5">
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
               Live judicial hearings schedule with Supreme Court, LHC, and SHC cause list synchronization
             </p>
           </div>
 
           {/* Header Actions & Quick Metrics */}
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold">
-              <span className="text-[#64748B]">
-                Weekly: <strong className="text-[#0F172A]">{totalHearingsThisWeek}</strong>
+            <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold">
+              <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
+                Weekly: <strong className="text-[#0F172A] dark:text-[#F8FAFC]">{totalHearingsThisWeek}</strong>
               </span>
               <span className="text-[#CBD5E1]">|</span>
-              <span className="text-[#64748B]">
-                Urgent: <strong className="text-rose-600">{urgentHearingsThisWeek}</strong>
+              <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
+                Urgent: <strong className="text-rose-600 dark:text-rose-400">{urgentHearingsThisWeek}</strong>
               </span>
               <span className="text-[#CBD5E1]">|</span>
-              <span className="text-[#64748B]">
+              <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 Completed: <strong className="text-[#105B38]">{completedHearingsThisWeek}</strong>
               </span>
             </div>
@@ -222,18 +222,18 @@ export const PreviewDailyDiary: React.FC = () => {
         <CalendarSyncPanel />
 
         {/* 3. Interactive Weekly Strip */}
-        <div className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-4">
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4">
           {/* Strip Header Navigation */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
                 onClick={prevWeek}
-                className="p-1.5 rounded-xl bg-[#F8FAFC] text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9] border border-[#E2E8F0] transition-colors"
+                className="p-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors"
                 title="Previous Week"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-xs sm:text-sm font-bold text-[#0F172A]">
+              <span className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 {new Date(weekFrom + "T00:00:00").toLocaleDateString(undefined, {
                   month: "short",
                   day: "numeric",
@@ -247,7 +247,7 @@ export const PreviewDailyDiary: React.FC = () => {
               </span>
               <button
                 onClick={nextWeek}
-                className="p-1.5 rounded-xl bg-[#F8FAFC] text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9] border border-[#E2E8F0] transition-colors"
+                className="p-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors"
                 title="Next Week"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -256,8 +256,8 @@ export const PreviewDailyDiary: React.FC = () => {
 
             <div className="flex items-center gap-2">
               {overdueCount > 0 && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">
-                  <AlertTriangle className="w-3 h-3 text-rose-600" />
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 text-xs font-bold">
+                  <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                   <span>{overdueCount} Overdue Hearing{overdueCount > 1 ? "s" : ""}</span>
                 </span>
               )}
@@ -265,7 +265,7 @@ export const PreviewDailyDiary: React.FC = () => {
               {selectedDate !== today && (
                 <button
                   onClick={jumpToToday}
-                  className="px-3 py-1.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#0F172A] text-xs font-bold border border-[#E2E8F0] transition-colors"
+                  className="px-3 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-bold border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors"
                 >
                   Jump to Today
                 </button>
@@ -292,14 +292,14 @@ export const PreviewDailyDiary: React.FC = () => {
                     isSelected
                       ? "bg-[#105B38] text-white border-[#105B38] font-bold shadow-xs scale-[1.02]"
                       : isToday
-                      ? "bg-emerald-50/60 border-emerald-200 text-[#105B38] hover:bg-emerald-100/50"
-                      : "bg-[#F8FAFC] border-[#E2E8F0] text-[#475569] hover:bg-white hover:border-[#CBD5E1]"
+                      ? "bg-emerald-50/6 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-[#105B38] hover:bg-emerald-100/50"
+                      : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#475569] hover:bg-white dark:bg-[#131E2E] hover:border-[#CBD5E1]"
                   )}
                 >
                   <span
                     className={cn(
                       "text-[10px] uppercase font-mono tracking-wider font-bold",
-                      isSelected ? "text-white" : "text-[#64748B]"
+                      isSelected ? "text-white" : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                     )}
                   >
                     {weekday}
@@ -307,7 +307,7 @@ export const PreviewDailyDiary: React.FC = () => {
                   <span
                     className={cn(
                       "text-base sm:text-lg font-bold",
-                      isSelected ? "text-white" : isToday ? "text-[#105B38]" : "text-[#0F172A]"
+                      isSelected ? "text-white" : isToday ? "text-[#105B38]" : "text-[#0F172A] dark:text-[#F8FAFC]"
                     )}
                   >
                     {dayNum}
@@ -322,7 +322,7 @@ export const PreviewDailyDiary: React.FC = () => {
                           className={cn(
                             "w-1.5 h-1.5 rounded-full",
                             isSelected
-                              ? "bg-white"
+                              ? "bg-white dark:bg-[#131E2E]"
                               : counts.urgent > 0 && idx === 0
                               ? "bg-rose-500 animate-pulse"
                               : "bg-[#105B38]"
@@ -340,17 +340,17 @@ export const PreviewDailyDiary: React.FC = () => {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-[#0F172A]">
+              <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 {formatDateHeading(selectedDate)}
               </h2>
-              <span className="text-xs font-mono text-[#64748B]">
+              <span className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 ({dayItems.length} hearing{dayItems.length === 1 ? "" : "s"})
               </span>
             </div>
 
             {/* Priority Filter */}
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-[#64748B] text-xs font-bold">Filter:</span>
+              <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] text-xs font-bold">Filter:</span>
               {[
                 { id: "all", label: "All" },
                 { id: "urgent", label: "Red List" },
@@ -364,7 +364,7 @@ export const PreviewDailyDiary: React.FC = () => {
                     "px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
                     priorityFilter === f.id
                       ? "bg-[#105B38] text-white shadow-xs"
-                      : "bg-white text-[#475569] hover:bg-[#F8FAFC] border border-[#E2E8F0]"
+                      : "bg-white dark:bg-[#131E2E] text-[#475569] hover:bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44]"
                   )}
                 >
                   {f.label}
@@ -375,17 +375,17 @@ export const PreviewDailyDiary: React.FC = () => {
 
           {/* Hearings Cards Grid */}
           {isLoading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-3 text-[#64748B]">
+            <div className="py-16 flex flex-col items-center justify-center gap-3 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               <Loader2 className="w-6 h-6 animate-spin text-[#105B38]" />
               <span className="text-xs font-mono">Loading court cause list...</span>
             </div>
           ) : dayItems.length === 0 ? (
-            <div className="p-12 rounded-2xl bg-white border border-dashed border-[#E2E8F0] text-center space-y-3">
+            <div className="p-12 rounded-2xl bg-white dark:bg-[#131E2E] border border-dashed border-[#E2E8F0] dark:border-[#1E2D44] text-center space-y-3">
               <CalendarDays className="w-10 h-10 text-[#CBD5E1] mx-auto" />
-              <h3 className="text-sm font-bold text-[#0F172A]">
+              <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                 No hearings scheduled for {formatDateHeading(selectedDate)}
               </h3>
-              <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-sm mx-auto">
                 Add an upcoming court hearing or sync with Supreme Court & High Court cause lists.
               </p>
               <button
@@ -424,7 +424,7 @@ export const PreviewDailyDiary: React.FC = () => {
                                   completed: !item.completed,
                                 })
                               }
-                              className="text-[#64748B] hover:text-[#105B38] transition-colors"
+                              className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] transition-colors"
                               title={item.completed ? "Mark Incomplete" : "Mark Completed"}
                             >
                               {item.completed ? (
@@ -436,7 +436,7 @@ export const PreviewDailyDiary: React.FC = () => {
                           )}
 
                           {/* Time Badge */}
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#F1F5F9] text-[#0F172A] border border-[#E2E8F0] text-[11px] font-mono font-bold">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] text-[11px] font-mono font-bold">
                             <Clock className="w-3 h-3 text-[#105B38]" />
                             <span>{item.time || "09:30 AM"}</span>
                           </span>
@@ -454,11 +454,11 @@ export const PreviewDailyDiary: React.FC = () => {
                         {/* Overdue / Source Tag */}
                         <div className="flex items-center gap-1.5">
                           {isOverdue && (
-                            <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
                               Overdue
                             </span>
                           )}
-                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0]">
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                             {item.source}
                           </span>
                         </div>
@@ -467,7 +467,7 @@ export const PreviewDailyDiary: React.FC = () => {
                       {/* Case Title & Hearing Stage */}
                       <div>
                         <h3
-                          className={`text-sm font-bold ${item.completed ? "line-through text-[#94A3B8]" : "text-[#0F172A]"
+                          className={`text-sm font-bold ${item.completed ? "line-through text-[#94A3B8] dark:text-[#475569]" : "text-[#0F172A] dark:text-[#F8FAFC]"
                             }`}
                         >
                           {item.title}
@@ -489,7 +489,7 @@ export const PreviewDailyDiary: React.FC = () => {
 
                       {/* Court Room & Instructions */}
                       {item.description && (
-                        <p className="text-xs text-[#475569] bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] leading-relaxed">
+                        <p className="text-xs text-[#475569] bg-[#F8FAFC] dark:bg-[#0B131E] p-3 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] leading-relaxed">
                           {item.description}
                         </p>
                       )}
@@ -498,14 +498,14 @@ export const PreviewDailyDiary: React.FC = () => {
                       {(item.outcome || item.nextDate) && (
                         <div className="flex items-center gap-2 pt-1 flex-wrap text-xs">
                           {item.outcome && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 text-[#105B38] border border-emerald-200 font-mono font-bold text-[11px]">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 font-mono font-bold text-[11px]">
                               <Gavel className="w-3 h-3" />
                               <span>Outcome: {item.outcome.replace(/_/g, " ").toUpperCase()}</span>
                             </span>
                           )}
 
                           {item.nextDate && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#F8FAFC] text-[#0F172A] border border-[#E2E8F0] font-mono text-[11px] font-semibold">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] font-mono text-[11px] font-semibold">
                               <ArrowRight className="w-3 h-3 text-[#105B38]" />
                               <span>
                                 Next:{" "}
@@ -521,11 +521,11 @@ export const PreviewDailyDiary: React.FC = () => {
                     </div>
 
                     {/* Bottom Action Strip */}
-                    <div className="flex items-center justify-between pt-3 border-t border-[#E2E8F0] text-xs">
+                    <div className="flex items-center justify-between pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
                       {/* Log Outcome Button */}
                       <button
                         onClick={() => setOutcomeModalItem(item)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#0F172A] border border-[#E2E8F0] text-xs font-semibold transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold transition-colors"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                         <span>Log Outcome & Next Date</span>
@@ -544,7 +544,7 @@ export const PreviewDailyDiary: React.FC = () => {
                           }}
                           size="sm"
                           variant="outline"
-                          className="bg-white border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] text-xs rounded-xl"
+                          className="bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] text-xs rounded-xl"
                         />
 
                         {item.source === "manual" && typeof item.id === "number" && (
@@ -552,7 +552,7 @@ export const PreviewDailyDiary: React.FC = () => {
                             onClick={() => deleteEntryMutation.mutate(item.id as number)}
                             disabled={deleteEntryMutation.isPending}
                             title="Delete Entry"
-                            className="p-2 rounded-xl text-[#94A3B8] hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            className="p-2 rounded-xl text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:bg-rose-500/10 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

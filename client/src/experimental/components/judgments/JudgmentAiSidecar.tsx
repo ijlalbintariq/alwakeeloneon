@@ -162,24 +162,24 @@ export const JudgmentAiSidecar: React.FC<JudgmentAiSidecarProps> = ({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-[#E2E8F0] bg-white flex flex-col overflow-hidden shadow-xs",
+        "rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] flex flex-col overflow-hidden shadow-xs",
         className
       )}
     >
       {/* Sidecar Header */}
-      <div className="p-3.5 border-b border-[#E2E8F0] flex items-center justify-between bg-[#F8FAFC]">
+      <div className="p-3.5 border-b border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between bg-[#F8FAFC] dark:bg-[#0B131E]">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[#105B38] shadow-xs">
+          <div className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] shadow-xs">
             <Bot className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5">
               <span>Al Wakeelo Precedent Sidecar</span>
-              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 bg-emerald-50 text-[#105B38] border border-emerald-200 rounded-md">
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 rounded-md">
                 Active
               </span>
             </h4>
-            <p className="text-[10px] text-[#64748B] truncate max-w-[210px] font-mono">
+            <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] truncate max-w-[210px] font-mono">
               {citation || "Judgment Intelligence"}
             </p>
           </div>
@@ -189,7 +189,7 @@ export const JudgmentAiSidecar: React.FC<JudgmentAiSidecarProps> = ({
           <button
             type="button"
             onClick={() => setMessages([])}
-            className="p-1.5 text-[#94A3B8] hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50"
+            className="p-1.5 text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 transition-colors rounded-lg hover:bg-rose-50 dark:bg-rose-500/10"
             title="Clear Chat History"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -201,19 +201,19 @@ export const JudgmentAiSidecar: React.FC<JudgmentAiSidecarProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 min-h-[280px] max-h-[440px] text-xs">
         {messages.length === 0 ? (
           <div className="py-3 text-center space-y-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#105B38] flex items-center justify-center mx-auto shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] flex items-center justify-center mx-auto shadow-xs">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-[#0F172A] text-xs">Precedent Intelligence Assistant</p>
-              <p className="text-[11px] text-[#64748B] mt-0.5 max-w-[260px] mx-auto">
+              <p className="font-bold text-[#0F172A] dark:text-[#F8FAFC] text-xs">Precedent Intelligence Assistant</p>
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5 max-w-[260px] mx-auto">
                 Ask targeted legal questions regarding this judgment&apos;s holding, bench reasoning, or applicability.
               </p>
             </div>
 
             {/* Quick Prompt Pills */}
             <div className="space-y-1.5 pt-2 text-left">
-              <span className="text-[10px] font-mono uppercase text-[#64748B] font-bold block px-1">
+              <span className="text-[10px] font-mono uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-bold block px-1">
                 Suggested Pakistani Legal Inquiries:
               </span>
               <div className="flex flex-col gap-1.5">
@@ -222,10 +222,10 @@ export const JudgmentAiSidecar: React.FC<JudgmentAiSidecarProps> = ({
                     type="button"
                     key={idx}
                     onClick={() => handleSendMessage(qp.prompt)}
-                    className="p-2.5 rounded-xl bg-[#F8FAFC] hover:bg-emerald-50/60 border border-[#E2E8F0] hover:border-emerald-200 text-[#334155] hover:text-[#105B38] text-left text-[11px] font-medium transition-all flex items-center justify-between group shadow-xs"
+                    className="p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50/6 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-emerald-200 dark:border-emerald-500/20 text-[#334155] dark:text-[#CBD5E1] hover:text-[#105B38] text-left text-[11px] font-medium transition-all flex items-center justify-between group shadow-xs"
                   >
                     <span>{qp.label}</span>
-                    <Zap className="w-3.5 h-3.5 text-[#94A3B8] group-hover:text-[#105B38] shrink-0 ml-2" />
+                    <Zap className="w-3.5 h-3.5 text-[#94A3B8] dark:text-[#475569] group-hover:text-[#105B38] shrink-0 ml-2" />
                   </button>
                 ))}
               </div>
@@ -240,7 +240,7 @@ export const JudgmentAiSidecar: React.FC<JudgmentAiSidecarProps> = ({
                 m.role === "user" ? "items-end" : "items-start"
               )}
             >
-              <div className="flex items-center gap-1 text-[10px] text-[#64748B] font-mono font-semibold">
+              <div className="flex items-center gap-1 text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono font-semibold">
                 {m.role === "user" ? "Counsel" : "Al Wakeelo AI"}
               </div>
 
@@ -249,23 +249,23 @@ export const JudgmentAiSidecar: React.FC<JudgmentAiSidecarProps> = ({
                   "p-3.5 rounded-2xl max-w-[92%] leading-relaxed shadow-xs text-xs",
                   m.role === "user"
                     ? "bg-[#105B38] text-white rounded-tr-none font-sans font-medium"
-                    : "bg-[#F8FAFC] text-[#0F172A] border border-[#E2E8F0] rounded-tl-none font-sans"
+                    : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-tl-none font-sans"
                 )}
               >
                 <div className="whitespace-pre-wrap">{m.content}</div>
 
                 {m.role === "assistant" && (
-                  <div className="mt-2.5 pt-2 border-t border-[#E2E8F0] flex items-center justify-end">
+                  <div className="mt-2.5 pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-end">
                     <button
                       type="button"
                       onClick={() => copyToClipboard(m.content, idx)}
-                      className="inline-flex items-center gap-1 text-[11px] text-[#64748B] hover:text-[#105B38] font-semibold transition-colors"
+                      className="inline-flex items-center gap-1 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] font-semibold transition-colors"
                       title="Copy response"
                     >
                       {copiedIdx === idx ? (
                         <>
-                          <Check className="w-3 h-3 text-emerald-600" />
-                          <span className="text-emerald-600 font-bold">Copied</span>
+                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">Copied</span>
                         </>
                       ) : (
                         <>
@@ -282,7 +282,7 @@ export const JudgmentAiSidecar: React.FC<JudgmentAiSidecarProps> = ({
         )}
 
         {loading && (
-          <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] font-mono text-xs shadow-xs">
+          <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono text-xs shadow-xs">
             <Loader2 className="w-4 h-4 animate-spin text-[#105B38]" />
             <span>Analyzing judgment jurisprudence & ratio...</span>
           </div>
@@ -291,7 +291,7 @@ export const JudgmentAiSidecar: React.FC<JudgmentAiSidecarProps> = ({
       </div>
 
       {/* Input composer */}
-      <div className="p-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
+      <div className="p-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E]">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -305,7 +305,7 @@ export const JudgmentAiSidecar: React.FC<JudgmentAiSidecarProps> = ({
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about this precedent..."
             disabled={loading}
-            className="flex-1 bg-white border border-[#E2E8F0] rounded-xl px-3.5 py-2 text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] disabled:opacity-50 font-medium shadow-xs"
+            className="flex-1 bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-3.5 py-2 text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] disabled:opacity-50 font-medium shadow-xs"
           />
           <button
             type="submit"

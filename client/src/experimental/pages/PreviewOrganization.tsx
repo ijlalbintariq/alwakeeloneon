@@ -517,25 +517,25 @@ export const PreviewOrganization: React.FC = () => {
     <PreviewShell>
       <div className="max-w-6xl mx-auto space-y-6 pb-12">
         {/* Header & Chamber Profile */}
-        <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div className="bg-white dark:bg-[#131E2E] p-6 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="flex items-start gap-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#105B38] text-white shadow-xs">
               <Building2 className="w-7 h-7" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
+                <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                   Al-Wakeel & Co. Advocates & Legal Consultants
                 </h1>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200 flex items-center gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
                   Verified Law Chamber
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+              <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
                 Senior Advocates Supreme Court, High Court Benches & Corporate Counsel Collaboration Suite
               </p>
-              <div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-medium text-[#64748B]">
+              <div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-medium text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 <span>Est. 2018 · Principal Seat Chambers Lahore & Islamabad</span>
                 <span>·</span>
                 <span>Bar Affiliation: Punjab Bar Council & Supreme Court Bar Association</span>
@@ -544,8 +544,8 @@ export const PreviewOrganization: React.FC = () => {
           </div>
 
           {/* Seat Capacity Card */}
-          <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2 min-w-[240px]">
-            <div className="flex items-center justify-between text-xs font-bold text-[#0F172A]">
+          <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2 min-w-[240px]">
+            <div className="flex items-center justify-between text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
               <span className="flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-[#105B38]" />
                 <span>Chamber Seat Quota</span>
@@ -563,10 +563,10 @@ export const PreviewOrganization: React.FC = () => {
               />
             </div>
 
-            <div className="flex justify-between text-[11px] text-[#64748B] pt-0.5">
+            <div className="flex justify-between text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] pt-0.5">
               <span>{availableSeats} seats remaining</span>
               {pendingInvites > 0 && (
-                <span className="text-amber-600 font-semibold">{pendingInvites} pending</span>
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">{pendingInvites} pending</span>
               )}
             </div>
           </div>
@@ -574,7 +574,7 @@ export const PreviewOrganization: React.FC = () => {
 
         {/* Action Bar & Tab Navigation */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-1.5 p-1 bg-white rounded-2xl border border-[#E2E8F0] shadow-xs">
+          <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs">
             <button
               type="button"
               onClick={() => setActiveTab("roster")}
@@ -582,7 +582,7 @@ export const PreviewOrganization: React.FC = () => {
                 "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
                 activeTab === "roster"
                   ? "bg-[#105B38] text-white shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
               )}
             >
               <Users className="w-4 h-4" />
@@ -596,7 +596,7 @@ export const PreviewOrganization: React.FC = () => {
                 "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
                 activeTab === "matters"
                   ? "bg-[#105B38] text-white shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
               )}
             >
               <Briefcase className="w-4 h-4" />
@@ -610,7 +610,7 @@ export const PreviewOrganization: React.FC = () => {
                 "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
                 activeTab === "activity"
                   ? "bg-[#105B38] text-white shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                  : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
               )}
             >
               <Clock className="w-4 h-4" />
@@ -632,15 +632,15 @@ export const PreviewOrganization: React.FC = () => {
         {activeTab === "roster" && (
           <div className="space-y-4">
             {/* Filters and Search Bar */}
-            <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="bg-white dark:bg-[#131E2E] p-4 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3.5 top-3 text-[#64748B]" />
+                <Search className="w-4 h-4 absolute left-3.5 top-3 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <input
                   type="text"
                   placeholder="Search counsel by name, email, or Bar Council enrollment number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-10 pl-9 pr-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:border-[#105B38] focus:bg-white"
+                  className="w-full h-10 pl-9 pr-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#64748B] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E]"
                 />
               </div>
 
@@ -654,7 +654,7 @@ export const PreviewOrganization: React.FC = () => {
                       "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all",
                       selectedRoleFilter === filter
                         ? "bg-[#105B38] text-white"
-                        : "bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0]"
+                        : "bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]"
                     )}
                   >
                     {filter}
@@ -664,12 +664,12 @@ export const PreviewOrganization: React.FC = () => {
             </div>
 
             {/* Roster Table / Card View */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
+            <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs overflow-hidden">
               <div className="divide-y divide-[#E2E8F0]">
                 {filteredMembers.map((member) => (
                   <div
                     key={member.id}
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#F8FAFC] transition-colors"
+                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#F8FAFC] dark:bg-[#0B131E] transition-colors"
                   >
                     {/* Left Info */}
                     <div className="flex items-center gap-4 min-w-0">
@@ -684,26 +684,26 @@ export const PreviewOrganization: React.FC = () => {
 
                       <div className="min-w-0 space-y-0.5">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-bold text-[#0F172A] truncate">{member.name}</h3>
+                          <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">{member.name}</h3>
 
                           {member.status === "invited" ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
                               Pending Confirmation
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                               Active
                             </span>
                           )}
 
                           {member.barCouncilEnrollment && (
-                            <span className="text-[10px] font-mono font-bold text-[#64748B] px-2 py-0.5 rounded-md bg-[#F1F5F9] border border-[#E2E8F0]">
+                            <span className="text-[10px] font-mono font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] px-2 py-0.5 rounded-md bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44]">
                               {member.barCouncilEnrollment}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-[#64748B]">
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                           <span>{member.email}</span>
                           {member.phone && <span>· {member.phone}</span>}
                           <span>· Joined: {member.joinedDate}</span>
@@ -717,7 +717,7 @@ export const PreviewOrganization: React.FC = () => {
                         <span className="text-xs font-mono font-bold text-[#105B38] block">
                           {member.activeMattersCount} Active Matters
                         </span>
-                        <span className="text-[11px] text-[#64748B] flex items-center gap-1 justify-end">
+                        <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1 justify-end">
                           <Clock className="w-3 h-3" />
                           {member.lastActive}
                         </span>
@@ -728,7 +728,7 @@ export const PreviewOrganization: React.FC = () => {
                         value={member.role}
                         onChange={(e) => handleRoleChange(member.id, e.target.value as ChamberRole)}
                         disabled={member.role === "Senior Partner"}
-                        className="h-9 px-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#105B38] disabled:opacity-75 disabled:cursor-not-allowed"
+                        className="h-9 px-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38] disabled:opacity-75 disabled:cursor-not-allowed"
                       >
                         <option>Senior Partner</option>
                         <option>Partner</option>
@@ -742,7 +742,7 @@ export const PreviewOrganization: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleRemoveMember(member.id)}
-                          className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-rose-50 border border-[#E2E8F0] hover:border-rose-200 text-[#64748B] hover:text-rose-600 transition-colors"
+                          className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-rose-50 dark:bg-rose-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-rose-200 dark:border-rose-500/20 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 transition-colors"
                           title="Revoke Member Access"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -753,7 +753,7 @@ export const PreviewOrganization: React.FC = () => {
                 ))}
 
                 {filteredMembers.length === 0 && (
-                  <div className="p-8 text-center text-xs text-[#64748B]">
+                  <div className="p-8 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                     No chamber counsel found matching your search criteria.
                   </div>
                 )}
@@ -765,10 +765,10 @@ export const PreviewOrganization: React.FC = () => {
         {/* TAB 2: Matters Allocation Grid */}
         {activeTab === "matters" && (
           <div className="space-y-4">
-            <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex items-center justify-between">
+            <div className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-bold text-[#0F172A]">Chambers Litigation Docket & Counsel Allocations</h2>
-                <p className="text-xs text-[#64748B] mt-0.5">
+                <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Chambers Litigation Docket & Counsel Allocations</h2>
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                   Interactive allocation of active Supreme Court & High Court cases to chamber advocates and associates.
                 </p>
               </div>
@@ -776,10 +776,10 @@ export const PreviewOrganization: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {matters.length === 0 ? (
-                <div className="col-span-full p-12 text-center bg-white rounded-2xl border border-[#E2E8F0] space-y-2">
-                  <Briefcase className="w-10 h-10 text-[#94A3B8] mx-auto" />
-                  <p className="text-sm font-bold text-[#0F172A]">No Chamber Matter Allocations Found</p>
-                  <p className="text-xs text-[#64748B]">Case files and matter allocations will appear here when added.</p>
+                <div className="col-span-full p-12 text-center bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
+                  <Briefcase className="w-10 h-10 text-[#94A3B8] dark:text-[#475569] mx-auto" />
+                  <p className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">No Chamber Matter Allocations Found</p>
+                  <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Case files and matter allocations will appear here when added.</p>
                 </div>
               ) : (
                 matters.map((matter) => {
@@ -789,48 +789,48 @@ export const PreviewOrganization: React.FC = () => {
                   return (
                     <div
                       key={matter.id}
-                      className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4 flex flex-col justify-between"
+                      className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4 flex flex-col justify-between"
                     >
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-mono font-bold text-[#105B38] px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200">
+                          <span className="text-xs font-mono font-bold text-[#105B38] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
                             {matter.ref}
                           </span>
                           <span
                             className={cn(
                               "text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase",
                               matter.status === "Active Hearing"
-                                ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                ? "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20"
                                 : matter.status === "Reserved for Judgment"
-                                ? "bg-purple-50 text-purple-700 border border-purple-200"
-                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                                ? "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20"
+                                : "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20"
                             )}
                           >
                             {matter.status}
                           </span>
                         </div>
 
-                        <h3 className="text-sm font-bold text-[#0F172A]">{matter.title}</h3>
-                        <p className="text-xs text-[#64748B]">{matter.court}</p>
+                        <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">{matter.title}</h3>
+                        <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{matter.court}</p>
                       </div>
 
-                      <div className="space-y-2 pt-2 border-t border-[#E2E8F0] text-xs">
+                      <div className="space-y-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
                         <div className="flex items-center justify-between">
-                          <span className="text-[#64748B]">Lead Counsel:</span>
-                          <span className="font-semibold text-[#0F172A]">
+                          <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Lead Counsel:</span>
+                          <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">
                             {leadCounsel ? leadCounsel.name : "Unassigned"}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <span className="text-[#64748B]">Assisting Associate:</span>
-                          <span className="font-semibold text-[#0F172A]">
+                          <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Assisting Associate:</span>
+                          <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">
                             {assistingCounsel ? assistingCounsel.name : "None"}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <span className="text-[#64748B]">Next Cause List Hearing:</span>
+                          <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Next Cause List Hearing:</span>
                           <span className="font-mono font-semibold text-[#105B38]">
                             {matter.nextHearing}
                           </span>
@@ -841,7 +841,7 @@ export const PreviewOrganization: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenReassignModal(matter)}
-                          className="px-3.5 py-1.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-semibold text-[#0F172A] flex items-center gap-1.5 transition-colors"
+                          className="px-3.5 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5 transition-colors"
                         >
                           <Edit className="w-3.5 h-3.5 text-[#105B38]" />
                           <span>Reallocate Matter</span>
@@ -857,44 +857,44 @@ export const PreviewOrganization: React.FC = () => {
 
         {/* TAB 3: Chamber Activity Feed */}
         {activeTab === "activity" && (
-          <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
-            <div className="border-b border-[#E2E8F0] pb-3">
-              <h2 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+          <div className="bg-white dark:bg-[#131E2E] p-6 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4">
+            <div className="border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3">
+              <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
                 <Clock className="w-4 h-4 text-[#105B38]" />
                 <span>Live Chamber Activity Stream & Audit Trail</span>
               </h2>
-              <p className="text-xs text-[#64748B] mt-0.5">
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                 Real-time chronological log of briefs uploaded, pleadings drafted, and matter reassignments.
               </p>
             </div>
 
             <div className="divide-y divide-[#E2E8F0]">
               {activity.length === 0 ? (
-                <div className="p-12 text-center text-xs text-[#64748B]">
+                <div className="p-12 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   No chamber activity recorded yet.
                 </div>
               ) : (
                 activity.map((item) => (
                   <div key={item.id} className="py-3.5 flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="p-2 rounded-xl bg-emerald-50 text-[#105B38] border border-emerald-200 mt-0.5 shrink-0">
+                      <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 mt-0.5 shrink-0">
                         <FileText className="w-4 h-4" />
                       </div>
                       <div className="space-y-0.5 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-[#0F172A]">{item.memberName}</span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0]">
+                          <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">{item.memberName}</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                             {item.category}
                           </span>
                         </div>
-                        <p className="text-xs text-[#334155] leading-relaxed">{item.action}</p>
+                        <p className="text-xs text-[#334155] dark:text-[#CBD5E1] leading-relaxed">{item.action}</p>
                         <span className="text-[11px] font-mono text-[#105B38] font-semibold">
                           Matter: {item.matterRef}
                         </span>
                       </div>
                     </div>
 
-                    <span className="text-[11px] text-[#64748B] whitespace-nowrap shrink-0">
+                    <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] whitespace-nowrap shrink-0">
                       {item.timestamp}
                     </span>
                   </div>
@@ -907,18 +907,18 @@ export const PreviewOrganization: React.FC = () => {
         {/* Modal: Invite Advocate */}
         {showInviteModal && (
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+            <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3">
                 <div className="flex items-center gap-2">
                   <UserPlus className="w-5 h-5 text-[#105B38]" />
-                  <h3 className="text-sm font-bold text-[#0F172A]">
+                  <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                     Invite Advocate to Chambers Collaboration Suite
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(false)}
-                  className="p-1 rounded-lg text-[#64748B] hover:text-[#0F172A]"
+                  className="p-1 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -927,35 +927,35 @@ export const PreviewOrganization: React.FC = () => {
               <form onSubmit={handleSendInvite} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-[#0F172A] block mb-1.5">Advocate Name</label>
+                    <label className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">Advocate Name</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Barrister Ali Tariq"
                       value={inviteName}
                       onChange={(e) => setInviteName(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#105B38]"
+                      className="w-full h-10 px-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-[#0F172A] block mb-1.5">Email Address</label>
+                    <label className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">Email Address</label>
                     <input
                       type="email"
                       required
                       placeholder="counsel@chambers.com"
                       value={inviteEmail}
                       onChange={(e) => setInviteEmail(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#105B38]"
+                      className="w-full h-10 px-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-[#0F172A] block mb-1.5">Chamber Standing / Role</label>
+                    <label className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">Chamber Standing / Role</label>
                     <select
                       value={inviteRole}
                       onChange={(e) => setInviteRole(e.target.value as ChamberRole)}
-                      className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#105B38]"
+                      className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                     >
                       <option>Partner</option>
                       <option>Senior Associate</option>
@@ -966,28 +966,28 @@ export const PreviewOrganization: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-[#0F172A] block mb-1.5">Bar Enrollment ID</label>
+                    <label className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">Bar Enrollment ID</label>
                     <input
                       type="text"
                       placeholder="e.g. HC/LHR/1234/2024"
                       value={inviteBarNo}
                       onChange={(e) => setInviteBarNo(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-mono text-[#0F172A] focus:outline-none focus:border-[#105B38]"
+                      className="w-full h-10 px-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-mono text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#0F172A] block mb-2">
+                  <label className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-2">
                     Assign Active Matter(s) on Onboarding:
                   </label>
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto p-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl">
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto p-2 bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl">
                     {matters.map((mat) => {
                       const isChecked = selectedMattersToAssign.includes(mat.ref);
                       return (
                         <label
                           key={mat.id}
-                          className="flex items-center gap-2 p-1.5 hover:bg-white rounded-lg cursor-pointer text-xs"
+                          className="flex items-center gap-2 p-1.5 hover:bg-white dark:bg-[#131E2E] rounded-lg cursor-pointer text-xs"
                         >
                           <input
                             type="checkbox"
@@ -1004,18 +1004,18 @@ export const PreviewOrganization: React.FC = () => {
                             className="rounded text-[#105B38] focus:ring-[#105B38]"
                           />
                           <span className="font-mono font-bold text-[#105B38]">{mat.ref}</span>
-                          <span className="truncate text-[#64748B]">— {mat.title}</span>
+                          <span className="truncate text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">— {mat.title}</span>
                         </label>
                       );
                     })}
                   </div>
                 </div>
 
-                <div className="pt-2 flex justify-end gap-2.5 border-t border-[#E2E8F0]">
+                <div className="pt-2 flex justify-end gap-2.5 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                   <button
                     type="button"
                     onClick={() => setShowInviteModal(false)}
-                    className="px-4 py-2 rounded-xl bg-[#F8FAFC] text-xs font-semibold text-[#64748B]"
+                    className="px-4 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                   >
                     Cancel
                   </button>
@@ -1036,16 +1036,16 @@ export const PreviewOrganization: React.FC = () => {
         {/* Modal: Reallocate Matter */}
         {selectedMatterForReassign && (
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
-                <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+            <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-3">
+                <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-[#105B38]" />
                   <span>Reassign Counsel for {selectedMatterForReassign.ref}</span>
                 </h3>
                 <button
                   type="button"
                   onClick={() => setSelectedMatterForReassign(null)}
-                  className="p-1 rounded-lg text-[#64748B] hover:text-[#0F172A]"
+                  className="p-1 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1053,11 +1053,11 @@ export const PreviewOrganization: React.FC = () => {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-[#0F172A] block mb-1.5">Lead Counsel</label>
+                  <label className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">Lead Counsel</label>
                   <select
                     value={reassignLeadId}
                     onChange={(e) => setReassignLeadId(e.target.value)}
-                    className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#105B38]"
+                    className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                   >
                     {members
                       .filter((m) => m.status === "active")
@@ -1070,11 +1070,11 @@ export const PreviewOrganization: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#0F172A] block mb-1.5">Assisting Associate</label>
+                  <label className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">Assisting Associate</label>
                   <select
                     value={reassignAssistingId}
                     onChange={(e) => setReassignAssistingId(e.target.value)}
-                    className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#105B38]"
+                    className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                   >
                     {members
                       .filter((m) => m.status === "active")
@@ -1090,7 +1090,7 @@ export const PreviewOrganization: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedMatterForReassign(null)}
-                    className="px-4 py-2 rounded-xl bg-[#F8FAFC] text-xs font-semibold text-[#64748B]"
+                    className="px-4 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                   >
                     Cancel
                   </button>

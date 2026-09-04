@@ -645,7 +645,7 @@ export default function OrganizationPage() {
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${
                   view === "team"
                     ? "bg-primary/10 border border-primary/20 text-primary"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                    : "text-muted-foreground hover:bg-white dark:bg-[#131E2E]/5 hover:text-foreground"
                 }`}
                 data-testid="button-org-view-team"
               >
@@ -658,7 +658,7 @@ export default function OrganizationPage() {
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${
                   view === "vault"
                     ? "bg-primary/10 border border-primary/20 text-primary"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                    : "text-muted-foreground hover:bg-white dark:bg-[#131E2E]/5 hover:text-foreground"
                 }`}
                 data-testid="button-org-view-vault"
               >
@@ -785,7 +785,7 @@ export default function OrganizationPage() {
                             const role = getRoleMeta(member.role);
 
                             return (
-                              <tr key={member.userId} className="hover:bg-white/5 transition-colors" data-testid={`member-row-${member.userId}`}>
+                              <tr key={member.userId} className="hover:bg-white dark:bg-[#131E2E]/5 transition-colors" data-testid={`member-row-${member.userId}`}>
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm">
@@ -830,7 +830,7 @@ export default function OrganizationPage() {
                           })}
 
                           {isOwner && filteredPendingOrgInvites.map((inv) => (
-                            <tr key={`invite-${inv.id}`} className="hover:bg-white/5 transition-colors" data-testid={`invite-row-${inv.id}`}>
+                            <tr key={`invite-${inv.id}`} className="hover:bg-white dark:bg-[#131E2E]/5 transition-colors" data-testid={`invite-row-${inv.id}`}>
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
                                   <div className="h-10 w-10 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center font-bold text-sm">

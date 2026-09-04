@@ -35,15 +35,15 @@ export default function PreviewBlog() {
 
   return (
     <PublicPreviewShell>
-      <div className="preview-theme-scope space-y-10 fade-in py-12 px-6 max-w-7xl mx-auto text-[#0F172A]">
+      <div className="preview-theme-scope space-y-10 fade-in py-12 px-6 max-w-7xl mx-auto text-[#0F172A] dark:text-[#F8FAFC]">
         <section className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-widest">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-widest">
             Legal Resources
           </div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-[#0F172A] dark:text-[#F8FAFC]" style={{ fontFamily: "'Playfair Display', serif" }}>
             The Al Wakeelo <span className="text-[#105B38]">Blog</span>
           </h1>
-          <p className="text-[#64748B] max-w-2xl mx-auto text-base">
+          <p className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-2xl mx-auto text-base">
             Expert insights, tutorials, and deep dives into Pakistani case law, statutory interpretation, and legal technology.
           </p>
         </section>
@@ -51,19 +51,19 @@ export default function PreviewBlog() {
         <section className="bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] p-6 rounded-[2rem] shadow-sm">
           <div className="flex flex-col md:flex-row gap-4 items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#64748B]" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
               <input 
                 type="text" 
                 placeholder="Search legal guides, articles, topics..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] focus:outline-none focus:ring-2 focus:ring-[#105B38]/50 transition-all font-medium text-[#0F172A]"
+                className="w-full pl-12 pr-4 py-4 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] focus:outline-none focus:ring-2 focus:ring-[#105B38]/50 transition-all font-medium text-[#0F172A] dark:text-[#F8FAFC]"
               />
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${!selectedCategory ? 'bg-[#105B38] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1B293E] text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F8FAFC]'}`}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${!selectedCategory ? 'bg-[#105B38] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1B293E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:hover:text-[#F8FAFC]'}`}
               >
                 All Topics
               </button>
@@ -71,7 +71,7 @@ export default function PreviewBlog() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${selectedCategory === cat ? 'bg-[#105B38] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1B293E] text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F8FAFC]'}`}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${selectedCategory === cat ? 'bg-[#105B38] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1B293E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:hover:text-[#F8FAFC]'}`}
                 >
                   {cat}
                 </button>
@@ -85,7 +85,7 @@ export default function PreviewBlog() {
             <div className="col-span-full py-16 text-center space-y-4">
               <BookOpen className="w-16 h-16 text-[#CBD5E1] mx-auto" />
               <h3 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">No articles found</h3>
-              <p className="text-[#64748B]">Try adjusting your search terms or category filter.</p>
+              <p className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Try adjusting your search terms or category filter.</p>
             </div>
           ) : (
             filteredArticles.map((article) => (
@@ -98,18 +98,18 @@ export default function PreviewBlog() {
                     </span>
                   </div>
                   <div className="p-6 flex flex-col flex-1 space-y-4">
-                    <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">
+                    <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {article.readTime} min read</span>
                     </div>
                     <h3 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] dark:group-hover:text-[#10B981] transition-colors leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                       {article.title}
                     </h3>
-                    <p className="text-[#475569] dark:text-[#94A3B8] text-sm leading-relaxed flex-1">
+                    <p className="text-[#475569] dark:text-[#94A3B8] dark:text-[#475569] text-sm leading-relaxed flex-1">
                       {article.summary}
                     </p>
                     <div className="flex items-center justify-between pt-4 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-[#EBF5F0] flex items-center justify-center text-[#105B38] font-bold text-xs">
+                        <div className="w-8 h-8 rounded-full bg-[#EBF5F0] dark:bg-[#105B38]/20 flex items-center justify-center text-[#105B38] font-bold text-xs">
                           {"Al Wakeelo Legal".charAt(0)}
                         </div>
                         <span className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{"Al Wakeelo Legal"}</span>

@@ -150,7 +150,7 @@ export function PreviewMostCited() {
   const renderRankBadge = (rank: number) => {
     if (rank === 1) return <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 font-bold text-xl border-2 border-yellow-200 dark:border-yellow-800 shadow-sm"><Trophy className="w-5 h-5 mr-1"/> 1</div>;
     if (rank === 2) return <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-bold text-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm">2</div>;
-    if (rank === 3) return <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-600 font-bold text-xl border-2 border-amber-200 dark:border-amber-800/30 shadow-sm">3</div>;
+    if (rank === 3) return <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-600 dark:text-amber-400 font-bold text-xl border-2 border-amber-200 dark:border-amber-800/30 shadow-sm">3</div>;
     
     return <div className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-medium text-lg border border-slate-200 dark:border-slate-800">#{rank}</div>;
   };
@@ -221,7 +221,7 @@ export function PreviewMostCited() {
         </div>
 
         {/* Filters */}
-        <Card className="bg-slate-50/50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-800">
+        <Card className="bg-slate-50/5 dark:bg-slate-500/100 dark:bg-slate-900/20 border-slate-200 dark:border-slate-800">
           <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-end">
             <div className="space-y-2 w-full md:w-1/3">
               <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -380,7 +380,7 @@ export function PreviewMostCited() {
                     className="border-t border-slate-100 dark:border-slate-800"
                   >
                     <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full rounded-none h-10 text-xs text-muted-foreground hover:text-foreground flex justify-between px-6 bg-slate-50/50 dark:bg-slate-900/30">
+                      <Button variant="ghost" className="w-full rounded-none h-10 text-xs text-muted-foreground hover:text-foreground flex justify-between px-6 bg-slate-50/5 dark:bg-slate-500/100 dark:bg-slate-900/30">
                         <span>See where this was cited ({item.citedByExamples.length} examples)</span>
                         {expandedItems[item.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </Button>

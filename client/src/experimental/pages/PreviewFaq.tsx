@@ -92,16 +92,16 @@ function AccordionItem({ q, a }: FaqItem) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border border-[#E2E8F0] dark:border-[#1E2D44] bg-white/40 dark:bg-[#131E2E]/40 rounded-2xl overflow-hidden transition-all hover:bg-white dark:bg-[#131E2E]/60">
+    <div className="border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E]/40 rounded-2xl overflow-hidden transition-all hover:bg-white dark:bg-[#131E2E]/60">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between text-left p-5 text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none"
       >
         <span>{q}</span>
-        {open ? <ChevronDown size={16} className="text-[#105B38] flex-shrink-0" /> : <ChevronRight size={16} className="text-[#64748B] dark:text-[#94A3B8] flex-shrink-0" />}
+        {open ? <ChevronDown size={16} className="text-[#105B38] flex-shrink-0" /> : <ChevronRight size={16} className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex-shrink-0" />}
       </button>
       {open && (
-        <div className="px-5 pb-5 pt-1 text-xs text-[#64748B] dark:text-[#94A3B8] leading-relaxed border-t border-[#E2E8F0]/40 dark:border-[#1E2D44]/40 whitespace-pre-line">
+        <div className="px-5 pb-5 pt-1 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed border-t border-[#E2E8F0] dark:border-[#1E2D44]/40 whitespace-pre-line">
           {a}
         </div>
       )}
@@ -132,19 +132,19 @@ export default function PreviewFaq() {
       <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="space-y-10 fade-in">
           <section className="text-center space-y-4 py-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-widest">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-widest">
               FAQ
             </div>
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
               Frequently Asked Questions <br/>
               <span className="text-[#105B38] italic">about Al Wakeelo</span>
             </h1>
-            <p className="text-sm text-[#64748B] dark:text-[#94A3B8] max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-2xl mx-auto leading-relaxed">
               Find answers to common questions about platform accuracy, legal assistance limits, case database coverage, and security structures.
             </p>
 
             <div className="max-w-md mx-auto relative pt-4">
-              <Search className="absolute left-3.5 top-7 text-[#64748B] dark:text-[#94A3B8]" size={16} />
+              <Search className="absolute left-3.5 top-7 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" size={16} />
               <input
                 type="text"
                 value={searchQuery}
@@ -157,7 +157,7 @@ export default function PreviewFaq() {
 
           <section className="space-y-10 pt-6 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
             {filteredSections.length === 0 ? (
-              <div className="text-center py-12 text-sm text-[#64748B] dark:text-[#94A3B8]">
+              <div className="text-center py-12 text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                 No questions found matching "{searchQuery}". Try a different search term.
               </div>
             ) : (

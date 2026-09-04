@@ -244,7 +244,7 @@ export default function PreviewOnboarding() {
   };
 
   return (
-    <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] py-8 px-3 sm:px-6 relative overflow-hidden text-[#0F172A]">
+    <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] dark:bg-[#0B131E] py-8 px-3 sm:px-6 relative overflow-hidden text-[#0F172A] dark:text-[#F8FAFC]">
       {/* Background ambient lighting */}
       <div className="absolute top-[-10%] left-[-10%] w-[45%] h-[45%] bg-[#105B38]/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#105B38]/10 rounded-full blur-[130px] pointer-events-none" />
@@ -252,29 +252,29 @@ export default function PreviewOnboarding() {
       <div className="max-w-3xl mx-auto relative z-10">
         {/* Top Header */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl mx-auto overflow-hidden border border-[#105B38]/30 mb-3 shadow-lg shadow-[#105B38]/15 bg-[#EBF5F0] flex items-center justify-center p-2.5">
+          <div className="w-14 h-14 rounded-2xl mx-auto overflow-hidden border border-[#105B38]/30 mb-3 shadow-lg shadow-[#105B38]/15 dark:shadow-[#10B981]/10 bg-[#EBF5F0] dark:bg-[#105B38]/20 flex items-center justify-center p-2.5">
             <Scale className="w-7 h-7 text-[#105B38]" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A]" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A] dark:text-[#F8FAFC]" style={{ fontFamily: "'Playfair Display', serif" }}>
             Chamber Setup Wizard
           </h1>
-          <p className="text-xs text-[#64748B] mt-1 font-medium">
+          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1 font-medium">
             Customize your Al Wakeelo AI workspace for your Pakistani litigation practice
           </p>
         </div>
 
         {/* 3-Step Progress Tracker */}
-        <div className="bg-white border border-[#E2E8F0] shadow-sm rounded-2xl p-4 mb-6">
+        <div className="bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-sm rounded-2xl p-4 mb-6">
           <div className="grid grid-cols-3 gap-2">
             {/* Step 1 Pill */}
             <div
               onClick={() => currentStep > 1 && setCurrentStep(1)}
               className={`flex items-center gap-2 p-2.5 rounded-xl transition-all cursor-pointer ${
                 currentStep === 1
-                  ? "bg-[#EBF5F0] border border-[#A3D4BC] text-[#105B38]"
+                  ? "bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 text-[#105B38]"
                   : currentStep > 1
-                  ? "bg-[#F8FAFC] text-[#105B38]"
-                  : "text-[#94A3B8]"
+                  ? "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#105B38]"
+                  : "text-[#94A3B8] dark:text-[#475569]"
               }`}
             >
               <div
@@ -283,14 +283,14 @@ export default function PreviewOnboarding() {
                     ? "bg-[#105B38] text-white"
                     : currentStep > 1
                     ? "bg-[#105B38] text-white"
-                    : "bg-[#E2E8F0] text-[#64748B]"
+                    : "bg-[#E2E8F0] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                 }`}
               >
                 {currentStep > 1 ? <Check size={14} /> : "1"}
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-[11px] font-bold leading-tight">Step 1</p>
-                <p className="text-[10px] text-[#64748B] truncate">Chamber Profile</p>
+                <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] truncate">Chamber Profile</p>
               </div>
             </div>
 
@@ -299,10 +299,10 @@ export default function PreviewOnboarding() {
               onClick={() => currentStep > 2 && setCurrentStep(2)}
               className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${
                 currentStep === 2
-                  ? "bg-[#EBF5F0] border border-[#A3D4BC] text-[#105B38]"
+                  ? "bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 text-[#105B38]"
                   : currentStep > 2
-                  ? "bg-[#F8FAFC] text-[#105B38] cursor-pointer"
-                  : "text-[#94A3B8]"
+                  ? "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#105B38] cursor-pointer"
+                  : "text-[#94A3B8] dark:text-[#475569]"
               }`}
             >
               <div
@@ -311,14 +311,14 @@ export default function PreviewOnboarding() {
                     ? "bg-[#105B38] text-white"
                     : currentStep > 2
                     ? "bg-[#105B38] text-white"
-                    : "bg-[#E2E8F0] text-[#64748B]"
+                    : "bg-[#E2E8F0] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                 }`}
               >
                 {currentStep > 2 ? <Check size={14} /> : "2"}
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-[11px] font-bold leading-tight">Step 2</p>
-                <p className="text-[10px] text-[#64748B] truncate">Practice & Codes</p>
+                <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] truncate">Practice & Codes</p>
               </div>
             </div>
 
@@ -326,43 +326,43 @@ export default function PreviewOnboarding() {
             <div
               className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${
                 currentStep === 3
-                  ? "bg-[#EBF5F0] border border-[#A3D4BC] text-[#105B38]"
-                  : "text-[#94A3B8]"
+                  ? "bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 text-[#105B38]"
+                  : "text-[#94A3B8] dark:text-[#475569]"
               }`}
             >
               <div
                 className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
-                  currentStep === 3 ? "bg-[#105B38] text-white" : "bg-[#E2E8F0] text-[#64748B]"
+                  currentStep === 3 ? "bg-[#105B38] text-white" : "bg-[#E2E8F0] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                 }`}
               >
                 3
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-[11px] font-bold leading-tight">Step 3</p>
-                <p className="text-[10px] text-[#64748B] truncate">AI & Engine</p>
+                <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] truncate">AI & Engine</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Wizard Main Card */}
-        <div className="bg-white border border-[#E2E8F0] shadow-xl shadow-[#105B38]/5 rounded-[1.6rem] p-6 sm:p-8">
+        <div className="bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl shadow-[#105B38]/5 rounded-[1.6rem] p-6 sm:p-8">
           {/* STEP 1: Chamber Profile */}
           {currentStep === 1 && (
             <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="border-b border-[#E2E8F0] pb-4">
-                <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
+              <div className="border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-4">
+                <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
                   <Building className="w-5 h-5 text-[#105B38]" />
                   Chamber Profile & Primary Jurisdiction
                 </h2>
-                <p className="text-xs text-[#64748B] mt-0.5">
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                   Set your chamber identity for court filings, petition headers, and cause lists.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#334155] mb-1.5">
+                  <label className="block text-xs font-bold text-[#334155] dark:text-[#CBD5E1] mb-1.5">
                     Chamber / Law Firm Name *
                   </label>
                   <input
@@ -371,12 +371,12 @@ export default function PreviewOnboarding() {
                     onChange={(e) => setChamberName(e.target.value)}
                     placeholder="e.g. Mian & Partners Law Chambers"
                     data-testid="input-chamber-name"
-                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
+                    className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#334155] mb-1.5">
+                  <label className="block text-xs font-bold text-[#334155] dark:text-[#CBD5E1] mb-1.5">
                     Principal Advocate Name *
                   </label>
                   <input
@@ -385,14 +385,14 @@ export default function PreviewOnboarding() {
                     onChange={(e) => setPrincipalAdvocate(e.target.value)}
                     placeholder="e.g. Adv. Mian Tariq Ahmad"
                     data-testid="input-principal-advocate"
-                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
+                    className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#334155] mb-1.5">
+                  <label className="block text-xs font-bold text-[#334155] dark:text-[#CBD5E1] mb-1.5">
                     Bar Council Registration / License No.
                   </label>
                   <input
@@ -401,19 +401,19 @@ export default function PreviewOnboarding() {
                     onChange={(e) => setBarCouncilEnrollment(e.target.value)}
                     placeholder="e.g. PBC-10492-ASC or LHC-4821"
                     data-testid="input-bar-council-no"
-                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
+                    className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#334155] mb-1.5">
+                  <label className="block text-xs font-bold text-[#334155] dark:text-[#CBD5E1] mb-1.5">
                     Chamber Office City
                   </label>
                   <select
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     data-testid="select-chamber-city"
-                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
+                    className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
                   >
                     <option value="Lahore">Lahore (Punjab)</option>
                     <option value="Islamabad">Islamabad (Federal Capital)</option>
@@ -428,14 +428,14 @@ export default function PreviewOnboarding() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#334155] mb-1.5">
+                <label className="block text-xs font-bold text-[#334155] dark:text-[#CBD5E1] mb-1.5">
                   Primary Court Jurisdiction / Bench
                 </label>
                 <select
                   value={jurisdiction}
                   onChange={(e) => setJurisdiction(e.target.value)}
                   data-testid="select-primary-jurisdiction"
-                  className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
+                  className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#105B38] focus:ring-2 focus:ring-[#105B38]/20 transition-all"
                 >
                   <option value="Supreme Court of Pakistan & Lahore High Court">Supreme Court of Pakistan & Lahore High Court</option>
                   <option value="Supreme Court of Pakistan">Supreme Court of Pakistan (Principal Seat Islamabad)</option>
@@ -450,7 +450,7 @@ export default function PreviewOnboarding() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#334155] mb-1.5">
+                <label className="block text-xs font-bold text-[#334155] dark:text-[#CBD5E1] mb-1.5">
                   Chamber Team Size
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -465,8 +465,8 @@ export default function PreviewOnboarding() {
                       onClick={() => setChamberSize(size.label)}
                       className={`p-3 rounded-xl border text-left transition-all ${
                         chamberSize === size.label
-                          ? "bg-[#EBF5F0] border-[#A3D4BC] text-[#105B38]"
-                          : "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]"
+                          ? "bg-[#EBF5F0] dark:bg-[#105B38]/20 border-[#A3D4BC] dark:border-[#10B981]/30 text-[#105B38]"
+                          : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:border-[#CBD5E1]"
                       }`}
                     >
                       <p className="text-xs font-bold">{size.label}</p>
@@ -481,12 +481,12 @@ export default function PreviewOnboarding() {
           {/* STEP 2: Practice Areas & Statutory Codes */}
           {currentStep === 2 && (
             <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="border-b border-[#E2E8F0] pb-4">
-                <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
+              <div className="border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-4">
+                <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
                   <Scale className="w-5 h-5 text-[#105B38]" />
                   Practice Areas & Default Statutory Codes
                 </h2>
-                <p className="text-xs text-[#64748B] mt-0.5">
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                   Choose your active litigation disciplines to pre-load statutory concordance tables and precedents.
                 </p>
               </div>
@@ -501,25 +501,25 @@ export default function PreviewOnboarding() {
                       data-testid={`practice-area-${area.id}`}
                       className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${
                         isSelected
-                          ? "bg-[#EBF5F0] border-[#A3D4BC] shadow-sm"
-                          : "bg-[#F8FAFC] border-[#E2E8F0] hover:border-[#CBD5E1]"
+                          ? "bg-[#EBF5F0] dark:bg-[#105B38]/20 border-[#A3D4BC] dark:border-[#10B981]/30 shadow-sm"
+                          : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#CBD5E1]"
                       }`}
                     >
                       <div
                         className={`p-2 rounded-lg ${
-                          isSelected ? "bg-[#105B38] text-white" : "bg-[#E2E8F0] text-[#64748B]"
+                          isSelected ? "bg-[#105B38] text-white" : "bg-[#E2E8F0] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                         }`}
                       >
                         {area.icon}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h4 className={`text-xs font-bold ${isSelected ? "text-[#105B38]" : "text-[#0F172A]"}`}>
+                          <h4 className={`text-xs font-bold ${isSelected ? "text-[#105B38]" : "text-[#0F172A] dark:text-[#F8FAFC]"}`}>
                             {area.name}
                           </h4>
                           {isSelected && <CheckCircle2 className="w-4 h-4 text-[#105B38] flex-shrink-0" />}
                         </div>
-                        <p className="text-[10px] text-[#64748B] mt-1 font-mono">{area.codes}</p>
+                        <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1 font-mono">{area.codes}</p>
                       </div>
                     </div>
                   );
@@ -527,7 +527,7 @@ export default function PreviewOnboarding() {
               </div>
 
               <div className="pt-2">
-                <label className="block text-xs font-bold text-[#334155] mb-1.5">
+                <label className="block text-xs font-bold text-[#334155] dark:text-[#CBD5E1] mb-1.5">
                   Default Provincial Court Fee & Limitation Schedule
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -539,7 +539,7 @@ export default function PreviewOnboarding() {
                       className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
                         defaultCourtFeeProvince === prov
                           ? "bg-[#105B38] text-white border-[#105B38]"
-                          : "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]"
+                          : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:border-[#CBD5E1]"
                       }`}
                     >
                       {prov}
@@ -553,12 +553,12 @@ export default function PreviewOnboarding() {
           {/* STEP 3: AI Intelligence Engine & Preferences */}
           {currentStep === 3 && (
             <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="border-b border-[#E2E8F0] pb-4">
-                <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
+              <div className="border-b border-[#E2E8F0] dark:border-[#1E2D44] pb-4">
+                <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-[#105B38]" />
                   AI Legal Intelligence Engine & Model Preferences
                 </h2>
-                <p className="text-xs text-[#64748B] mt-0.5">
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                   Configure reasoning depth, judicial style memory, and citation formatting standards.
                 </p>
               </div>
@@ -590,8 +590,8 @@ export default function PreviewOnboarding() {
                     onClick={() => setAiModelPreference(m.id as any)}
                     className={`p-4 rounded-xl border cursor-pointer transition-all ${
                       aiModelPreference === m.id
-                        ? "bg-[#EBF5F0] border-[#A3D4BC] shadow-sm"
-                        : "bg-[#F8FAFC] border-[#E2E8F0] hover:border-[#CBD5E1]"
+                        ? "bg-[#EBF5F0] dark:bg-[#105B38]/20 border-[#A3D4BC] dark:border-[#10B981]/30 shadow-sm"
+                        : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#CBD5E1]"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
@@ -601,22 +601,22 @@ export default function PreviewOnboarding() {
                             aiModelPreference === m.id ? "border-[#105B38] bg-[#105B38]" : "border-[#94A3B8]"
                           }`}
                         >
-                          {aiModelPreference === m.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          {aiModelPreference === m.id && <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-[#131E2E]" />}
                         </div>
-                        <h4 className="text-xs font-bold text-[#0F172A]">{m.name}</h4>
+                        <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">{m.name}</h4>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white text-[#105B38] border border-[#A3D4BC]">
+                      <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white dark:bg-[#131E2E] text-[#105B38] border border-[#A3D4BC] dark:border-[#10B981]/30">
                         {m.badge}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#64748B] pl-6 leading-relaxed">{m.desc}</p>
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] pl-6 leading-relaxed">{m.desc}</p>
                   </div>
                 ))}
               </div>
 
               {/* Toggles */}
               <div className="space-y-3 pt-2">
-                <label className="flex items-start gap-3 p-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] cursor-pointer">
+                <label className="flex items-start gap-3 p-3 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={styleMemoryEnabled}
@@ -624,14 +624,14 @@ export default function PreviewOnboarding() {
                     className="mt-0.5 h-4 w-4 accent-[#105B38] rounded"
                   />
                   <div>
-                    <p className="text-xs font-bold text-[#0F172A]">Enable Chamber Style Memory</p>
-                    <p className="text-[11px] text-[#64748B]">
+                    <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Enable Chamber Style Memory</p>
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       AI will adapt to your chamber's preferred pleading structure and accepted draft edits.
                     </p>
                   </div>
                 </label>
 
-                <label className="flex items-start gap-3 p-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] cursor-pointer">
+                <label className="flex items-start gap-3 p-3 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={urduLexiconEnabled}
@@ -639,8 +639,8 @@ export default function PreviewOnboarding() {
                     className="mt-0.5 h-4 w-4 accent-[#105B38] rounded"
                   />
                   <div>
-                    <p className="text-xs font-bold text-[#0F172A]">Urdu-to-English Legal Lexicon Assistant</p>
-                    <p className="text-[11px] text-[#64748B]">
+                    <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Urdu-to-English Legal Lexicon Assistant</p>
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       Instant context for Pakistani terms (e.g. Fard, Wakalatnama, Taqseem, Qatl-i-Amd, Bayana).
                     </p>
                   </div>
@@ -649,7 +649,7 @@ export default function PreviewOnboarding() {
 
               {/* Citation Standard */}
               <div>
-                <label className="block text-xs font-bold text-[#334155] mb-1.5">
+                <label className="block text-xs font-bold text-[#334155] dark:text-[#CBD5E1] mb-1.5">
                   Default Citation Format
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -658,8 +658,8 @@ export default function PreviewOnboarding() {
                     onClick={() => setCitationStandard("pakistan")}
                     className={`p-3 rounded-xl border text-left transition-all ${
                       citationStandard === "pakistan"
-                        ? "bg-[#EBF5F0] border-[#A3D4BC] text-[#105B38]"
-                        : "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B]"
+                        ? "bg-[#EBF5F0] dark:bg-[#105B38]/20 border-[#A3D4BC] dark:border-[#10B981]/30 text-[#105B38]"
+                        : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                     }`}
                   >
                     <p className="text-xs font-bold">Pakistan Standard</p>
@@ -670,8 +670,8 @@ export default function PreviewOnboarding() {
                     onClick={() => setCitationStandard("commonlaw")}
                     className={`p-3 rounded-xl border text-left transition-all ${
                       citationStandard === "commonlaw"
-                        ? "bg-[#EBF5F0] border-[#A3D4BC] text-[#105B38]"
-                        : "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B]"
+                        ? "bg-[#EBF5F0] dark:bg-[#105B38]/20 border-[#A3D4BC] dark:border-[#10B981]/30 text-[#105B38]"
+                        : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                     }`}
                   >
                     <p className="text-xs font-bold">Commonwealth Standard</p>
@@ -683,14 +683,14 @@ export default function PreviewOnboarding() {
           )}
 
           {/* Action Buttons Footer */}
-          <div className="mt-8 pt-5 border-t border-[#E2E8F0] flex items-center justify-between gap-3">
+          <div className="mt-8 pt-5 border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between gap-3">
             <div>
               {currentStep > 1 ? (
                 <button
                   type="button"
                   onClick={() => setCurrentStep((prev) => prev - 1)}
                   data-testid="button-onboarding-back"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#64748B] hover:text-[#0F172A] px-4 py-2.5 rounded-xl border border-[#E2E8F0] hover:bg-[#F1F5F9] transition-all"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] px-4 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-all"
                 >
                   <ArrowLeft size={14} />
                   Back
@@ -700,7 +700,7 @@ export default function PreviewOnboarding() {
                   type="button"
                   onClick={handleSkipToDashboard}
                   data-testid="button-onboarding-skip"
-                  className="text-xs text-[#64748B] hover:text-[#105B38] font-semibold underline"
+                  className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] font-semibold underline"
                 >
                   Skip setup & use defaults
                 </button>
@@ -734,8 +734,8 @@ export default function PreviewOnboarding() {
         </div>
 
         {/* Footer Note */}
-        <p className="text-center text-[10px] text-[#64748B] mt-4">
-          Preferences can be modified anytime in <span className="font-semibold text-[#0F172A]">Chamber Settings</span>.
+        <p className="text-center text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-4">
+          Preferences can be modified anytime in <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">Chamber Settings</span>.
         </p>
       </div>
     </div>

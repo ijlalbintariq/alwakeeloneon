@@ -282,14 +282,14 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
   return (
     <div className={`flex flex-col h-full space-y-3 ${className}`}>
       {/* 3-Tab Selector Header */}
-      <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-white border border-[#E5E4E2]">
+      <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44]">
         <button
           type="button"
           onClick={() => setActiveTab("copilot")}
           className={`py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
             activeTab === "copilot"
-              ? "bg-[#1A1A1A]/10 text-[#1A1A1A] border border-[#1A1A1A]/30 shadow-sm"
-              : "text-[#666666] hover:text-[#2D2D2D]"
+              ? "bg-[#1A1A1A]/10 text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#1A1A1A]/30 shadow-sm"
+              : "text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#2D2D2D] dark:text-[#CBD5E1]"
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
@@ -302,7 +302,7 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
           className={`py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
             activeTab === "risk"
               ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm"
-              : "text-[#666666] hover:text-[#2D2D2D]"
+              : "text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#2D2D2D] dark:text-[#CBD5E1]"
           }`}
         >
           <ShieldAlert className="w-3.5 h-3.5" />
@@ -314,8 +314,8 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
           onClick={() => setActiveTab("compliance")}
           className={`py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
             activeTab === "compliance"
-              ? "bg-emerald-500/20 text-[#1A1A1A] border border-emerald-500/40 shadow-sm"
-              : "text-[#666666] hover:text-[#2D2D2D]"
+              ? "bg-emerald-500/20 text-[#1A1A1A] dark:text-[#F8FAFC] border border-emerald-500/40 shadow-sm"
+              : "text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#2D2D2D] dark:text-[#CBD5E1]"
           }`}
         >
           <CheckCircle className="w-3.5 h-3.5" />
@@ -333,9 +333,9 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
                 key={chip.label}
                 type="button"
                 onClick={() => handleSendMessage(chip.prompt)}
-                className="px-2 py-1 rounded bg-white hover:bg-[#F5F4F2] text-[#4A4A4A] hover:text-[#1A1A1A] border border-[#E5E4E2] text-[10px] font-medium transition-colors flex items-center gap-1"
+                className="px-2 py-1 rounded bg-white dark:bg-[#131E2E] hover:bg-[#F5F4F2] dark:bg-[#0B131E] text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#E5E4E2] dark:border-[#1E2D44] text-[10px] font-medium transition-colors flex items-center gap-1"
               >
-                <Zap className="w-3 h-3 text-[#1A1A1A]" />
+                <Zap className="w-3 h-3 text-[#1A1A1A] dark:text-[#F8FAFC]" />
                 <span>{chip.label}</span>
               </button>
             ))}
@@ -348,15 +348,15 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
                 key={idx}
                 className={`p-3 rounded-xl text-xs ${
                   msg.role === "user"
-                    ? "bg-[#1A1A1A]/5 border border-[#1A1A1A]/15 text-[#1A1A1A] ml-4"
-                    : "bg-[#F5F4F2] border border-[#E5E4E2] text-[#4A4A4A] mr-2"
+                    ? "bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 border border-[#1A1A1A]/15 text-[#1A1A1A] dark:text-[#F8FAFC] ml-4"
+                    : "bg-[#F5F4F2] dark:bg-[#0B131E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] mr-2"
                 }`}
               >
-                <div className="flex items-center gap-1.5 mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#666666]">
+                <div className="flex items-center gap-1.5 mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
                   {msg.role === "user" ? (
-                    <span className="text-[#1A1A1A]">You</span>
+                    <span className="text-[#1A1A1A] dark:text-[#F8FAFC]">You</span>
                   ) : (
-                    <span className="text-[#1A1A1A] flex items-center gap-1">
+                    <span className="text-[#1A1A1A] dark:text-[#F8FAFC] flex items-center gap-1">
                       <Sparkles className="w-3 h-3" />
                       Alwakeel Legal AI
                     </span>
@@ -369,13 +369,13 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
 
                 {/* Suggestions */}
                 {msg.suggestions && (
-                  <div className="mt-2.5 pt-2 border-t border-[#E5E4E2] flex flex-wrap gap-1">
+                  <div className="mt-2.5 pt-2 border-t border-[#E5E4E2] dark:border-[#1E2D44] flex flex-wrap gap-1">
                     {msg.suggestions.map((s) => (
                       <button
                         key={s}
                         type="button"
                         onClick={() => handleSendMessage(s)}
-                        className="text-[10px] px-2 py-0.5 rounded bg-white text-[#1A1A1A]/90 border border-[#E5E4E2] hover:bg-[#F5F4F2] transition-colors"
+                        className="text-[10px] px-2 py-0.5 rounded bg-white dark:bg-[#131E2E] text-[#1A1A1A] dark:text-[#F8FAFC]/90 border border-[#E5E4E2] dark:border-[#1E2D44] hover:bg-[#F5F4F2] dark:bg-[#0B131E] transition-colors"
                       >
                         → {s}
                       </button>
@@ -385,8 +385,8 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
 
                 {/* Insertable Clause Card */}
                 {msg.insertableClause && (
-                  <div className="mt-3 p-2.5 rounded-lg bg-white border border-[#E5E4E2] space-y-2">
-                    <div className="p-2 rounded bg-white/90 font-serif text-[11px] text-[#2D2D2D] whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
+                  <div className="mt-3 p-2.5 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] space-y-2">
+                    <div className="p-2 rounded bg-white dark:bg-[#131E2E]/90 font-serif text-[11px] text-[#2D2D2D] dark:text-[#CBD5E1] whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
                       {msg.insertableClause}
                     </div>
 
@@ -394,16 +394,16 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
                       <button
                         type="button"
                         onClick={() => handleCopyClause(msg.insertableClause!, idx)}
-                        className="px-2 py-1 rounded bg-[#F5F4F2] hover:bg-[#EBEBEB] text-[#2D2D2D] text-[10px] font-medium border border-[#E5E4E2] transition-colors inline-flex items-center gap-1"
+                        className="px-2 py-1 rounded bg-[#F5F4F2] dark:bg-[#0B131E] hover:bg-[#EBEBEB] dark:bg-[#1E2D44] text-[#2D2D2D] dark:text-[#CBD5E1] text-[10px] font-medium border border-[#E5E4E2] dark:border-[#1E2D44] transition-colors inline-flex items-center gap-1"
                       >
                         {copiedIndex === idx ? (
                           <>
-                            <Check className="w-3 h-3 text-[#1A1A1A]" />
-                            <span className="text-[#1A1A1A]">Copied</span>
+                            <Check className="w-3 h-3 text-[#1A1A1A] dark:text-[#F8FAFC]" />
+                            <span className="text-[#1A1A1A] dark:text-[#F8FAFC]">Copied</span>
                           </>
                         ) : (
                           <>
-                            <Copy className="w-3 h-3 text-[#666666]" />
+                            <Copy className="w-3 h-3 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]" />
                             <span>Copy</span>
                           </>
                         )}
@@ -425,7 +425,7 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
           </div>
 
           {/* Prompt Input Form */}
-          <div className="pt-2 border-t border-[#E5E4E2]">
+          <div className="pt-2 border-t border-[#E5E4E2] dark:border-[#1E2D44]">
             <div className="relative">
               <textarea
                 value={inputPrompt}
@@ -438,7 +438,7 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
                 }}
                 placeholder="Instruct AI (e.g. 'Draft grounds for criminal revision', 'Add indemnity')..."
                 rows={2}
-                className="w-full pl-3 pr-10 py-2 rounded-xl bg-white border border-[#E5E4E2] text-xs text-[#2D2D2D] placeholder:text-[#666666] focus:outline-none focus:border-[#1A1A1A]/50 resize-none font-sans"
+                className="w-full pl-3 pr-10 py-2 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-xs text-[#2D2D2D] dark:text-[#CBD5E1] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#1A1A1A]/50 resize-none font-sans"
               />
               <button
                 type="button"
@@ -461,17 +461,17 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
       {activeTab === "risk" && (
         <div className="flex flex-col flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
           {/* Risk Summary Badge */}
-          <div className="p-3 rounded-xl bg-white/90 border border-[#E5E4E2] flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-white dark:bg-[#131E2E]/90 border border-[#E5E4E2] dark:border-[#1E2D44] flex items-center justify-between">
             <div>
-              <div className="text-xs font-bold text-[#1A1A1A]">Draft Risk Assessment</div>
-              <div className="text-[10px] text-[#666666]">
+              <div className="text-xs font-bold text-[#1A1A1A] dark:text-[#F8FAFC]">Draft Risk Assessment</div>
+              <div className="text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
                 Pakistani statutory & judicial enforceability scan
               </div>
             </div>
             <span
               className={`px-2.5 py-1 rounded-full text-xs font-bold font-mono ${
                 riskItems.length === 0
-                  ? "bg-emerald-500/20 text-[#1A1A1A] border border-[#E5E4E2]"
+                  ? "bg-emerald-500/20 text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#E5E4E2] dark:border-[#1E2D44]"
                   : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
               }`}
             >
@@ -480,10 +480,10 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
           </div>
 
           {riskItems.length === 0 ? (
-            <div className="text-center py-12 text-[#666666] text-xs space-y-2">
-              <ShieldCheck className="w-10 h-10 mx-auto text-[#1A1A1A]/60" />
-              <p className="text-[#4A4A4A] font-semibold">No critical statutory risks detected.</p>
-              <p className="text-[11px] text-[#666666]">
+            <div className="text-center py-12 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] text-xs space-y-2">
+              <ShieldCheck className="w-10 h-10 mx-auto text-[#1A1A1A] dark:text-[#F8FAFC]/60" />
+              <p className="text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] font-semibold">No critical statutory risks detected.</p>
+              <p className="text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
                 Your draft complies with primary Pakistani court pleading requirements.
               </p>
             </div>
@@ -491,7 +491,7 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
             riskItems.map((risk) => (
               <div
                 key={risk.id}
-                className="p-3 rounded-xl bg-[#F5F4F2] border border-[#E5E4E2] space-y-2"
+                className="p-3 rounded-xl bg-[#F5F4F2] dark:bg-[#0B131E] border border-[#E5E4E2] dark:border-[#1E2D44] space-y-2"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
@@ -499,27 +499,27 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
                       className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold uppercase ${
                         risk.severity === "critical"
                           ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                          : "bg-[#1A1A1A]/10 text-[#1A1A1A] border border-[#1A1A1A]/20"
+                          : "bg-[#1A1A1A]/10 text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#1A1A1A]/20 dark:border-[#1E2D44]"
                       }`}
                     >
                       {risk.severity} Risk
                     </span>
-                    <h4 className="text-xs font-semibold text-[#1A1A1A] leading-snug">
+                    <h4 className="text-xs font-semibold text-[#1A1A1A] dark:text-[#F8FAFC] leading-snug">
                       {risk.title}
                     </h4>
                   </div>
                 </div>
 
-                <p className="text-[11px] text-[#666666] leading-relaxed">
+                <p className="text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
                   {risk.description}
                 </p>
 
-                <div className="text-[10px] text-[#1A1A1A]/90 font-serif">
+                <div className="text-[10px] text-[#1A1A1A] dark:text-[#F8FAFC]/90 font-serif">
                   Statute: {risk.statute}
                 </div>
 
-                <div className="pt-2 border-t border-[#E5E4E2] flex items-center justify-between">
-                  <span className="text-[10px] text-[#666666]">AI Redline Available</span>
+                <div className="pt-2 border-t border-[#E5E4E2] dark:border-[#1E2D44] flex items-center justify-between">
+                  <span className="text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">AI Redline Available</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -545,20 +545,20 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
       {activeTab === "compliance" && (
         <div className="flex flex-col flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
           {/* Score Header */}
-          <div className="p-3.5 rounded-xl bg-white border border-[#E5E4E2] flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] flex items-center justify-between">
             <div>
-              <div className="text-xs font-bold text-[#1A1A1A]">
+              <div className="text-xs font-bold text-[#1A1A1A] dark:text-[#F8FAFC]">
                 6-Pillar Pleading Compliance
               </div>
-              <div className="text-[10px] text-[#666666]">
+              <div className="text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
                 {passedPillarsCount} of 6 mandatory court components detected
               </div>
             </div>
             <div className="text-right">
-              <div className="text-lg font-bold font-mono text-[#1A1A1A]">
+              <div className="text-lg font-bold font-mono text-[#1A1A1A] dark:text-[#F8FAFC]">
                 {complianceScore}%
               </div>
-              <div className="text-[9px] text-[#666666] uppercase">Audit Score</div>
+              <div className="text-[9px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] uppercase">Audit Score</div>
             </div>
           </div>
 
@@ -568,29 +568,29 @@ export const AIDraftingAssistantPanel: React.FC<AIDraftingAssistantPanelProps> =
               key={pillar.id}
               className={`p-3 rounded-xl border transition-all ${
                 pillar.passed
-                  ? "bg-[#FAFAF9] border-[#E5E4E2]"
-                  : "bg-[#1A1A1A]/5 border-[#1A1A1A]/20"
+                  ? "bg-[#FAFAF9] border-[#E5E4E2] dark:border-[#1E2D44]"
+                  : "bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 border-[#1A1A1A]/20 dark:border-[#1E2D44]"
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
                     {pillar.passed ? (
-                      <CheckCircle className="w-4 h-4 text-[#1A1A1A] shrink-0" />
+                      <CheckCircle className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC] shrink-0" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 text-[#1A1A1A] shrink-0" />
+                      <AlertTriangle className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC] shrink-0" />
                     )}
-                    <h4 className="text-xs font-semibold text-[#1A1A1A]">
+                    <h4 className="text-xs font-semibold text-[#1A1A1A] dark:text-[#F8FAFC]">
                       {pillar.title}
                     </h4>
                   </div>
-                  <p className="text-[11px] text-[#666666]">{pillar.description}</p>
+                  <p className="text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">{pillar.description}</p>
                 </div>
               </div>
 
               {!pillar.passed && (
-                <div className="mt-2.5 pt-2 border-t border-[#E5E4E2] flex items-center justify-between">
-                  <span className="text-[10px] text-[#1A1A1A]">Missing from draft</span>
+                <div className="mt-2.5 pt-2 border-t border-[#E5E4E2] dark:border-[#1E2D44] flex items-center justify-between">
+                  <span className="text-[10px] text-[#1A1A1A] dark:text-[#F8FAFC]">Missing from draft</span>
                   <button
                     type="button"
                     onClick={() => {

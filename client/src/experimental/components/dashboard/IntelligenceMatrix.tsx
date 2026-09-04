@@ -57,12 +57,12 @@ export const IntelligenceMatrix: React.FC<IntelligenceMatrixProps> = ({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-[#1A1A1A]" />
-          <h2 className="text-sm font-semibold font-mono uppercase tracking-wider text-[#4A4A4A]">
+          <Layers className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC]" />
+          <h2 className="text-sm font-semibold font-mono uppercase tracking-wider text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569]">
             Chambers 4-Pillar Intelligence Matrix
           </h2>
         </div>
-        <span className="text-[11px] font-mono text-[#1A1A1A] bg-[#F5F4F2] border border-[#E5E4E2] px-2 py-0.5 rounded">
+        <span className="text-[11px] font-mono text-[#1A1A1A] dark:text-[#F8FAFC] bg-[#F5F4F2] dark:bg-[#0B131E] border border-[#E5E4E2] dark:border-[#1E2D44] px-2 py-0.5 rounded">
           Live Backend Sync
         </span>
       </div>

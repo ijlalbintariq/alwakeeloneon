@@ -374,18 +374,18 @@ export const PreviewHistory: React.FC = () => {
     <PreviewShell>
       <div className="max-w-7xl mx-auto space-y-6 pb-12">
         {/* Header */}
-        <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="bg-white dark:bg-[#131E2E] p-6 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 <History className="w-5 h-5" />
               </div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#105B38]">
                 Audit Trail & Consultation Log
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">Search & Consultation History</h1>
-            <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">Search & Consultation History</h1>
+            <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
               Review precedent searches, statutory checks, AI consultations, and 1-click re-run past queries.
             </p>
           </div>
@@ -394,7 +394,7 @@ export const PreviewHistory: React.FC = () => {
             <button
               type="button"
               onClick={handleExportAuditLog}
-              className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5 shadow-2xs"
               title="Download full audit log report"
             >
               <Download className="w-4 h-4 text-[#105B38]" />
@@ -405,7 +405,7 @@ export const PreviewHistory: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsClearModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] hover:bg-rose-50 border border-[#E2E8F0] text-xs font-bold text-[#64748B] hover:text-rose-600 transition-colors flex items-center gap-1.5 shrink-0"
+                className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-rose-50 dark:bg-rose-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 transition-colors flex items-center gap-1.5 shrink-0"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Clear History</span>
@@ -416,64 +416,64 @@ export const PreviewHistory: React.FC = () => {
 
         {/* Stats Metrics Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <Search className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">{totalSearches}</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Total Queries</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{totalSearches}</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Total Queries</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <Scale className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">Supreme Court</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Top Jurisdiction (52%)</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">Supreme Court</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Top Jurisdiction (52%)</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <Cpu className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">{avgLatency} ms</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Avg Execution Latency</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{avgLatency} ms</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Avg Execution Latency</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <BookmarkCheck className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">{bookmarkedCount}</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Saved to Bookmarks</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{bookmarkedCount}</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Saved to Bookmarks</div>
             </div>
           </div>
         </div>
 
         {/* Search & Multi-Dimensional Filter Bar */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
+        <div className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="flex-1 flex items-center px-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] focus-within:border-[#105B38] focus-within:bg-white transition-all">
-              <Search className="w-4 h-4 text-[#94A3B8] mr-2.5 shrink-0" />
+            <div className="flex-1 flex items-center px-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] focus-within:border-[#105B38] focus-within:bg-white dark:bg-[#131E2E] transition-all">
+              <Search className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mr-2.5 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search history logs by prompt text, legal ratio, case citation, or matter tag..."
-                className="w-full h-11 bg-transparent text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none"
+                className="w-full h-11 bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="p-1 rounded-md text-[#94A3B8] hover:text-[#0F172A]"
+                  className="p-1 rounded-md text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -482,12 +482,12 @@ export const PreviewHistory: React.FC = () => {
 
             {/* Date Range Dropdown */}
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                <Calendar className="w-3.5 h-3.5 text-[#64748B]" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
+                <Calendar className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <select
                   value={filterDateRange}
                   onChange={(e) => setFilterDateRange(e.target.value)}
-                  className="bg-transparent text-xs text-[#0F172A] font-semibold focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none cursor-pointer"
                 >
                   <option value="all">All Dates</option>
                   <option value="today">Today</option>
@@ -496,12 +496,12 @@ export const PreviewHistory: React.FC = () => {
               </div>
 
               {/* Matter Filter */}
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                <Briefcase className="w-3.5 h-3.5 text-[#64748B]" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
+                <Briefcase className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <select
                   value={filterMatter}
                   onChange={(e) => setFilterMatter(e.target.value)}
-                  className="bg-transparent text-xs text-[#0F172A] font-semibold focus:outline-none cursor-pointer max-w-[170px] truncate"
+                  className="bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none cursor-pointer max-w-[170px] truncate"
                 >
                   <option value="All">All Matters</option>
                   {uniqueMatters.map((m) => (
@@ -515,8 +515,8 @@ export const PreviewHistory: React.FC = () => {
           </div>
 
           {/* Type Filter Buttons */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E2E8F0]/70">
-            <span className="text-[11px] font-bold text-[#64748B] mr-2">Query Engine:</span>
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E2E8F0] dark:border-[#1E2D44]/70">
+            <span className="text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mr-2">Query Engine:</span>
             {typeOptions.map((opt) => (
               <button
                 key={opt}
@@ -526,7 +526,7 @@ export const PreviewHistory: React.FC = () => {
                   "px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize",
                   filterType === opt
                     ? "bg-[#105B38] text-white shadow-xs"
-                    : "bg-[#F8FAFC] text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0]"
+                    : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
                 )}
               >
                 {opt === "ai_chat"
@@ -545,12 +545,12 @@ export const PreviewHistory: React.FC = () => {
 
         {/* History List Entries / Empty State */}
         {filteredHistory.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#E2E8F0] text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 text-[#105B38] flex items-center justify-center mx-auto">
+          <div className="bg-white dark:bg-[#131E2E] p-12 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] flex items-center justify-center mx-auto">
               <History className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-[#0F172A]">No Audit Entries Found</h3>
-            <p className="text-xs text-[#64748B] max-w-md mx-auto">
+            <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">No Audit Entries Found</h3>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-md mx-auto">
               No matching search queries recorded for the current filter criteria.
             </p>
             <div className="pt-2">
@@ -563,7 +563,7 @@ export const PreviewHistory: React.FC = () => {
                   setFilterMatter("All");
                   setFilterJurisdiction("All");
                 }}
-                className="px-4 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#105B38]"
+                className="px-4 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38]"
               >
                 Reset Filters
               </button>
@@ -584,36 +584,36 @@ export const PreviewHistory: React.FC = () => {
               return (
                 <div
                   key={entry.id}
-                  className="p-5 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/50 hover:shadow-xs transition-all flex flex-col md:flex-row md:items-center md:justify-between gap-4 group"
+                  className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/50 hover:shadow-xs transition-all flex flex-col md:flex-row md:items-center md:justify-between gap-4 group"
                 >
                   <div className="flex items-start gap-4 min-w-0 flex-1">
-                    <div className="w-10 h-10 shrink-0 rounded-xl bg-emerald-50 border border-emerald-200 text-[#105B38] flex items-center justify-center mt-0.5">
+                    <div className="w-10 h-10 shrink-0 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] flex items-center justify-center mt-0.5">
                       <Icon className="w-5 h-5" />
                     </div>
 
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] uppercase tracking-wider">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
                           {entry.type.replace("_", " ")}
                         </span>
 
                         {entry.matterTag && (
-                          <span className="font-mono text-[10px] font-bold text-[#0F172A] bg-white px-2 py-0.5 rounded border border-[#E2E8F0]">
+                          <span className="font-mono text-[10px] font-bold text-[#0F172A] dark:text-[#F8FAFC] bg-white dark:bg-[#131E2E] px-2 py-0.5 rounded border border-[#E2E8F0] dark:border-[#1E2D44]">
                             {entry.matterTag}
                           </span>
                         )}
 
-                        <span className="text-[11px] text-[#64748B] flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-[#94A3B8]" />
+                        <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#94A3B8] dark:text-[#475569]" />
                           {entry.timestamp}
                         </span>
 
-                        <span className="text-[11px] font-mono text-[#94A3B8]">
+                        <span className="text-[11px] font-mono text-[#94A3B8] dark:text-[#475569]">
                           · {entry.executionTimeMs}ms · {entry.resultCount} Results
                         </span>
                       </div>
 
-                      <h3 className="font-bold text-sm text-[#0F172A] group-hover:text-[#105B38] transition-colors leading-snug">
+                      <h3 className="font-bold text-sm text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] transition-colors leading-snug">
                         {entry.query}
                       </h3>
 
@@ -624,11 +624,11 @@ export const PreviewHistory: React.FC = () => {
                       {/* Citations Retrieved Pills */}
                       {entry.citationsRetrieved.length > 0 && (
                         <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                          <span className="text-[10px] font-bold text-[#94A3B8]">Citations:</span>
+                          <span className="text-[10px] font-bold text-[#94A3B8] dark:text-[#475569]">Citations:</span>
                           {entry.citationsRetrieved.map((cit) => (
                             <span
                               key={cit}
-                              className="font-mono text-[10px] font-bold text-[#105B38] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"
+                              className="font-mono text-[10px] font-bold text-[#105B38] bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20"
                             >
                               {cit}
                             </span>
@@ -639,15 +639,15 @@ export const PreviewHistory: React.FC = () => {
                   </div>
 
                   {/* Actions Right */}
-                  <div className="flex items-center gap-2 shrink-0 self-end md:self-center pt-2 md:pt-0 border-t md:border-t-0 border-[#E2E8F0]/70 w-full md:w-auto justify-between md:justify-end">
+                  <div className="flex items-center gap-2 shrink-0 self-end md:self-center pt-2 md:pt-0 border-t md:border-t-0 border-[#E2E8F0] dark:border-[#1E2D44]/70 w-full md:w-auto justify-between md:justify-end">
                     <button
                       type="button"
                       onClick={(e) => handleToggleBookmark(entry, e)}
                       className={cn(
                         "p-2 rounded-xl border transition-colors",
                         entry.bookmarked
-                          ? "bg-emerald-50 text-[#105B38] border-emerald-200"
-                          : "bg-[#F8FAFC] text-[#94A3B8] hover:text-[#0F172A] border-[#E2E8F0]"
+                          ? "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
+                          : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border-[#E2E8F0] dark:border-[#1E2D44]"
                       )}
                       title={entry.bookmarked ? "Bookmarked" : "Save to Bookmarks"}
                     >
@@ -657,7 +657,7 @@ export const PreviewHistory: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setInspectEntry(entry)}
-                      className="px-3 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#475569] hover:text-[#0F172A] transition-colors"
+                      className="px-3 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
                       title="Inspect Dialogue & Citations"
                     >
                       Inspect
@@ -675,7 +675,7 @@ export const PreviewHistory: React.FC = () => {
                     <button
                       type="button"
                       onClick={(e) => handleDeleteEntry(entry.id, e)}
-                      className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-rose-50 border border-[#E2E8F0] text-[#94A3B8] hover:text-rose-600 transition-colors"
+                      className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-rose-50 dark:bg-rose-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 transition-colors"
                       title="Delete Entry"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -696,20 +696,20 @@ export const PreviewHistory: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Top Bar */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38]">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38]">
                     <History className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A]">
+                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                       Audit Trail Dialogue Inspector
                     </h2>
-                    <p className="text-[11px] text-[#64748B]">
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       {inspectEntry.timestamp} · Latency: {inspectEntry.executionTimeMs}ms
                     </p>
                   </div>
@@ -722,8 +722,8 @@ export const PreviewHistory: React.FC = () => {
                     className={cn(
                       "px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5",
                       inspectEntry.bookmarked
-                        ? "bg-emerald-50 text-[#105B38] border-emerald-200"
-                        : "bg-white text-[#475569] border-[#E2E8F0]"
+                        ? "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
+                        : "bg-white dark:bg-[#131E2E] text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44]"
                     )}
                   >
                     <Bookmark className={cn("w-3.5 h-3.5", inspectEntry.bookmarked && "fill-current")} />
@@ -733,7 +733,7 @@ export const PreviewHistory: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setInspectEntry(null)}
-                    className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0]"
+                    className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0]"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -743,17 +743,17 @@ export const PreviewHistory: React.FC = () => {
               {/* Modal Body */}
               <div className="flex-1 overflow-y-auto p-6 space-y-5">
                 {/* User Prompt Box */}
-                <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
-                  <span className="text-[10px] font-bold uppercase text-[#64748B] block">
+                <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
+                  <span className="text-[10px] font-bold uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block">
                     Advocate Search Query / Prompt
                   </span>
-                  <p className="text-xs font-bold text-[#0F172A] leading-relaxed">
+                  <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] leading-relaxed">
                     &quot;{inspectEntry.query}&quot;
                   </p>
                 </div>
 
                 {/* AI Response Box */}
-                <div className="p-5 rounded-xl bg-white border border-[#E2E8F0] shadow-2xs space-y-2">
+                <div className="p-5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-2xs space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase text-[#105B38] tracking-wider flex items-center gap-1.5">
                       <Sparkles className="w-4 h-4" />
@@ -771,14 +771,14 @@ export const PreviewHistory: React.FC = () => {
                       Copy Response
                     </button>
                   </div>
-                  <p className="text-xs text-[#334155] leading-relaxed whitespace-pre-wrap">
+                  <p className="text-xs text-[#334155] dark:text-[#CBD5E1] leading-relaxed whitespace-pre-wrap">
                     {inspectEntry.aiResponseSummary}
                   </p>
                 </div>
 
                 {/* Citations Retrieved */}
-                <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
-                  <span className="text-[10px] font-bold uppercase text-[#64748B] block">
+                <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-3">
+                  <span className="text-[10px] font-bold uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block">
                     Retrieved Precedents & Statutory Provisions
                   </span>
                   <div className="flex flex-wrap gap-2">
@@ -786,7 +786,7 @@ export const PreviewHistory: React.FC = () => {
                       <Link
                         key={cit}
                         href={`/preview/judgments?q=${encodeURIComponent(cit)}`}
-                        className="font-mono text-xs font-bold text-[#105B38] bg-white px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-50 transition-colors flex items-center gap-1.5"
+                        className="font-mono text-xs font-bold text-[#105B38] bg-white dark:bg-[#131E2E] px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-50 dark:bg-emerald-500/10 transition-colors flex items-center gap-1.5"
                       >
                         <ExternalLink className="w-3 h-3" />
                         <span>{cit}</span>
@@ -796,28 +796,28 @@ export const PreviewHistory: React.FC = () => {
                 </div>
 
                 {/* Execution Metadata */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44]">
                   <div>
-                    <span className="text-[10px] font-bold text-[#64748B] uppercase block">Engine</span>
-                    <span className="font-bold text-[#0F172A] capitalize">{inspectEntry.type.replace("_", " ")}</span>
+                    <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase block">Engine</span>
+                    <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC] capitalize">{inspectEntry.type.replace("_", " ")}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-[#64748B] uppercase block">Latency</span>
+                    <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase block">Latency</span>
                     <span className="font-bold text-[#105B38]">{inspectEntry.executionTimeMs} ms</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-[#64748B] uppercase block">Results</span>
-                    <span className="font-bold text-[#0F172A]">{inspectEntry.resultCount} records</span>
+                    <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase block">Results</span>
+                    <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{inspectEntry.resultCount} records</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-[#64748B] uppercase block">Matter</span>
-                    <span className="font-bold text-[#0F172A]">{inspectEntry.matterTag || "General"}</span>
+                    <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase block">Matter</span>
+                    <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{inspectEntry.matterTag || "General"}</span>
                   </div>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between text-xs shrink-0">
+              <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs shrink-0">
                 <button
                   type="button"
                   onClick={() => handleReRun(inspectEntry)}
@@ -830,7 +830,7 @@ export const PreviewHistory: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setInspectEntry(null)}
-                  className="px-4 py-2 rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#F1F5F9] text-xs font-bold text-[#475569]"
+                  className="px-4 py-2 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-xs font-bold text-[#475569]"
                 >
                   Close
                 </button>
@@ -848,16 +848,16 @@ export const PreviewHistory: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 space-y-4"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
                 <AlertTriangle className="w-6 h-6" />
               </div>
 
               <div className="text-center space-y-1.5">
-                <h3 className="text-base font-bold text-[#0F172A]">Clear All Search History?</h3>
-                <p className="text-xs text-[#64748B]">
+                <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">Clear All Search History?</h3>
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   This will permanently clear all local query audit trails, prompt history, and execution metrics. Bookmarked authorities in your Saved Vault will remain intact.
                 </p>
               </div>
@@ -866,7 +866,7 @@ export const PreviewHistory: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsClearModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] text-xs font-bold text-[#64748B]"
+                  className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                 >
                   Cancel
                 </button>

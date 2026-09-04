@@ -436,7 +436,7 @@ export default function AuthPage() {
           {googleStatus?.available ? (
             googleLoading ? (
               <div className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-3">
-                <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-slate-300 dark:border-slate-500/30 border-t-transparent rounded-full animate-spin" />
                 Signing in with Google...
               </div>
             ) : mode === "register" && !acceptedTerms ? (
@@ -454,7 +454,7 @@ export default function AuthPage() {
                 type="button"
                 onClick={handleGoogleStart}
                 data-testid="google-signin-button"
-                className="mx-auto w-full max-w-[380px] bg-white text-gray-900 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors border border-gray-200"
+                className="mx-auto w-full max-w-[380px] bg-white dark:bg-[#131E2E] text-gray-900 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors border border-gray-200 dark:border-gray-500/20"
               >
                 <SiGoogle size={14} />
                 {mode === "register" ? "Continue with Google" : "Sign in with Google"}

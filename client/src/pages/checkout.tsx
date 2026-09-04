@@ -291,7 +291,7 @@ export default function CheckoutPage() {
                     data-testid="checkout-auto-renew-toggle"
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-[#131E2E] shadow-lg ring-0 transition duration-200 ease-in-out ${
                         autoRenew ? "translate-x-5" : "translate-x-0"
                       }`}
                     />

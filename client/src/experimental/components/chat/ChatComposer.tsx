@@ -103,14 +103,14 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split(".").pop()?.toLowerCase();
-    if (ext === "pdf") return <FileText className="w-4 h-4 text-rose-600" />;
-    if (ext === "doc" || ext === "docx") return <FileText className="w-4 h-4 text-blue-600" />;
-    if (ext === "jpg" || ext === "jpeg" || ext === "png") return <ImageIcon className="w-4 h-4 text-emerald-600" />;
-    return <File className="w-4 h-4 text-[#64748B]" />;
+    if (ext === "pdf") return <FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />;
+    if (ext === "doc" || ext === "docx") return <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+    if (ext === "jpg" || ext === "jpeg" || ext === "png") return <ImageIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
+    return <File className="w-4 h-4 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />;
   };
 
   return (
-    <div className="px-4 py-3 bg-white border-t border-[#E2E8F0] relative">
+    <div className="px-4 py-3 bg-white dark:bg-[#131E2E] border-t border-[#E2E8F0] dark:border-[#1E2D44] relative">
       <input
         type="file"
         ref={fileInputRef}
@@ -131,12 +131,12 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold text-xs transition-all border shadow-xs",
                 ragEnabled
-                  ? "bg-emerald-50 border-emerald-200 text-[#105B38]"
-                  : "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+                  ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-[#105B38]"
+                  : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44]"
               )}
               title="Toggle Knowledge Vault (RAG grounding with Pakistani Statutes & Precedents)"
             >
-              <Database className={cn("w-3.5 h-3.5", ragEnabled ? "text-[#105B38]" : "text-[#64748B]")} />
+              <Database className={cn("w-3.5 h-3.5", ragEnabled ? "text-[#105B38]" : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]")} />
               <span>Knowledge Vault</span>
               {ragEnabled && (
                 <span className="w-2 h-2 rounded-full bg-[#105B38] animate-pulse" />
@@ -146,11 +146,11 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             {/* Case File Selector */}
             {ragEnabled && caseFiles.length > 0 && (
               <div className="flex items-center gap-1.5 text-xs">
-                <FolderOpen className="w-3.5 h-3.5 text-[#64748B]" />
+                <FolderOpen className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <select
                   value={selectedCaseFileId ?? ""}
                   onChange={(e) => onSelectCaseFile(e.target.value ? Number(e.target.value) : null)}
-                  className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#105B38]"
+                  className="bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                 >
                   <option value="">All Vault Documents</option>
                   {caseFiles.map((c) => (
@@ -163,9 +163,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             )}
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#64748B] font-mono">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
             <span>Press</span>
-            <kbd className="px-2 py-0.5 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] font-semibold text-xs">
+            <kbd className="px-2 py-0.5 rounded-md bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] font-semibold text-xs">
               Enter ↵
             </kbd>
             <span>to send</span>
@@ -178,17 +178,17 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             {attachedFiles.map((file, idx) => (
               <div
                 key={idx}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] group shadow-xs"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] group shadow-xs"
               >
                 {getFileIcon(file.name)}
                 <span className="max-w-[160px] truncate font-medium">{file.name}</span>
-                <span className="text-xs text-[#64748B]">
+                <span className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                   ({(file.size / 1024).toFixed(0)} KB)
                 </span>
                 <button
                   type="button"
                   onClick={() => onRemoveFile(idx)}
-                  className="p-1 rounded-lg text-[#64748B] hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1"
+                  className="p-1 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:bg-rose-500/10 transition-colors ml-1"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -199,31 +199,31 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
         {/* Voice Recording Active State */}
         {isVoiceRecording && (
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-[#105B38]/30 shadow-xs text-[#0F172A] animate-in fade-in duration-200">
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#105B38]/30 shadow-xs text-[#0F172A] dark:text-[#F8FAFC] animate-in fade-in duration-200">
             <div className="flex items-center gap-3">
               <div className="relative flex items-center justify-center">
                 <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping absolute" />
                 <span className="w-3 h-3 rounded-full bg-rose-600 relative" />
               </div>
               <div>
-                <div className="text-xs font-bold text-[#0F172A] flex items-center gap-1.5 font-mono">
+                <div className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5 font-mono">
                   <Radio className="w-3.5 h-3.5 animate-pulse text-[#105B38]" />
                   Recording Audio for Whisper Transcription
                 </div>
-                <div className="text-xs text-[#64748B] mt-0.5">
+                <div className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                   Speak clearly in English or Urdu...
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] font-mono text-xs font-bold">
+              <span className="px-3 py-1 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] font-mono text-xs font-bold">
                 {formatDuration(voiceDuration)}
               </span>
               <button
                 type="button"
                 onClick={onCancelVoiceRecording}
-                className="px-3 py-1.5 rounded-xl bg-white border border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] text-xs font-semibold transition-colors"
+                className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E] text-xs font-semibold transition-colors"
               >
                 Cancel
               </button>
@@ -240,19 +240,19 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
         {/* Voice Transcribing State */}
         {isVoiceTranscribing && (
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-xs text-[#0F172A] text-xs animate-pulse">
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs text-[#0F172A] dark:text-[#F8FAFC] text-xs animate-pulse">
             <Loader2 className="w-4 h-4 animate-spin text-[#105B38]" />
             <span className="font-semibold">Transcribing audio with Whisper AI model...</span>
           </div>
         )}
 
         {/* Main Textarea & Actions Container with Generous Padding */}
-        <div className="relative flex items-end gap-2 p-3 rounded-2xl bg-white border border-[#E2E8F0] focus-within:border-[#105B38] focus-within:ring-2 focus-within:ring-[#105B38]/20 transition-all shadow-xs w-full">
+        <div className="relative flex items-end gap-2 p-3 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] focus-within:border-[#105B38] focus-within:ring-2 focus-within:ring-[#105B38]/20 transition-all shadow-xs w-full">
           {/* File Attachment Action Button */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="p-2.5 rounded-xl text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors shrink-0 mb-0.5"
+            className="p-2.5 rounded-xl text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E] transition-colors shrink-0 mb-0.5"
             title="Attach documents, case briefs or screenshots"
           >
             <Paperclip className="w-5 h-5" />
@@ -265,8 +265,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             className={cn(
               "p-2.5 rounded-xl transition-colors shrink-0 mb-0.5",
               isVoiceRecording
-                ? "bg-rose-50 text-rose-600 border border-rose-200 animate-pulse"
-                : "text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                ? "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 animate-pulse"
+                : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
             )}
             title={isVoiceRecording ? "Stop Recording" : "Voice Dictation (Urdu / English)"}
           >
@@ -281,7 +281,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             onKeyDown={handleKeyDown}
             disabled={disabled || isLoading}
             placeholder="Ask about Pakistani statutes, landmark judgments, bail under CrPC, CPC writs, or drafting..."
-            className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none resize-none min-h-[48px] max-h-[160px] leading-relaxed custom-scrollbar font-normal"
+            className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none resize-none min-h-[48px] max-h-[160px] leading-relaxed custom-scrollbar font-normal"
             rows={1}
           />
 

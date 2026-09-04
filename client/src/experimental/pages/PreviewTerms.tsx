@@ -49,17 +49,17 @@ export default function PreviewTerms() {
       <div className="space-y-10 md:space-y-12">
         {/* ── HEADER ── */}
         <section className="space-y-4 max-w-4xl mx-auto text-center pt-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#EBF5F0] border border-[#A3D4BC] rounded-full text-xs text-[#105B38] font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-wider">
             <Scale className="w-3.5 h-3.5 text-[#105B38]" />
             Terms of Service & Service Level Agreement
           </div>
           <h1
-            className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight leading-tight"
+            className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight leading-tight"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             Terms and Conditions of Use
           </h1>
-          <p className="text-xs sm:text-sm text-[#64748B] max-w-2xl mx-auto">
+          <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-2xl mx-auto">
             Last Updated: August 2026 · Official Legal Terms of Majnoon Studio (Pvt.) Ltd.
           </p>
 
@@ -78,7 +78,7 @@ export default function PreviewTerms() {
                 </p>
               </div>
             </div>
-            <span className="px-3 py-1 bg-white text-[#991B1B] text-[11px] font-bold rounded-full border border-[#FECACA] whitespace-nowrap">
+            <span className="px-3 py-1 bg-white dark:bg-[#131E2E] text-[#991B1B] text-[11px] font-bold rounded-full border border-[#FECACA] whitespace-nowrap">
               Advocate Verification Required
             </span>
           </div>
@@ -88,8 +88,8 @@ export default function PreviewTerms() {
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Sticky Table of Contents */}
           <div className="lg:col-span-4 sticky top-24 hidden lg:block">
-            <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 space-y-3 shadow-sm max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#0F172A] border-b border-[#F1F5F9] pb-2">
+            <div className="bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl p-5 space-y-3 shadow-sm max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F8FAFC] border-b border-[#F1F5F9] pb-2">
                 Sections Index
               </h4>
               <nav className="space-y-1">
@@ -99,8 +99,8 @@ export default function PreviewTerms() {
                     onClick={() => scrollTo(sec.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors block truncate ${
                       activeSection === sec.id
-                        ? "bg-[#EBF5F0] text-[#105B38] font-bold"
-                        : "text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+                        ? "bg-[#EBF5F0] dark:bg-[#105B38]/20 text-[#105B38] font-bold"
+                        : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:bg-[#0B131E]"
                     }`}
                   >
                     {sec.title}
@@ -111,17 +111,17 @@ export default function PreviewTerms() {
           </div>
 
           {/* Right Main Legal Prose */}
-          <div className="lg:col-span-8 bg-white border border-[#E2E8F0] rounded-3xl p-6 sm:p-10 space-y-10 shadow-sm leading-relaxed text-xs sm:text-sm text-[#334155]">
+          <div className="lg:col-span-8 bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-3xl p-6 sm:p-10 space-y-10 shadow-sm leading-relaxed text-xs sm:text-sm text-[#334155] dark:text-[#CBD5E1]">
             {/* Section 1 */}
             <section id="sec-1" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 1. Acceptance of Terms
               </h2>
               <p>
-                These Terms and Conditions ("Terms") constitute a legally binding agreement between you ("User", "Advocate", "Chamber", or "Organization") and <strong className="text-[#0F172A]">Majnoon Studio (Pvt.) Ltd.</strong> ("Company", "we", "us", or "our"), governing your access to and use of the <strong className="text-[#0F172A]">Alwakeelo</strong> AI legal intelligence platform, website, mobile progressive web application, Microsoft 365 Word Add-in, and associated API services (collectively, the "Service").
+                These Terms and Conditions ("Terms") constitute a legally binding agreement between you ("User", "Advocate", "Chamber", or "Organization") and <strong className="text-[#0F172A] dark:text-[#F8FAFC]">Majnoon Studio (Pvt.) Ltd.</strong> ("Company", "we", "us", or "our"), governing your access to and use of the <strong className="text-[#0F172A] dark:text-[#F8FAFC]">Alwakeelo</strong> AI legal intelligence platform, website, mobile progressive web application, Microsoft 365 Word Add-in, and associated API services (collectively, the "Service").
               </p>
               <p>
                 By creating an account, logging in, or utilizing any feature of Alwakeelo, you unequivocally agree to be bound by these Terms. If you do not agree with any provision herein, you must immediately discontinue use of the Service.
@@ -131,7 +131,7 @@ export default function PreviewTerms() {
             {/* Section 2 */}
             <section id="sec-2" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 2. Description of Legal AI Workstation
@@ -139,7 +139,7 @@ export default function PreviewTerms() {
               <p>
                 Alwakeelo provides a suite of specialized legal technology tools tailored to Pakistani practice, including:
               </p>
-              <ul className="list-disc list-inside space-y-1.5 pl-2 text-[#334155]">
+              <ul className="list-disc list-inside space-y-1.5 pl-2 text-[#334155] dark:text-[#CBD5E1]">
                 <li>600,000+ indexed Supreme Court and High Court judgments with precedent citation network graphs.</li>
                 <li>83,117 statutory sections directory across 5,887 Federal and Provincial Acts with Limitation Act and Court Fee calculators.</li>
                 <li>High Court and District Court petition and pleading drafting tools.</li>
@@ -152,7 +152,7 @@ export default function PreviewTerms() {
             {/* Section 3 */}
             <section id="sec-3" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 3. Mandatory Legal Disclaimer &amp; Advocate Verification Duty
@@ -173,7 +173,7 @@ export default function PreviewTerms() {
             {/* Section 4 */}
             <section id="sec-4" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 4. User Accounts &amp; Bar Enrollment
@@ -186,7 +186,7 @@ export default function PreviewTerms() {
             {/* Section 5 */}
             <section id="sec-5" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 5. Subscription Plans &amp; Monthly Token Quotas
@@ -202,13 +202,13 @@ export default function PreviewTerms() {
             {/* Section 6 */}
             <section id="sec-6" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 6. Acceptable Use &amp; Prohibited Conduct
               </h2>
               <p>You agree NOT to use the Service to:</p>
-              <ul className="list-disc list-inside space-y-1.5 pl-2 text-[#334155]">
+              <ul className="list-disc list-inside space-y-1.5 pl-2 text-[#334155] dark:text-[#CBD5E1]">
                 <li>Violate any provision of the Constitution or laws of the Islamic Republic of Pakistan.</li>
                 <li>Conduct automated scraping, bulk data extraction, or denial-of-service attacks against our databases.</li>
                 <li>Attempt to reverse-engineer, decompile, or extract the underlying model weights and algorithms.</li>
@@ -220,7 +220,7 @@ export default function PreviewTerms() {
             {/* Section 7 */}
             <section id="sec-7" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 7. Intellectual Property &amp; Public Domain Law
@@ -236,7 +236,7 @@ export default function PreviewTerms() {
             {/* Section 8 */}
             <section id="sec-8" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 8. User Uploaded Briefs &amp; License Grant
@@ -249,20 +249,20 @@ export default function PreviewTerms() {
             {/* Section 9 */}
             <section id="sec-9" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 9. SLA Commitments &amp; Platform Availability
               </h2>
               <p>
-                We target a <strong className="text-[#0F172A]">99.5% Service Uptime</strong> for active paid subscription tiers. Scheduled maintenance windows during off-peak court hours (11:00 PM – 4:00 AM PKT) will be announced in advance via dashboard notifications. We maintain automated multi-region PostgreSQL failovers to ensure zero data loss.
+                We target a <strong className="text-[#0F172A] dark:text-[#F8FAFC]">99.5% Service Uptime</strong> for active paid subscription tiers. Scheduled maintenance windows during off-peak court hours (11:00 PM – 4:00 AM PKT) will be announced in advance via dashboard notifications. We maintain automated multi-region PostgreSQL failovers to ensure zero data loss.
               </p>
             </section>
 
             {/* Section 10 */}
             <section id="sec-10" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 10. Limitation of Liability &amp; Caps
@@ -278,7 +278,7 @@ export default function PreviewTerms() {
             {/* Section 11 */}
             <section id="sec-11" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 11. Indemnification Obligations
@@ -291,20 +291,20 @@ export default function PreviewTerms() {
             {/* Section 12 */}
             <section id="sec-12" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 12. Governing Law &amp; Pakistani Jurisdiction
               </h2>
               <p>
-                These Terms shall be governed by, construed, and enforced in accordance with the laws of the <strong className="text-[#0F172A]">Islamic Republic of Pakistan</strong>. Any legal dispute, controversy, or claim arising out of or relating to these Terms shall be subject to the exclusive jurisdiction of the competent courts situated in <strong className="text-[#0F172A]">Islamabad Capital Territory</strong> or <strong className="text-[#0F172A]">Lahore, Pakistan</strong>.
+                These Terms shall be governed by, construed, and enforced in accordance with the laws of the <strong className="text-[#0F172A] dark:text-[#F8FAFC]">Islamic Republic of Pakistan</strong>. Any legal dispute, controversy, or claim arising out of or relating to these Terms shall be subject to the exclusive jurisdiction of the competent courts situated in <strong className="text-[#0F172A] dark:text-[#F8FAFC]">Islamabad Capital Territory</strong> or <strong className="text-[#0F172A] dark:text-[#F8FAFC]">Lahore, Pakistan</strong>.
               </p>
             </section>
 
             {/* Section 13 */}
             <section id="sec-13" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 13. Suspension &amp; Termination of Accounts
@@ -317,7 +317,7 @@ export default function PreviewTerms() {
             {/* Section 14 */}
             <section id="sec-14" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 14. Severability &amp; Non-Waiver
@@ -330,7 +330,7 @@ export default function PreviewTerms() {
             {/* Section 15 */}
             <section id="sec-15" className="space-y-3 scroll-mt-28">
               <h2
-                className="text-lg sm:text-xl font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
+                className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2 border-b border-[#F1F5F9] pb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 15. Amendments &amp; Contact Information
@@ -338,10 +338,10 @@ export default function PreviewTerms() {
               <p>
                 We may revise these Terms from time to time. Continued use of the platform following the effective date of updated Terms constitutes your binding acceptance. For legal inquiries regarding these Terms:
               </p>
-              <div className="p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl text-xs space-y-1.5">
-                <p><strong className="text-[#0F172A]">Entity:</strong> Majnoon Studio (Pvt.) Ltd.</p>
-                <p><strong className="text-[#0F172A]">Legal Compliance Counsel:</strong> <a href="mailto:support@alwakeelo.com" className="text-[#105B38] font-mono underline">support@alwakeelo.com</a></p>
-                <p><strong className="text-[#0F172A]">Chambers Helpline:</strong> <a href="tel:00923358341897" className="text-[#105B38] font-mono">+92 335 834 1897</a></p>
+              <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl text-xs space-y-1.5">
+                <p><strong className="text-[#0F172A] dark:text-[#F8FAFC]">Entity:</strong> Majnoon Studio (Pvt.) Ltd.</p>
+                <p><strong className="text-[#0F172A] dark:text-[#F8FAFC]">Legal Compliance Counsel:</strong> <a href="mailto:support@alwakeelo.com" className="text-[#105B38] font-mono underline">support@alwakeelo.com</a></p>
+                <p><strong className="text-[#0F172A] dark:text-[#F8FAFC]">Chambers Helpline:</strong> <a href="tel:00923358341897" className="text-[#105B38] font-mono">+92 335 834 1897</a></p>
               </div>
             </section>
           </div>

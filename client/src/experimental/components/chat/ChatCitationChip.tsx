@@ -49,10 +49,10 @@ export const ChatCitationChip: React.FC<ChatCitationChipProps> = ({
       className={cn(
         "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-mono transition-all duration-150 border select-none group cursor-pointer",
         status === "verified"
-          ? "bg-[#1A1A1A]/5 text-[#1A1A1A] border-[#1A1A1A]/20 hover:bg-[#2D2D2D]/10 hover:border-[#1A1A1A]/60 shadow-sm shadow-sm"
+          ? "bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 text-[#1A1A1A] dark:text-[#F8FAFC] border-[#1A1A1A]/20 dark:border-[#1E2D44] hover:bg-[#2D2D2D]/10 hover:border-[#1A1A1A]/60 shadow-sm shadow-sm"
           : status === "loading"
-          ? "bg-[#F5F4F2] text-[#666666] border-[#E5E4E2]/60"
-          : "bg-[#FAFAF9] text-[#4A4A4A] border-[#E5E4E2] hover:bg-[#F5F4F2] hover:text-[#1A1A1A]",
+          ? "bg-[#F5F4F2] dark:bg-[#0B131E] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] border-[#E5E4E2] dark:border-[#1E2D44]/60"
+          : "bg-[#FAFAF9] text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] border-[#E5E4E2] dark:border-[#1E2D44] hover:bg-[#F5F4F2] dark:bg-[#0B131E] hover:text-[#1A1A1A] dark:text-[#F8FAFC]",
         className
       )}
       title={
@@ -62,11 +62,11 @@ export const ChatCitationChip: React.FC<ChatCitationChipProps> = ({
       }
     >
       {status === "loading" ? (
-        <Loader2 className="w-2.5 h-2.5 animate-spin text-[#666666]" />
+        <Loader2 className="w-2.5 h-2.5 animate-spin text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]" />
       ) : status === "verified" ? (
-        <ShieldCheck className="w-3 h-3 text-[#1A1A1A] shrink-0" />
+        <ShieldCheck className="w-3 h-3 text-[#1A1A1A] dark:text-[#F8FAFC] shrink-0" />
       ) : (
-        <Scale className="w-2.5 h-2.5 text-[#1A1A1A] shrink-0" />
+        <Scale className="w-2.5 h-2.5 text-[#1A1A1A] dark:text-[#F8FAFC] shrink-0" />
       )}
       <span className="font-bold">{citation}</span>
       <ExternalLink className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100 transition-opacity" />

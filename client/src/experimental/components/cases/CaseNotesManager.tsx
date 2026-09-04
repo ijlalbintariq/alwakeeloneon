@@ -79,8 +79,8 @@ export const CaseNotesManager: React.FC<CaseNotesManagerProps> = ({
   return (
     <div className="space-y-4">
       {/* Add Note Form */}
-      <div className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-3">
-        <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+      <div className="p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-3">
+        <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
           <StickyNote className="w-4 h-4 text-[#105B38]" />
           <span>Record Chambers Strategy & Client Conference Memo</span>
         </h3>
@@ -90,7 +90,7 @@ export const CaseNotesManager: React.FC<CaseNotesManagerProps> = ({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={3}
-          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 text-xs text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:border-[#105B38] focus:bg-white resize-none leading-relaxed transition-all"
+          className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl p-3 text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] resize-none leading-relaxed transition-all"
         />
 
         <div className="flex justify-end">
@@ -112,12 +112,12 @@ export const CaseNotesManager: React.FC<CaseNotesManagerProps> = ({
 
       {/* Notes List */}
       {sortedNotes.length === 0 ? (
-        <div className="p-8 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] text-center space-y-2">
-          <StickyNote className="w-8 h-8 text-[#94A3B8] mx-auto" />
-          <p className="text-xs font-bold text-[#0F172A]">
+        <div className="p-8 rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-center space-y-2">
+          <StickyNote className="w-8 h-8 text-[#94A3B8] dark:text-[#475569] mx-auto" />
+          <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
             No chambers notes recorded for this matter yet.
           </p>
-          <p className="text-xs text-[#64748B]">
+          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
             Document key arguments, conference notes, and internal instructions above.
           </p>
         </div>
@@ -126,13 +126,13 @@ export const CaseNotesManager: React.FC<CaseNotesManagerProps> = ({
           {sortedNotes.map((note) => (
             <div
               key={note.id}
-              className="p-4 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/40 hover:shadow-xs transition-all space-y-2 flex flex-col justify-between"
+              className="p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/40 hover:shadow-xs transition-all space-y-2 flex flex-col justify-between"
             >
-              <p className="text-xs sm:text-sm text-[#334155] whitespace-pre-wrap leading-relaxed">
+              <p className="text-xs sm:text-sm text-[#334155] dark:text-[#CBD5E1] whitespace-pre-wrap leading-relaxed">
                 {note.content}
               </p>
 
-              <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0] text-xs text-[#64748B] font-mono">
+              <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-[#105B38]" />
                   {new Date(note.createdAt).toLocaleString(undefined, {
@@ -148,7 +148,7 @@ export const CaseNotesManager: React.FC<CaseNotesManagerProps> = ({
                   type="button"
                   onClick={() => deleteNoteMutation.mutate(note.id)}
                   disabled={deleteNoteMutation.isPending}
-                  className="p-1.5 rounded-lg text-[#64748B] hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:bg-rose-500/10 transition-colors"
                   title="Remove note"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

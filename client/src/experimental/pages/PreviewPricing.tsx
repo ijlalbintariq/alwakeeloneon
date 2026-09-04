@@ -495,14 +495,14 @@ export default function PreviewPricing() {
   };
 
   return (
-    <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#105B38]/20 selection:text-[#0F172A]">
+    <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] flex flex-col font-sans selection:bg-[#105B38]/20 selection:text-[#0F172A] dark:text-[#F8FAFC]">
       {/* 1. Public Top Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-white dark:bg-[#131E2E]/95 backdrop-blur-md border-b border-[#E2E8F0] dark:border-[#1E2D44] px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/preview" className="flex items-center gap-2.5 group">
             <img src="/logo.svg" alt="Al Wakeelo" className="w-9 h-9 object-contain transition-transform group-hover:scale-105" />
             <div>
-              <span className="text-base font-bold tracking-tight text-[#0F172A] font-serif block">
+              <span className="text-base font-bold tracking-tight text-[#0F172A] dark:text-[#F8FAFC] font-serif block">
                 AL WAKEELO
               </span>
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#105B38] block -mt-1 font-semibold">
@@ -510,7 +510,7 @@ export default function PreviewPricing() {
               </span>
             </div>
           </Link>
-          <span className="hidden md:inline-block text-xs font-mono px-2 py-0.5 rounded-full bg-[#EBF5F0] text-[#105B38] border border-[#A3D4BC] font-semibold">
+          <span className="hidden md:inline-block text-xs font-mono px-2 py-0.5 rounded-full bg-[#EBF5F0] dark:bg-[#105B38]/20 text-[#105B38] border border-[#A3D4BC] dark:border-[#10B981]/30 font-semibold">
             PREVIEW MODE
           </span>
         </div>
@@ -536,7 +536,7 @@ export default function PreviewPricing() {
         <div className="flex items-center gap-3">
           <Link
             href="/preview/auth"
-            className="text-xs font-bold text-[#334155] hover:text-[#105B38] px-3 py-2 transition-colors"
+            className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1] hover:text-[#105B38] px-3 py-2 transition-colors"
           >
             Sign In
           </Link>
@@ -552,12 +552,12 @@ export default function PreviewPricing() {
 
       {/* 2. Hero Section */}
       <section className="px-4 sm:px-8 pt-12 pb-8 max-w-7xl mx-auto w-full text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EBF5F0] border border-[#A3D4BC] text-[#105B38] text-xs font-mono font-semibold mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 text-[#105B38] text-xs font-mono font-semibold mb-4">
           <Sparkles className="w-3.5 h-3.5" />
           <span>TRANSPARENT PAKISTANI RUPEE PRICING · NO HIDDEN FEES</span>
         </div>
 
-        <h1 className="text-3xl sm:text-5xl font-extrabold font-serif tracking-tight text-[#0F172A] max-w-3xl mx-auto mb-4">
+        <h1 className="text-3xl sm:text-5xl font-extrabold font-serif tracking-tight text-[#0F172A] dark:text-[#F8FAFC] max-w-3xl mx-auto mb-4">
           Chambers Subscriptions & AI Legal Intelligence Plans
         </h1>
         <p className="text-sm sm:text-base text-[#475569] max-w-2xl mx-auto mb-8">
@@ -566,14 +566,14 @@ export default function PreviewPricing() {
         </p>
 
         {/* Billing Cycle Selector Switch */}
-        <div className="inline-flex items-center p-1.5 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm mb-10 max-w-md mx-auto">
+        <div className="inline-flex items-center p-1.5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-sm mb-10 max-w-md mx-auto">
           <button
             type="button"
             onClick={() => setCycle("monthly")}
             className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
               cycle === "monthly"
                 ? "bg-[#105B38] text-white shadow-sm"
-                : "text-[#64748B] hover:text-[#0F172A]"
+                : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
             }`}
           >
             Monthly Retainer
@@ -585,15 +585,15 @@ export default function PreviewPricing() {
             className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
               cycle === "quarterly"
                 ? "bg-[#105B38] text-white shadow-sm"
-                : "text-[#64748B] hover:text-[#0F172A]"
+                : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
             }`}
           >
             <span>Quarterly (3 Mos)</span>
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
                 cycle === "quarterly"
-                  ? "bg-white/20 text-white"
-                  : "bg-[#EBF5F0] text-[#105B38]"
+                  ? "bg-white dark:bg-[#131E2E]/20 text-white"
+                  : "bg-[#EBF5F0] dark:bg-[#105B38]/20 text-[#105B38]"
               }`}
             >
               SAVE 10%
@@ -606,15 +606,15 @@ export default function PreviewPricing() {
             className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
               cycle === "yearly"
                 ? "bg-[#105B38] text-white shadow-sm"
-                : "text-[#64748B] hover:text-[#0F172A]"
+                : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
             }`}
           >
             <span>Annual Chambers</span>
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
                 cycle === "yearly"
-                  ? "bg-white/20 text-white"
-                  : "bg-[#EBF5F0] text-[#105B38]"
+                  ? "bg-white dark:bg-[#131E2E]/20 text-white"
+                  : "bg-[#EBF5F0] dark:bg-[#105B38]/20 text-[#105B38]"
               }`}
             >
               SAVE 20%
@@ -632,8 +632,8 @@ export default function PreviewPricing() {
                 key={plan.id}
                 className={`relative rounded-2xl p-5 flex flex-col justify-between transition-all duration-200 ${
                   plan.popular
-                    ? "bg-white border-2 border-[#105B38] shadow-lg shadow-[#105B38]/10 ring-2 ring-[#105B38]/20"
-                    : "bg-white border border-[#E2E8F0] shadow-sm hover:border-[#CBD5E1]"
+                    ? "bg-white dark:bg-[#131E2E] border-2 border-[#105B38] shadow-lg shadow-[#105B38]/10 ring-2 ring-[#105B38]/20"
+                    : "bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-sm hover:border-[#CBD5E1]"
                 }`}
               >
                 {plan.popular && (
@@ -646,24 +646,24 @@ export default function PreviewPricing() {
                 <div>
                   {/* Top Metadata */}
                   <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-base font-bold text-[#0F172A] font-serif">
+                    <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] font-serif">
                       {plan.name}
                     </h2>
                     {plan.badge && (
-                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#F1F5F9] text-[#475569] border border-[#E2E8F0]">
+                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                         {plan.badge}
                       </span>
                     )}
                   </div>
 
-                  <p className="text-xs text-[#64748B] min-h-[36px] mb-4 leading-relaxed">
+                  <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] min-h-[36px] mb-4 leading-relaxed">
                     {plan.description}
                   </p>
 
                   {/* Price Tag */}
                   <div className="mb-4 pb-4 border-b border-[#F1F5F9]">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-black font-mono text-[#0F172A] tracking-tight">
+                      <span className="text-2xl font-black font-mono text-[#0F172A] dark:text-[#F8FAFC] tracking-tight">
                         {plan.monthlyPricePkr === 0
                           ? "PKR 0"
                           : `PKR ${
@@ -672,31 +672,31 @@ export default function PreviewPricing() {
                                 : pricing.perMonth.toLocaleString("en-US")
                             }`}
                       </span>
-                      <span className="text-xs text-[#64748B] font-medium">/mo</span>
+                      <span className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">/mo</span>
                     </div>
 
                     {cycle !== "monthly" && plan.monthlyPricePkr > 0 && (
                       <p className="text-[11px] text-[#105B38] font-mono mt-1 font-semibold flex items-center justify-between">
                         <span>Billed {pricing.label}</span>
                         {pricing.savings > 0 && (
-                          <span className="text-[10px] bg-[#EBF5F0] px-1.5 py-0.2 rounded font-bold">
+                          <span className="text-[10px] bg-[#EBF5F0] dark:bg-[#105B38]/20 px-1.5 py-0.2 rounded font-bold">
                             Save PKR {pricing.savings.toLocaleString("en-US")}
                           </span>
                         )}
                       </p>
                     )}
 
-                    <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-[#475569] bg-[#F8FAFC] p-2 rounded-lg border border-[#E2E8F0]">
+                    <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-[#475569] bg-[#F8FAFC] dark:bg-[#0B131E] p-2 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44]">
                       <span className="flex items-center gap-1">
                         <Users className="w-3.5 h-3.5 text-[#105B38]" />
                         {plan.seats}
                       </span>
-                      <span className="font-semibold text-[#0F172A]">{plan.aiActions}</span>
+                      <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{plan.aiActions}</span>
                     </div>
                   </div>
 
                   {/* Feature Bullets */}
-                  <ul className="space-y-2.5 mb-6 text-xs text-[#334155]">
+                  <ul className="space-y-2.5 mb-6 text-xs text-[#334155] dark:text-[#CBD5E1]">
                     {plan.keyFeatures.map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-2">
                         <Check className="w-3.5 h-3.5 text-[#105B38] shrink-0 mt-0.5" />
@@ -716,7 +716,7 @@ export default function PreviewPricing() {
                         ? "bg-[#105B38] hover:bg-[#0D4A2E] text-white"
                         : plan.id === "enterprise"
                         ? "bg-[#0F172A] hover:bg-[#1E293B] text-white"
-                        : "bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F172A]"
+                        : "bg-[#F1F5F9] dark:bg-[#1E2D44] hover:bg-[#E2E8F0] text-[#0F172A] dark:text-[#F8FAFC]"
                     }`}
                   >
                     <span>{plan.ctaText}</span>
@@ -732,28 +732,28 @@ export default function PreviewPricing() {
       {/* 4. Comprehensive Feature Comparison Matrix (20+ Capabilities) */}
       <section className="px-4 sm:px-8 py-16 max-w-7xl mx-auto w-full">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EBF5F0] border border-[#A3D4BC] text-[#105B38] text-xs font-mono font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 text-[#105B38] text-xs font-mono font-semibold mb-3">
             <Layers className="w-3.5 h-3.5" />
             <span>20+ SPECIALIZED CAPABILITIES</span>
           </div>
-          <h2 className="text-2xl sm:text-4xl font-extrabold font-serif text-[#0F172A] tracking-tight">
+          <h2 className="text-2xl sm:text-4xl font-extrabold font-serif text-[#0F172A] dark:text-[#F8FAFC] tracking-tight">
             Detailed Chamber Feature Matrix
           </h2>
-          <p className="text-sm text-[#64748B] max-w-2xl mx-auto mt-2">
+          <p className="text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-2xl mx-auto mt-2">
             Compare all 5 tiers side-by-side to choose the exact operational scope your practice requires.
           </p>
         </div>
 
         {/* Feature Matrix Table */}
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#0F172A]">
+                <tr className="bg-[#F8FAFC] dark:bg-[#0B131E] border-b border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC]">
                   <th className="p-4 font-bold font-serif text-sm w-1/3">Feature / Capability</th>
                   <th className="p-4 font-bold text-center">Starter (PKR 0)</th>
                   <th className="p-4 font-bold text-center">Standard (PKR 500)</th>
-                  <th className="p-4 font-bold text-center bg-[#EBF5F0]/60 text-[#105B38]">
+                  <th className="p-4 font-bold text-center bg-[#EBF5F0] dark:bg-[#105B38]/20/60 text-[#105B38]">
                     Pro (PKR 1,000)
                   </th>
                   <th className="p-4 font-bold text-center">Chamber (PKR 4,500)</th>
@@ -763,7 +763,7 @@ export default function PreviewPricing() {
               <tbody className="divide-y divide-[#E2E8F0]">
                 {Array.from(new Set(FEATURE_MATRIX.map((r) => r.category))).map((cat) => (
                   <React.Fragment key={cat}>
-                    <tr className="bg-[#F1F5F9]/80">
+                    <tr className="bg-[#F1F5F9] dark:bg-[#1E2D44]/80">
                       <td
                         colSpan={6}
                         className="px-4 py-2.5 font-bold font-mono text-[11px] text-[#105B38] uppercase tracking-wider"
@@ -772,7 +772,7 @@ export default function PreviewPricing() {
                       </td>
                     </tr>
                     {FEATURE_MATRIX.filter((r) => r.category === cat).map((row, idx) => (
-                      <tr key={idx} className="hover:bg-[#F8FAFC] transition-colors">
+                      <tr key={idx} className="hover:bg-[#F8FAFC] dark:bg-[#0B131E] transition-colors">
                         <td className="p-4 font-medium text-[#1E293B] flex items-center gap-1.5">
                           <span>{row.name}</span>
                         </td>
@@ -783,7 +783,7 @@ export default function PreviewPricing() {
                             row.starter ? (
                               <Check className="w-4 h-4 text-[#105B38] mx-auto" />
                             ) : (
-                              <X className="w-4 h-4 text-[#94A3B8] mx-auto opacity-50" />
+                              <X className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mx-auto opacity-50" />
                             )
                           ) : (
                             <span className="font-medium">{row.starter}</span>
@@ -796,7 +796,7 @@ export default function PreviewPricing() {
                             row.standard ? (
                               <Check className="w-4 h-4 text-[#105B38] mx-auto" />
                             ) : (
-                              <X className="w-4 h-4 text-[#94A3B8] mx-auto opacity-50" />
+                              <X className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mx-auto opacity-50" />
                             )
                           ) : (
                             <span className="font-medium">{row.standard}</span>
@@ -804,12 +804,12 @@ export default function PreviewPricing() {
                         </td>
 
                         {/* Pro */}
-                        <td className="p-4 text-center bg-[#EBF5F0]/20 text-[#0F172A] font-semibold">
+                        <td className="p-4 text-center bg-[#EBF5F0] dark:bg-[#105B38]/20/20 text-[#0F172A] dark:text-[#F8FAFC] font-semibold">
                           {typeof row.pro === "boolean" ? (
                             row.pro ? (
                               <Check className="w-4 h-4 text-[#105B38] mx-auto" />
                             ) : (
-                              <X className="w-4 h-4 text-[#94A3B8] mx-auto opacity-50" />
+                              <X className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mx-auto opacity-50" />
                             )
                           ) : (
                             <span>{row.pro}</span>
@@ -817,12 +817,12 @@ export default function PreviewPricing() {
                         </td>
 
                         {/* Chamber */}
-                        <td className="p-4 text-center text-[#0F172A] font-medium">
+                        <td className="p-4 text-center text-[#0F172A] dark:text-[#F8FAFC] font-medium">
                           {typeof row.chamber === "boolean" ? (
                             row.chamber ? (
                               <Check className="w-4 h-4 text-[#105B38] mx-auto" />
                             ) : (
-                              <X className="w-4 h-4 text-[#94A3B8] mx-auto opacity-50" />
+                              <X className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mx-auto opacity-50" />
                             )
                           ) : (
                             <span>{row.chamber}</span>
@@ -830,12 +830,12 @@ export default function PreviewPricing() {
                         </td>
 
                         {/* Enterprise */}
-                        <td className="p-4 text-center text-[#0F172A] font-semibold">
+                        <td className="p-4 text-center text-[#0F172A] dark:text-[#F8FAFC] font-semibold">
                           {typeof row.enterprise === "boolean" ? (
                             row.enterprise ? (
                               <Check className="w-4 h-4 text-[#105B38] mx-auto" />
                             ) : (
-                              <X className="w-4 h-4 text-[#94A3B8] mx-auto opacity-50" />
+                              <X className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mx-auto opacity-50" />
                             )
                           ) : (
                             <span className="text-[#105B38] font-bold">{row.enterprise}</span>
@@ -855,7 +855,7 @@ export default function PreviewPricing() {
       <section className="px-4 sm:px-8 py-10 max-w-7xl mx-auto w-full">
         <div className="rounded-3xl bg-gradient-to-r from-[#0F172A] via-[#1E293B] to-[#105B38] text-white p-8 sm:p-12 shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-mono mb-4 border border-white/20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-[#131E2E]/10 text-white text-xs font-mono mb-4 border border-white/20">
               <Building2 className="w-3.5 h-3.5 text-[#C5A880]" />
               <span>FOR BAR COUNCILS, HIGH COURT ASSOCIATIONS & CORPORATE LEGAL</span>
             </div>
@@ -870,7 +870,7 @@ export default function PreviewPricing() {
           <button
             type="button"
             onClick={() => setEnterpriseModalOpen(true)}
-            className="shrink-0 bg-white hover:bg-slate-100 text-[#0F172A] px-6 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center gap-2"
+            className="shrink-0 bg-white dark:bg-[#131E2E] hover:bg-slate-100 text-[#0F172A] dark:text-[#F8FAFC] px-6 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center gap-2"
           >
             <MessageSquare className="w-4 h-4 text-[#105B38]" />
             <span>Request Enterprise Consultation</span>
@@ -881,14 +881,14 @@ export default function PreviewPricing() {
       {/* 6. FAQ Accordion Section */}
       <section className="px-4 sm:px-8 py-16 max-w-4xl mx-auto w-full">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EBF5F0] border border-[#A3D4BC] text-[#105B38] text-xs font-mono font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 text-[#105B38] text-xs font-mono font-semibold mb-3">
             <HelpCircle className="w-3.5 h-3.5" />
             <span>FREQUENTLY ASKED QUESTIONS</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[#0F172A] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[#0F172A] dark:text-[#F8FAFC] tracking-tight">
             Chamber Subscriptions & Billing FAQs
           </h2>
-          <p className="text-sm text-[#64748B] mt-2">
+          <p className="text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-2">
             Everything you need to know about payments, multi-advocate quotas, and data security.
           </p>
         </div>
@@ -899,16 +899,16 @@ export default function PreviewPricing() {
             return (
               <div
                 key={idx}
-                className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden transition-all"
+                className="bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-sm overflow-hidden transition-all"
               >
                 <button
                   type="button"
                   onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-serif font-bold text-sm sm:text-base text-[#0F172A] hover:text-[#105B38] transition-colors"
+                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-serif font-bold text-sm sm:text-base text-[#0F172A] dark:text-[#F8FAFC] hover:text-[#105B38] transition-colors"
                 >
                   <span>{faq.q}</span>
                   <ChevronDown
-                    className={`w-4 h-4 text-[#64748B] shrink-0 transition-transform duration-200 ${
+                    className={`w-4 h-4 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] shrink-0 transition-transform duration-200 ${
                       isOpen ? "rotate-180 text-[#105B38]" : ""
                     }`}
                   />
@@ -925,11 +925,11 @@ export default function PreviewPricing() {
       </section>
 
       {/* 7. Footer */}
-      <footer className="mt-auto bg-white border-t border-[#E2E8F0] px-4 sm:px-8 py-8 text-xs text-[#64748B]">
+      <footer className="mt-auto bg-white dark:bg-[#131E2E] border-t border-[#E2E8F0] dark:border-[#1E2D44] px-4 sm:px-8 py-8 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Scale className="w-4 h-4 text-[#105B38]" />
-            <span className="font-bold text-[#0F172A] font-serif">AL WAKEELO</span>
+            <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC] font-serif">AL WAKEELO</span>
             <span>· Pakistan's Legal AI Workstation</span>
           </div>
           <div className="flex items-center gap-6">
@@ -951,26 +951,26 @@ export default function PreviewPricing() {
 
       {/* 8. Enterprise Quote Modal */}
       <Dialog open={enterpriseModalOpen} onOpenChange={(open) => !open && resetQuoteModal()}>
-        <DialogContent className="sm:max-w-lg bg-white text-[#0F172A] p-6 max-h-[90vh] overflow-y-auto border-[#E2E8F0]">
+        <DialogContent className="sm:max-w-lg bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] p-6 max-h-[90vh] overflow-y-auto border-[#E2E8F0] dark:border-[#1E2D44]">
           <DialogHeader>
             <div className="flex items-center gap-2 text-[#105B38] font-mono text-xs font-semibold mb-1">
               <Building2 className="w-4 h-4" />
               <span>CUSTOM CHAMBERS ENTERPRISE SOLUTION</span>
             </div>
-            <DialogTitle className="text-xl font-bold font-serif text-[#0F172A]">
+            <DialogTitle className="text-xl font-bold font-serif text-[#0F172A] dark:text-[#F8FAFC]">
               Request Enterprise Quotation
             </DialogTitle>
-            <DialogDescription className="text-xs text-[#64748B]">
+            <DialogDescription className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               For High Court bar associations, institutional legal departments, and multi-partner firms.
             </DialogDescription>
           </DialogHeader>
 
           {quoteSubmitted ? (
             <div className="py-6 text-center space-y-4">
-              <div className="w-14 h-14 rounded-full bg-[#EBF5F0] border-2 border-[#A3D4BC] flex items-center justify-center mx-auto text-[#105B38]">
+              <div className="w-14 h-14 rounded-full bg-[#EBF5F0] dark:bg-[#105B38]/20 border-2 border-[#A3D4BC] dark:border-[#10B981]/30 flex items-center justify-center mx-auto text-[#105B38]">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
-              <h3 className="text-lg font-bold font-serif text-[#0F172A]">
+              <h3 className="text-lg font-bold font-serif text-[#0F172A] dark:text-[#F8FAFC]">
                 Quotation Request Dispatched!
               </h3>
               <p className="text-xs text-[#475569] leading-relaxed max-w-sm mx-auto">
@@ -992,7 +992,7 @@ export default function PreviewPricing() {
             <form onSubmit={handleQuoteSubmit} className="space-y-4 mt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-[#334155] block mb-1">
+                  <label className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                     Counsel Full Name *
                   </label>
                   <input
@@ -1001,11 +1001,11 @@ export default function PreviewPricing() {
                     value={quoteName}
                     onChange={(e) => setQuoteName(e.target.value)}
                     placeholder="Adv. Muhammad Tariq"
-                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-[#334155] block mb-1">
+                  <label className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                     Chamber / Firm Name *
                   </label>
                   <input
@@ -1014,14 +1014,14 @@ export default function PreviewPricing() {
                     value={quoteChamber}
                     onChange={(e) => setQuoteChamber(e.target.value)}
                     placeholder="Tariq & Co. Legal Chambers"
-                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-[#334155] block mb-1">
+                  <label className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                     Official Email *
                   </label>
                   <input
@@ -1030,11 +1030,11 @@ export default function PreviewPricing() {
                     value={quoteEmail}
                     onChange={(e) => setQuoteEmail(e.target.value)}
                     placeholder="tariq@chambers.pk"
-                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-[#334155] block mb-1">
+                  <label className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                     Contact / WhatsApp No. *
                   </label>
                   <input
@@ -1043,20 +1043,20 @@ export default function PreviewPricing() {
                     value={quotePhone}
                     onChange={(e) => setQuotePhone(e.target.value)}
                     placeholder="+92 300 1234567"
-                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-[#334155] block mb-1">
+                  <label className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                     Estimated Advocate Seats
                   </label>
                   <select
                     value={quoteSeats}
                     onChange={(e) => setQuoteSeats(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38] bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38] bg-white dark:bg-[#131E2E]"
                   >
                     <option value="5-10">5 - 10 Advocates</option>
                     <option value="10-25">10 - 25 Advocates</option>
@@ -1065,13 +1065,13 @@ export default function PreviewPricing() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-[#334155] block mb-1">
+                  <label className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                     Primary Jurisdiction Bench
                   </label>
                   <select
                     value={quoteCourt}
                     onChange={(e) => setQuoteCourt(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38] bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38] bg-white dark:bg-[#131E2E]"
                   >
                     <option value="Supreme Court of Pakistan">Supreme Court of Pakistan</option>
                     <option value="Lahore High Court">Lahore High Court</option>
@@ -1084,7 +1084,7 @@ export default function PreviewPricing() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#334155] block mb-1">
+                <label className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                   Custom Requirements / Notes
                 </label>
                 <textarea
@@ -1092,7 +1092,7 @@ export default function PreviewPricing() {
                   value={quoteNotes}
                   onChange={(e) => setQuoteNotes(e.target.value)}
                   placeholder="Mention any specific needs: On-premise deployment, custom vector storage, API access, or data privacy requirements..."
-                  className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44] text-xs focus:outline-none focus:ring-1 focus:ring-[#105B38]"
                 />
               </div>
 
@@ -1100,7 +1100,7 @@ export default function PreviewPricing() {
                 <button
                   type="button"
                   onClick={resetQuoteModal}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#0F172A]"
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   Cancel
                 </button>

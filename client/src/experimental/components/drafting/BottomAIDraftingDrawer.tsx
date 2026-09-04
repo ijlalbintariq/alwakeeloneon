@@ -300,7 +300,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
   return (
     <div
       className={cn(
-        "w-full bg-white border-t border-[#E2E8F0] shadow-xl transition-all duration-300 ease-out z-30 flex flex-col shrink-0 select-none",
+        "w-full bg-white dark:bg-[#131E2E] border-t border-[#E2E8F0] dark:border-[#1E2D44] shadow-xl transition-all duration-300 ease-out z-30 flex flex-col shrink-0 select-none",
         isOpen
           ? isExpandedFull
             ? "h-[540px]"
@@ -309,22 +309,22 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
       )}
     >
       {/* ── Top Bar / Slide Handle (Always Visible) ────────────────────────── */}
-      <div className="h-12 sm:h-14 px-3 sm:px-4 bg-white border-b border-[#E2E8F0] flex items-center justify-between gap-3 shrink-0">
+      <div className="h-12 sm:h-14 px-3 sm:px-4 bg-white dark:bg-[#131E2E] border-b border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between gap-3 shrink-0">
         {/* Left: AI Indicator & Tabs when Open */}
         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto custom-scrollbar">
           <button
             type="button"
             onClick={onToggle}
-            className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-[#F1F5F9] transition-colors text-left shrink-0"
+            className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors text-left shrink-0"
             title={isOpen ? "Collapse AI Drafting Panel" : "Slide Up AI Drafting Panel"}
           >
-            <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200 shrink-0">
+            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="hidden sm:block">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-[#0F172A]">AI Drafting Co-Pilot</span>
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-[#105B38] border border-emerald-200">
+                <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">AI Drafting Co-Pilot</span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                   Online
                 </span>
               </div>
@@ -332,15 +332,15 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
           </button>
 
           {isOpen ? (
-            <div className="flex items-center gap-1 bg-[#F8FAFC] p-0.5 rounded-xl border border-[#E2E8F0] shrink-0">
+            <div className="flex items-center gap-1 bg-[#F8FAFC] dark:bg-[#0B131E] p-0.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab("chat")}
                 className={cn(
                   "px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors",
                   activeTab === "chat"
-                    ? "bg-white text-[#0F172A] shadow-xs"
-                    : "text-[#64748B] hover:text-[#0F172A]"
+                    ? "bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] shadow-xs"
+                    : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 )}
               >
                 <Bot className="w-3.5 h-3.5" />
@@ -353,8 +353,8 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                 className={cn(
                   "px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors",
                   activeTab === "compliance"
-                    ? "bg-white text-[#0F172A] shadow-xs"
-                    : "text-[#64748B] hover:text-[#0F172A]"
+                    ? "bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] shadow-xs"
+                    : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 )}
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
@@ -367,8 +367,8 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                 className={cn(
                   "px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors",
                   activeTab === "clauses"
-                    ? "bg-white text-[#0F172A] shadow-xs"
-                    : "text-[#64748B] hover:text-[#0F172A]"
+                    ? "bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] shadow-xs"
+                    : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 )}
               >
                 <Scale className="w-3.5 h-3.5" />
@@ -383,7 +383,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                   key={idx}
                   type="button"
                   onClick={() => handleSend(chip.prompt)}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[#F8FAFC] hover:bg-emerald-50 hover:text-[#105B38] border border-[#E2E8F0] hover:border-emerald-200 text-[#334155] transition-colors whitespace-nowrap"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-[#105B38] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-emerald-200 dark:border-emerald-500/20 text-[#334155] dark:text-[#CBD5E1] transition-colors whitespace-nowrap"
                 >
                   + {chip.label}
                 </button>
@@ -407,7 +407,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                   }
                 }}
                 placeholder="Give command to draft or amend (e.g. 'Draft stay grounds under Order 39', 'Add bail grounds')..."
-                className="w-full h-8 sm:h-9 pl-3 pr-8 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:bg-white transition-colors"
+                className="w-full h-8 sm:h-9 pl-3 pr-8 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] transition-colors"
               />
               <button
                 type="button"
@@ -426,14 +426,14 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                 className={cn(
                   "p-2 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-colors shrink-0",
                   voice.isRecording
-                    ? "bg-rose-50 border-rose-300 text-rose-700 animate-pulse"
-                    : "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+                    ? "bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-400 animate-pulse"
+                    : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44]"
                 )}
                 title={voice.isRecording ? "Stop voice dictation" : "Dictate drafting command"}
               >
                 {voice.isRecording ? (
                   <>
-                    <Square className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
+                    <Square className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 fill-rose-600" />
                     <span className="text-[10px] font-mono font-bold">
                       {formatDuration(voice.duration)}
                     </span>
@@ -447,7 +447,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
             <button
               type="button"
               onClick={onToggle}
-              className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 transition-colors shrink-0"
+              className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 transition-colors shrink-0"
               title="Slide Up AI Drafting Studio"
             >
               <ChevronUp className="w-4 h-4" />
@@ -459,7 +459,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
             <button
               type="button"
               onClick={() => setIsExpandedFull(!isExpandedFull)}
-              className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+              className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors"
               title={isExpandedFull ? "Restore Height" : "Maximize Drawer"}
             >
               {isExpandedFull ? (
@@ -472,7 +472,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
             <button
               type="button"
               onClick={onToggle}
-              className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+              className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors"
               title="Slide Down / Collapse"
             >
               <ChevronDown className="w-4 h-4" />
@@ -483,7 +483,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
 
       {/* ── Sliding Panel Expanded Content ─────────────────────────────────── */}
       {isOpen && (
-        <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
+        <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC] dark:bg-[#0B131E]">
           {/* TAB 1: Chat & Interactive Drafting Co-pilot */}
           {activeTab === "chat" && (
             <div className="flex-1 flex flex-col min-h-0">
@@ -500,7 +500,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                       msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
                     )}
                   >
-                    <div className="flex items-center gap-1.5 mb-1 px-1 text-[11px] text-[#64748B]">
+                    <div className="flex items-center gap-1.5 mb-1 px-1 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       {msg.role === "assistant" ? (
                         <>
                           <Bot className="w-3.5 h-3.5 text-[#105B38]" />
@@ -509,7 +509,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                           </span>
                         </>
                       ) : (
-                        <span className="font-bold text-[#0F172A]">Counsel Command</span>
+                        <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">Counsel Command</span>
                       )}
                       <span>·</span>
                       <span>{msg.timestamp}</span>
@@ -520,14 +520,14 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                         "p-3.5 rounded-2xl text-xs leading-relaxed border shadow-xs",
                         msg.role === "user"
                           ? "bg-[#105B38] text-white border-[#105B38] rounded-tr-xs"
-                          : "bg-white text-[#0F172A] border-[#E2E8F0] rounded-tl-xs w-full"
+                          : "bg-white dark:bg-[#131E2E] text-[#0F172A] dark:text-[#F8FAFC] border-[#E2E8F0] dark:border-[#1E2D44] rounded-tl-xs w-full"
                       )}
                     >
                       <p className="whitespace-pre-wrap">{msg.text}</p>
 
                       {/* Render Insertable Clause Card */}
                       {msg.insertableClause && (
-                        <div className="mt-3 pt-3 border-t border-[#E2E8F0] space-y-2">
+                        <div className="mt-3 pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-[11px] font-bold text-[#105B38] flex items-center gap-1">
                               <Scale className="w-3 h-3" />
@@ -538,11 +538,11 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleCopy(msg.id, msg.insertableClause!)}
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#334155] text-[10px] font-semibold transition-colors"
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#F1F5F9] dark:bg-[#1E2D44] hover:bg-[#E2E8F0] text-[#334155] dark:text-[#CBD5E1] text-[10px] font-semibold transition-colors"
                               >
                                 {copiedId === msg.id ? (
                                   <>
-                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                     <span>Copied</span>
                                   </>
                                 ) : (
@@ -568,7 +568,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => onReplaceDocument(msg.insertableClause!)}
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 text-[10px] font-bold transition-colors"
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 text-[10px] font-bold transition-colors"
                                 >
                                   <RefreshCw className="w-3 h-3" />
                                   <span>Replace Canvas</span>
@@ -577,7 +577,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                             </div>
                           </div>
 
-                          <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] font-serif text-xs text-[#1E293B] leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">
+                          <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] font-serif text-xs text-[#1E293B] leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">
                             {msg.insertableClause}
                           </div>
                         </div>
@@ -587,7 +587,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                 ))}
 
                 {isGenerating && (
-                  <div className="flex items-center gap-2 p-3 rounded-2xl bg-white border border-[#E2E8F0] text-xs text-[#105B38] w-fit shadow-xs animate-pulse">
+                  <div className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#105B38] w-fit shadow-xs animate-pulse">
                     <Loader2 className="w-4 h-4 animate-spin text-[#105B38]" />
                     <span className="font-semibold">
                       Formulating Pakistani legal grounds & statutory citations...
@@ -597,8 +597,8 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
               </div>
 
               {/* Quick Action Suggestion Chips Bar */}
-              <div className="px-4 py-1.5 bg-white border-t border-[#E2E8F0] flex items-center gap-1.5 overflow-x-auto custom-scrollbar shrink-0">
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider shrink-0 mr-1">
+              <div className="px-4 py-1.5 bg-white dark:bg-[#131E2E] border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-1.5 overflow-x-auto custom-scrollbar shrink-0">
+                <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider shrink-0 mr-1">
                   Quick Prompts:
                 </span>
                 {quickActionChips.map((chip, idx) => (
@@ -606,7 +606,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                     key={idx}
                     type="button"
                     onClick={() => handleSend(chip.prompt)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[#F8FAFC] hover:bg-emerald-50 hover:text-[#105B38] border border-[#E2E8F0] hover:border-emerald-200 text-[#334155] transition-colors whitespace-nowrap shrink-0"
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-[#105B38] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-emerald-200 dark:border-emerald-500/20 text-[#334155] dark:text-[#CBD5E1] transition-colors whitespace-nowrap shrink-0"
                   >
                     + {chip.label}
                   </button>
@@ -614,7 +614,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
               </div>
 
               {/* Bottom Input Area */}
-              <div className="p-3 bg-white border-t border-[#E2E8F0] shrink-0">
+              <div className="p-3 bg-white dark:bg-[#131E2E] border-t border-[#E2E8F0] dark:border-[#1E2D44] shrink-0">
                 <div className="relative flex items-end gap-2 max-w-5xl mx-auto">
                   <div className="relative flex-1">
                     <textarea
@@ -629,7 +629,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                       }}
                       rows={2}
                       placeholder="Describe what to draft or amend in this court pleading (Enter to send, Shift+Enter for new line)..."
-                      className="w-full p-2.5 pr-20 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:bg-white resize-none transition-colors"
+                      className="w-full p-2.5 pr-20 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] resize-none transition-colors"
                     />
 
                     {/* Right inner buttons */}
@@ -641,13 +641,13 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                           className={cn(
                             "p-1.5 rounded-lg border text-xs font-semibold transition-colors",
                             voice.isRecording
-                              ? "bg-rose-50 border-rose-300 text-rose-700 animate-pulse"
-                              : "bg-white border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A]"
+                              ? "bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-400 animate-pulse"
+                              : "bg-white dark:bg-[#131E2E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                           )}
                           title="Record voice note"
                         >
                           {voice.isRecording ? (
-                            <Square className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
+                            <Square className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 fill-rose-600" />
                           ) : (
                             <Mic className="w-3.5 h-3.5" />
                           )}
@@ -675,12 +675,12 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
             <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
               <div className="max-w-4xl mx-auto space-y-4">
                 {/* Summary Banner */}
-                <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] flex items-center justify-between gap-4 shadow-xs">
+                <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between gap-4 shadow-xs">
                   <div>
-                    <h3 className="text-sm font-bold text-[#0F172A]">
+                    <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                       Pakistani Court Procedural Compliance Audit
                     </h3>
-                    <p className="text-xs text-[#64748B] mt-0.5">
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                       Order VII Rule 11 CPC & High Court Rules verification
                     </p>
                   </div>
@@ -689,7 +689,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                     <span className="text-2xl font-bold font-mono text-[#105B38]">
                       {complianceScore}%
                     </span>
-                    <span className="text-xs text-[#64748B]">
+                    <span className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       ({passedCount}/6 Pillars Passed)
                     </span>
                   </div>
@@ -701,20 +701,20 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                     <div
                       key={pillar.id}
                       className={cn(
-                        "p-3.5 rounded-xl border transition-all bg-white",
+                        "p-3.5 rounded-xl border transition-all bg-white dark:bg-[#131E2E]",
                         pillar.passed
-                          ? "border-emerald-200 shadow-xs"
-                          : "border-amber-200 bg-amber-50/20"
+                          ? "border-emerald-200 dark:border-emerald-500/20 shadow-xs"
+                          : "border-amber-200 dark:border-amber-500/20 bg-amber-50/2 dark:bg-amber-500/100 dark:bg-amber-500/10"
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {pillar.passed ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           ) : (
-                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                           )}
-                          <h4 className="text-xs font-bold text-[#0F172A]">{pillar.title}</h4>
+                          <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">{pillar.title}</h4>
                         </div>
 
                         {!pillar.passed && (
@@ -731,7 +731,7 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
                         )}
                       </div>
 
-                      <p className="text-[11px] text-[#64748B] mt-1.5 ml-6">
+                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1.5 ml-6">
                         {pillar.description}
                       </p>
                     </div>
@@ -746,21 +746,21 @@ export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
             <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
               <div className="max-w-4xl mx-auto space-y-3">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">
+                  <h3 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] uppercase tracking-wider">
                     Pakistani Standard Statutory Clauses
                   </h3>
-                  <span className="text-xs text-[#64748B]">Click to insert directly into canvas</span>
+                  <span className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Click to insert directly into canvas</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {statutoryClauses.map((clause, idx) => (
                     <div
                       key={idx}
-                      className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#105B38] transition-all shadow-xs space-y-2"
+                      className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] transition-all shadow-xs space-y-2"
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="text-xs font-bold text-[#0F172A]">{clause.title}</h4>
+                          <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">{clause.title}</h4>
                           <span className="text-[10px] font-mono font-semibold text-[#105B38]">
                             {clause.statute}
                           </span>

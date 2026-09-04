@@ -9,7 +9,7 @@ export const PreviewBanner: React.FC<PreviewBannerProps> = ({ className = "" }) 
   return (
     <div className={`w-full bg-[#105B38] border-b border-[#0D4A2E] text-white px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-3 shadow-sm ${className}`}>
       <div className="flex items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/15 border border-white/25 font-bold uppercase tracking-wider text-[10px]">
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white dark:bg-[#131E2E]/15 border border-white/25 font-bold uppercase tracking-wider text-[10px]">
           <Scale size={12} className="text-emerald-200" />
           AL WAKEELO V2.0
         </span>

@@ -285,16 +285,16 @@ export function StatutePdfViewer({
           }}
         >
           {inRange ? (
-            <div className="shadow-lg bg-white border border-border/30">
+            <div className="shadow-lg bg-white dark:bg-[#131E2E] border border-border/30">
               <Page
                 pageNumber={i}
                 scale={scale}
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
-                className="bg-white"
+                className="bg-white dark:bg-[#131E2E]"
                 loading={
                   <div
-                    className="bg-white animate-pulse flex items-center justify-center"
+                    className="bg-white dark:bg-[#131E2E] animate-pulse flex items-center justify-center"
                     style={{
                       width: `${612 * scale}px`,
                       height: `${792 * scale}px`,

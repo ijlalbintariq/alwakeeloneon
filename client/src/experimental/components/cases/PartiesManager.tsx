@@ -48,37 +48,37 @@ const ROLE_CONFIG: Record<
   client: {
     label: "Petitioner / Plaintiff (Client)",
     urdu: "مدعی / سائل",
-    badgeClass: "bg-emerald-50 text-[#105B38] border-emerald-200",
+    badgeClass: "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20",
     icon: User,
   },
   opponent: {
     label: "Respondent / Opponent",
     urdu: "مدعا علیہ / مخالف فریق",
-    badgeClass: "bg-rose-50 text-rose-700 border-rose-200",
+    badgeClass: "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20",
     icon: Shield,
   },
   witness: {
     label: "Witness / Deponent",
     urdu: "گواہ",
-    badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
+    badgeClass: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20",
     icon: FileText,
   },
   guarantor: {
     label: "Guarantor / Surety",
     urdu: "ضامن / مچلکہ دہندہ",
-    badgeClass: "bg-teal-50 text-teal-700 border-teal-200",
+    badgeClass: "bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 border-teal-200 dark:border-teal-500/20",
     icon: Building,
   },
   "co-accused": {
     label: "Co-Accused",
     urdu: "شریک ملزم",
-    badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
+    badgeClass: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20",
     icon: AlertCircle,
   },
   other: {
     label: "Other Interested Party",
     urdu: "دیگر فریق",
-    badgeClass: "bg-[#F8FAFC] text-[#64748B] border-[#E2E8F0]",
+    badgeClass: "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44]",
     icon: Users,
   },
 };
@@ -170,13 +170,13 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
   return (
     <div className="space-y-5">
       {/* 1. Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-[#FAFAF9] border border-[#E5E4E2]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-[#FAFAF9] border border-[#E5E4E2] dark:border-[#1E2D44]">
         <div>
-          <h2 className="text-sm font-bold font-serif text-[#1A1A1A] flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#1A1A1A]" />
+          <h2 className="text-sm font-bold font-serif text-[#1A1A1A] dark:text-[#F8FAFC] flex items-center gap-2">
+            <Users className="w-4 h-4 text-[#1A1A1A] dark:text-[#F8FAFC]" />
             <span>Parties, Opponents & Witness Roster</span>
           </h2>
-          <p className="text-[11px] text-[#666666]">
+          <p className="text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]">
             Pakistani Legal Contacts, NADRA CNIC, Contact Details & Role Management
           </p>
         </div>
@@ -192,13 +192,13 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
 
       {/* 2. Add Party Collapsible Form */}
       {showAddForm && (
-        <div className="p-5 rounded-xl bg-white border border-[#1A1A1A]/20 space-y-4 shadow-xl">
-          <div className="flex items-center justify-between pb-2 border-b border-[#E5E4E2]">
-            <h3 className="text-xs font-bold text-[#1A1A1A] flex items-center gap-2">
+        <div className="p-5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#1A1A1A]/20 dark:border-[#1E2D44] space-y-4 shadow-xl">
+          <div className="flex items-center justify-between pb-2 border-b border-[#E5E4E2] dark:border-[#1E2D44]">
+            <h3 className="text-xs font-bold text-[#1A1A1A] dark:text-[#F8FAFC] flex items-center gap-2">
               <UserPlus className="w-4 h-4" />
               <span>Record New Party Contact</span>
             </h3>
-            <span className="text-[10px] text-[#666666] font-mono">
+            <span className="text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] font-mono">
               NADRA CNIC Format: 35201-1234567-1
             </span>
           </div>
@@ -206,7 +206,7 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Party Name */}
             <div>
-              <label className="text-[10px] font-mono uppercase text-[#666666] mb-1 block">
+              <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mb-1 block">
                 Party Full Name *
               </label>
               <input
@@ -214,19 +214,19 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                 placeholder="e.g. Tariq Mahmood"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
               />
             </div>
 
             {/* Party Role */}
             <div>
-              <label className="text-[10px] font-mono uppercase text-[#666666] mb-1 block">
+              <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mb-1 block">
                 Procedural Role *
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] outline-none focus:border-[#1A1A1A]/50"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] outline-none focus:border-[#1A1A1A]/50"
               >
                 <option value="client">Client (Petitioner / Plaintiff)</option>
                 <option value="opponent">Opponent (Respondent / Defendant)</option>
@@ -239,7 +239,7 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
 
             {/* Father / Husband Name */}
             <div>
-              <label className="text-[10px] font-mono uppercase text-[#666666] mb-1 block">
+              <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mb-1 block">
                 Parentage (Walad / Zauja)
               </label>
               <input
@@ -247,13 +247,13 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                 placeholder="e.g. Muhammad Aslam"
                 value={fatherName}
                 onChange={(e) => setFatherName(e.target.value)}
-                className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
               />
             </div>
 
             {/* CNIC / NTN */}
             <div>
-              <label className="text-[10px] font-mono uppercase text-[#666666] mb-1 block">
+              <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mb-1 block">
                 CNIC / Passport / NTN
               </label>
               <input
@@ -261,13 +261,13 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                 placeholder="35201-1234567-1"
                 value={cnic}
                 onChange={(e) => setCnic(e.target.value)}
-                className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] font-mono placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] font-mono placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
               />
             </div>
 
             {/* Phone */}
             <div>
-              <label className="text-[10px] font-mono uppercase text-[#666666] mb-1 block">
+              <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mb-1 block">
                 Phone / WhatsApp
               </label>
               <input
@@ -275,13 +275,13 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                 placeholder="+92 300 1234567"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] font-mono placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] font-mono placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
               />
             </div>
 
             {/* Email */}
             <div>
-              <label className="text-[10px] font-mono uppercase text-[#666666] mb-1 block">
+              <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mb-1 block">
                 Email Address
               </label>
               <input
@@ -289,13 +289,13 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                 placeholder="client@chambers.pk"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
               />
             </div>
 
             {/* Address */}
             <div className="sm:col-span-2">
-              <label className="text-[10px] font-mono uppercase text-[#666666] mb-1 block">
+              <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mb-1 block">
                 Residential / Business Address
               </label>
               <input
@@ -303,13 +303,13 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                 placeholder="e.g. House 42, Street 8, Sector F-7/2, Islamabad"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
               />
             </div>
 
             {/* Notes */}
             <div className="sm:col-span-2 lg:col-span-1">
-              <label className="text-[10px] font-mono uppercase text-[#666666] mb-1 block">
+              <label className="text-[10px] font-mono uppercase text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mb-1 block">
                 Advocate Notes / Instructions
               </label>
               <input
@@ -317,15 +317,15 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                 placeholder="e.g. Key witness for cross-examination"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-white border border-[#E5E4E2] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] placeholder:text-[#666666] outline-none focus:border-[#1A1A1A]/50"
+                className="w-full bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] rounded-lg px-3 py-2 text-xs text-[#1A1A1A] dark:text-[#F8FAFC] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] outline-none focus:border-[#1A1A1A]/50"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E4E2]">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E4E2] dark:border-[#1E2D44]">
             <button
               onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 text-xs text-[#666666] hover:text-[#2D2D2D]"
+              className="px-4 py-2 text-xs text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#2D2D2D] dark:text-[#CBD5E1]"
             >
               Cancel
             </button>
@@ -359,7 +359,7 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
             className={`px-3 py-1.5 rounded-lg font-mono whitespace-nowrap transition-all ${
               roleFilter === tab.id
                 ? "bg-[#1A1A1A] text-white font-bold shadow-sm"
-                : "bg-[#FAFAF9] text-[#666666] hover:text-[#2D2D2D] border border-[#E5E4E2]"
+                : "bg-[#FAFAF9] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#2D2D2D] dark:text-[#CBD5E1] border border-[#E5E4E2] dark:border-[#1E2D44]"
             }`}
           >
             <span>{tab.label}</span>
@@ -370,14 +370,14 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
 
       {/* 4. Parties Cards Grid */}
       {filteredParties.length === 0 ? (
-        <div className="p-8 rounded-xl bg-[#F5F4F2] border border-dashed border-[#E5E4E2] text-center space-y-2">
-          <Users className="w-8 h-8 text-[#666666] mx-auto" />
-          <p className="text-xs font-semibold text-[#4A4A4A]">
+        <div className="p-8 rounded-xl bg-[#F5F4F2] dark:bg-[#0B131E] border border-dashed border-[#E5E4E2] dark:border-[#1E2D44] text-center space-y-2">
+          <Users className="w-8 h-8 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mx-auto" />
+          <p className="text-xs font-semibold text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569]">
             No parties found matching the selected filter.
           </p>
           <button
             onClick={() => setShowAddForm(true)}
-            className="text-xs text-[#1A1A1A] hover:underline font-semibold"
+            className="text-xs text-[#1A1A1A] dark:text-[#F8FAFC] hover:underline font-semibold"
           >
             Add first party contact
           </button>
@@ -391,21 +391,21 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
             return (
               <div
                 key={party.id}
-                className="p-4 rounded-xl bg-[#FAFAF9] border border-[#E5E4E2] hover:border-[#D9D8D6] transition-all space-y-3 flex flex-col justify-between"
+                className="p-4 rounded-xl bg-[#FAFAF9] border border-[#E5E4E2] dark:border-[#1E2D44] hover:border-[#D9D8D6] transition-all space-y-3 flex flex-col justify-between"
               >
                 <div className="space-y-2">
                   {/* Top Bar: Name & Role Badge */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center shrink-0 text-[#105B38]">
+                      <div className="w-8 h-8 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-center shrink-0 text-[#105B38]">
                         <RoleIcon className="w-4 h-4" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-bold text-[#0F172A]">
+                        <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                           {party.name}
                         </h3>
                         {party.fatherName && (
-                          <p className="text-xs text-[#64748B]">
+                          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                             s/o, d/o, w/o {party.fatherName}
                           </p>
                         )}
@@ -422,7 +422,7 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                         onClick={() => deletePartyMutation.mutate(party.id)}
                         disabled={deletePartyMutation.isPending}
                         title="Remove party"
-                        className="p-1.5 rounded-lg text-[#64748B] hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:bg-rose-500/10 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -433,16 +433,16 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                   <div className="space-y-1.5 pt-1 text-xs">
                     {/* CNIC */}
                     {party.cnic && (
-                      <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-xl border border-[#E2E8F0]">
-                        <span className="text-xs text-[#64748B] flex items-center gap-1.5">
+                      <div className="flex items-center justify-between bg-white dark:bg-[#131E2E] px-2.5 py-1.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
+                        <span className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1.5">
                           <CreditCard className="w-3.5 h-3.5 text-[#105B38]" />
-                          <span className="font-mono text-[#0F172A]">{party.cnic}</span>
+                          <span className="font-mono text-[#0F172A] dark:text-[#F8FAFC]">{party.cnic}</span>
                         </span>
                         <button
                           onClick={() =>
                             copyToClipboard(party.cnic!, `cnic-${party.id}`, "CNIC")
                           }
-                          className="text-xs text-[#64748B] hover:text-[#105B38] p-0.5"
+                          className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] p-0.5"
                           title="Copy CNIC"
                         >
                           {copiedField === `cnic-${party.id}` ? (
@@ -456,15 +456,15 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
 
                     {/* Phone */}
                     {party.phone && (
-                      <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-xl border border-[#E2E8F0]">
-                        <span className="text-xs text-[#64748B] flex items-center gap-1.5">
+                      <div className="flex items-center justify-between bg-white dark:bg-[#131E2E] px-2.5 py-1.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
+                        <span className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1.5">
                           <Phone className="w-3.5 h-3.5 text-[#105B38]" />
-                          <span className="font-mono text-[#0F172A]">{party.phone}</span>
+                          <span className="font-mono text-[#0F172A] dark:text-[#F8FAFC]">{party.phone}</span>
                         </span>
                         <div className="flex items-center gap-1">
                           <a
                             href={`tel:${party.phone}`}
-                            className="text-xs text-[#64748B] hover:text-[#105B38] p-0.5"
+                            className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] p-0.5"
                             title="Call"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
@@ -473,7 +473,7 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
                             onClick={() =>
                               copyToClipboard(party.phone!, `phone-${party.id}`, "Phone")
                             }
-                            className="text-xs text-[#64748B] hover:text-[#105B38] p-0.5"
+                            className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] p-0.5"
                             title="Copy Phone"
                           >
                             {copiedField === `phone-${party.id}` ? (
@@ -488,7 +488,7 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
 
                     {/* Email */}
                     {party.email && (
-                      <div className="flex items-center gap-1.5 text-[#64748B] px-1 text-xs">
+                      <div className="flex items-center gap-1.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] px-1 text-xs">
                         <Mail className="w-3.5 h-3.5 text-[#105B38] shrink-0" />
                         <span className="truncate">{party.email}</span>
                       </div>
@@ -496,7 +496,7 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
 
                     {/* Address */}
                     {party.address && (
-                      <div className="flex items-start gap-1.5 text-[#64748B] px-1 text-xs">
+                      <div className="flex items-start gap-1.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] px-1 text-xs">
                         <MapPin className="w-3.5 h-3.5 text-[#105B38] shrink-0 mt-0.5" />
                         <span className="line-clamp-2">{party.address}</span>
                       </div>
@@ -506,7 +506,7 @@ export const PartiesManager: React.FC<PartiesManagerProps> = ({
 
                 {/* Advocate notes footer */}
                 {party.notes && (
-                  <div className="pt-2 border-t border-[#E2E8F0] text-xs text-[#64748B] italic">
+                  <div className="pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] italic">
                     Note: {party.notes}
                   </div>
                 )}

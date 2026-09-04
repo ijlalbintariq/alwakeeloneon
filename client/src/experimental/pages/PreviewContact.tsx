@@ -79,14 +79,14 @@ export default function PreviewContact() {
       <div className="max-w-6xl mx-auto px-6 py-12">
     <div className="space-y-10 fade-in">
       <section className="text-center space-y-4 py-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-widest">
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-widest">
           Get in Touch
         </div>
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
           Contact Our Team <br/>
           <span className="text-[#105B38] italic">for Support &amp; Consultations</span>
         </h1>
-        <p className="text-sm text-[#64748B] dark:text-[#94A3B8] max-w-2xl mx-auto leading-relaxed">
+        <p className="text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-2xl mx-auto leading-relaxed">
           Need technical assistance, have questions about your subscription, or want to consult with a High Court advocate? We are here to help.
         </p>
       </section>
@@ -94,14 +94,14 @@ export default function PreviewContact() {
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
         {/* Contact Info (4 cols) */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white/40 dark:bg-[#131E2E]/40 p-5 space-y-4">
+          <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E]/40 p-5 space-y-4">
             <h3 className="font-bold text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>Direct Channels</h3>
             
             <div className="flex items-start gap-3 text-sm">
               <Mail className="text-[#105B38] mt-0.5 flex-shrink-0" size={16} />
               <div>
                 <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">Email Support</p>
-                <a href="mailto:support@alwakeelo.com" className="text-[#64748B] dark:text-[#94A3B8] hover:text-[#105B38] transition-colors text-xs">support@alwakeelo.com</a>
+                <a href="mailto:support@alwakeelo.com" className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] transition-colors text-xs">support@alwakeelo.com</a>
               </div>
             </div>
 
@@ -109,7 +109,7 @@ export default function PreviewContact() {
               <PhoneCall className="text-[#105B38] mt-0.5 flex-shrink-0" size={16} />
               <div>
                 <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">Phone &amp; WhatsApp</p>
-                <a href="tel:+923358341897" className="text-[#64748B] dark:text-[#94A3B8] hover:text-[#105B38] transition-colors text-xs">+92 335 834 1897</a>
+                <a href="tel:+923358341897" className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#105B38] transition-colors text-xs">+92 335 834 1897</a>
               </div>
             </div>
 
@@ -117,14 +117,14 @@ export default function PreviewContact() {
               <Clock className="text-[#105B38] mt-0.5 flex-shrink-0" size={16} />
               <div>
                 <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">Support Hours</p>
-                <p className="text-[#64748B] dark:text-[#94A3B8] text-xs">Mon - Fri: 9:00 AM - 5:00 PM (PKT)</p>
+                <p className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] text-xs">Mon - Fri: 9:00 AM - 5:00 PM (PKT)</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white/40 dark:bg-[#131E2E]/40 p-5 space-y-3">
+          <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E]/40 p-5 space-y-3">
             <h4 className="font-bold text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>Chamber Offices</h4>
-            <div className="space-y-2 text-xs text-[#64748B] dark:text-[#94A3B8]">
+            <div className="space-y-2 text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               <div>
                 <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">Islamabad:</span> G-10 Judicial Complex, Sector G-10, Islamabad
               </div>
@@ -137,9 +137,9 @@ export default function PreviewContact() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white/40 dark:bg-[#131E2E]/40 p-5 space-y-2">
+          <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E]/40 p-5 space-y-2">
             <h4 className="font-bold text-sm">Parent Company</h4>
-            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] leading-relaxed">
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
               Al Wakeelo is operated by **Majnoon Studio**, developing modern software solutions for the Pakistani legal landscape.
             </p>
           </div>
@@ -151,7 +151,7 @@ export default function PreviewContact() {
             <div className="rounded-2xl border border-[#105B38]/25 bg-[#105B38]/5 p-8 text-center space-y-4 flex flex-col items-center justify-center min-h-[300px]">
               <CheckCircle className="text-[#105B38] dark:text-[#10B981] animate-pulse" size={48} />
               <h3 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC]" style={{ fontFamily: "'Playfair Display', serif" }}>Inquiry Submitted!</h3>
-              <p className="text-sm text-[#64748B] dark:text-[#94A3B8] max-w-md">
+              <p className="text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-md">
                 We have received your message. A representative from Al Wakeelo or Majnoon Studio will get back to you at your provided email/phone shortly.
               </p>
               <button 
@@ -167,7 +167,7 @@ export default function PreviewContact() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">Your Name *</label>
+                  <label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Your Name *</label>
                   <input
                     id="name"
                     required
@@ -178,7 +178,7 @@ export default function PreviewContact() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">Email Address *</label>
+                  <label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Email Address *</label>
                   <input
                     id="email"
                     type="email"
@@ -193,7 +193,7 @@ export default function PreviewContact() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="phone" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">Phone Number *</label>
+                  <label htmlFor="phone" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Phone Number *</label>
                   <input
                     id="phone"
                     required
@@ -204,7 +204,7 @@ export default function PreviewContact() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="city" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">City *</label>
+                  <label htmlFor="city" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">City *</label>
                   <input
                     id="city"
                     required
@@ -218,7 +218,7 @@ export default function PreviewContact() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="caseType" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">Area of Inquiry</label>
+                  <label htmlFor="caseType" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Area of Inquiry</label>
                   <select
                     id="caseType"
                     className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-4 py-2 text-sm text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]/50"
@@ -235,7 +235,7 @@ export default function PreviewContact() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="urgency" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">Urgency Level</label>
+                  <label htmlFor="urgency" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Urgency Level</label>
                   <select
                     id="urgency"
                     className="w-full bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-4 py-2 text-sm text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]/50"
@@ -251,7 +251,7 @@ export default function PreviewContact() {
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="message" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">Describe your Request *</label>
+                <label htmlFor="message" className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Describe your Request *</label>
                 <textarea
                   id="message"
                   required

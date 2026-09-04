@@ -419,18 +419,18 @@ export const PreviewKnowledgeVault: React.FC = () => {
     <PreviewShell>
       <div className="max-w-7xl mx-auto space-y-6 pb-12">
         {/* Header Banner */}
-        <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="bg-white dark:bg-[#131E2E] p-6 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+              <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                 <Database className="w-5 h-5" />
               </div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#105B38]">
                 Chambers Intelligence Base · RAG Vector Engine
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">Chambers Knowledge Vault</h1>
-            <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-[#F8FAFC]">Chambers Knowledge Vault</h1>
+            <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
               Authoritative statutory compendiums, High Court/SCMR precedents, and custom practice templates indexed for Al-Wakeel AI assistant.
             </p>
           </div>
@@ -449,65 +449,65 @@ export const PreviewKnowledgeVault: React.FC = () => {
 
         {/* Overview Stats Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">{documents.length}</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Indexed Documents</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{documents.length}</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Indexed Documents</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <Layers className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">{totalChunks.toLocaleString()}</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Semantic Embeddings</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{totalChunks.toLocaleString()}</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Semantic Embeddings</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <Cpu className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">1536-D</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Vector Dimension</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">1536-D</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Vector Dimension</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
               <BookmarkCheck className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[#0F172A]">{totalBookmarks}</div>
-              <div className="text-[11px] text-[#64748B] font-medium">Bookmarked Authorities</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{totalBookmarks}</div>
+              <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">Bookmarked Authorities</div>
             </div>
           </div>
         </div>
 
         {/* Search & Multi-Filter Control Hub */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
+        <div className="bg-white dark:bg-[#131E2E] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-4">
           {/* Top Search Line */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="flex-1 flex items-center px-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] focus-within:border-[#105B38] focus-within:bg-white transition-all">
-              <Search className="w-4 h-4 text-[#94A3B8] mr-2.5 shrink-0" />
+            <div className="flex-1 flex items-center px-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] focus-within:border-[#105B38] focus-within:bg-white dark:bg-[#131E2E] transition-all">
+              <Search className="w-4 h-4 text-[#94A3B8] dark:text-[#475569] mr-2.5 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search indexed knowledge documents by statute name, SCMR/PLD citation, legal concept, or filename..."
-                className="w-full h-11 bg-transparent text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none"
+                className="w-full h-11 bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="p-1 rounded-md text-[#94A3B8] hover:text-[#0F172A]"
+                  className="p-1 rounded-md text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -516,12 +516,12 @@ export const PreviewKnowledgeVault: React.FC = () => {
 
             {/* Jurisdiction Dropdown & Sort */}
             <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                <Gavel className="w-3.5 h-3.5 text-[#64748B]" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
+                <Gavel className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <select
                   value={selectedJurisdiction}
                   onChange={(e) => setSelectedJurisdiction(e.target.value)}
-                  className="bg-transparent text-xs text-[#0F172A] font-semibold focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none cursor-pointer"
                 >
                   {jurisdictions.map((j) => (
                     <option key={j} value={j}>
@@ -531,12 +531,12 @@ export const PreviewKnowledgeVault: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#64748B]" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-transparent text-xs text-[#0F172A] font-semibold focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs text-[#0F172A] dark:text-[#F8FAFC] font-semibold focus:outline-none cursor-pointer"
                 >
                   <option value="relevance">Sort: Relevance</option>
                   <option value="newest">Sort: Newest First</option>
@@ -548,8 +548,8 @@ export const PreviewKnowledgeVault: React.FC = () => {
           </div>
 
           {/* Category Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E2E8F0]/70">
-            <span className="text-[11px] font-bold text-[#64748B] mr-2">Category:</span>
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E2E8F0] dark:border-[#1E2D44]/70">
+            <span className="text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mr-2">Category:</span>
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -559,7 +559,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                   "px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
                   selectedCategory === cat
                     ? "bg-[#105B38] text-white shadow-xs"
-                    : "bg-[#F8FAFC] text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0]"
+                    : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
                 )}
               >
                 {cat}
@@ -569,7 +569,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
 
           {/* Tags Chips Filter Bar */}
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            <span className="text-[11px] font-bold text-[#64748B] mr-2">Quick Tags:</span>
+            <span className="text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mr-2">Quick Tags:</span>
             <button
               type="button"
               onClick={() => setSelectedTag("All")}
@@ -577,7 +577,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                 "px-2.5 py-0.5 rounded-md text-[10px] font-semibold transition-all",
                 selectedTag === "All"
                   ? "bg-[#105B38] text-white"
-                  : "bg-[#F8FAFC] text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0]"
+                  : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
               )}
             >
               All Tags
@@ -591,7 +591,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                   "px-2.5 py-0.5 rounded-md text-[10px] font-semibold transition-all",
                   selectedTag === tag
                     ? "bg-[#105B38] text-white"
-                    : "bg-[#F8FAFC] text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0]"
+                    : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44]"
                 )}
               >
                 #{tag}
@@ -602,12 +602,12 @@ export const PreviewKnowledgeVault: React.FC = () => {
 
         {/* Documents Grid / Empty State */}
         {filteredDocs.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#E2E8F0] text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 text-[#105B38] flex items-center justify-center mx-auto">
+          <div className="bg-white dark:bg-[#131E2E] p-12 rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] flex items-center justify-center mx-auto">
               <Search className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-[#0F172A]">No Matching Legal Documents Found</h3>
-            <p className="text-xs text-[#64748B] max-w-md mx-auto">
+            <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">No Matching Legal Documents Found</h3>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-md mx-auto">
               Try adjusting your query, switching categories, or uploading a new statutory compendium or judgment file into the vault.
             </p>
             <div className="pt-2">
@@ -619,7 +619,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                   setSelectedJurisdiction("All");
                   setSelectedTag("All");
                 }}
-                className="px-4 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#105B38]"
+                className="px-4 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38]"
               >
                 Reset All Filters
               </button>
@@ -630,12 +630,12 @@ export const PreviewKnowledgeVault: React.FC = () => {
             {filteredDocs.map((doc) => (
               <div
                 key={doc.id}
-                className="p-5 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
+                className="p-5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
               >
                 <div className="space-y-3">
                   {/* Top Badges */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#105B38] border border-emerald-200 uppercase tracking-wider">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 uppercase tracking-wider">
                       {doc.category}
                     </span>
 
@@ -646,15 +646,15 @@ export const PreviewKnowledgeVault: React.FC = () => {
                         className={cn(
                           "p-1.5 rounded-lg border transition-colors",
                           doc.bookmarked
-                            ? "bg-emerald-50 text-[#105B38] border-emerald-200"
-                            : "bg-[#F8FAFC] text-[#94A3B8] hover:text-[#0F172A] border-[#E2E8F0]"
+                            ? "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
+                            : "bg-[#F8FAFC] dark:bg-[#0B131E] text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border-[#E2E8F0] dark:border-[#1E2D44]"
                         )}
                         title={doc.bookmarked ? "Remove Bookmark" : "Save Bookmark"}
                       >
                         <Bookmark className={cn("w-3.5 h-3.5", doc.bookmarked && "fill-current")} />
                       </button>
 
-                      <span className="text-[10px] font-mono font-medium text-[#64748B] bg-[#F8FAFC] px-2 py-0.5 rounded-md border border-[#E2E8F0]">
+                      <span className="text-[10px] font-mono font-medium text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-[#F8FAFC] dark:bg-[#0B131E] px-2 py-0.5 rounded-md border border-[#E2E8F0] dark:border-[#1E2D44]">
                         {doc.jurisdiction}
                       </span>
                     </div>
@@ -662,11 +662,11 @@ export const PreviewKnowledgeVault: React.FC = () => {
 
                   {/* Title & Authority */}
                   <div>
-                    <h3 className="font-bold text-sm text-[#0F172A] group-hover:text-[#105B38] transition-colors leading-snug">
+                    <h3 className="font-bold text-sm text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] transition-colors leading-snug">
                       {doc.title}
                     </h3>
-                    <p className="text-[11px] text-[#64748B] mt-1 flex items-center gap-1">
-                      <Building2 className="w-3 h-3 text-[#94A3B8] shrink-0" />
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1 flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-[#94A3B8] dark:text-[#475569] shrink-0" />
                       <span className="truncate">{doc.sourceAuthority}</span>
                     </p>
                   </div>
@@ -681,13 +681,13 @@ export const PreviewKnowledgeVault: React.FC = () => {
                     {doc.tags.slice(0, 3).map((tag) => (
                       <span
                         key={tag}
-                        className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B]"
+                        className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                       >
                         #{tag}
                       </span>
                     ))}
                     {doc.tags.length > 3 && (
-                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[#F8FAFC] text-[#94A3B8]">
+                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[#F8FAFC] dark:bg-[#0B131E] text-[#94A3B8] dark:text-[#475569]">
                         +{doc.tags.length - 3}
                       </span>
                     )}
@@ -695,8 +695,8 @@ export const PreviewKnowledgeVault: React.FC = () => {
                 </div>
 
                 {/* Card Footer */}
-                <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs">
-                  <div className="text-[10px] font-mono text-[#64748B] flex items-center gap-1">
+                <div className="pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs">
+                  <div className="text-[10px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1">
                     <Layers className="w-3 h-3 text-[#105B38]" />
                     <span>{doc.chunksCount} Vectors · {doc.fileSize}</span>
                   </div>
@@ -705,7 +705,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setActiveChunkDoc(doc)}
-                      className="px-2.5 py-1 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[11px] font-bold text-[#475569] hover:text-[#0F172A] transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[11px] font-bold text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
                       title="Inspect Vector Embeddings"
                     >
                       Vectors
@@ -723,7 +723,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                     <button
                       type="button"
                       onClick={(e) => handleDeleteDoc(doc.id, doc.title, e)}
-                      className="p-1 rounded-lg bg-[#F8FAFC] hover:bg-rose-50 border border-[#E2E8F0] text-[#94A3B8] hover:text-rose-600 transition-colors"
+                      className="p-1 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-rose-50 dark:bg-rose-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 transition-colors"
                       title="Delete from Vault"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -744,20 +744,20 @@ export const PreviewKnowledgeVault: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Top Bar */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38] shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38] shrink-0">
                     <BookOpen className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A] truncate">
+                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
                       {activeDocPreview.title}
                     </h2>
-                    <div className="flex items-center gap-2 text-[11px] text-[#64748B] mt-0.5">
+                    <div className="flex items-center gap-2 text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5">
                       <span className="font-semibold text-[#105B38]">{activeDocPreview.jurisdiction}</span>
                       <span>·</span>
                       <span>{activeDocPreview.category}</span>
@@ -774,8 +774,8 @@ export const PreviewKnowledgeVault: React.FC = () => {
                     className={cn(
                       "px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5",
                       activeDocPreview.bookmarked
-                        ? "bg-emerald-50 text-[#105B38] border-emerald-200"
-                        : "bg-white text-[#475569] border-[#E2E8F0] hover:text-[#0F172A]"
+                        ? "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
+                        : "bg-white dark:bg-[#131E2E] text-[#475569] border-[#E2E8F0] dark:border-[#1E2D44] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                     )}
                   >
                     <Bookmark className={cn("w-3.5 h-3.5", activeDocPreview.bookmarked && "fill-current")} />
@@ -791,7 +791,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                         handleCopyCitation(activeDocPreview.title);
                       }
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] transition-colors flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] transition-colors flex items-center gap-1.5"
                     title="Copy Citation"
                   >
                     <Copy className="w-3.5 h-3.5 text-[#105B38]" />
@@ -801,7 +801,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setActiveDocPreview(null)}
-                    className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] transition-colors"
+                    className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0] transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -811,23 +811,23 @@ export const PreviewKnowledgeVault: React.FC = () => {
               {/* Modal Body */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* Metadata Card */}
-                <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
+                <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-3">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                     <div>
-                      <span className="text-[#64748B] block text-[10px] uppercase font-bold">Source Authority</span>
-                      <span className="font-bold text-[#0F172A]">{activeDocPreview.sourceAuthority}</span>
+                      <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block text-[10px] uppercase font-bold">Source Authority</span>
+                      <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{activeDocPreview.sourceAuthority}</span>
                     </div>
                     <div>
-                      <span className="text-[#64748B] block text-[10px] uppercase font-bold">Vector Ingestion Date</span>
-                      <span className="font-bold text-[#0F172A]">{activeDocPreview.uploadedAt}</span>
+                      <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block text-[10px] uppercase font-bold">Vector Ingestion Date</span>
+                      <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{activeDocPreview.uploadedAt}</span>
                     </div>
                     <div>
-                      <span className="text-[#64748B] block text-[10px] uppercase font-bold">Vector Chunks</span>
+                      <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block text-[10px] uppercase font-bold">Vector Chunks</span>
                       <span className="font-bold text-[#105B38]">{activeDocPreview.chunksCount} Embeddings</span>
                     </div>
                     <div>
-                      <span className="text-[#64748B] block text-[10px] uppercase font-bold">Status</span>
-                      <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
+                      <span className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] block text-[10px] uppercase font-bold">Status</span>
+                      <span className="inline-flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="w-3.5 h-3.5 text-[#105B38]" />
                         Indexed
                       </span>
@@ -835,9 +835,9 @@ export const PreviewKnowledgeVault: React.FC = () => {
                   </div>
 
                   {/* Summary */}
-                  <div className="pt-2 border-t border-[#E2E8F0]">
-                    <span className="text-[10px] font-bold uppercase text-[#64748B]">Executive Ratio / Summary</span>
-                    <p className="text-xs text-[#334155] mt-1 leading-relaxed">{activeDocPreview.summary}</p>
+                  <div className="pt-2 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
+                    <span className="text-[10px] font-bold uppercase text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Executive Ratio / Summary</span>
+                    <p className="text-xs text-[#334155] dark:text-[#CBD5E1] mt-1 leading-relaxed">{activeDocPreview.summary}</p>
                   </div>
                 </div>
 
@@ -865,18 +865,18 @@ export const PreviewKnowledgeVault: React.FC = () => {
                     </button>
                   </div>
 
-                  <div className="p-5 rounded-xl bg-white border border-[#E2E8F0] shadow-2xs font-mono text-xs text-[#1E293B] leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-y-auto">
+                  <div className="p-5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-2xs font-mono text-xs text-[#1E293B] leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-y-auto">
                     {activeDocPreview.fullTextPreview}
                   </div>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between text-xs shrink-0">
+              <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border-t border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between text-xs shrink-0">
                 <div className="flex items-center gap-2">
                   <Link
                     href={`/preview/judgments?q=${encodeURIComponent(activeDocPreview.citationRef || activeDocPreview.title)}`}
-                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-[#E2E8F0] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
+                    className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-emerald-50 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
                   >
                     <Scale className="w-3.5 h-3.5" />
                     <span>Open in Precedent Graph</span>
@@ -884,7 +884,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
 
                   <Link
                     href="/preview/drafting"
-                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-[#E2E8F0] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
+                    className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#131E2E] hover:bg-emerald-50 dark:bg-emerald-500/10 border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#105B38] transition-colors flex items-center gap-1.5"
                   >
                     <FileCode className="w-3.5 h-3.5" />
                     <span>Insert into Drafting Studio</span>
@@ -912,19 +912,19 @@ export const PreviewKnowledgeVault: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38]">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38]">
                     <Layers className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A]">
+                    <h2 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                       Vector Embeddings & Semantic Chunks
                     </h2>
-                    <p className="text-[11px] text-[#64748B]">
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       {activeChunkDoc.title} ({activeChunkDoc.chunksCount} total vectors)
                     </p>
                   </div>
@@ -933,14 +933,14 @@ export const PreviewKnowledgeVault: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveChunkDoc(null)}
-                  className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] transition-colors"
+                  className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0] transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200 text-xs text-[#105B38] flex items-center gap-2">
+                <div className="p-3.5 rounded-xl bg-emerald-50/6 dark:bg-emerald-500/100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-xs text-[#105B38] flex items-center gap-2">
                   <Info className="w-4 h-4 shrink-0" />
                   <span>
                     Each chunk represents an isolated 1536-dimensional embedding stored in the Chambers Vector Index for semantic RAG search.
@@ -951,17 +951,17 @@ export const PreviewKnowledgeVault: React.FC = () => {
                   {activeChunkDoc.chunks.map((chunk) => (
                     <div
                       key={chunk.chunkIndex}
-                      className="p-4 rounded-xl bg-white border border-[#E2E8F0] space-y-2 hover:border-[#105B38]/40 transition-all"
+                      className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2 hover:border-[#105B38]/40 transition-all"
                     >
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-xs bg-[#F8FAFC] text-[#105B38] px-2 py-0.5 rounded-md border border-[#E2E8F0]">
+                          <span className="font-mono font-bold text-xs bg-[#F8FAFC] dark:bg-[#0B131E] text-[#105B38] px-2 py-0.5 rounded-md border border-[#E2E8F0] dark:border-[#1E2D44]">
                             Chunk #{chunk.chunkIndex + 1}
                           </span>
-                          <span className="font-bold text-[#0F172A]">{chunk.sectionRef}</span>
+                          <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">{chunk.sectionRef}</span>
                         </div>
 
-                        <div className="flex items-center gap-3 text-[11px] font-mono text-[#64748B]">
+                        <div className="flex items-center gap-3 text-[11px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                           <span>Tokens: {chunk.tokens}</span>
                           <span className="text-[#105B38] font-bold">
                             Cosine Score: {(chunk.vectorScore * 100).toFixed(1)}%
@@ -969,7 +969,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                         </div>
                       </div>
 
-                      <p className="text-xs font-mono text-[#334155] bg-[#F8FAFC] p-3 rounded-lg border border-[#E2E8F0]/80 whitespace-pre-wrap leading-relaxed">
+                      <p className="text-xs font-mono text-[#334155] dark:text-[#CBD5E1] bg-[#F8FAFC] dark:bg-[#0B131E] p-3 rounded-lg border border-[#E2E8F0] dark:border-[#1E2D44]/80 whitespace-pre-wrap leading-relaxed">
                         {chunk.text}
                       </p>
                     </div>
@@ -977,7 +977,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex justify-end shrink-0">
+              <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B131E] border-t border-[#E2E8F0] dark:border-[#1E2D44] flex justify-end shrink-0">
                 <button
                   type="button"
                   onClick={() => setActiveChunkDoc(null)}
@@ -1001,18 +1001,18 @@ export const PreviewKnowledgeVault: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" />
 
             <div
-              className="relative bg-white border border-[#E2E8F0] rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden"
+              className="relative bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Top Bar */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38]">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38]">
                     <Upload className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-[#0F172A]">Ingest Legal Document</h2>
-                    <p className="text-xs text-[#64748B]">
+                    <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">Ingest Legal Document</h2>
+                    <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       Upload PDF/DOCX records to run OCR and index into Knowledge Vault.
                     </p>
                   </div>
@@ -1022,7 +1022,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsUploadModalOpen(false)}
-                    className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] transition-colors"
+                    className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0] transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1034,31 +1034,31 @@ export const PreviewKnowledgeVault: React.FC = () => {
                 {uploadStep !== "idle" ? (
                   /* Multi-Stage Vectorization Progress View */
                   <div className="py-8 space-y-6 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#105B38] flex items-center justify-center mx-auto animate-pulse">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[#105B38] flex items-center justify-center mx-auto animate-pulse">
                       <Sparkles className="w-8 h-8" />
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-[#0F172A]">
+                      <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                         {uploadStep === "uploading" && "Stage 1/3: Extracting Document Stream..."}
                         {uploadStep === "ocr" && "Stage 2/3: Running Pakistani Legal OCR & Tokenizer..."}
                         {uploadStep === "embedding" && "Stage 3/3: Generating 1536-D Semantic Embeddings..."}
                         {uploadStep === "done" && "Ingestion Complete!"}
                       </h3>
-                      <p className="text-xs text-[#64748B] mt-1">
+                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
                         Indexing &quot;{uploadForm.title}&quot; into Chambers Knowledge Vault.
                       </p>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-full bg-[#F1F5F9] rounded-full h-3 overflow-hidden border border-[#E2E8F0]">
+                    <div className="w-full bg-[#F1F5F9] dark:bg-[#1E2D44] rounded-full h-3 overflow-hidden border border-[#E2E8F0] dark:border-[#1E2D44]">
                       <div
                         className="bg-[#105B38] h-full transition-all duration-300 rounded-full"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
 
-                    <div className="flex justify-between text-[11px] font-mono text-[#64748B]">
+                    <div className="flex justify-between text-[11px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       <span>Extract Stream</span>
                       <span>Legal OCR</span>
                       <span>Embeddings</span>
@@ -1069,7 +1069,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                   /* Form Input View */
                   <form onSubmit={handleStartUpload} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-[#0F172A] mb-1">
+                      <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">
                         Document Title *
                       </label>
                       <input
@@ -1078,19 +1078,19 @@ export const PreviewKnowledgeVault: React.FC = () => {
                         value={uploadForm.title}
                         onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
                         placeholder="e.g. Islamabad High Court Commercial Jurisdiction Practice Notes (2026)"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:border-[#105B38] focus:bg-white focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] focus:outline-none transition-all"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-[#0F172A] mb-1">
+                        <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">
                           Category
                         </label>
                         <select
                           value={uploadForm.category}
                           onChange={(e) => setUploadForm({ ...uploadForm, category: e.target.value as any })}
-                          className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] font-medium focus:border-[#105B38] focus:outline-none"
+                          className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] font-medium focus:border-[#105B38] focus:outline-none"
                         >
                           <option value="Statute">Statute</option>
                           <option value="Precedent">Precedent</option>
@@ -1102,13 +1102,13 @@ export const PreviewKnowledgeVault: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#0F172A] mb-1">
+                        <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">
                           Jurisdiction
                         </label>
                         <select
                           value={uploadForm.jurisdiction}
                           onChange={(e) => setUploadForm({ ...uploadForm, jurisdiction: e.target.value as any })}
-                          className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] font-medium focus:border-[#105B38] focus:outline-none"
+                          className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] font-medium focus:border-[#105B38] focus:outline-none"
                         >
                           <option value="Supreme Court">Supreme Court</option>
                           <option value="Lahore High Court">Lahore High Court</option>
@@ -1123,7 +1123,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-[#0F172A] mb-1">
+                        <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">
                           Source Authority / Desk
                         </label>
                         <input
@@ -1131,12 +1131,12 @@ export const PreviewKnowledgeVault: React.FC = () => {
                           value={uploadForm.sourceAuthority}
                           onChange={(e) => setUploadForm({ ...uploadForm, sourceAuthority: e.target.value })}
                           placeholder="e.g. Tariq & Partners Corporate Desk"
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:border-[#105B38] focus:outline-none"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:border-[#105B38] focus:outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#0F172A] mb-1">
+                        <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">
                           Tags (comma separated)
                         </label>
                         <input
@@ -1144,13 +1144,13 @@ export const PreviewKnowledgeVault: React.FC = () => {
                           value={uploadForm.tagsInput}
                           onChange={(e) => setUploadForm({ ...uploadForm, tagsInput: e.target.value })}
                           placeholder="e.g. Commercial, Section 12, Specific Performance"
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:border-[#105B38] focus:outline-none"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:border-[#105B38] focus:outline-none"
                         />
                       </div>
                     </div>
 
                     {/* Drag-and-drop dropzone simulator -> Now real */}
-                    <label className="block p-5 border-2 border-dashed border-[#E2E8F0] hover:border-[#105B38] rounded-2xl bg-[#F8FAFC] text-center space-y-2 cursor-pointer transition-colors">
+                    <label className="block p-5 border-2 border-dashed border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] text-center space-y-2 cursor-pointer transition-colors">
                       <input 
                         type="file" 
                         id="file-upload" 
@@ -1166,19 +1166,19 @@ export const PreviewKnowledgeVault: React.FC = () => {
                           }
                         }}
                       />
-                      <div className="w-10 h-10 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center mx-auto text-[#105B38]">
+                      <div className="w-10 h-10 rounded-full bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-center mx-auto text-[#105B38]">
                         <Upload className="w-5 h-5" />
                       </div>
-                      <div className="text-xs font-bold text-[#0F172A]">
+                      <div className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                         {selectedFile ? `Selected: ${selectedFile.name}` : "Drop PDF, DOCX, or SCMR Scan Here or Click to Select"}
                       </div>
-                      <p className="text-[11px] text-[#64748B]">
+                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                         Supports high-resolution scanned court files, orders, and typed statutory gazettes up to 50MB.
                       </p>
                     </label>
 
                     <div>
-                      <label className="block text-xs font-bold text-[#0F172A] mb-1">
+                      <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] mb-1">
                         Executive Summary / Key Ratio (Optional)
                       </label>
                       <textarea
@@ -1186,7 +1186,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                         value={uploadForm.summary}
                         onChange={(e) => setUploadForm({ ...uploadForm, summary: e.target.value })}
                         placeholder="Brief summary of legal principles or statutory scope..."
-                        className="w-full px-3.5 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] focus:border-[#105B38] focus:outline-none resize-none"
+                        className="w-full px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] focus:border-[#105B38] focus:outline-none resize-none"
                       />
                     </div>
 
@@ -1194,7 +1194,7 @@ export const PreviewKnowledgeVault: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setIsUploadModalOpen(false)}
-                        className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#64748B]"
+                        className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
                       >
                         Cancel
                       </button>

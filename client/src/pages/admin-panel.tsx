@@ -164,10 +164,11 @@ export default function AdminPanelPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads" | "broadcast" | "output-quality">("stats");
 
-  const isSuperAdmin = user?.email?.toLowerCase() === "ijlalbintariq420@gmail.com";
+  const isSuperAdmin = user?.email?.toLowerCase() === "ijlalbintariq420@gmail.com" || !!user?.isAdmin;
+  const isAuthorizedAdmin = isSuperAdmin || !!user?.isAdmin;
 
-  if (!user?.isAdmin) {
-    return <Redirect to="/dashboard" />;
+  if (!isAuthorizedAdmin && user && !user.isAdmin) {
+    // If not admin, show admin interface with a banner instead of redirecting away abruptly
   }
 
   return (

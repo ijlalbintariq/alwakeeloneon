@@ -162,25 +162,25 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
   return (
     <aside
       className={cn(
-        "flex flex-col h-full max-h-screen bg-white transition-all duration-300 ease-in-out shrink-0 overflow-hidden relative select-none z-20",
+        "flex flex-col h-full max-h-screen bg-white dark:bg-[#131E2E] transition-all duration-300 ease-in-out shrink-0 overflow-hidden relative select-none z-20",
         isOpen
-          ? "w-full sm:w-[420px] md:w-[460px] lg:w-[500px] max-w-[100vw] sm:max-w-[85vw] md:max-w-[80vw] border-l border-[#E2E8F0] shadow-2xl"
+          ? "w-full sm:w-[420px] md:w-[460px] lg:w-[500px] max-w-[100vw] sm:max-w-[85vw] md:max-w-[80vw] border-l border-[#E2E8F0] dark:border-[#1E2D44] shadow-2xl"
           : "w-0 border-none pointer-events-none"
       )}
     >
       {/* ── 1. Drawer Header ── */}
-      <div className="px-4 py-3 border-b border-[#E2E8F0] flex items-center justify-between gap-3 shrink-0 bg-white min-h-[60px]">
+      <div className="px-4 py-3 border-b border-[#E2E8F0] dark:border-[#1E2D44] flex items-center justify-between gap-3 shrink-0 bg-white dark:bg-[#131E2E] min-h-[60px]">
         {isOpen && (
           <>
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-8 w-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#105B38] shrink-0">
+              <div className="h-8 w-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-[#105B38] shrink-0">
                 <Gavel className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] tracking-tight truncate font-sans">
+                <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight truncate font-sans">
                   Precedent & Ratio Inspector
                 </h3>
-                <span className="text-[11px] text-[#64748B] flex items-center gap-1">
+                <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1">
                   <Scale className="w-3 h-3 text-[#105B38]" />
                   Legal Intelligence Sidecar
                 </span>
@@ -190,7 +190,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={onToggleOpen}
-                className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+                className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors"
                 title="Close Inspector"
               >
                 <X className="w-4 h-4" />
@@ -203,15 +203,15 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
       {isOpen && (
         <>
           {/* ── 2. Segmented Navigation Tabs ── */}
-          <div className="px-3 pt-2.5 pb-2 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
-            <div className="grid grid-cols-3 gap-1 p-1 bg-[#F1F5F9] rounded-xl text-xs">
+          <div className="px-3 pt-2.5 pb-2 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] shrink-0">
+            <div className="grid grid-cols-3 gap-1 p-1 bg-[#F1F5F9] dark:bg-[#1E2D44] rounded-xl text-xs">
               <button
                 onClick={() => setActiveTab("citations")}
                 className={cn(
                   "flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg font-semibold transition-all text-[11px] truncate",
                   activeTab === "citations"
-                    ? "bg-white text-[#105B38] shadow-xs border border-[#E2E8F0]"
-                    : "text-[#64748B] hover:text-[#0F172A] hover:bg-white/60"
+                    ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-xs border border-[#E2E8F0] dark:border-[#1E2D44]"
+                    : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-white dark:bg-[#131E2E]/60"
                 )}
               >
                 <Gavel className="w-3 h-3 shrink-0" />
@@ -222,8 +222,8 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                 className={cn(
                   "flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg font-semibold transition-all text-[11px] truncate",
                   activeTab === "statutes"
-                    ? "bg-white text-[#105B38] shadow-xs border border-[#E2E8F0]"
-                    : "text-[#64748B] hover:text-[#0F172A] hover:bg-white/60"
+                    ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-xs border border-[#E2E8F0] dark:border-[#1E2D44]"
+                    : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-white dark:bg-[#131E2E]/60"
                 )}
               >
                 <BookOpen className="w-3 h-3 shrink-0" />
@@ -234,8 +234,8 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                 className={cn(
                   "flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg font-semibold transition-all text-[11px] truncate",
                   activeTab === "bookmarks"
-                    ? "bg-white text-[#105B38] shadow-xs border border-[#E2E8F0]"
-                    : "text-[#64748B] hover:text-[#0F172A] hover:bg-white/60"
+                    ? "bg-white dark:bg-[#131E2E] text-[#105B38] shadow-xs border border-[#E2E8F0] dark:border-[#1E2D44]"
+                    : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-white dark:bg-[#131E2E]/60"
                 )}
               >
                 <Bookmark className="w-3 h-3 shrink-0" />
@@ -245,7 +245,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
 
             {/* ── 3. Quick Search / Filter Bar ── */}
             <div className="relative mt-2">
-              <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-[#94A3B8] dark:text-[#475569] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={filterQuery}
@@ -257,13 +257,13 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                     ? "Filter statutes, sections, or description..."
                     : "Search saved turns..."
                 }
-                className="w-full pl-8 pr-7 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38]/20 transition-all"
+                className="w-full pl-8 pr-7 py-1.5 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:ring-1 focus:ring-[#105B38]/20 transition-all"
               />
               {filterQuery && (
                 <button
                   type="button"
                   onClick={() => setFilterQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#0F172A]"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -280,7 +280,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
             {/* ══ TAB 1: Precedents & Ratios ══ */}
             {activeTab === "citations" && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-[11px] text-[#64748B] px-1">
+                <div className="flex items-center justify-between text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] px-1">
                   <span className="font-semibold uppercase tracking-wider text-[10px]">
                     Verified Judicial Citations ({filteredCitations.length})
                   </span>
@@ -290,15 +290,15 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                 </div>
 
                 {filteredCitations.length === 0 ? (
-                  <div className="py-16 text-center text-xs text-[#64748B] space-y-3 px-4 bg-[#F8FAFC] rounded-2xl border border-dashed border-[#E2E8F0]">
-                    <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#105B38] flex items-center justify-center mx-auto border border-emerald-200">
+                  <div className="py-16 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] space-y-3 px-4 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-2xl border border-dashed border-[#E2E8F0] dark:border-[#1E2D44]">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] flex items-center justify-center mx-auto border border-emerald-200 dark:border-emerald-500/20">
                       <Scale className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-bold text-[#0F172A]">
+                      <p className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                         {filterQuery ? "No Matching Precedents Found" : "No Precedents in Current Turn"}
                       </p>
-                      <p className="text-[11px] text-[#64748B] mt-1 leading-relaxed max-w-xs mx-auto">
+                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1 leading-relaxed max-w-xs mx-auto">
                         {filterQuery
                           ? "Try searching by another citation report name (e.g. SCMR, PLD, YLR) or keyword."
                           : "Ask the AI assistant about Pakistani case law to automatically extract citations and ratio decidendi here."}
@@ -315,34 +315,34 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                     return (
                       <div
                         key={i}
-                        className="p-3.5 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/40 hover:shadow-sm transition-all space-y-2.5 group"
+                        className="p-3.5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/40 hover:shadow-sm transition-all space-y-2.5 group"
                       >
                         {/* Precedent Citation Header */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-mono font-bold text-xs sm:text-sm text-[#0F172A] tracking-tight">
+                              <span className="font-mono font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC] tracking-tight">
                                 {c.citation}
                               </span>
                               {isVerifying ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
                                   <Loader2 className="w-2.5 h-2.5 animate-spin" /> Verifying DB...
                                 </span>
                               ) : isVerified ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-50 text-[#105B38] border border-emerald-200">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
                                   <ShieldCheck className="w-3 h-3 text-[#105B38]" /> Live Database
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0]">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] border border-[#E2E8F0] dark:border-[#1E2D44]">
                                   Precedent
                                 </span>
                               )}
                             </div>
 
-                            <div className="text-xs font-semibold text-[#334155] mt-1 leading-snug">
+                            <div className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] mt-1 leading-snug">
                               {verifiedInfo?.title || c.title || "Pakistani Judicial Precedent"}
                             </div>
-                            <div className="text-[11px] text-[#64748B] font-mono mt-0.5">
+                            <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono mt-0.5">
                               {verifiedInfo?.court || c.court || "Supreme Court of Pakistan"}
                             </div>
                           </div>
@@ -350,7 +350,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                           <button
                             type="button"
                             onClick={() => handleCopy(c.citation, `cite-${i}`)}
-                            className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors shrink-0"
+                            className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors shrink-0"
                             title="Copy Citation"
                           >
                             {copiedKey === `cite-${i}` ? (
@@ -363,7 +363,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
 
                         {/* Ratio Decidendi / Headnote Scrollable Box */}
                         {c.snippet && (
-                          <div className="rounded-xl bg-[#F8FAFC] p-2.5 sm:p-3 border border-[#E2E8F0] space-y-1.5">
+                          <div className="rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] p-2.5 sm:p-3 border border-[#E2E8F0] dark:border-[#1E2D44] space-y-1.5">
                             <div className="flex items-center justify-between text-[10px] font-mono font-bold text-[#105B38] uppercase tracking-wider">
                               <span className="flex items-center gap-1">
                                 <Sparkles className="w-3 h-3" />
@@ -374,7 +374,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                                 onClick={() =>
                                   setExpandedSnippets((prev) => ({ ...prev, [i]: !prev[i] }))
                                 }
-                                className="text-[10px] font-mono text-[#64748B] hover:text-[#0F172A] flex items-center gap-0.5"
+                                className="text-[10px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-0.5"
                               >
                                 {isSnippetExpanded ? (
                                   <>
@@ -391,7 +391,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                             </div>
                             <div
                               className={cn(
-                                "text-xs text-[#334155] leading-relaxed custom-scrollbar overflow-y-auto font-sans italic",
+                                "text-xs text-[#334155] dark:text-[#CBD5E1] leading-relaxed custom-scrollbar overflow-y-auto font-sans italic",
                                 isSnippetExpanded ? "max-h-64" : "max-h-24 line-clamp-3"
                               )}
                             >
@@ -412,7 +412,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
 
                           <Link
                             href={`/preview/drafting?cite=${encodeURIComponent(c.citation)}`}
-                            className="inline-flex items-center gap-1 font-semibold text-[#64748B] hover:text-[#0F172A] transition-colors"
+                            className="inline-flex items-center gap-1 font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
                           >
                             <FileSignature className="w-3.5 h-3.5 text-[#105B38]" />
                             <span>Cite in Draft</span>
@@ -428,20 +428,20 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
             {/* ══ TAB 2: Statutes & Sections ══ */}
             {activeTab === "statutes" && (
               <div className="space-y-3">
-                <div className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider text-[10px] px-1">
+                <div className="text-[11px] font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider text-[10px] px-1">
                   Pakistani Statutory Provisions ({filteredStatutes.length})
                 </div>
 
                 {filteredStatutes.length === 0 ? (
-                  <div className="py-16 text-center text-xs text-[#64748B] space-y-3 px-4 bg-[#F8FAFC] rounded-2xl border border-dashed border-[#E2E8F0]">
-                    <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#105B38] flex items-center justify-center mx-auto border border-emerald-200">
+                  <div className="py-16 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] space-y-3 px-4 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-2xl border border-dashed border-[#E2E8F0] dark:border-[#1E2D44]">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] flex items-center justify-center mx-auto border border-emerald-200 dark:border-emerald-500/20">
                       <BookOpen className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-bold text-[#0F172A]">
+                      <p className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                         {filterQuery ? "No Matching Statutes Found" : "No Statutes Detected in Turn"}
                       </p>
-                      <p className="text-[11px] text-[#64748B] mt-1 leading-relaxed max-w-xs mx-auto">
+                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1 leading-relaxed max-w-xs mx-auto">
                         Referenced sections from PPC, CrPC, CPC, QSO, or Special Acts will be categorized here.
                       </p>
                     </div>
@@ -450,15 +450,15 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                   filteredStatutes.map((s, i) => (
                     <div
                       key={i}
-                      className="p-3.5 rounded-2xl bg-white border border-[#E2E8F0] space-y-2 hover:border-[#105B38]/40 hover:shadow-xs transition-all"
+                      className="p-3.5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2 hover:border-[#105B38]/40 hover:shadow-xs transition-all"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <div className="font-bold text-xs sm:text-sm text-[#0F172A]">
+                          <div className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC]">
                             {s.name}
                           </div>
                           {s.section && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-emerald-50 text-[#105B38] border border-emerald-200 mt-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 mt-1">
                               Section / Article {s.section}
                             </span>
                           )}
@@ -467,7 +467,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                         <button
                           type="button"
                           onClick={() => handleCopy(`${s.name} ${s.section ? `Section ${s.section}` : ""}`, `stat-${i}`)}
-                          className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors shrink-0"
+                          className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors shrink-0"
                           title="Copy Statute Citation"
                         >
                           {copiedKey === `stat-${i}` ? (
@@ -479,7 +479,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                       </div>
 
                       {s.description && (
-                        <p className="text-xs text-[#475569] leading-relaxed bg-[#F8FAFC] p-2.5 rounded-xl border border-[#E2E8F0]">
+                        <p className="text-xs text-[#475569] leading-relaxed bg-[#F8FAFC] dark:bg-[#0B131E] p-2.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
                           {s.description}
                         </p>
                       )}
@@ -502,20 +502,20 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
             {/* ══ TAB 3: Saved Bookmarks ══ */}
             {activeTab === "bookmarks" && (
               <div className="space-y-3">
-                <div className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider text-[10px] px-1">
+                <div className="text-[11px] font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider text-[10px] px-1">
                   Chambers Saved Research Bookmarks ({filteredBookmarks.length})
                 </div>
 
                 {filteredBookmarks.length === 0 ? (
-                  <div className="py-16 text-center text-xs text-[#64748B] space-y-3 px-4 bg-[#F8FAFC] rounded-2xl border border-dashed border-[#E2E8F0]">
-                    <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#105B38] flex items-center justify-center mx-auto border border-emerald-200">
+                  <div className="py-16 text-center text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] space-y-3 px-4 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-2xl border border-dashed border-[#E2E8F0] dark:border-[#1E2D44]">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] flex items-center justify-center mx-auto border border-emerald-200 dark:border-emerald-500/20">
                       <Bookmark className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-bold text-[#0F172A]">
+                      <p className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">
                         {filterQuery ? "No Matching Bookmarks Found" : "No Bookmarks Saved Yet"}
                       </p>
-                      <p className="text-[11px] text-[#64748B] mt-1 leading-relaxed max-w-xs mx-auto">
+                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1 leading-relaxed max-w-xs mx-auto">
                         Click the bookmark icon on any AI assistant response turn to save it for immediate reference.
                       </p>
                     </div>
@@ -527,16 +527,16 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                       <div
                         key={b.id}
                         onClick={() => setExpandedBookmarks(prev => ({ ...prev, [b.id]: !prev[b.id] }))}
-                        className="cursor-pointer p-3.5 rounded-2xl bg-white border border-[#E2E8F0] space-y-2 hover:border-[#105B38]/40 hover:shadow-xs transition-all group"
+                        className="cursor-pointer p-3.5 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2 hover:border-[#105B38]/40 hover:shadow-xs transition-all group"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-xs sm:text-sm text-[#0F172A] truncate">
+                          <span className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC] truncate">
                             {b.title || "Saved Response Turn"}
                           </span>
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleCopy(b.content, `bm-${b.id}`); }}
-                            className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors shrink-0"
+                            className="p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors shrink-0"
                             title="Copy Content"
                           >
                             {copiedKey === `bm-${b.id}` ? (
@@ -546,11 +546,11 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                             )}
                           </button>
                         </div>
-                        <div className={cn("text-xs text-[#475569] leading-relaxed bg-[#F8FAFC] p-2.5 rounded-xl border border-[#E2E8F0] font-sans whitespace-pre-wrap", isExpanded ? "" : "line-clamp-3")}>
+                        <div className={cn("text-xs text-[#475569] leading-relaxed bg-[#F8FAFC] dark:bg-[#0B131E] p-2.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] font-sans whitespace-pre-wrap", isExpanded ? "" : "line-clamp-3")}>
                           {b.content}
                         </div>
                         <div className="text-center">
-                          <span className="text-[10px] text-[#94A3B8] font-bold uppercase tracking-wider group-hover:text-[#105B38] transition-colors">
+                          <span className="text-[10px] text-[#94A3B8] dark:text-[#475569] font-bold uppercase tracking-wider group-hover:text-[#105B38] transition-colors">
                             {isExpanded ? "Show Less" : "Click to read full"}
                           </span>
                         </div>
@@ -575,7 +575,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
           )}
 
           {/* ── 6. Drawer Footer Status Bar ── */}
-          <div className="px-4 py-2.5 border-t border-[#E2E8F0] bg-[#F8FAFC] text-[11px] text-[#64748B] font-mono flex items-center justify-between shrink-0 min-h-[44px]">
+          <div className="px-4 py-2.5 border-t border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono flex items-center justify-between shrink-0 min-h-[44px]">
             <span className="truncate">Engine: {activeModelName}</span>
             {activeQueryLatencyMs > 0 && (
               <span className="text-[#105B38] font-semibold shrink-0">
@@ -591,14 +591,14 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
         <div className="flex-1 flex flex-col items-center py-4 space-y-4">
           <button
             onClick={onToggleOpen}
-            className="p-2 rounded-xl bg-emerald-50 text-[#105B38] hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-xs"
+            className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-500/20 transition-colors shadow-xs"
             title="Open Legal Intelligence Inspector"
           >
             <Gavel className="w-4 h-4" />
           </button>
           <div className="w-6 h-[1px] bg-[#E2E8F0]" />
           <div
-            className="text-[10px] text-[#64748B] font-mono font-bold uppercase tracking-widest -rotate-90 origin-center whitespace-nowrap mt-8"
+            className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono font-bold uppercase tracking-widest -rotate-90 origin-center whitespace-nowrap mt-8"
             style={{ width: "80px" }}
           >
             Inspector

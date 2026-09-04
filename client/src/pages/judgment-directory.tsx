@@ -361,7 +361,7 @@ export default function JudgmentDirectoryPage() {
                           </a>
                         </Link>
                       ) : (
-                        <button disabled className="inline-flex h-9 items-center justify-center rounded-lg border border-neutral-900 bg-neutral-950/20 px-3 text-sm font-medium text-neutral-600 cursor-not-allowed">
+                        <button disabled className="inline-flex h-9 items-center justify-center rounded-lg border border-neutral-900 bg-neutral-950/20 px-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 cursor-not-allowed">
                           <ChevronLeft className="h-4 w-4 mr-1" />
                           Previous
                         </button>
@@ -398,7 +398,7 @@ export default function JudgmentDirectoryPage() {
                           </a>
                         </Link>
                       ) : (
-                        <button disabled className="inline-flex h-9 items-center justify-center rounded-lg border border-neutral-900 bg-neutral-950/20 px-3 text-sm font-medium text-neutral-600 cursor-not-allowed">
+                        <button disabled className="inline-flex h-9 items-center justify-center rounded-lg border border-neutral-900 bg-neutral-950/20 px-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 cursor-not-allowed">
                           Next
                           <ChevronRight className="h-4 w-4 ml-1" />
                         </button>

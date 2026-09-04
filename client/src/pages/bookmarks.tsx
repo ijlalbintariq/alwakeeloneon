@@ -540,17 +540,17 @@ export default function BookmarksPage() {
                 return (
                   <div className="mx-auto max-w-3xl space-y-6">
                     {preview.title && (
-                      <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+                      <div className="rounded-xl border border-border bg-white dark:bg-[#131E2E] p-5 shadow-sm">
                         <span className="text-[10px] font-black uppercase tracking-wider text-primary block mb-2 font-sans">User Query</span>
                         <p className="text-sm font-medium whitespace-pre-wrap leading-relaxed text-foreground font-sans">{preview.title}</p>
                       </div>
                     )}
-                    <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+                    <div className="rounded-xl border border-border bg-white dark:bg-[#131E2E] p-5 shadow-sm">
                       <span className="text-[10px] font-black uppercase tracking-wider text-primary block mb-2 font-sans">AI Response</span>
                       <LegalMarkdown content={parsed.cleanContent} />
                     </div>
                     {parsed.references && (
-                      <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+                      <div className="rounded-xl border border-border bg-white dark:bg-[#131E2E] p-5 shadow-sm">
                         <ReferenceCards references={parsed.references} />
                       </div>
                     )}

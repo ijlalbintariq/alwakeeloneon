@@ -76,17 +76,17 @@ export const StatutoryClauseLibrary: React.FC<StatutoryClauseLibraryProps> = ({
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case "Corporate & Tax":
-        return <Building2 className="w-3.5 h-3.5 text-[#1A1A1A]" />;
+        return <Building2 className="w-3.5 h-3.5 text-[#1A1A1A] dark:text-[#F8FAFC]" />;
       case "Civil & Property":
-        return <FileText className="w-3.5 h-3.5 text-[#666666]" />;
+        return <FileText className="w-3.5 h-3.5 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]" />;
       case "Criminal & Bail":
-        return <Scale className="w-3.5 h-3.5 text-[#1A1A1A]" />;
+        return <Scale className="w-3.5 h-3.5 text-[#1A1A1A] dark:text-[#F8FAFC]" />;
       case "Evidence & Execution":
-        return <FileCheck className="w-3.5 h-3.5 text-[#666666]" />;
+        return <FileCheck className="w-3.5 h-3.5 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]" />;
       case "Dispute Resolution":
         return <ShieldCheck className="w-3.5 h-3.5 text-rose-400" />;
       default:
-        return <BookOpen className="w-3.5 h-3.5 text-[#1A1A1A]" />;
+        return <BookOpen className="w-3.5 h-3.5 text-[#1A1A1A] dark:text-[#F8FAFC]" />;
     }
   };
 
@@ -94,18 +94,18 @@ export const StatutoryClauseLibrary: React.FC<StatutoryClauseLibraryProps> = ({
     <div className={`flex flex-col h-full space-y-3 ${className}`}>
       {/* Search Header */}
       <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-[#666666]" />
+        <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search statutory clauses (e.g. s.153, s.48, QSO, PECA)..."
-          className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs bg-[#F5F4F2] border border-[#E5E4E2] text-[#2D2D2D] placeholder:text-[#666666] focus:outline-none focus:border-[#1A1A1A]/50 focus:ring-1 focus:ring-[#1A1A1A]/30 transition-all font-sans"
+          className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs bg-[#F5F4F2] dark:bg-[#0B131E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[#2D2D2D] dark:text-[#CBD5E1] placeholder:text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#1A1A1A]/50 focus:ring-1 focus:ring-[#1A1A1A]/30 transition-all font-sans"
         />
       </div>
 
       {/* Category Pills */}
-      <div className="flex flex-wrap gap-1.5 pb-2 border-b border-[#E5E4E2]">
+      <div className="flex flex-wrap gap-1.5 pb-2 border-b border-[#E5E4E2] dark:border-[#1E2D44]">
         {categories.map((cat) => (
           <button
             key={cat}
@@ -113,7 +113,7 @@ export const StatutoryClauseLibrary: React.FC<StatutoryClauseLibraryProps> = ({
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
               selectedCategory === cat
                 ? "bg-blue-600 text-white border border-blue-500 shadow-sm"
-                : "text-[#4A4A4A] hover:text-[#1A1A1A] bg-white border border-[#E5E4E2] hover:bg-[#F5F4F2]"
+                : "text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#1A1A1A] dark:text-[#F8FAFC] bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] hover:bg-[#F5F4F2] dark:bg-[#0B131E]"
             }`}
           >
             {cat}
@@ -124,8 +124,8 @@ export const StatutoryClauseLibrary: React.FC<StatutoryClauseLibraryProps> = ({
       {/* Clause List */}
       <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
         {filteredClauses.length === 0 ? (
-          <div className="text-center py-8 text-[#666666] text-xs">
-            <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#666666]" />
+          <div className="text-center py-8 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] text-xs">
+            <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]" />
             No statutory clauses matched your search.
           </div>
         ) : (
@@ -136,33 +136,33 @@ export const StatutoryClauseLibrary: React.FC<StatutoryClauseLibraryProps> = ({
             return (
               <div
                 key={clause.id}
-                className="rounded-xl bg-[#F5F4F2] border border-[#E5E4E2]/90 hover:border-[#E5E4E2] transition-all overflow-hidden"
+                className="rounded-xl bg-[#F5F4F2] dark:bg-[#0B131E] border border-[#E5E4E2] dark:border-[#1E2D44]/90 hover:border-[#E5E4E2] dark:border-[#1E2D44] transition-all overflow-hidden"
               >
                 {/* Clause Header Bar */}
                 <div
                   onClick={() =>
                     setExpandedClauseId(isExpanded ? null : clause.id)
                   }
-                  className="p-3 cursor-pointer flex items-start justify-between gap-2 select-none hover:bg-[#F5F4F2]/30 transition-colors"
+                  className="p-3 cursor-pointer flex items-start justify-between gap-2 select-none hover:bg-[#F5F4F2] dark:bg-[#0B131E]/30 transition-colors"
                 >
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#F5F4F2] border border-[#E5E4E2] text-[10px] font-mono text-[#1A1A1A] font-semibold">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#F5F4F2] dark:bg-[#0B131E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[10px] font-mono text-[#1A1A1A] dark:text-[#F8FAFC] font-semibold">
                         {getCategoryIcon(clause.category)}
                         {clause.section}
                       </span>
-                      <span className="text-[10px] text-[#666666] font-serif truncate">
+                      <span className="text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] font-serif truncate">
                         {clause.statute}
                       </span>
                     </div>
-                    <h3 className="text-xs font-semibold text-[#2D2D2D] leading-snug">
+                    <h3 className="text-xs font-semibold text-[#2D2D2D] dark:text-[#CBD5E1] leading-snug">
                       {clause.title}
                     </h3>
-                    <p className="text-[11px] text-[#666666] line-clamp-2">
+                    <p className="text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] line-clamp-2">
                       {clause.summary}
                     </p>
                   </div>
-                  <div className="text-[#666666] hover:text-[#2D2D2D] shrink-0 mt-1">
+                  <div className="text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#2D2D2D] dark:text-[#CBD5E1] shrink-0 mt-1">
                     {isExpanded ? (
                       <ChevronUp className="w-4 h-4" />
                     ) : (
@@ -173,18 +173,18 @@ export const StatutoryClauseLibrary: React.FC<StatutoryClauseLibraryProps> = ({
 
                 {/* Expanded Clause Body */}
                 {isExpanded && (
-                  <div className="px-3 pb-3 pt-1 border-t border-[#E5E4E2]/60 bg-white/50 space-y-2.5">
+                  <div className="px-3 pb-3 pt-1 border-t border-[#E5E4E2] dark:border-[#1E2D44]/60 bg-white dark:bg-[#131E2E]/50 space-y-2.5">
                     {/* Practice Note */}
-                    <div className="p-2 rounded bg-[#1A1A1A]/5 border border-[#1A1A1A]/15 text-[11px] text-[#666666] flex items-start gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#1A1A1A] shrink-0 mt-0.5" />
+                    <div className="p-2 rounded bg-[#1A1A1A]/5 dark:bg-[#1A1A1A]/50 border border-[#1A1A1A]/15 text-[11px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] flex items-start gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#1A1A1A] dark:text-[#F8FAFC] shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-semibold text-[#1A1A1A]">Chamber Practice Note: </span>
+                        <span className="font-semibold text-[#1A1A1A] dark:text-[#F8FAFC]">Chamber Practice Note: </span>
                         {clause.practiceNote}
                       </div>
                     </div>
 
                     {/* Pre-formatted Clause Prose */}
-                    <div className="p-2.5 rounded-lg bg-white border border-[#E5E4E2] text-[11px] text-[#4A4A4A] font-serif leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto select-text">
+                    <div className="p-2.5 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[11px] text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] font-serif leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto select-text">
                       {clause.clauseText}
                     </div>
 
@@ -193,16 +193,16 @@ export const StatutoryClauseLibrary: React.FC<StatutoryClauseLibraryProps> = ({
                       <button
                         type="button"
                         onClick={() => handleCopy(clause)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#F5F4F2] hover:bg-[#EBEBEB] text-[#2D2D2D] text-xs font-medium border border-[#E5E4E2] transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#F5F4F2] dark:bg-[#0B131E] hover:bg-[#EBEBEB] dark:bg-[#1E2D44] text-[#2D2D2D] dark:text-[#CBD5E1] text-xs font-medium border border-[#E5E4E2] dark:border-[#1E2D44] transition-colors"
                       >
                         {isCopied ? (
                           <>
-                            <Check className="w-3 h-3 text-[#1A1A1A]" />
-                            <span className="text-[#1A1A1A]">Copied</span>
+                            <Check className="w-3 h-3 text-[#1A1A1A] dark:text-[#F8FAFC]" />
+                            <span className="text-[#1A1A1A] dark:text-[#F8FAFC]">Copied</span>
                           </>
                         ) : (
                           <>
-                            <Copy className="w-3 h-3 text-[#666666]" />
+                            <Copy className="w-3 h-3 text-[#666666] dark:text-[#94A3B8] dark:text-[#475569]" />
                             <span>Copy Clause</span>
                           </>
                         )}

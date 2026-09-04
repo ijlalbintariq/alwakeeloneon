@@ -135,8 +135,8 @@ export const PreviewDashboard: React.FC = () => {
         date: t.updatedAt || t.createdAt || null,
         timestamp: new Date(t.updatedAt || t.createdAt || 0).getTime(),
         icon: Bot,
-        iconBg: "bg-blue-50 border-blue-100",
-        iconColor: "text-blue-600",
+        iconBg: "bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20",
+        iconColor: "text-blue-600 dark:text-blue-400",
       });
     });
 
@@ -151,8 +151,8 @@ export const PreviewDashboard: React.FC = () => {
         date: d.updatedAt || d.createdAt || null,
         timestamp: new Date(d.updatedAt || d.createdAt || 0).getTime(),
         icon: FileText,
-        iconBg: "bg-amber-50 border-amber-100",
-        iconColor: "text-amber-600",
+        iconBg: "bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20",
+        iconColor: "text-amber-600 dark:text-amber-400",
       });
     });
 
@@ -167,7 +167,7 @@ export const PreviewDashboard: React.FC = () => {
         date: s.createdAt || null,
         timestamp: new Date(s.createdAt || 0).getTime(),
         icon: Search,
-        iconBg: "bg-emerald-50 border-emerald-100",
+        iconBg: "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20",
         iconColor: "text-[#105B38]",
       });
     });
@@ -186,76 +186,76 @@ export const PreviewDashboard: React.FC = () => {
       subtitle: "Find cases & statutes",
       href: "/preview/judgments",
       icon: Search,
-      iconBg: "bg-emerald-50 text-[#105B38] border-emerald-100",
+      iconBg: "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-100 dark:border-emerald-500/20",
     },
     {
       title: "Ask AI Counsel",
       subtitle: "Get legal answers",
       href: "/preview/chat",
       icon: MessageSquare,
-      iconBg: "bg-blue-50 text-blue-600 border-blue-100",
+      iconBg: "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20",
     },
     {
       title: "Draft Legal Document",
       subtitle: "Create with AI",
       href: "/preview/drafting",
       icon: FileSignature,
-      iconBg: "bg-amber-50 text-amber-600 border-amber-100",
+      iconBg: "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-500/20",
     },
     {
       title: "View Cause List",
       subtitle: "Latest court schedules",
       href: "/preview/diary",
       icon: CalendarDays,
-      iconBg: "bg-orange-50 text-orange-600 border-orange-100",
+      iconBg: "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-500/20",
     },
     {
       title: "Case Files Vault",
       subtitle: "Manage client matters",
       href: "/preview/cases",
       icon: Briefcase,
-      iconBg: "bg-purple-50 text-purple-600 border-purple-100",
+      iconBg: "bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-500/20",
     },
     {
       title: "6-Pillar Matter Audit",
       subtitle: "Analyze & detect risks",
       href: "/preview/cases",
       icon: ShieldCheck,
-      iconBg: "bg-teal-50 text-teal-600 border-teal-100",
+      iconBg: "bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-100 dark:border-teal-500/20",
     },
     {
       title: "Statutes & Major Codes",
       subtitle: "Compendium & limitation",
       href: "/preview/statutes",
       icon: BookOpen,
-      iconBg: "bg-emerald-50 text-emerald-600 border-emerald-100",
+      iconBg: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20",
     },
     {
       title: "Precedent Graphs",
       subtitle: "Treatment & citations",
       href: "/preview/judgments",
       icon: GitBranch,
-      iconBg: "bg-cyan-50 text-cyan-600 border-cyan-100",
+      iconBg: "bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-500/20",
     },
     {
       title: "Court Fee Calculator",
       subtitle: "Stamp & valuation",
       onClick: () => setFeeModalOpen(true),
       icon: Calculator,
-      iconBg: "bg-indigo-50 text-indigo-600 border-indigo-100",
+      iconBg: "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-500/20",
     },
   ];
 
   return (
     <PreviewShell className="max-w-7xl mx-auto space-y-6">
       {/* ── Top Section: Greeting + 3 Usage Meters ──────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs">
         {/* Left: Greeting */}
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight">
             {greeting}, <span className="text-[#105B38]">{counselName}!</span>
           </h1>
-          <p className="text-sm text-[#64748B]">
+          <p className="text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
             Al Wakeelo Legal AI has summarized your daily chambers briefing.
           </p>
         </div>
@@ -265,14 +265,14 @@ export const PreviewDashboard: React.FC = () => {
           {/* 1. Monthly Usage */}
           <div
             onClick={() => setUpgradeModalOpen(true)}
-            className="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] hover:border-[#105B38]/40 cursor-pointer transition-all min-w-[170px]"
+            className="p-3.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] hover:border-[#105B38]/40 cursor-pointer transition-all min-w-[170px]"
           >
-            <div className="flex items-center justify-between text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+            <div className="flex items-center justify-between text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
               <span>Monthly Usage</span>
               <span className="text-[#105B38]">{usage?.percentage || 0}% used</span>
             </div>
-            <p className="text-lg font-extrabold text-[#0F172A] mt-1">
-              {usage?.used || 0} <span className="text-xs font-medium text-[#64748B]">/ {usage?.monthlyLimit || "unlimited"}</span>
+            <p className="text-lg font-extrabold text-[#0F172A] dark:text-[#F8FAFC] mt-1">
+              {usage?.used || 0} <span className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">/ {usage?.monthlyLimit || "unlimited"}</span>
             </p>
             <div className="w-full h-1.5 bg-[#E2E8F0] rounded-full mt-2 overflow-hidden">
               <div
@@ -280,19 +280,19 @@ export const PreviewDashboard: React.FC = () => {
                 style={{ width: `${usage?.percentage || 0}%` }}
               />
             </div>
-            <p className="text-[10px] text-[#94A3B8] mt-1.5 truncate">
+            <p className="text-[10px] text-[#94A3B8] dark:text-[#475569] mt-1.5 truncate">
               {usage?.tierLabel || "Enterprise Plan"}
             </p>
           </div>
 
           {/* 2. Today Usage */}
-          <div className="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] min-w-[170px]">
-            <div className="flex items-center justify-between text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+          <div className="p-3.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] min-w-[170px]">
+            <div className="flex items-center justify-between text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
               <span>Today Usage</span>
               <span className="text-[#105B38]">{usage?.todayPercentage || 0}% used</span>
             </div>
-            <p className="text-lg font-extrabold text-[#0F172A] mt-1">
-              {Math.max(0, 100 - (usage?.todayPercentage || 0))}% <span className="text-xs font-medium text-[#64748B]">left</span>
+            <p className="text-lg font-extrabold text-[#0F172A] dark:text-[#F8FAFC] mt-1">
+              {Math.max(0, 100 - (usage?.todayPercentage || 0))}% <span className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">left</span>
             </p>
             <div className="w-full h-1.5 bg-[#E2E8F0] rounded-full mt-2 overflow-hidden">
               <div 
@@ -300,24 +300,24 @@ export const PreviewDashboard: React.FC = () => {
                 style={{ width: `${usage?.todayPercentage || 0}%` }}
               />
             </div>
-            <p className="text-[10px] text-[#94A3B8] mt-1.5">
+            <p className="text-[10px] text-[#94A3B8] dark:text-[#475569] mt-1.5">
               Resets 00:00 PKT
             </p>
           </div>
 
           {/* 3. Session Limit */}
-          <div className="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] min-w-[170px]">
-            <div className="flex items-center justify-between text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+          <div className="p-3.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] min-w-[170px]">
+            <div className="flex items-center justify-between text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] uppercase tracking-wider">
               <span>Session Health</span>
-              <span className="text-emerald-600 font-bold">Active</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">Active</span>
             </div>
-            <p className="text-lg font-extrabold text-[#0F172A] mt-1">
-              100% <span className="text-xs font-medium text-[#64748B]">speed</span>
+            <p className="text-lg font-extrabold text-[#0F172A] dark:text-[#F8FAFC] mt-1">
+              100% <span className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">speed</span>
             </p>
             <div className="w-full h-1.5 bg-[#E2E8F0] rounded-full mt-2 overflow-hidden">
               <div className="h-full bg-[#105B38] rounded-full w-full" />
             </div>
-            <p className="text-[10px] text-[#94A3B8] mt-1.5">
+            <p className="text-[10px] text-[#94A3B8] dark:text-[#475569] mt-1.5">
               SSE Real-Time Sync
             </p>
           </div>
@@ -330,7 +330,7 @@ export const PreviewDashboard: React.FC = () => {
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#105B38] text-white shadow-xs">
             <Scale className="h-4 w-4" />
           </div>
-          <h2 className="text-base font-bold text-[#0F172A] tracking-tight">
+          <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight">
             Quick Actions
           </h2>
         </div>
@@ -339,16 +339,16 @@ export const PreviewDashboard: React.FC = () => {
           {quickActions.map((action, i) => {
             const Icon = action.icon;
             const content = (
-              <div className="group relative flex items-start justify-between p-4 rounded-2xl bg-white border border-[#E2E8F0] hover:border-[#105B38]/40 hover:shadow-md transition-all duration-200 cursor-pointer h-full">
+              <div className="group relative flex items-start justify-between p-4 rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/40 hover:shadow-md transition-all duration-200 cursor-pointer h-full">
                 <div className="flex items-start gap-3.5 min-w-0">
                   <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-transform group-hover:scale-105", action.iconBg)}>
                     <Icon className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-xs font-bold text-[#0F172A] group-hover:text-[#105B38] transition-colors truncate">
+                    <h3 className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] transition-colors truncate">
                       {action.title}
                     </h3>
-                    <p className="text-[11px] text-[#64748B] mt-0.5 truncate">
+                    <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-0.5 truncate">
                       {action.subtitle}
                     </p>
                   </div>
@@ -377,11 +377,11 @@ export const PreviewDashboard: React.FC = () => {
       {/* ── Bottom: 3-Column Split (Unified Activity Stream, Today's Court Agenda, Upcoming Deadlines) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Col 1: Unified Activity Stream */}
-        <div className="flex flex-col rounded-2xl bg-white border border-[#E2E8F0] shadow-xs overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0]">
+        <div className="flex flex-col rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-[#105B38]" />
-              <h2 className="text-sm font-bold text-[#0F172A]">Activity Stream</h2>
+              <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Activity Stream</h2>
             </div>
             <Link href="/preview/history" className="text-xs font-semibold text-[#105B38] hover:underline">
               View History
@@ -404,7 +404,7 @@ export const PreviewDashboard: React.FC = () => {
                   "px-2.5 py-1 text-[10px] font-bold rounded-lg transition-colors whitespace-nowrap",
                   activityFilter === tab.key
                     ? "bg-[#105B38] text-white shadow-xs"
-                    : "bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0]"
+                    : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0]"
                 )}
               >
                 {tab.label}
@@ -414,7 +414,7 @@ export const PreviewDashboard: React.FC = () => {
 
           <div className="p-4 flex-1 overflow-y-auto max-h-[300px] space-y-2.5 custom-scrollbar">
             {filteredActivity.length === 0 ? (
-              <div className="py-10 text-center text-xs text-[#94A3B8] space-y-2">
+              <div className="py-10 text-center text-xs text-[#94A3B8] dark:text-[#475569] space-y-2">
                 <Activity className="w-7 h-7 text-[#CBD5E1] mx-auto" />
                 <p>No recent activity under this filter.</p>
               </div>
@@ -433,17 +433,17 @@ export const PreviewDashboard: React.FC = () => {
                   <div
                     key={item.id}
                     onClick={handleClick}
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#F8FAFC] border border-transparent hover:border-[#E2E8F0] transition-all group cursor-pointer"
+                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#F8FAFC] dark:bg-[#0B131E] border border-transparent hover:border-[#E2E8F0] dark:border-[#1E2D44] transition-all group cursor-pointer"
                   >
                     <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border", item.iconBg, item.iconColor)}>
                       <ItemIcon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[#0F172A] group-hover:text-[#105B38] truncate transition-colors">
+                      <p className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] truncate transition-colors">
                         {item.title}
                       </p>
-                      <div className="flex items-center gap-1.5 text-[10px] text-[#94A3B8] font-mono mt-0.5">
-                        <span className="font-semibold text-[#64748B]">{item.subtitle}</span>
+                      <div className="flex items-center gap-1.5 text-[10px] text-[#94A3B8] dark:text-[#475569] font-mono mt-0.5">
+                        <span className="font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{item.subtitle}</span>
                         {item.date && (
                           <>
                             <span>·</span>
@@ -461,12 +461,12 @@ export const PreviewDashboard: React.FC = () => {
         </div>
 
         {/* Col 2: Today's Court Agenda */}
-        <div className="flex flex-col rounded-2xl bg-white border border-[#E2E8F0] shadow-xs overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0]">
+        <div className="flex flex-col rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
             <div className="flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-[#105B38]" />
-              <h2 className="text-sm font-bold text-[#0F172A]">Today's Agenda</h2>
-              <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md bg-[#F1F5F9] text-[#475569]">
+              <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Today's Agenda</h2>
+              <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569]">
                 {new Date().toLocaleDateString("en-PK", { day: "numeric", month: "short" })}
               </span>
             </div>
@@ -479,7 +479,7 @@ export const PreviewDashboard: React.FC = () => {
             {todayAgenda.length === 0 ? (
               <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
                 <CalendarDays className="w-8 h-8 text-[#CBD5E1]" />
-                <p className="text-xs text-[#64748B]">No hearings scheduled for today.</p>
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">No hearings scheduled for today.</p>
                 <button
                   type="button"
                   onClick={() => setAddHearingOpen(true)}
@@ -493,13 +493,13 @@ export const PreviewDashboard: React.FC = () => {
               todayAgenda.map((entry: any) => (
                 <div
                   key={entry.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]"
+                  className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44]"
                 >
                   <div className="min-w-0 space-y-1">
-                    <p className="text-xs font-bold text-[#0F172A] truncate">
+                    <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
                       {entry.caseTitle || entry.title || `Matter #${entry.id}`}
                     </p>
-                    <div className="flex items-center gap-2 text-[10px] text-[#64748B]">
+                    <div className="flex items-center gap-2 text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                       <span className="font-mono font-semibold text-[#105B38]">
                         {entry.hearingTime || "09:00 AM"}
                       </span>
@@ -510,10 +510,10 @@ export const PreviewDashboard: React.FC = () => {
                     className={cn(
                       "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border",
                       entry.status === "completed"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
                         : entry.status === "adjourned"
-                        ? "bg-amber-50 text-amber-700 border-amber-200"
-                        : "bg-blue-50 text-blue-700 border-blue-200"
+                        ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                        : "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20"
                     )}
                   >
                     {entry.status || "Pending"}
@@ -525,13 +525,13 @@ export const PreviewDashboard: React.FC = () => {
         </div>
 
         {/* Col 3: Upcoming Deadlines & Compliance */}
-        <div className="flex flex-col rounded-2xl bg-white border border-[#E2E8F0] shadow-xs overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0]">
+        <div className="flex flex-col rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600" />
-              <h2 className="text-sm font-bold text-[#0F172A]">Upcoming Deadlines</h2>
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Upcoming Deadlines</h2>
               {upcomingDeadlines.length > 0 && (
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
                   {upcomingDeadlines.length} Due
                 </span>
               )}
@@ -545,7 +545,7 @@ export const PreviewDashboard: React.FC = () => {
             {upcomingDeadlines.length === 0 && caseFiles.length === 0 ? (
               <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
                 <Briefcase className="w-8 h-8 text-[#CBD5E1]" />
-                <p className="text-xs text-[#64748B]">No pending court deadlines.</p>
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">No pending court deadlines.</p>
                 <Link
                   href="/preview/cases"
                   className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-[#105B38] hover:underline"
@@ -564,14 +564,14 @@ export const PreviewDashboard: React.FC = () => {
                   <Link
                     key={`deadline-${d.id}`}
                     href={`/preview/cases`}
-                    className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#105B38]/40 hover:bg-white transition-all group"
+                    className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38]/40 hover:bg-white dark:bg-[#131E2E] transition-all group"
                   >
                     <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#105B38] truncate transition-colors">
+                      <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] truncate transition-colors">
                         {d.title || "Court Compliance"}
                       </p>
-                      <div className="flex items-center gap-2 text-[10px] text-[#64748B]">
-                        <span className="font-semibold text-[#334155]">{d.caseTitle || "Litigation Matter"}</span>
+                      <div className="flex items-center gap-2 text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
+                        <span className="font-semibold text-[#334155] dark:text-[#CBD5E1]">{d.caseTitle || "Litigation Matter"}</span>
                         {d.court && <span>· {d.court}</span>}
                       </div>
                     </div>
@@ -579,10 +579,10 @@ export const PreviewDashboard: React.FC = () => {
                       className={cn(
                         "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border ml-2",
                         isOverdue
-                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                          ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
                           : isUrgent
-                          ? "bg-amber-50 text-amber-800 border-amber-200"
-                          : "bg-emerald-50 text-[#105B38] border-emerald-200"
+                          ? "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                          : "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20"
                       )}
                     >
                       {isOverdue
@@ -599,17 +599,17 @@ export const PreviewDashboard: React.FC = () => {
                 <Link
                   key={`case-${item.id}`}
                   href={`/preview/cases`}
-                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#F8FAFC] border border-transparent hover:border-[#E2E8F0] transition-all group"
+                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#F8FAFC] dark:bg-[#0B131E] border border-transparent hover:border-[#E2E8F0] dark:border-[#1E2D44] transition-all group"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border bg-purple-50 text-purple-600 border-purple-100">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-500/20">
                     <Briefcase className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-[#0F172A] group-hover:text-[#105B38] truncate transition-colors">
+                    <p className="text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] truncate transition-colors">
                       {item.title || item.caseNumber || `Matter #${item.id}`}
                     </p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-[#94A3B8] font-mono mt-0.5">
-                      <span className="font-semibold text-[#64748B]">Active Matter</span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#94A3B8] dark:text-[#475569] font-mono mt-0.5">
+                      <span className="font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Active Matter</span>
                       <span>·</span>
                       <span>{item.court || "High Court"}</span>
                     </div>
