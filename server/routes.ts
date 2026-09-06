@@ -22015,11 +22015,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
   // ── Safepay Payment Gateway & Billing APIs ──────────────────────────────
 
-  const VALID_PROMO_CODES: Record<string, { label: string; discountPct: number }> = {
-    CHAMBERS2026: { label: "Chambers 2026 Launch (20% Off)", discountPct: 20 },
-    ADVOCATE10: { label: "Advocate Special (10% Off)", discountPct: 10 },
-    BARCOUNCIL: { label: "Bar Council Members (15% Off)", discountPct: 15 },
-  };
+  const VALID_PROMO_CODES: Record<string, { label: string; discountPct: number }> = {};
 
   app.get("/api/billing/plans", (_req, res) => {
     res.json({

@@ -208,7 +208,9 @@ app.use((req, res, next) => {
   }
 
   const isUnsafeMethod = !SAFE_HTTP_METHODS.has(req.method.toUpperCase());
-  if (req.path.startsWith("/api") && isUnsafeMethod && !isSameOriginRequest(req)) {
+  const isWebhook = req.path === "/api/safepay/webhook";
+  
+  if (req.path.startsWith("/api") && isUnsafeMethod && !isWebhook && !isSameOriginRequest(req)) {
     recordSecurityEvent("csrf_block", getClientIdentifier(req), {
       method: req.method,
       path: req.path,
