@@ -3615,15 +3615,17 @@ export function classifyQueryIntent(rawQuery: string, context?: { module?: strin
     needsCase = false; // contract/legal drafting focus on statutes/templates, not precedents
   }
 
-  // Truncate very long queries (e.g. pasted petitions) to first ~200 chars
-  // for topic detection and DB search. Legal intent is always in the first sentence.
-  // The full text is still available in raw for the LLM prompt.
+  // Truncate very long queries (e.g. pasted petitions) to first ~600 chars
+  // for topic detection and DB search. 600 covers 95%+ of real lawyer questions
+  // (facts-then-question pattern). For truly long queries (petitions), the Tier 2
+  // LLM extractor receives the full untruncated text via queryForRetrieval.
+  // The full normalizedFull is kept for tail-scoring topics beyond the cutoff.
   const normalizedFull = norm(raw);
-  const normalized = normalizedFull.length > 200 ? normalizedFull.slice(0, 200).trim() : normalizedFull;
+  const normalized = normalizedFull.length > 600 ? normalizedFull.slice(0, 600).trim() : normalizedFull;
   const words = normalized.split(/\s+/);
 
-  // --- Citation lookup? ---
-  if (CITATION_PATTERN.test(normalized)) {
+  // --- Citation lookup? (check full text so citations beyond 600 chars are detected) ---
+  if (CITATION_PATTERN.test(normalizedFull)) {
     return {
       raw,
       normalized,
@@ -3670,10 +3672,13 @@ export function classifyQueryIntent(rawQuery: string, context?: { module?: strin
     // Primary term hit — strong signal (exact word boundary match)
     for (const term of topic.primary) {
       if (matchesWordBoundary(normalized, term)) score += 12;
+      // Tail scoring: check beyond 600 chars at half weight for long queries
+      else if (normalizedFull.length > 600 && matchesWordBoundary(normalizedFull, term)) score += 6;
     }
     // Synonym hit — weaker signal (exact word boundary match)
     for (const term of topic.synonyms) {
       if (matchesWordBoundary(normalized, term)) score += 4;
+      else if (normalizedFull.length > 600 && matchesWordBoundary(normalizedFull, term)) score += 2;
     }
     // Partial word match against primary terms (only if length >= 4)
     for (const word of words) {

@@ -362,8 +362,11 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
   let judgmentSearchQuery = expandedQuery;
   if (intent.statuteRef) {
     const { abbr, sectionOrArticle } = intent.statuteRef;
-    // Build targeted query: "section 354 PPC" or "354 PPC" — keeps section+abbr together
-    judgmentSearchQuery = `section ${sectionOrArticle} ${abbr}`;
+    // Build targeted query: "section 354 PPC" BUT preserve the user's substantive
+    // legal keywords. searchJudgmentsByKeywords extracts at most 6 tokens and prioritizes
+    // signal tokens, so "section", "354", and "ppc" will be picked first, while the
+    // remaining 3 slots get filled by the most relevant legal terms from expandedQuery.
+    judgmentSearchQuery = `section ${sectionOrArticle} ${abbr} ${expandedQuery}`;
   }
 
   const judgmentKeywordPromise = withTimeout(

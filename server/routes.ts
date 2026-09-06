@@ -14936,7 +14936,7 @@ Rules:
           draftRefinePromise,
           gatherKnowledgeWithHits(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
             console.warn("[LegalDrafting:Pipeline] Knowledge pipeline unavailable:", err?.message || err);
-            return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[] };
+            return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[], maxRelevanceScore: 0 };
           }),
         ]);
         const refinedDraftPrompt = draftRefineResult.refined;
@@ -16437,7 +16437,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       type RefineResult = { refined: string; wasRefined: boolean; elapsedMs: number };
       // Phase 1: Pipeline + style + refine (parallel, no tool search yet)
       const [knowledgeRace, styleRace, refineRace] = await Promise.all([
-        raceToDeadline<PipelineRunResult>(knowledgePromise, ENRICHMENT_BUDGET_MS, { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[] }, "knowledge-context"),
+        raceToDeadline<PipelineRunResult>(knowledgePromise, ENRICHMENT_BUDGET_MS, { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[], maxRelevanceScore: 0 }, "knowledge-context"),
         raceToDeadline<StyleFetch>(stylePromise, ENRICHMENT_BUDGET_MS, null, "style-memory"),
         raceToDeadline<RefineResult>(refinePromise, 4000, { refined: lastUserMessage?.content || "", wasRefined: false, elapsedMs: 0 }, "query-refine"),
       ]);
@@ -16483,13 +16483,18 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         }
       }
 
-      // Phase 2: Tool search ONLY if pipeline returned 0 case law hits (fallback-only)
+      // Phase 2: Tool search ONLY if pipeline returned 0 cases OR low quality cases
       // Budget is capped at 20s for the fallback tool search.
       const TOOL_SEARCH_FALLBACK_MS = 20_000;
-      const toolSearchEnabled = toolSearchCapable && pipelineCaseLawHits.length === 0;
+      const TOOL_SEARCH_QUALITY_THRESHOLD = 40;
+      const pipelineMaxScore = knowledgeResult.maxRelevanceScore ?? 100;
+      const toolSearchEnabled = toolSearchCapable && (
+        pipelineCaseLawHits.length === 0 ||
+        pipelineMaxScore < TOOL_SEARCH_QUALITY_THRESHOLD
+      );
       let toolSearchResult: ToolSearchResult = { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
       if (toolSearchEnabled) {
-        console.log("[ToolSearch:Fallback] Pipeline returned 0 case law hits — running tool search as fallback");
+        console.log(`[ToolSearch:Fallback] Triggered (Hits: ${pipelineCaseLawHits.length}, MaxScore: ${pipelineMaxScore}) — running multi-angle tool search`);
         if (sseHeadersFlushed) {
           try { res.write(`data: ${JSON.stringify({ searching: true, query: "fallback search...", found: 0, elapsedMs: 0 })}\n\n`); } catch {}
         }

@@ -245,6 +245,9 @@ export interface PipelineRunResult {
   topics: string[];
   durationMs: number;
   caseLawHits: CaseLawHit[];
+  /** Highest relevance score among retrieved case law (0-100). Used by routes.ts
+   *  to decide whether to run multi-angle tool search as a quality gate. */
+  maxRelevanceScore: number;
 }
 
 export async function runKnowledgePipeline(
@@ -264,6 +267,7 @@ export async function runKnowledgePipeline(
       topics: [],
       durationMs: 0,
       caseLawHits: cached.caseLawHits,
+      maxRelevanceScore: cached.caseLawHits.length > 0 ? 100 : 0, // cached = previously validated
     };
   }
 
@@ -370,6 +374,10 @@ export async function runKnowledgePipeline(
       cacheSet(key, { contextString: ctx.contextString, caseLawHits });
     }
 
+    const maxRelevanceScore = retrieval.caseLaw.length > 0
+      ? Math.max(...retrieval.caseLaw.map(h => h.relevanceScore))
+      : 0;
+
     return {
       contextString: ctx.contextString,
       hasCaseLaw: ctx.hasCaseLawCitations,
@@ -377,6 +385,7 @@ export async function runKnowledgePipeline(
       topics: intent.topics.map((t) => t.id),
       durationMs: Date.now() - t0,
       caseLawHits,
+      maxRelevanceScore,
     };
   })();
 
@@ -392,6 +401,7 @@ export async function runKnowledgePipeline(
             topics: [],
             durationMs: OUTER_DEADLINE_MS,
             caseLawHits: [],
+            maxRelevanceScore: 0,
           }),
         OUTER_DEADLINE_MS,
       ),
