@@ -40,6 +40,7 @@ interface DocumentTab {
   dbDraftId?: number;
   title: string;
   category: string;
+  documentType?: string;
   pageProfileId: LegalPageProfileId;
   htmlContent: string;
   textContent: string;
@@ -541,6 +542,7 @@ export const PreviewDrafting: React.FC = () => {
               ...t,
               title: template.title,
               category: template.category,
+              documentType: template.id,
               htmlContent: formattedHtml,
               textContent: template.body,
               lastModified: Date.now(),
@@ -799,6 +801,7 @@ export const PreviewDrafting: React.FC = () => {
             onOpenFeeModal={() => setIsFeeModalOpen(true)}
             onOpenExportModal={() => setIsExportModalOpen(true)}
             activeProfileId={activeProfileId}
+            activeDocumentType={activeTab?.documentType}
             onChangeProfileId={handleProfileChange}
             editorWidthMode={editorWidthMode}
             onChangeWidthMode={setEditorWidthMode}

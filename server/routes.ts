@@ -6137,7 +6137,7 @@ export function normalizeCourtReadyDraftingText(content: string): string {
       const city = highCourtWithCity[1].replace(/\s+/g, " ").trim().toUpperCase();
       return `IN THE HONOURABLE HIGH COURT, ${city}`;
     }
-    if (/^respectfully\s+(submitted|sheweth)\s*:?\s*$/i.test(trimmed)) return "RESPECTFULLY SHEWETH:";
+    if (/^(most\s+)?respectfully\s+(submitted|sheweth|showeth)\s*:?\s*$/i.test(trimmed)) return "RESPECTFULLY SHEWETH:";
     if (/^brief\s+facts\s*:?\s*$/i.test(trimmed)) return "BRIEF FACTS";
     if (/^grounds(\s+of\s+(appeal|application))?\s*:?\s*$/i.test(trimmed)) return "GROUNDS";
     if (/^legal\s+authorities\s*:?\s*$/i.test(trimmed)) return "GROUNDS";
@@ -13369,7 +13369,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       filingCaption: "CIVIL SUIT NO. ____ OF ____ / SUIT FOR ____",
       requiredInHeader: [
         { regex: /IN THE COURT OF/i, label: "Civil Court heading" },
-        { regex: /CIVIL SUIT/i, label: "Civil Suit caption" },
+        { regex: /(CIVIL SUIT|SUIT FOR)/i, label: "Civil Suit caption" },
       ],
     },
     "civil-misc-application": {
@@ -13386,7 +13386,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       filingCaption: "CRIMINAL MISCELLANEOUS APPLICATION UNDER RELEVANT Cr.P.C. PROVISION",
       requiredInHeader: [
         { regex: /(JUSTICE OF PEACE|SESSIONS JUDGE|MAGISTRATE)/i, label: "Criminal forum heading" },
-        { regex: /CRIMINAL\s+MISC/i, label: "Criminal Misc. caption" },
+        { regex: /(CRIMINAL\s+MISC|CRL\.?\s*MISC)/i, label: "Criminal Misc. caption" },
         { regex: /APPLICATION UNDER/i, label: "Application title" },
       ],
     },
@@ -13452,7 +13452,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       filingCaption: "CONSTITUTIONAL PETITION UNDER ARTICLE 199",
       requiredInHeader: [
         { regex: /HIGH COURT/i, label: "High Court heading" },
-        { regex: /(ARTICLE\s*199|CONSTITUTIONAL PETITION)/i, label: "Article 199/Writ caption" },
+        { regex: /(ARTICLE\s*199|CONSTITUTIONAL PETITION|WRIT PETITION)/i, label: "Article 199/Writ caption" },
       ],
     },
     "high-court-civil-appeal": {
@@ -13554,7 +13554,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       filingCaption: "PETITION FOR EJECTMENT UNDER THE RENTED PREMISES ACT",
       requiredInHeader: [
         { regex: /(RENT CONTROLLER|RENT TRIBUNAL)/i, label: "Rent Court heading" },
-        { regex: /(EJECTMENT|RENT PETITION|RENTED PREMISES)/i, label: "Rent/Ejectment caption" },
+        { regex: /(EJECTMENT|RENT PETITION|RENTED PREMISES|EVICTION)/i, label: "Rent/Ejectment caption" },
       ],
     },
     "recovery-suit": {
@@ -13625,10 +13625,10 @@ ${headingOrder}`;
       let thinGrounds = 0;
       for (const block of groundBlocks) {
         const sentences = block.split(/\.\s+|\.$/).filter(s => s.trim().length > 15);
-        if (sentences.length < 2) thinGrounds++;
+        if (sentences.length < 2 && block.length < 150) thinGrounds++;
       }
       if (thinGrounds > 0 && groundBlocks.length > 0) {
-        issues.push(`${thinGrounds} of ${groundBlocks.length} legal ground(s) are under-developed. Each ground must explain the legal principle and apply it to the pleaded facts.`);
+        issues.push(`${thinGrounds} of ${groundBlocks.length} legal ground(s) are too brief. Grounds should adequately explain the legal principle or fact.`);
       }
     }
 
@@ -13812,8 +13812,8 @@ ${content}`;
    */
   function ensurePetitionerBlock(draftText: string): string {
     // Skip if already has petitioner/through block
-    if (/\bThrough:\s*\n\s*\[/i.test(draftText)) return draftText;
-    if (/PETITIONER\s*\n\s*\n\s*Through:/i.test(draftText)) return draftText;
+    if (/\bThrough:?\s*\n\s*\[/i.test(draftText)) return draftText;
+    if (/(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|COMPLAINANT)\s*\n\s*\n\s*Through:?/i.test(draftText)) return draftText;
 
     // Detect the party role from the draft heading
     let role = "PETITIONER";
@@ -15504,6 +15504,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
         }
 
         if (!isLocalizedEdit && !validation.ok) {
+          draftedText = draftedText.replace(/```references[\s\S]*?```/gi, "").trim();
           return res.status(422).json({
             message: `Draft requires review and was not marked court-ready: ${validation.issues.join(" ")}`,
             clause: draftedText,
@@ -15512,6 +15513,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
           });
         }
 
+        draftedText = draftedText.replace(/```references[\s\S]*?```/gi, "").trim();
         return res.json({
           clause: draftedText,
           sourceId: `legal-${selectedDocType || "custom-input"}`,

@@ -54,6 +54,7 @@ interface RightDraftingSidebarProps {
   onOpenFeeModal: () => void;
   onOpenExportModal: () => void;
   activeProfileId: LegalPageProfileId;
+  activeDocumentType?: string;
   onChangeProfileId: (id: LegalPageProfileId) => void;
   editorWidthMode: "wide" | "full" | "court";
   onChangeWidthMode: (mode: "wide" | "full" | "court") => void;
@@ -81,6 +82,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   onOpenFeeModal,
   onOpenExportModal,
   activeProfileId,
+  activeDocumentType,
   onChangeProfileId,
   editorWidthMode,
   onChangeWidthMode,
@@ -161,6 +163,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
       const payload = {
         prompt: query,
         draftText: currentDocumentText,
+        documentType: activeDocumentType,
         jurisdiction: "Pakistan",
         module: "legal-drafting",
         stream: false,
