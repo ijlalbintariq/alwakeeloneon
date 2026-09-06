@@ -11,8 +11,8 @@ import { isOpenRouterAvailable, chatWithOpenRouter } from "./openrouter";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
-import { caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
-import { eq, inArray, like, sql, and, gte, lte, desc } from "drizzle-orm";
+import { judgeCaseLinks, caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
+import { eq, inArray, like, sql, and, gte, lte, desc, ilike, count, countDistinct, asc } from "drizzle-orm";
 import { uploadBufferToR2, uploadBufferToR2WithRetry } from "./r2-storage";
 import path from "node:path";
 
@@ -547,6 +547,163 @@ export function registerAllTools(server: McpServer) {
           text: JSON.stringify(payload, null, 2),
         }
       ],
+      structuredContent: payload,
+    };
+  });
+
+  // 5. Search Judges Directory
+  server.registerTool("search_judges", {
+    description: "Search the Pakistani judges directory to find judges and see their statistics (case counts, courts, active years).",
+    inputSchema: {
+      search: z.string().optional().describe("Judge name to search for"),
+      court: z.string().optional().describe("Filter by court (e.g. SC, LHC, SHC, IHC, PHC, BHC, FSC, or specific name)"),
+      limit: z.number().optional().default(10).describe("Max results (default 10, max 50)"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      total: z.number(),
+      judges: z.array(z.object({
+        name: z.string(),
+        caseCount: z.number(),
+        courts: z.array(z.string()),
+        earliestYear: z.number().nullable().optional(),
+        latestYear: z.number().nullable().optional(),
+      })),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false }
+  }, async ({ search, court, limit }) => {
+    const userId = getAuthenticatedUserId();
+    const safeLimit = Math.min(50, Math.max(1, limit || 10));
+    
+    let courtFilter = (court || "").trim();
+    if (courtFilter === "SC") courtFilter = "Supreme Court";
+    else if (courtFilter === "LHC") courtFilter = "Lahore High Court";
+    else if (courtFilter === "SHC") courtFilter = "Sindh High Court";
+    else if (courtFilter === "IHC") courtFilter = "Islamabad High Court";
+    else if (courtFilter === "PHC") courtFilter = "Peshawar High Court";
+    else if (courtFilter === "BHC") courtFilter = "Balochistan High Court";
+    else if (courtFilter === "FSC") courtFilter = "Federal Shariat Court";
+
+    const conditions = [];
+    if (search) conditions.push(ilike(judgeCaseLinks.judgeName, `%${search}%`));
+    if (courtFilter && courtFilter !== "ALL") conditions.push(ilike(judgeCaseLinks.courtName, `%${courtFilter}%`));
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const countResult = await db.select({ total: countDistinct(judgeCaseLinks.judgeName) })
+      .from(judgeCaseLinks).where(whereClause);
+    const total = countResult[0]?.total || 0;
+
+    const rows = await db.select({
+      name: judgeCaseLinks.judgeName,
+      caseCount: count(judgeCaseLinks.id),
+      courts: sql<string[]>`array_agg(DISTINCT ${judgeCaseLinks.courtName})`.as("courts"),
+      earliestYear: sql<number>`MIN(${judgeCaseLinks.year})`.as("earliestYear"),
+      latestYear: sql<number>`MAX(${judgeCaseLinks.year})`.as("latestYear"),
+    })
+    .from(judgeCaseLinks)
+    .where(whereClause)
+    .groupBy(judgeCaseLinks.judgeName)
+    .orderBy(desc(count(judgeCaseLinks.id)), asc(judgeCaseLinks.judgeName))
+    .limit(safeLimit);
+
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      total,
+      judges: rows.map((r: any) => ({
+        name: r.name,
+        caseCount: Number(r.caseCount) || 0,
+        courts: r.courts || [],
+        earliestYear: r.earliestYear,
+        latestYear: r.latestYear,
+      })),
+    };
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
+    };
+  });
+
+  // 6. Get Judge Profile
+  server.registerTool("get_judge_profile", {
+    description: "Get detailed profile and statistics for a specific Pakistani judge, including their recent landmark cases and judgments.",
+    inputSchema: {
+      name: z.string().describe("Exact name of the judge (use search_judges to find exact names)"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      judge: z.object({
+        name: z.string(),
+        caseCount: z.number(),
+        courts: z.array(z.string()),
+        earliestYear: z.number().nullable().optional(),
+        latestYear: z.number().nullable().optional(),
+        recentCases: z.array(z.object({
+          id: z.string(),
+          citation: z.string(),
+          title: z.string(),
+          court: z.string().nullable().optional(),
+          year: z.number().nullable().optional()
+        }))
+      })
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false }
+  }, async ({ name }) => {
+    const userId = getAuthenticatedUserId();
+
+    const judgeStats = await db.select({
+      name: judgeCaseLinks.judgeName,
+      caseCount: count(judgeCaseLinks.id),
+      courts: sql<string[]>`array_agg(DISTINCT ${judgeCaseLinks.courtName})`.as("courts"),
+      earliestYear: sql<number>`MIN(${judgeCaseLinks.year})`.as("earliestYear"),
+      latestYear: sql<number>`MAX(${judgeCaseLinks.year})`.as("latestYear"),
+    })
+    .from(judgeCaseLinks)
+    .where(eq(judgeCaseLinks.judgeName, name))
+    .groupBy(judgeCaseLinks.judgeName);
+
+    if (judgeStats.length === 0) {
+      throw new McpError(ErrorCode.InvalidRequest, `Judge not found: ${name}`);
+    }
+
+    const recentCases = await db.select({
+      id: judgments.id,
+      citation: judgments.citationString,
+      title: judgments.title,
+      court: judgments.courtNameSnapshot,
+      year: judgments.year
+    })
+    .from(judgeCaseLinks)
+    .innerJoin(judgments, eq(judgeCaseLinks.judgmentId, judgments.id))
+    .where(eq(judgeCaseLinks.judgeName, name))
+    .orderBy(desc(judgments.year), desc(judgments.id))
+    .limit(10);
+
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      judge: {
+        name: judgeStats[0].name,
+        caseCount: Number(judgeStats[0].caseCount) || 0,
+        courts: judgeStats[0].courts || [],
+        earliestYear: judgeStats[0].earliestYear,
+        latestYear: judgeStats[0].latestYear,
+        recentCases: recentCases.map((c: any) => ({
+          id: c.id,
+          citation: c.citation,
+          title: c.title,
+          court: c.court,
+          year: c.year
+        }))
+      }
+    };
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
       structuredContent: payload,
     };
   });
