@@ -708,6 +708,130 @@ export function registerAllTools(server: McpServer) {
     };
   });
 
+  // 7. Get Precedent Graph
+  server.registerTool("get_precedent_graph", {
+    description: "Fetch the citation network (overruled, relied upon, distinguished) for a specific judgment to analyze precedent health.",
+    inputSchema: {
+      judgmentId: z.number().describe("The internal numeric ID of the judgment"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      nodes: z.array(z.object({
+        id: z.string(),
+        citation: z.string(),
+        title: z.string().nullable().optional(),
+        year: z.number().nullable().optional(),
+        court: z.string().nullable().optional()
+      })),
+      edges: z.array(z.object({
+        source: z.string(),
+        target: z.string(),
+        treatment: z.string().nullable().optional(),
+      })),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false }
+  }, async ({ judgmentId }) => {
+    const userId = getAuthenticatedUserId();
+
+    const forwardCitations = await db.execute(sql`
+      SELECT cl.id, cl.source_id, cl.target_id, cl.treatment,
+             j.citation_string, j.title, j.year, j.court_name_snapshot
+      FROM citation_links cl
+      JOIN judgments j ON j.id = cl.target_id
+      WHERE cl.source_id = ${judgmentId}
+      LIMIT 50
+    `);
+
+    const backwardCitations = await db.execute(sql`
+      SELECT cl.id, cl.source_id, cl.target_id, cl.treatment,
+             j.citation_string, j.title, j.year, j.court_name_snapshot
+      FROM citation_links cl
+      JOIN judgments j ON j.id = cl.source_id
+      WHERE cl.target_id = ${judgmentId}
+      LIMIT 50
+    `);
+
+    const nodesMap = new Map();
+    const edges = [];
+
+    nodesMap.set(String(judgmentId), { id: String(judgmentId), citation: "Target Judgment", title: "Target", year: null, court: null });
+
+    for (const row of forwardCitations.rows) {
+      nodesMap.set(String(row.target_id), { id: String(row.target_id), citation: String(row.citation_string), title: String(row.title), year: Number(row.year), court: String(row.court_name_snapshot) });
+      edges.push({ source: String(judgmentId), target: String(row.target_id), treatment: String(row.treatment || "cited") });
+    }
+
+    for (const row of backwardCitations.rows) {
+      nodesMap.set(String(row.source_id), { id: String(row.source_id), citation: String(row.citation_string), title: String(row.title), year: Number(row.year), court: String(row.court_name_snapshot) });
+      edges.push({ source: String(row.source_id), target: String(judgmentId), treatment: String(row.treatment || "cited") });
+    }
+
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      nodes: Array.from(nodesMap.values()),
+      edges
+    };
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
+    };
+  });
+
+  // 8. Read Court Docket
+  server.registerTool("read_court_docket", {
+    description: "Read the court docket, agenda, and compliance watch for a specific date or date range.",
+    inputSchema: {
+      startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+      endDate: z.string().optional().describe("End date (YYYY-MM-DD)"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      diaryEntries: z.array(z.any()),
+      complianceDeadlines: z.array(z.any()),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false }
+  }, async ({ startDate, endDate }) => {
+    const userId = getAuthenticatedUserId();
+    const targetEnd = endDate || startDate;
+
+    const entries = await db.select()
+      .from(diaryEntries)
+      .where(
+        and(
+          eq(diaryEntries.userId, userId),
+          gte(diaryEntries.date, startDate),
+          lte(diaryEntries.date, targetEnd)
+        )
+      )
+      .orderBy(asc(diaryEntries.time));
+
+    const compliance = await db.select()
+      .from(caseCompliance)
+      .where(
+        and(
+          gte(caseCompliance.dueDate, new Date(startDate)),
+          lte(caseCompliance.dueDate, new Date(targetEnd + "T23:59:59"))
+        )
+      )
+      .orderBy(asc(caseCompliance.dueDate));
+
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      diaryEntries: entries,
+      complianceDeadlines: compliance
+    };
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
+    };
+  });
+
   // 5. Draft Legal Petition
   server.registerTool("draft_petition", {
     description: "Generate a fully formatted, professional, filing-ready legal petition or application for Pakistani courts grounded in actual statutes and case law. ASSISTANT INSTRUCTION: Present the returned 'draft' text verbatim inside a plaintext code block (```text) without adding markdown headers (#), bold tags (**), or altering line alignment.",
