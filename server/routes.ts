@@ -13411,7 +13411,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       filingCaption: "APPLICATION FOR POST-ARREST BAIL UNDER SECTION 497 Cr.P.C.",
       requiredInHeader: [
         { regex: /(SESSIONS JUDGE|SPECIAL COURT)/i, label: "Sessions/Special Court heading" },
-        { regex: /(BAIL APPLICATION|APPLICATION FOR BAIL)/i, label: "Bail caption" },
+        { regex: /(BAIL APPLICATION|APPLICATION (?:FOR|UNDER) (?:POST-ARREST |PRE-ARREST )?BAIL)/i, label: "Bail caption" },
       ],
     },
     "sessions-pre-arrest-bail": {
