@@ -5,6 +5,7 @@ export type LegalDraftFollowUpOperation =
   | "section-edit"
   | "full-rewrite"
   | "conversion"
+  | "ambiguous-edit"
   | "clarify";
 
 export type LegalDraftEditAction = "replace" | "insert-before" | "insert-after" | "delete";
@@ -142,7 +143,7 @@ export function classifyLegalDraftFollowUp(input: {
       /\bground\s+[A-Z]\b/i.test(prompt) ||
       /\b(?:corrective clause|resolve:)\b/i.test(prompt)
     ) return "section-edit";
-    return "clarify";
+    return "ambiguous-edit";
   }
   if (input.requestedMode === "analysis") return "answer";
   return "clarify";

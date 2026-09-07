@@ -1,58 +1,38 @@
 # Original User Request
 
-## Initial Request — 2026-07-06T23:28:41Z
+## 2026-08-29T00:02:18Z
 
-An automated analysis of chat interactions for all users except ijlalbintariq420@gmail.com between June and July 2026, compiling a report on errors, hallucinations, and bad behaviors by the AI.
+# Teamwork Project Prompt — Draft
+
+> Status: Launched
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: Full Agent Team
+
+Comprehensive audit, testing, and bug-fixing of all Al Wakeelo experimental preview modules to ensure end-to-end functionality, dual database connectivity (Postgres & Vector), and production-readiness through automated testing.
 
 Working directory: /Users/macbook/Downloads/Alwakeelo
+Integrity mode: development
 
 ## Requirements
 
-### R1. Log Extraction and Exclusion
-Exclude the user `ijlalbintariq420@gmail.com`. Extract all other user chat logs from the database (`ai_output_log` table) created between June 1, 2026, and July 31, 2026.
+### R1. Comprehensive Module Audit & Remediation
+Audit all UI components and logic flows within the experimental preview application (`client/src/experimental/*`). Identify and resolve any broken features, layout anomalies, or failing interactions to ensure a polished user experience.
 
-### R2. Failure Pattern Identification
-Analyze the extracted interactions to identify "bad" AI outputs, specifically focusing on:
-- Citation hallucinations (invented page/volume numbers)
-- Statutory mismatches (citing incorrect laws)
-- Defective HTML/markdown rendering
-- Error/Timeout failures (incomplete streams or JSON exceptions)
-- Out-of-bounds responses (violating the Pakistan Law Only policy)
+### R2. End-to-End Database Integration
+Ensure all experimental modules are fully wired to the backend architecture. Migrate any temporary `localStorage` or mock states to the live PostgreSQL database (via Drizzle ORM). Ensure that AI-driven features correctly interact with the vector database for RAG retrieval.
 
-### R3. Detailed Interaction Report
-Compile an audit report detailing the user's email, timestamp, query, response time, quality score, raw output, and a detailed diagnostic explanation of what the AI did wrong.
+### R3. Automated Verification Suite
+Develop an automated test suite to objectively verify the core workflows of the experimental application. The tests must confirm that the modules are stable and production-ready.
 
 ## Acceptance Criteria
 
-### Audit Report Accuracy
-- [ ] List of all affected users (excluding `ijlalbintariq420@gmail.com`) with dates and query transcripts.
-- [ ] Detailed description of the specific category of failure for each identified incident.
-- [ ] Verification of whether a hallucinated citation or standard error code occurred in the log.
+### Audit & Remediation
+- [ ] All pages under the `/preview/*` routes render cleanly without React hydration errors or console warnings.
+- [ ] Core module functions (e.g., Document Analyzer deep scan, Chat Inspector, Drafting Studio) execute completely without silent failures.
 
-## Follow-up — 2026-07-07T03:20:22Z
+### Database Connectivity
+- [ ] Experimental modules perform real CRUD operations against the Postgres database (e.g., saving bookmarks, retrieving case files, managing organizations).
+- [ ] RAG workflows successfully extract and query the vector database for legal context.
 
-Read the current Alwakeelo AI codebase and rewrite the root README.md file in the workspace to be comprehensive, accurate, and completely up to date with the latest features, AI models, and configurations.
-
-Working directory: /Users/macbook/Downloads/Alwakeelo
-
-## Requirements
-
-### R1. Complete README Rewrite
-- [ ] Rewrite `/Users/macbook/Downloads/Alwakeelo/README.md` to be fully comprehensive and accurate based on the latest codebase audit.
-- [ ] Ensure all 12 landing page features are listed exactly.
-- [ ] Include detailed sections for Tech Stack, AI Architecture, RAG Pipeline, Database (45 tables), SEO, Security, and Getting Started.
-
-### R2. Model and RAG Accuracy
-- [ ] Document **Kimi K2.5** (`moonshotai/kimi-k2.5` via OpenRouter) as the primary Turbo model, with **Gemini 3.0 Flash** (`google/gemini-3-flash-preview` via OpenRouter) as fallback, and DeepSeek Pro/R1 as final fallback.
-- [ ] Document **Claude 3.5 Sonnet** via OpenRouter for Apex Pro/Agent modes.
-- [ ] Document **Voyage Law 2** (`voyage-law-2`) embeddings and **Voyage Rerank 2** (`rerank-2`) reranking integration.
-
-### R3. Environment & Deployment Details
-- [ ] Include all required and optional environment variables with descriptions (Safepay, Resend, Cloudflare R2, Google Indexing, IndexNow, OCR.space).
-
-## Acceptance Criteria
-
-### Technical Completeness
-- [ ] No placeholders or outdated references.
-- [ ] All table counts, file locations, and tech stack versions match the actual code.
-- [ ] Verify formatting with `markdownlint` or visual check.
+### Verification
+- [ ] The newly created automated test suite executes successfully and passes, confirming the stability of the audited modules.

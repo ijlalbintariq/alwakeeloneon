@@ -1,0 +1,240 @@
+Route starts at line 7764 with balance 1: app.get(["/download/manifest.xml", "/word-addin/ma
+Route starts at line 7774 with balance 1: app.get("/robots.txt", (_req, res) => {
+Route starts at line 7783 with balance 0: app.get("/sitemap.xml", handleSitemapIndex);
+Route starts at line 7784 with balance 0: app.get("/sitemap-static.xml", handleSitemapStatic
+Route starts at line 7785 with balance 0: app.get("/sitemap-judgments-:n.xml", handleSitemap
+Route starts at line 7786 with balance 0: app.get("/sitemap-statutes-:n.xml", handleSitemapS
+Route starts at line 7789 with balance 1: app.get("/:key.txt", (req, res, next) => {
+Route starts at line 7800 with balance 1: app.get("/.well-known/openai-apps-challenge", (req
+Route starts at line 7818 with balance 1: app.get("/.well-known/oauth-authorization-server",
+Route starts at line 7822 with balance 1: app.get("/.well-known/openid-configuration", (req,
+Route starts at line 7839 with balance 1: app.get(["/.well-known/mcp/server-card.json", "/.w
+Route starts at line 7847 with balance 1: app.get("/.well-known/ai.txt", (req, res) => {
+Route starts at line 7852 with balance 1: app.get("/ai/summary.json", (req, res) => {
+Route starts at line 7881 with balance 1: app.get("/ai/faq.json", (req, res) => {
+Route starts at line 7899 with balance 1: app.get("/ai/service.json", (req, res) => {
+Route starts at line 7949 with balance 1: app.post("/api/indexnow/submit", async (req, res) 
+Route starts at line 7980 with balance 1: app.post("/api/indexnow/ping", async (req, res) =>
+Route starts at line 7991 with balance 1: app.get("/rss.xml", async (req, res) => {
+Route starts at line 8018 with balance 1: app.post("/api/oauth/register", (req, res) => {
+Route starts at line 8082 with balance 1: app.get("/api/public/platform-metrics", async (_re
+Route starts at line 8096 with balance 1: app.post("/api/admin/test-chat", async (req, res) 
+Route starts at line 8154 with balance 1: app.post(api.publicChat.send.path, async (req, res
+Route starts at line 8294 with balance 1: app.post(api.publicChat.event.path, async (req, re
+Route starts at line 8320 with balance 1: app.post(api.publicChat.submitCase.path, async (re
+Route starts at line 8399 with balance 1: app.get(api.threads.list.path, async (req, res) =>
+Route starts at line 8406 with balance 1: app.post(api.threads.create.path, async (req, res)
+Route starts at line 8460 with balance 1: app.get(api.threads.get.path, async (req, res) => 
+Route starts at line 8474 with balance 1: app.post("/api/threads/upsert-turn", async (req, r
+Route starts at line 8525 with balance 1: app.delete(api.threads.delete.path, async (req, re
+Route starts at line 8539 with balance 1: app.post("/api/threads/save-for-share", async (req
+Route starts at line 8570 with balance 1: app.post("/api/threads/:id/share", async (req, res
+Route starts at line 8589 with balance 1: app.delete("/api/threads/:id/share", async (req, r
+Route starts at line 8601 with balance 1: app.get("/api/shared/:token", async (req, res) => 
+Route starts at line 8622 with balance 1: app.post(api.messages.create.path, async (req, res
+Route starts at line 8675 with balance 1: app.get(api.documents.list.path, async (req, res) 
+Route starts at line 8682 with balance 1: app.get("/api/documents/:id/file", async (req, res
+Route starts at line 8719 with balance 1: app.get("/api/documents/insights", async (req, res
+Route starts at line 8731 with balance 1: app.post("/api/documents/generate-docx", async (re
+Route starts at line 8750 with balance 1: app.post("/api/documents/backfill-metadata", async
+Route starts at line 8807 with balance 1: app.post("/api/style-memory/toggle-system", async 
+Route starts at line 8820 with balance 1: app.get("/api/style-memory/settings", async (req, 
+Route starts at line 8847 with balance 1: app.put("/api/style-memory/settings", async (req, 
+Route starts at line 8885 with balance 1: app.get("/api/style-memory/samples", async (req, r
+Route starts at line 8913 with balance 1: app.post("/api/style-memory/samples/upload", guard
+Route starts at line 9016 with balance 1: app.delete("/api/style-memory/samples", async (req
+Route starts at line 9043 with balance 1: app.delete("/api/style-memory/samples/:id", async 
+Route starts at line 9076 with balance 1: app.post("/api/style-memory/events/accepted-redlin
+Route starts at line 9119 with balance 1: app.post("/api/style-memory/backfill", async (req,
+Route starts at line 9161 with balance 1: app.post(api.documents.create.path, async (req, re
+Route starts at line 9201 with balance 1: app.post("/api/documents/upload", guardedUploadQue
+Route starts at line 9397 with balance 1: app.put(api.documents.update.path, async (req, res
+Route starts at line 9442 with balance 1: app.delete(api.documents.delete.path, async (req, 
+Route starts at line 9460 with balance 1: app.delete(api.documents.list.path, async (req, re
+Route starts at line 9481 with balance 1: app.get("/api/case-files", async (req, res) => {
+Route starts at line 9522 with balance 1: app.post("/api/case-files", async (req, res) => {
+Route starts at line 9545 with balance 1: app.get("/api/case-files/:id", async (req, res) =>
+Route starts at line 9590 with balance 1: app.delete("/api/case-files/:id", async (req, res)
+Route starts at line 9605 with balance 1: app.post("/api/case-files/:id/clients", async (req
+Route starts at line 9660 with balance 1: app.delete("/api/case-files/:id/clients/:clientId"
+Route starts at line 9677 with balance 1: app.post("/api/case-files/:id/compliance", async (
+Route starts at line 9756 with balance 1: app.delete("/api/case-files/:id/compliance/:compId
+Route starts at line 9773 with balance 1: app.post("/api/case-files/:id/documents", async (r
+Route starts at line 9794 with balance 1: app.delete("/api/case-files/:id/documents/:docId",
+Route starts at line 9811 with balance 1: app.post("/api/case-files/:id/notes", async (req, 
+Route starts at line 9830 with balance 1: app.delete("/api/case-files/:id/notes/:noteId", as
+Route starts at line 9847 with balance 1: app.get("/api/case-files-compliance/upcoming", asy
+Route starts at line 9860 with balance 1: app.get("/api/diary", async (req, res) => {
+Route starts at line 9909 with balance 1: app.post("/api/diary", async (req, res) => {
+Route starts at line 9957 with balance 1: app.delete("/api/diary/:id", async (req, res) => {
+Route starts at line 9970 with balance 1: app.get("/api/settings/notifications", async (req,
+Route starts at line 10001 with balance 1: app.post("/api/settings/notifications/test", async
+Route starts at line 10016 with balance 1: app.post("/api/rag/index-document", async (req, re
+Route starts at line 10033 with balance 1: app.post("/api/admin/rag/reindex-all", async (req,
+Route starts at line 10132 with balance 1: app.post("/api/admin/rag/reindex-case-law", async 
+Route starts at line 10182 with balance 1: app.post("/api/admin/rag/reindex-case-law/start", 
+Route starts at line 10277 with balance 1: app.get("/api/admin/rag/reindex-case-law/status", 
+Route starts at line 10285 with balance 1: app.post("/api/admin/rag/reindex-case-law/stop", a
+Route starts at line 10304 with balance 1: app.post("/api/admin/rag/reindex-judgments/start",
+Route starts at line 10359 with balance 1: app.get("/api/admin/rag/reindex-judgments/status",
+Route starts at line 10364 with balance 1: app.post("/api/admin/rag/reindex-judgments/stop", 
+Route starts at line 10373 with balance 1: app.post("/api/admin/rag/reindex-global/start", as
+Route starts at line 10557 with balance 1: app.get("/api/admin/rag/reindex-global/status", as
+Route starts at line 10565 with balance 1: app.post("/api/admin/rag/reindex-global/stop", asy
+Route starts at line 10582 with balance 1: app.post("/api/rag/ask", async (req, res) => {
+Route starts at line 10760 with balance 1: app.delete("/api/rag/documents/:documentId/vectors
+Route starts at line 10777 with balance 1: app.get(api.bookmarks.list.path, async (req, res) 
+Route starts at line 10784 with balance 1: app.post(api.bookmarks.create.path, async (req, re
+Route starts at line 10800 with balance 1: app.delete(api.bookmarks.delete.path, async (req, 
+Route starts at line 10813 with balance 1: app.get(api.searchHistory.list.path, async (req, r
+Route starts at line 10820 with balance 1: app.post(api.searchHistory.create.path, async (req
+Route starts at line 10836 with balance 1: app.get(api.statutes.search.path, async (req, res)
+Route starts at line 10853 with balance 1: app.get("/api/statute-documents/search", async (re
+Route starts at line 10867 with balance 1: app.get("/api/statute-documents/:id/file", async (
+Route starts at line 10901 with balance 1: app.get("/api/statute-documents/:id", async (req, 
+Route starts at line 10939 with balance 1: app.get(api.caseLaw.search.path, async (req, res) 
+Route starts at line 11171 with balance 1: app.get("/api/case-law/cite", async (req, res) => 
+Route starts at line 11225 with balance 1: app.get("/api/case-law/lookup", async (req, res) =
+Route starts at line 11250 with balance 1: app.get("/api/case-law/:id/source", async (req, re
+Route starts at line 11346 with balance 1: app.get("/api/case-law/:id/source/file", async (re
+Route starts at line 11403 with balance 1: app.get("/api/journals", async (req, res) => {
+Route starts at line 11415 with balance 1: app.get("/api/courts-ref", async (req, res) => {
+Route starts at line 11427 with balance 1: app.get("/api/citation-search", async (req, res) =
+Route starts at line 11442 with balance 3: app.get("/api/judges/directory", async (req, res) 
+Route starts at line 11529 with balance 3: app.get("/api/judges/directory/:name", async (req,
+Route starts at line 11594 with balance 3: app.get("/api/judgments/most-cited", async (req, r
+Route starts at line 11692 with balance 3: app.get("/api/judgments/:id/cited-by", async (req,
+Route starts at line 11730 with balance 3: app.get("/api/judgments/:id", async (req, res) => 
+Route starts at line 11775 with balance 3: app.get("/api/judgments/:id/summary", async (req, 
+Route starts at line 11920 with balance 3: app.get("/api/public/judgments/:id", async (req, r
+Route starts at line 11963 with balance 3: app.get("/api/public/statutes/:id", async (req, re
+Route starts at line 12013 with balance 3: app.get("/api/public/browse/index", async (req, re
+Route starts at line 12036 with balance 3: app.get("/api/public/browse/list", async (req, res
+Route starts at line 12105 with balance 3: app.get("/api/statute/lookup", async (req, res) =>
+Route starts at line 12296 with balance 3: app.get("/api/caseLaw/lookup", async (req, res) =>
+Route starts at line 12384 with balance 3: app.post("/api/judgments", async (req, res) => {
+Route starts at line 12463 with balance 3: app.get(api.usage.get.path, async (req, res) => {
+Route starts at line 12534 with balance 3: app.get("/api/activity/summary", async (req, res) 
+Route starts at line 12603 with balance 3: app.post("/api/retrieval/clauses/suggest", async (
+Route starts at line 14383 with balance 3: app.post("/api/retrieval/clauses/generate", guarde
+Route starts at line 15402 with balance 3: app.get("/api/legal-drafting/workspace-state", asy
+Route starts at line 15440 with balance 3: app.put("/api/legal-drafting/workspace-state", asy
+Route starts at line 15522 with balance 3: app.post("/api/legal-drafting/share", async (req, 
+Route starts at line 15549 with balance 3: app.get("/api/draft-preview/:token", async (req, r
+Route starts at line 15638 with balance 3: app.post("/api/legal-drafting/references", async (
+Route starts at line 15663 with balance 3: app.post("/api/ai/transcribe", guardedUploadQueue,
+Route starts at line 15779 with balance 3: app.post(api.ai.chat.path, guardedUploadQueue, upl
+Route starts at line 17170 with balance 3: app.post(api.ai.searchJudgments.path, async (req, 
+Route starts at line 17296 with balance 3: app.get("/api/judgment-text", async (req, res) => 
+Route starts at line 17354 with balance 3: app.post(api.ai.judgmentSummary.path, async (req, 
+Route starts at line 17617 with balance 3: app.post(api.ai.searchStatutes.path, async (req, r
+Route starts at line 17650 with balance 3: app.post(api.ai.summarize.path, async (req, res) =
+Route starts at line 17676 with balance 3: app.post(api.ai.brief.path, async (req, res) => {
+Route starts at line 17704 with balance 3: app.post("/api/ai/draft-risk-analysis", async (req
+Route starts at line 17812 with balance 3: app.post("/api/ai/draft-recommendations", async (r
+Route starts at line 18093 with balance 3: app.get("/api/admin/check", async (_req, res) => {
+Route starts at line 18103 with balance 3: app.get("/api/admin/debug-moonshot", async (req, r
+Route starts at line 18129 with balance 3: app.post("/api/admin/setup", async (req, res) => {
+Route starts at line 18156 with balance 3: app.get("/api/admin/users", async (req, res) => {
+Route starts at line 18252 with balance 3: app.post("/api/admin/users/:id/reset-monthly-quota
+Route starts at line 18278 with balance 3: app.post("/api/admin/users", async (req, res) => {
+Route starts at line 18337 with balance 3: app.delete("/api/admin/users/:id", async (req, res
+Route starts at line 18367 with balance 3: app.get("/api/admin/users/:id/ban", async (req, re
+Route starts at line 18385 with balance 3: app.post("/api/admin/users/:id/ban", async (req, r
+Route starts at line 18409 with balance 3: app.delete("/api/admin/users/:id/ban", async (req,
+Route starts at line 18426 with balance 3: app.get("/api/admin/users/:id/activity", async (re
+Route starts at line 18450 with balance 3: app.get("/api/admin/users/:id/threads", async (req
+Route starts at line 18466 with balance 3: app.get("/api/admin/users/:id/threads/:threadId/me
+Route starts at line 18489 with balance 3: app.get("/api/admin/audit-logs", async (req, res) 
+Route starts at line 18502 with balance 3: app.get("/api/admin/security-events", async (req, 
+Route starts at line 18514 with balance 3: app.get("/api/admin/stats", async (req, res) => {
+Route starts at line 18525 with balance 3: app.get("/api/admin/seo/status", async (req, res) 
+Route starts at line 18648 with balance 3: app.get("/api/admin/extraction-queue", async (req,
+Route starts at line 18661 with balance 3: app.get("/api/admin/cost-analytics", async (req, r
+Route starts at line 18672 with balance 3: app.get("/api/admin/email/status", async (req, res
+Route starts at line 18682 with balance 3: app.post("/api/admin/email/test", async (req, res)
+Route starts at line 18722 with balance 3: app.get("/api/admin/client-leads", async (req, res
+Route starts at line 18735 with balance 3: app.get("/api/admin/client-leads/:id", async (req,
+Route starts at line 18786 with balance 3: app.delete("/api/admin/client-leads/:id", async (r
+Route starts at line 18807 with balance 3: app.get("/api/admin/knowledge", async (req, res) =
+Route starts at line 18819 with balance 3: app.post("/api/admin/knowledge", guardedUploadQueu
+Route starts at line 19012 with balance 3: app.delete("/api/admin/knowledge/:id", async (req,
+Route starts at line 19036 with balance 3: app.delete("/api/admin/knowledge", async (req, res
+Route starts at line 19068 with balance 3: app.get("/api/admin/case-law", async (req, res) =>
+Route starts at line 19080 with balance 3: app.get("/api/admin/case-law/bad-index/audit", asy
+Route starts at line 19106 with balance 3: app.get("/api/admin/case-law/bad-index/reextract/s
+Route starts at line 19111 with balance 3: app.post("/api/admin/case-law/bad-index/reextract/
+Route starts at line 19235 with balance 3: app.post("/api/admin/case-law/bad-index/reextract/
+Route starts at line 19252 with balance 3: app.post("/api/admin/case-law", async (req, res) =
+Route starts at line 19277 with balance 3: app.put("/api/admin/case-law/:id", async (req, res
+Route starts at line 19301 with balance 3: app.delete("/api/admin/case-law/:id", async (req, 
+Route starts at line 19315 with balance 3: app.delete("/api/admin/case-law", async (req, res)
+Route starts at line 19328 with balance 3: app.post("/api/admin/case-law/extract-client", asy
+Route starts at line 19451 with balance 3: app.post("/api/admin/case-law/bulk", async (req, r
+Route starts at line 19786 with balance 3: app.post("/api/admin/case-law/sync-to-judgments", 
+Route starts at line 19841 with balance 3: app.get("/api/admin/case-law/sync-to-judgments/sta
+Route starts at line 19846 with balance 3: app.post("/api/admin/case-law/sync-to-judgments/st
+Route starts at line 19863 with balance 3: app.post("/api/admin/case-law/auto-extract", async
+Route starts at line 19875 with balance 3: app.post("/api/admin/case-law/process-pending-file
+Route starts at line 19905 with balance 3: app.get("/api/admin/case-law/process-pending-files
+Route starts at line 19910 with balance 3: app.get("/api/admin/case-law/process-pending-files
+Route starts at line 19922 with balance 3: app.post("/api/admin/case-law/process-pending-file
+Route starts at line 19952 with balance 3: app.post("/api/admin/case-law/process-pending-file
+Route starts at line 19969 with balance 3: app.post("/api/admin/case-law/reindex-roles/start"
+Route starts at line 20039 with balance 3: app.get("/api/admin/case-law/reindex-roles/status"
+Route starts at line 20044 with balance 3: app.post("/api/admin/case-law/reindex-roles/stop",
+Route starts at line 20061 with balance 3: app.post("/api/admin/case-law/extract", guardedUpl
+Route starts at line 20352 with balance 3: app.get("/api/admin/statute-documents", async (req
+Route starts at line 20364 with balance 3: app.post("/api/admin/statute-documents", guardedUp
+Route starts at line 20518 with balance 3: app.delete("/api/admin/statute-documents/:id", asy
+Route starts at line 20538 with balance 3: app.delete("/api/admin/statute-documents", async (
+Route starts at line 20561 with balance 3: app.post("/api/statute-documents/:id/toc", async (
+Route starts at line 20578 with balance 3: app.get("/api/profile", async (req, res) => {
+Route starts at line 20605 with balance 3: app.post("/api/profile/avatar", guardedUploadQueue
+Route starts at line 20650 with balance 3: app.delete("/api/profile/avatar", async (req, res)
+Route starts at line 20664 with balance 3: app.post("/api/seed-legal-data", async (req, res) 
+Route starts at line 20681 with balance 3: app.get("/api/saved-judgments", async (req, res) =
+Route starts at line 20693 with balance 3: app.post("/api/saved-judgments", async (req, res) 
+Route starts at line 20724 with balance 3: app.delete("/api/saved-judgments/:id", async (req,
+Route starts at line 20736 with balance 3: app.get("/api/statute-lookup", async (req, res) =>
+Route starts at line 20887 with balance 3: app.post("/api/ai/document-chat", async (req, res)
+Route starts at line 20962 with balance 3: app.get("/api/apex/models", async (req, res) => {
+Route starts at line 20971 with balance 3: app.post("/api/apex/chat", async (req, res) => {
+Route starts at line 21170 with balance 3: app.post("/api/apex/agent", async (req, res) => {
+Route starts at line 21387 with balance 3: app.get("/api/org", async (req, res) => {
+Route starts at line 21394 with balance 3: app.post("/api/org", async (req, res) => {
+Route starts at line 21409 with balance 3: app.delete("/api/org/:id", async (req, res) => {
+Route starts at line 21419 with balance 3: app.get("/api/org/:id/members", async (req, res) =
+Route starts at line 21441 with balance 3: app.get("/api/org/:id/seats", async (req, res) => 
+Route starts at line 21458 with balance 3: app.post("/api/org/:id/invite", async (req, res) =
+Route starts at line 21505 with balance 3: app.get("/api/org/:id/invites", async (req, res) =
+Route starts at line 21515 with balance 3: app.delete("/api/org/:orgId/invites/:inviteId", as
+Route starts at line 21526 with balance 3: app.delete("/api/org/:orgId/members/:memberId", as
+Route starts at line 21538 with balance 3: app.get("/api/org/invites/pending", async (req, re
+Route starts at line 21547 with balance 3: app.post("/api/org/invites/:id/accept", async (req
+Route starts at line 21576 with balance 3: app.post("/api/org/invites/:id/decline", async (re
+Route starts at line 21591 with balance 3: app.get("/api/org/:id/knowledge", async (req, res)
+Route starts at line 21609 with balance 3: app.post("/api/org/:id/knowledge", guardedUploadQu
+Route starts at line 21694 with balance 3: app.delete("/api/org/:orgId/knowledge/:docId", asy
+Route starts at line 21708 with balance 3: app.post("/api/safepay/create-session", async (req
+Route starts at line 21768 with balance 3: app.post("/api/safepay/webhook", async (req, res) 
+Route starts at line 21847 with balance 3: app.get("/api/upload/session/:sessionId", (req, re
+Route starts at line 21874 with balance 3: app.post("/api/upload/session/:sessionId/upload", 
+Route starts at line 21959 with balance 3: app.get("/api/safepay/verify", async (req, res) =>
+Route starts at line 22083 with balance 3: app.get("/api/admin/output-quality/stats", async (
+Route starts at line 22094 with balance 3: app.get("/api/admin/output-quality", async (req, r
+Route starts at line 22114 with balance 3: app.post("/api/admin/output-quality/log-error", as
+Route starts at line 22141 with balance 3: app.post("/api/admin/broadcast-email", async (req,
+Route starts at line 22304 with balance 3: app.post("/api/settings/keys", async (req, res) =>
+Route starts at line 22327 with balance 3: app.get("/api/settings/keys", async (req, res) => 
+Route starts at line 22348 with balance 3: app.delete("/api/settings/keys/:id", async (req, r
+Route starts at line 22397 with balance 3: app.get("/api/mcp/openapi.json", (req, res) => {
+Route starts at line 22401 with balance 3: app.post("/api/mcp/search_case_law", verifyMcpToke
+Route starts at line 22449 with balance 3: app.post("/api/mcp/search_statutes", verifyMcpToke
+Route starts at line 22490 with balance 3: app.post("/api/mcp/get_judgment", verifyMcpToken, 
+Route starts at line 22550 with balance 3: app.post("/api/mcp/legal_research", verifyMcpToken
+Route starts at line 22574 with balance 3: app.post("/api/mcp/draft_petition", verifyMcpToken
+Route starts at line 22653 with balance 3: app.post("/api/mcp/draft_contract", verifyMcpToken
+Route starts at line 23036 with balance 3: app.get("/api/oauth/authorize", (req, res) => {
+Route starts at line 23050 with balance 3: app.post("/api/oauth/authorize/confirm", async (re
+Route starts at line 23076 with balance 3: app.post("/api/oauth/token", async (req, res) => {

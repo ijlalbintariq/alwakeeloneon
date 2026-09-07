@@ -1,0 +1,26 @@
+--- server/routes.ts
++++ server/routes.ts
+@@ -17182,6 +17182,7 @@
+       const safeQuery = String(body.query || "").trim();
+       const yearRaw = Number(body.year);
+       const pageRaw = Number(body.page);
++      const offsetRaw = Number(body.offset);
+       const reportRaw = normalizeCitationToken(String(body.report || body.journal || "").trim());
+       const courtRaw = String(body.court || "").trim();
+       const sortRaw = String(body.sort || "").trim().toLowerCase();
+@@ -17189,6 +17190,7 @@
+ 
+       const year = Number.isInteger(yearRaw) && yearRaw >= 1900 && yearRaw <= 2200
+         ? yearRaw
+         : (parsedCitation?.year ?? undefined);
+       const page = Number.isInteger(pageRaw) && pageRaw > 0
+         ? pageRaw
+@@ -17204,6 +17206,7 @@
+       const searchPromise = searchCaseLawWithFullText({
+         userId,
+         query: safeQuery,
+         limit: 25,
++        offset: Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : undefined,
+         year,
+         report,
+         page,

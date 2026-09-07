@@ -1,0 +1,74 @@
+--- client/src/experimental/components/judgments/PrecedentGraph.tsx
++++ client/src/experimental/components/judgments/PrecedentGraph.tsx
+@@ -432,6 +432,9 @@
+               className="absolute inset-0 z-0 opacity-[0.03]"
+             />
+ 
++            {/* Dynamic SVG dimensions based on node count */}
++            {(() => {
++              const maxNodes = Math.max(5, filteredMade.length, filteredReceived.length);
++              const svgHeight = maxNodes * 56 + 100;
++              const centerY = svgHeight / 2;
++              return (
+             <svg
+               className="w-full h-full transition-transform duration-100"
+               style={{
+                 transform: `scale(${zoomLevel}) translate(${panOffset.x}px, ${panOffset.y}px)`,
+                 transformOrigin: "center center",
+               }}
+-              viewBox="0 0 800 360"
++              viewBox={`0 0 800 ${svgHeight}`}
+             >
+               {/* Center Anchor Node: Current Judgment */}
+-              <g transform="translate(400, 180)">
++              <g transform={`translate(400, ${centerY})`}>
+                 <circle
+                   r="48"
+                   fill="#105B38"
+@@ -482,9 +485,9 @@
+                 >
+                   ← CITED PRECEDENTS ({filteredMade.length})
+                 </text>
+-                {filteredMade.slice(0, 5).map((item, idx) => {
+-                  const y = 70 + idx * 56;
++                {filteredMade.map((item, idx) => {
++                  const y = 50 + idx * 56;
+                   const x = 140;
+                   const badge = treatmentBadge(item.citationType);
+                   const isSelected = selectedNode?.id === item.id;
+@@ -498,7 +501,7 @@
+                     >
+                       {/* Connection Line */}
+                       <path
+-                        d={`M 352 180 C 260 180, 240 ${y}, ${x + 65} ${y}`}
++                        d={`M 352 ${centerY} C 260 ${centerY}, 240 ${y}, ${x + 65} ${y}`}
+                         fill="none"
+                         stroke={badge.nodeColor}
+@@ -557,9 +560,9 @@
+                 >
+                   CITED IN ({filteredReceived.length}) →
+                 </text>
+-                {filteredReceived.slice(0, 5).map((item, idx) => {
+-                  const y = 70 + idx * 56;
++                {filteredReceived.map((item, idx) => {
++                  const y = 50 + idx * 56;
+                   const x = 660;
+                   const badge = treatmentBadge(item.citationType);
+                   const isSelected = selectedNode?.id === item.id;
+@@ -573,7 +576,7 @@
+                     >
+                       {/* Connection Line */}
+                       <path
+-                        d={`M 448 180 C 540 180, 560 ${y}, ${x - 65} ${y}`}
++                        d={`M 448 ${centerY} C 540 ${centerY}, 560 ${y}, ${x - 65} ${y}`}
+                         fill="none"
+                         stroke={badge.nodeColor}
+@@ -628,6 +631,8 @@
+                 })}
+               </g>
+             </svg>
++              );
++            })()}
+           </div>
+ 
+           {/* Draggable Context Panel for Selected Node */}

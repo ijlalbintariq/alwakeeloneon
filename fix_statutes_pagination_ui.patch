@@ -1,0 +1,23 @@
+--- client/src/experimental/pages/PreviewStatutes.tsx
++++ client/src/experimental/pages/PreviewStatutes.tsx
+@@ -977,6 +977,21 @@
+                           )}
+                         </div>
+                       );
+                     })
++                  )}
++                  
++                  {/* Load More Search Results Button */}
++                  {universalSearchQuery.length >= 2 && !isSearchLoading && searchResults.length >= searchLimit && (
++                    <div className="pt-2 pb-4 flex justify-center">
++                      <button
++                        onClick={() => setSearchLimit(prev => prev + 60)}
++                        className="px-4 py-1.5 bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#105B38] text-[#0F172A] rounded-xl text-[11px] font-bold transition-all shadow-sm flex items-center gap-2"
++                      >
++                        <ArrowRight className="w-3.5 h-3.5" />
++                        Load More Sections
++                      </button>
++                    </div>
+                   )
+                 ) : sequentialSections.length === 0 ? (
+                   <div className="p-8 text-center text-slate-500">

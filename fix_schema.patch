@@ -1,0 +1,19 @@
+--- shared/schema.ts
++++ shared/schema.ts
+@@ -213,6 +213,16 @@
+   }),
+ );
+ 
++export const judgeCaseLinks = pgTable(
++  "judge_case_links",
++  {
++    id: serial("id").primaryKey(),
++    judgmentId: uuid("judgment_id").references(() => judgments.id).notNull(),
++    judgeName: text("judge_name").notNull(),
++    courtName: text("court_name"),
++    year: integer("year").notNull(),
++  }
++);
++
+ export const judgmentKeywords = pgTable(
+   "judgment_keywords",

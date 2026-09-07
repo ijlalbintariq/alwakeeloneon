@@ -1,0 +1,13 @@
+--- client/src/experimental/components/judgments/JudgmentAiSidecar.tsx
++++ client/src/experimental/components/judgments/JudgmentAiSidecar.tsx
+@@ -118,9 +118,9 @@
+ 
+     try {
+       const combinedContent = headnotes
+-        ? `Headnotes:\n${headnotes}\n\nJudgment Text:\n${fullText.slice(0, 14000)}`
+-        : fullText.slice(0, 15000);
++        ? `Headnotes:\n${headnotes}\n\nJudgment Text:\n${fullText.slice(0, 80000)}`
++        : fullText.slice(0, 80000);
+ 
+       const res = await apiRequest("POST", "/api/ai/document-chat", {
+         documentType: "judgment",

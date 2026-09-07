@@ -1,0 +1,61 @@
+--- server/routes.ts
++++ server/routes.ts
+@@ -11649,6 +11649,57 @@
+       res.status(500).json({ message: "Failed to fetch document scans" });
+     }
+   });
++
++  app.post("/api/document-analyzer/scans", async (req, res) => {
++    const userId = getUserId(req);
++    if (!userId) return res.sendStatus(401);
++    try {
++      const { title, documentType, text, summary, overallRisk, findings } = req.body;
++      
++      const [newScan] = await db.insert(documentScans).values({
++        userId,
++        title: title || "Untitled Scan",
++        documentType: documentType || "Unknown",
++        text: text || "",
++        summary: summary || "",
++        overallRisk: overallRisk || "Medium",
++      }).returning();
++
++      if (findings && Array.isArray(findings) && findings.length > 0) {
++        const findingsData = findings.map(f => ({
++          scanId: newScan.id,
++          pillar: f.pillar || "General",
++          category: f.category || "General",
++          severity: f.severity || "warning",
++          issue: f.issue || "",
++          statuteRef: f.statuteRef || null,
++          recommendation: f.recommendation || "",
++          rawSnippet: f.rawSnippet || null,
++          isResolved: Boolean(f.isResolved)
++        }));
++        await db.insert(scanFindings).values(findingsData);
++      }
++
++      const completeScan = await db.query.documentScans.findFirst({
++        where: eq(documentScans.id, newScan.id),
++        with: { findings: true }
++      });
++      res.status(201).json({ scan: completeScan });
++    } catch (err) {
++      console.error("Save scan error:", err);
++      res.status(500).json({ message: "Failed to save document scan" });
++    }
++  });
++
++  app.delete("/api/document-analyzer/scans/:id", async (req, res) => {
++    const userId = getUserId(req);
++    if (!userId) return res.sendStatus(401);
++    try {
++      const scanId = parseInt(req.params.id);
++      await db.delete(documentScans).where(and(eq(documentScans.id, scanId), eq(documentScans.userId, userId)));
++      res.status(204).send();
++    } catch (err) {
++      res.status(500).json({ message: "Failed to delete scan" });
++    }
++  });
+ 
+   app.get("/api/document-analyzer/scans/:id", async (req, res) => {

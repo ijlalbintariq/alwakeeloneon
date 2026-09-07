@@ -1,0 +1,35 @@
+--- client/src/experimental/pages/PreviewDocumentAnalyzer.tsx
++++ client/src/experimental/pages/PreviewDocumentAnalyzer.tsx
+@@ -369,25 +369,18 @@
+         });
+         return;
+       }
+-
+-      // If AI response did not yield structured findings, fall back to local statutory checks
+-      const localFindings = runLocalRegexAnalysis(documentText, findings);
++      
+       setScanProgress(100);
+-      persistState(documentText, localFindings);
+       toast({
+-        title: "Deep Legal Scan Completed",
+-        description: `Verified document across 5 statutory frameworks.`,
++        title: "AI Scan Failed",
++        description: "AI returned an unrecognized format. Please try again.",
++        variant: "destructive"
+       });
+     } catch (err: any) {
+       clearTimeout(progressTimer1);
+       clearTimeout(progressTimer2);
+-      console.warn("[DocumentAnalyzer] Live AI scan failed or unauthorized, falling back to local engine:", err?.message || err);
+-
+-      // Offline / 401 fallback
+-      const fallbackFindings = runLocalRegexAnalysis(documentText, findings);
+-      setScanProgress(100);
+-      persistState(documentText, fallbackFindings);
++      console.error("[DocumentAnalyzer] Live AI scan failed:", err?.message || err);
+       toast({
+-        title: "Legal Scan Completed (Local Engine)",
+-        description: `Verified document across 5 statutory frameworks.`,
++        title: "AI Analysis Failed",
++        description: err.message || "Failed to scan document via AI engine.",
++        variant: "destructive"

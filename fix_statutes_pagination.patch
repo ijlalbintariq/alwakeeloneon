@@ -1,0 +1,37 @@
+--- client/src/experimental/pages/PreviewStatutes.tsx
++++ client/src/experimental/pages/PreviewStatutes.tsx
+@@ -190,6 +190,7 @@
+   const [selectedSectionId, setSelectedSectionId] = useState<string>("ppc-sec-302");
+   const [inActFilter, setInActFilter] = useState<string>("");
+ 
++  const [searchLimit, setSearchLimit] = useState<number>(60);
+   // ─── TAB 1: STATUTES SEARCH ENGINE & BROWSER ───────────────────────────────
+   const {
+     query: universalSearchQuery,
+@@ -201,6 +202,7 @@
+     initialQuery: "",
+     category: statuteDomain,
+     enableLiveDbFallback: true,
++    limit: searchLimit,
+   });
+ 
+   // Action Hub Copy States
+@@ -1077,6 +1079,20 @@
+                       </button>
+                     </div>
+                   ))}
++
++                  {/* Load More Button */}
++                  {!isSearchLoading && searchResults.length >= searchLimit && (
++                    <div className="pt-4 pb-8 flex justify-center">
++                      <button
++                        onClick={() => setSearchLimit(prev => prev + 60)}
++                        className="px-6 py-2 bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#105B38] text-[#0F172A] rounded-xl text-xs font-bold transition-all shadow-sm"
++                      >
++                        Load More Sections
++                      </button>
++                    </div>
++                  )}
+                 </div>
+               ) : (
+                 <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 bg-white rounded-2xl border border-[#E2E8F0] shadow-xs">

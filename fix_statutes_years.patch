@@ -1,0 +1,30 @@
+--- client/src/experimental/pages/PreviewStatutes.tsx
++++ client/src/experimental/pages/PreviewStatutes.tsx
+@@ -324,7 +324,7 @@
+         sectionNumber: majorMatch.section.startsWith("Section") || majorMatch.section.startsWith("Art") ? majorMatch.section : `Section ${majorMatch.section}`,
+         title: majorMatch.title,
+         statuteName: majorMatch.statute,
+-        statuteYear: 1860,
++        statuteYear: parseInt(majorMatch.statute.match(/\b(18|19|20)\d{2}\b/)?.[0] || "0") || undefined,
+         domain: inferDomainFromText(majorMatch.statute + " " + (majorMatch.category || "")),
+         text: majorMatch.description,
+         commentary: majorMatch.punishment
+@@ -345,7 +345,7 @@
+           ? allActsMatch.section
+           : `Section ${allActsMatch.section}`,
+         title: allActsMatch.title,
+         statuteName: allActsMatch.statute,
+-        statuteYear: 1965,
++        statuteYear: parseInt(allActsMatch.statute.match(/\b(18|19|20)\d{2}\b/)?.[0] || "0") || undefined,
+         domain: inferDomainFromText(allActsMatch.statute + " " + (allActsMatch.category || "")),
+         text: allActsMatch.description,
+         commentary: allActsMatch.punishment
+@@ -363,7 +363,7 @@
+         sectionNumber: s.section.startsWith("Section") || s.section.startsWith("Art") ? s.section : `Section ${s.section}`,
+         title: s.title,
+         statuteName: s.statute,
+-        statuteYear: 1860,
++        statuteYear: parseInt(s.statute.match(/\b(18|19|20)\d{2}\b/)?.[0] || "0") || undefined,
+         domain: inferDomainFromText(s.statute + " " + (s.category || "")),
+         text: s.description,
+         commentary: s.punishment

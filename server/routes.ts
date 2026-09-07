@@ -2466,7 +2466,7 @@ async function callLegalDraftingAI(
   systemPrompt: string,
   userText: string,
   maxTokens: number,
-  options?: { timeoutProfile?: TimeoutProfile; temperature?: number },
+  options?: { timeoutProfile?: TimeoutProfile; temperature?: number; response_format?: any },
 ): Promise<{ text: string; model: string }> {
   const timeoutConfig = MODEL_TIMEOUT_PROFILES[options?.timeoutProfile || "default"] || MODEL_TIMEOUT_PROFILES.default;
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
@@ -2478,7 +2478,7 @@ async function callLegalDraftingAI(
     try {
       const { chatWithOpenRouter } = await import("./openrouter");
       const result = await withTimeout("Gemini 3.0 Flash", timeoutConfig.turboPrimary, () =>
-        chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3-flash-preview", maxTokens, temperature }),
+        chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3-flash-preview", maxTokens, temperature, response_format: options?.response_format }),
       );
       const safeText = assertNonEmptyModelOutput("Gemini 3.0 Flash", result.content);
       console.log(`[AI Routing][legal-drafting] Gemini 3.0 Flash primary succeeded in ${Date.now() - startedAt}ms`);
@@ -14837,12 +14837,28 @@ Rules:
         const selectedSnippetEnd = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetEnd);
         const conversationHistory = parseLegalDraftConversationHistory((req.body as any)?.conversationHistory);
         const conversationHistoryBlock = buildLegalDraftConversationBlock(conversationHistory);
-        const followUpOperation = classifyLegalDraftFollowUp({
+        let followUpOperation = classifyLegalDraftFollowUp({
           prompt: safePrompt,
           hasDraft: rawDraftText.trim().length > 0,
           hasSelection: selectedSnippet.trim().length > 0,
           requestedMode: requestedAssistantMode,
         });
+
+        if (followUpOperation === "ambiguous-edit") {
+          try {
+            const intentPrompt = `You are a legal intent router. The user wants to modify an existing legal draft.
+User request: "${safePrompt}"
+Determine the exact intent. Output JSON only.
+Schema: { "intent": "section-edit" | "full-rewrite" | "clarify" }
+If they want to change a specific part, return section-edit. If they want a completely new document, return full-rewrite. Otherwise, clarify.`;
+            const intentResult = await callLegalDraftingAI(intentPrompt, safePrompt, 100, { temperature: 0.1, response_format: { type: "json_object" } });
+            const parsedIntent = JSON.parse(intentResult.text);
+            followUpOperation = parsedIntent.intent || "clarify";
+          } catch (e) {
+            console.warn("LLM intent router failed, falling back to clarify", e);
+            followUpOperation = "clarify";
+          }
+        }
 
         if (followUpOperation === "clarify") {
           return res.json({
@@ -15181,7 +15197,15 @@ Targeted edit mode (strict):
 - STOP IMMEDIATELY after completing the target section. DO NOT generate subsequent sections (like PRAYER, VERIFICATION, or SIGNATURES) unless they are part of the target.
 - Sequential numbering integrity: If editing GROUNDS, maintain clean sequential lettering (A., B., C., D...) without duplicating previous grounds or resetting numbering. If editing paragraphs, maintain continuous numbering (1., 2., 3...).
 - Do not repeat the full pleading.
-- No markdown symbols, no bullets, no JSON, no explanations.
+- Return your output as a STRICT JSON object matching this schema:
+  {
+    "operation": "targeted-edit",
+    "target_section": "${editTarget.label}",
+    "replacement_html": "...",
+    "reason": "..."
+  }
+- The \`replacement_html\` must contain the fully formatted HTML for the targeted section.
+- Do NOT output raw markdown. Output ONLY the JSON object.
 - Keep Pakistani court drafting language and formatting.
 - Do not invent facts, citations, or statutory sections.
 - Case law citation lock (absolute): use only citations found in the INTERNAL DATABASE REFERENCES block below.
@@ -15207,13 +15231,28 @@ INTERNAL DATABASE REFERENCES (AUTO-LOADED):
 ${legalKnowledgeContextBlock}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
 
           let replacementText = "";
+          let reasonText = "";
           if (editTarget.action !== "delete") {
             const targetedResult = await callLegalDraftingAI(sysInstruction, targetedInput, Math.min(TOKEN_LIMITS.draft, 3500), {
               timeoutProfile: "analysis",
               temperature: 0.2,
+              response_format: { type: "json_object" }
             });
             await logUsageCost(userId, "draft", targetedResult.model, sysInstruction + targetedInput, targetedResult.text, { userQuery: safePrompt });
-            replacementText = normalizeDraftingText(targetedResult.text);
+            
+            try {
+              const parsed = JSON.parse(targetedResult.text);
+              if (parsed.target_section !== editTarget.label) {
+                 return res.status(422).json({ message: `LLM attempted to edit ${parsed.target_section} instead of requested ${editTarget.label}.` });
+              }
+              replacementText = parsed.replacement_html || parsed.replacement_text || "";
+              reasonText = parsed.reason || "";
+            } catch (e) {
+              console.warn("Targeted edit JSON parse failed", e);
+              replacementText = targetedResult.text;
+            }
+            
+            replacementText = normalizeDraftingText(replacementText);
             const replacementReferences = await resolveLegalDraftReferences(replacementText, {
               stripUnverifiedCaseCitations: true,
               unresolvedCaseCitationPlaceholder: "",

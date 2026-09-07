@@ -1,0 +1,35 @@
+--- server/storage.ts
++++ server/storage.ts
+@@ -1701,8 +1701,8 @@
+ 
+       const narrowBuilder = db.select().from(caseLaw).where(narrowWhereWithCourt);
+       rows = effectiveSortMode === "latest"
+-        ? await narrowBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
+-        : await narrowBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
++        ? await narrowBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0)
++        : await narrowBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0);
+ 
+       // Only fall back to broad (OR) when narrow (AND) returns ZERO results.
+       // Previously this triggered when rows < limit, which diluted precision —
+@@ -1715,8 +1715,8 @@
+ 
+         const broadBuilder = db.select().from(caseLaw).where(broadWhereWithCourt);
+         rows = effectiveSortMode === "latest"
+-          ? await broadBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
+-          : await broadBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
++          ? await broadBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0)
++          : await broadBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0);
+       }
+ 
+       // ── Tier 2 FALLBACK: pg_trgm ILIKE if tsvector returned 0 ─────────
+@@ -1735,8 +1735,8 @@
+             : or(...ilikeClauses)!;
+           const ilikeBuilder = db.select().from(caseLaw).where(ilikeWhere);
+           rows = effectiveSortMode === "latest"
+-            ? await ilikeBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
+-            : await ilikeBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
++            ? await ilikeBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0)
++            : await ilikeBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0);
+         }
+       }
+     } else {

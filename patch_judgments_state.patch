@@ -1,0 +1,60 @@
+--- client/src/experimental/pages/PreviewJudgments.tsx
++++ client/src/experimental/pages/PreviewJudgments.tsx
+@@ -102,6 +102,9 @@
+   const [searchFallbackActive, setSearchFallbackActive] = useState<boolean>(false);
+   const [searchError, setSearchError] = useState<string | null>(null);
+   const [hasSearched, setHasSearched] = useState<boolean>(false);
++  const [currentPage, setCurrentPage] = useState<number>(1);
++  const [hasMoreResults, setHasMoreResults] = useState<boolean>(false);
++  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+ 
+   // Detail / Reader State
+   const [selectedJudgmentId, setSelectedJudgmentId] = useState<string | null>(routeParams?.id || null);
+@@ -250,29 +253,39 @@
+   const handleExecuteTwoTierSearch = async (
+     overrideQuery?: string,
+     overrideJournal?: string,
+-    overrideCourt?: string
++    overrideCourt?: string,
++    page: number = 1
+   ) => {
+     const q = (overrideQuery !== undefined ? overrideQuery : searchQuery).trim();
+     const journalToUse = overrideJournal !== undefined ? overrideJournal : selectedJournal;
+     const courtToUse = overrideCourt !== undefined ? overrideCourt : selectedCourt;
+-    setIsSearching(true);
++    
++    if (page === 1) {
++      setIsSearching(true);
++      setHasSearched(true);
++      setCurrentPage(1);
++      setSearchResults([]);
++    } else {
++      setIsLoadingMore(true);
++    }
+     setSearchError(null);
+     setSearchFallbackActive(false);
+-    setHasSearched(true);
+ 
+     try {
+       const yearFilter = selectedYear === "All Years" ? undefined : selectedYear;
+       const results = await searchJudgments({
+         query: q,
+         journal: journalToUse,
+         court: courtToUse,
+         year: yearFilter,
+         sort: sortOrder,
+         limit: 25,
++        offset: (page - 1) * 25,
+       });
+ 
+-      setSearchResults(results);
++      setSearchResults(prev => page === 1 ? results : [...prev, ...results]);
++      setHasMoreResults(results.length >= 25);
+     } catch (err: any) {
+       console.error("Search execution error:", err);
+       setSearchError(err?.message || "Search failed. Please try again.");
+     } finally {
+       setIsSearching(false);
++      setIsLoadingMore(false);
+     }
+   };

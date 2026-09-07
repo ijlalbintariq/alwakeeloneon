@@ -1,0 +1,44 @@
+--- client/src/experimental/lib/judgmentApiClient.ts
++++ client/src/experimental/lib/judgmentApiClient.ts
+@@ -216,6 +216,7 @@
+   year?: string | number;
+   sort?: "relevance" | "latest" | "most_cited";
+   limit?: number;
++  offset?: number;
+ }
+ 
+ export interface CitationLookupParams {
+@@ -239,6 +240,7 @@
+   const year = params.year ? String(params.year) : undefined;
+   const sort = params.sort || "relevance";
+   const limit = params.limit || 25;
++  const offset = params.offset || 0;
+ 
+   const results: UnifiedJudgmentResult[] = [];
+ 
+@@ -252,6 +254,7 @@
+       if (year && year !== "All Years") searchParams.set("year", year);
+       searchParams.set("sort", sort);
+       searchParams.set("limit", String(limit));
++      searchParams.set("offset", String(offset));
+ 
+       let res: Response | null = null;
+       try {
+@@ -262,7 +265,7 @@
+       if (!res || !res.ok) {
+         if (query.length >= 3) {
+           try {
+-            res = await fetch(`/api/case-law/cite?q=${encodeURIComponent(query)}&limit=${limit}`, {
++            res = await fetch(`/api/case-law/cite?q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`, {
+               credentials: "include",
+             });
+           } catch {}
+@@ -275,7 +278,7 @@
+               method: "POST",
+               headers: { "Content-Type": "application/json" },
+               credentials: "include",
+-              body: JSON.stringify({ query, journal: journal !== "All" ? journal : undefined, court: court !== "All Courts" ? court : undefined }),
++              body: JSON.stringify({ query, journal: journal !== "All" ? journal : undefined, court: court !== "All Courts" ? court : undefined, offset }),
+             });
+           } catch {}
+         }

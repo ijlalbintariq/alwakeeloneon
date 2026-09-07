@@ -1,0 +1,20 @@
+--- client/src/experimental/pages/PreviewCaseDocuments.tsx
++++ client/src/experimental/pages/PreviewCaseDocuments.tsx
+@@ -95,12 +95,12 @@
+             const mapped: CaseDocumentItem[] = data.map((d: any, idx: number) => ({
+               id: String(d.id || `cdoc-${idx + 1}`),
+               title: d.title || d.fileName || d.name || "Untitled Document",
+-              caseRef: d.caseRef || d.caseNumber || "General",
+-              matterTitle: d.matterTitle || d.caseTitle || d.title || "General Matter",
+-              court: d.court || "High Court",
+-              type: d.type || "Pleading",
++              caseRef: d.caseRef || d.caseNumber || "Unassigned",
++              matterTitle: d.matterTitle || d.caseTitle || d.title || "Unassigned Matter",
++              court: d.court || "Unspecified Court",
++              type: d.type || "Document",
+               pageCount: d.pageCount || 1,
+               uploadedDate: d.uploadedDate || (d.createdAt ? new Date(d.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)),
+-              assignedCounsel: d.assignedCounsel || d.counsel || "Counsel",
++              assignedCounsel: d.assignedCounsel || d.counsel || "Unassigned",
+               fileSize: d.fileSize || "1.0 MB",
+               status: d.status || "verified",

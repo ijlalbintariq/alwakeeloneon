@@ -32,6 +32,7 @@ interface OpenRouterChatOptions {
   model?: string;
   temperature?: number;
   signal?: AbortSignal;
+  response_format?: any;
 }
 
 interface OpenRouterResponse {
@@ -51,6 +52,7 @@ export async function chatWithOpenRouter(options: OpenRouterChatOptions): Promis
     messages: options.messages as any,
     max_tokens: options.maxTokens || 8192,
     temperature,
+    ...(options.response_format ? { response_format: options.response_format } : {}),
   });
 
   const choice = response.choices[0];

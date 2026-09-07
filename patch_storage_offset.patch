@@ -1,0 +1,13 @@
+--- server/storage.ts
++++ server/storage.ts
+@@ -1754,8 +1754,8 @@
+         : or(...structuredClauses)!;
+       const builder = db.select().from(caseLaw).where(structuredWhere);
+       rows = effectiveSortMode === "latest"
+-        ? await builder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
+-        : await builder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
++        ? await builder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0)
++        : await builder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0);
+     }
+ 
+     // ── Source content search (append additional results) ───────────────

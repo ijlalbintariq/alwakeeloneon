@@ -1,0 +1,9 @@
+@@ -363,7 +363,7 @@
+         sectionNumber: s.section.startsWith("Section") || s.section.startsWith("Art") ? s.section : `Section ${s.section}`,
+         title: s.title,
+         statuteName: s.statute,
+-        statuteYear: 1860,
++        statuteYear: parseInt(s.statute.match(/\b(18|19|20)\d{2}\b/)?.[0] || "0") || undefined,
+         domain: inferDomainFromText(s.statute + " " + (s.category || "")),
+         text: s.description,
+         commentary: s.punishment

@@ -1,0 +1,11 @@
+--- client/src/experimental/pages/PreviewStatutes.tsx
++++ client/src/experimental/pages/PreviewStatutes.tsx
+@@ -79,6 +79,8 @@
+   getSectionByIdAcrossAllActs,
+ } from "@/experimental/lib/actSectionLoader";
+ 
++const extractYear = (name: string) => parseInt(name.match(/\b(18|19|20)\d{2}\b/)?.[0] || "0") || undefined;
++
+ // Helper: Convert number to Pakistani English words (Lakhs/Crores)
+ function numberToWordsPk(amount: number): string {
+   if (amount === 0) return "Zero";

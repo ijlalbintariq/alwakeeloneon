@@ -1,24 +1,40 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export class AppError extends Error {
+  status: number;
+  data?: any;
+  constructor(message: string, status: number, data?: any) {
+    super(message);
+    this.name = "AppError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     let message = res.statusText;
+    let parsedData = null;
     const contentType = res.headers.get("content-type") || "";
 
-    if (contentType.includes("application/json")) {
-      const data = await res.json().catch(() => null);
-      if (data && typeof data.message === "string") {
-        message = data.message;
-      } else if (data) {
-        message = JSON.stringify(data);
+    if (contentType.includes("application/json") || contentType.includes("application/problem+json")) {
+      parsedData = await res.json().catch(() => null);
+      if (parsedData && typeof parsedData.message === "string") {
+        message = parsedData.message;
+      } else if (parsedData && typeof parsedData.detail === "string") {
+        message = parsedData.detail;
+      } else if (parsedData) {
+        message = JSON.stringify(parsedData);
       }
     } else {
       const text = await res.text().catch(() => "");
       if (text) {
         try {
-          const data = JSON.parse(text);
-          if (data && typeof data.message === "string") {
-            message = data.message;
+          parsedData = JSON.parse(text);
+          if (parsedData && typeof parsedData.message === "string") {
+            message = parsedData.message;
+          } else if (parsedData && typeof parsedData.detail === "string") {
+            message = parsedData.detail;
           } else {
             message = text;
           }
@@ -28,9 +44,7 @@ async function throwIfResNotOk(res: Response) {
       }
     }
 
-    const error = new Error(message) as Error & { status?: number };
-    error.status = res.status;
-    throw error;
+    throw new AppError(message, res.status, parsedData);
   }
 }
 

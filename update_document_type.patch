@@ -1,0 +1,44 @@
+--- client/src/experimental/pages/PreviewDocumentAnalyzer.tsx
++++ client/src/experimental/pages/PreviewDocumentAnalyzer.tsx
+@@ -80,6 +80,39 @@
+   insertedText?: string;
+   replacedText?: string;
+ }
++
++const CONTRACT_CHECKLIST_RULES: StatutoryCheckItem[] = [
++  {
++    id: "cc-1",
++    statute: "Registration Act 1908",
++    section: "Section 17",
++    requirement: "Mandatory registration for leases over 1 year or property transfers > PKR 100.",
++    status: "fatal_risk",
++    detail: "Non-registration under Section 49 makes the document inadmissible in evidence.",
++  },
++  {
++    id: "cc-2",
++    statute: "Contract Act 1872",
++    section: "Section 73 & 74",
++    requirement: "Clear distinction between liquidated damages and penalty clauses.",
++    status: "warning",
++    detail: "Penalty clauses are unenforceable; must reflect genuine pre-estimate of loss.",
++  },
++  {
++    id: "cc-3",
++    statute: "Stamp Act 1899",
++    section: "Schedule I",
++    requirement: "Sufficient stamp duty affixed based on the transaction value.",
++    status: "warning",
++    detail: "Inadmissible in court if improperly stamped unless penalty is paid.",
++  },
++  {
++    id: "cc-4",
++    statute: "Arbitration Act 1940",
++    section: "Section 34",
++    requirement: "Clear dispute resolution and arbitration seat/venue clause.",
++    status: "advisory",
++    detail: "Prevents civil litigation and binds parties to out-of-court settlement.",
++  },
++];
+ 
+ const STATUTORY_CHECKLIST_RULES: StatutoryCheckItem[] = [
+   {

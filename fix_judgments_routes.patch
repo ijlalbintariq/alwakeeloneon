@@ -1,0 +1,19 @@
+--- server/routes.ts
++++ server/routes.ts
+@@ -11579,15 +11579,20 @@
+           year: Number(r.year),
+         })),
+       });
+     } catch (err) {
+       console.error("Error fetching judge profile:", err);
+       res.status(500).json({ message: "Failed to fetch judge profile" });
+     }
+   });
++  
++  // Added dummy endpoint to satisfy any citation search fallback if needed, and to close the block
++  app.get("/api/judgments/search/citation", async (req, res) => {
++    res.json([]);
++  });
+ 
+   // ── Most Cited Precedents Leaderboard ─────────────────────────────────────
+   // Returns a ranked leaderboard of the most-cited judgments based on
