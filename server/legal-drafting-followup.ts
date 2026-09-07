@@ -139,7 +139,8 @@ export function classifyLegalDraftFollowUp(input: {
     if (
       findLegalDraftEditTarget(input.prompt, "") ||
       /\b(?:paragraph|para)\s*(?:no\.?\s*)?\d{1,3}\b/i.test(prompt) ||
-      /\bground\s+[A-Z]\b/i.test(prompt)
+      /\bground\s+[A-Z]\b/i.test(prompt) ||
+      /\b(?:corrective clause|resolve:)\b/i.test(prompt)
     ) return "section-edit";
     return "clarify";
   }
@@ -277,9 +278,31 @@ export function applyLegalDraftEdit(input: {
   if (source.slice(target.start, target.end).trimEnd() !== target.text.trimEnd()) {
     return { ok: false, reason: "The draft changed before the edit could be applied." };
   }
-  const replacement = String(input.replacementText || "").trim();
+  let replacement = String(input.replacementText || "").trim();
   if (target.action !== "delete" && !replacement) {
     return { ok: false, reason: "AI returned empty edit text." };
+  }
+
+  // Guard against AI over-generation of subsequent sections (Bug 7)
+  if (target.action !== "delete" && target.action !== "insert-before" && target.action !== "insert-after") {
+    ANY_MAJOR_HEADING.lastIndex = 0;
+    const targetMatch = ANY_MAJOR_HEADING.exec(target.text);
+    const hasSecondHeadingInTarget = targetMatch ? ANY_MAJOR_HEADING.exec(target.text) !== null : false;
+    
+    if (!hasSecondHeadingInTarget) {
+      ANY_MAJOR_HEADING.lastIndex = 0;
+      const repMatch = ANY_MAJOR_HEADING.exec(replacement);
+      if (repMatch) {
+        const firstHeadingIsSame = targetMatch && repMatch[0].trim().toUpperCase() === targetMatch[0].trim().toUpperCase();
+        let overgenMatch = firstHeadingIsSame ? ANY_MAJOR_HEADING.exec(replacement) : repMatch;
+        if (!targetMatch) overgenMatch = repMatch;
+        
+        if (overgenMatch) {
+          replacement = replacement.slice(0, overgenMatch.index).trimEnd();
+        }
+      }
+    }
+    ANY_MAJOR_HEADING.lastIndex = 0;
   }
 
   const before = source.slice(0, target.start);

@@ -15178,6 +15178,7 @@ Targeted edit mode (strict):
 - Edit ONLY the identified target: ${editTarget.label}.
 - Keep all other draft text unchanged.
 - ${actionInstruction}
+- STOP IMMEDIATELY after completing the target section. DO NOT generate subsequent sections (like PRAYER, VERIFICATION, or SIGNATURES) unless they are part of the target.
 - Sequential numbering integrity: If editing GROUNDS, maintain clean sequential lettering (A., B., C., D...) without duplicating previous grounds or resetting numbering. If editing paragraphs, maintain continuous numbering (1., 2., 3...).
 - Do not repeat the full pleading.
 - No markdown symbols, no bullets, no JSON, no explanations.
@@ -18060,6 +18061,9 @@ Facts: ${brief.facts}`;
       
       // 3. AlWakeelo Safety Overrides & Citation Integrity
       safeContent = await applyAlWakeeloSafetyGuardrails(safeContent).catch(() => safeContent);
+
+      // 4. Strip references, recommendations, and think blocks
+      safeContent = normalizeDraftingText(safeContent);
 
       res.json({ textContent: safeContent });
     } catch (err) {

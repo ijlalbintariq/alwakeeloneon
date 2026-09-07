@@ -67,6 +67,7 @@ export const CourtFeeCalculatorModal: React.FC<CourtFeeCalculatorModalProps> = (
 
           <button
             onClick={onClose}
+            aria-label="Close calculator modal"
             className="p-1.5 rounded-xl text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] transition-colors"
           >
             <X className="w-4 h-4" />
@@ -77,10 +78,11 @@ export const CourtFeeCalculatorModal: React.FC<CourtFeeCalculatorModalProps> = (
         <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Suit Type Selector */}
           <div>
-            <label className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">
+            <label htmlFor="suit-type-select" className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">
               Category of Suit / Plaint
             </label>
             <select
+              id="suit-type-select"
               value={suitType}
               onChange={(e) => setSuitType(e.target.value as SuitType)}
               className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-medium focus:outline-none focus:border-[#105B38] transition-colors cursor-pointer"
@@ -97,7 +99,7 @@ export const CourtFeeCalculatorModal: React.FC<CourtFeeCalculatorModalProps> = (
           {/* Ad Valorem Value Input (Conditional) */}
           {meta.needsValue && (
             <div>
-              <label className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">
+              <label htmlFor="suit-value-input" className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] block mb-1.5">
                 Subject Matter Valuation (PKR)
               </label>
               <div className="relative">
@@ -105,6 +107,7 @@ export const CourtFeeCalculatorModal: React.FC<CourtFeeCalculatorModalProps> = (
                   PKR
                 </span>
                 <input
+                  id="suit-value-input"
                   type="number"
                   min={0}
                   step={10000}
@@ -155,7 +158,7 @@ export const CourtFeeCalculatorModal: React.FC<CourtFeeCalculatorModalProps> = (
             <Info className="w-4 h-4 text-[#105B38] shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-[#105B38]">Section 7 & Schedule I Compliance: </span>
-              In suits for money or property value exceeding PKR 25,000, 7.5% ad valorem applies subject to provincial maximum ceilings (e.g. PKR 15,000 in Punjab).
+              In suits for money or property value exceeding PKR 25,000, 7.5% ad valorem applies subject to provincial maximum ceilings (e.g. PKR 200,000 in Punjab).
             </div>
           </div>
         </div>

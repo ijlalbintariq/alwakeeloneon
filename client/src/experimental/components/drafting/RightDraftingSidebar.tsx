@@ -181,9 +181,13 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
         if (res.status === 401) {
           throw new Error("Chamber session unauthenticated. Please sign in via the Sign In tab (/preview/auth) to enable live AI drafting.");
         }
-        if (res.status === 422) {
+        
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
           data = await res.json();
-          // We got validation warnings, but the draft is present in the response data.
+          if (res.status !== 422) {
+            throw new Error(data.message || `Error ${res.status}: Request failed.`);
+          }
         } else {
           const errText = await res.text();
           throw new Error(`${res.status}: ${errText}`);
@@ -510,6 +514,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
             <div className="relative flex flex-col gap-1.5">
               <textarea
                 ref={inputRef}
+                aria-label="AI Command Input"
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
                 onKeyDown={(e) => {

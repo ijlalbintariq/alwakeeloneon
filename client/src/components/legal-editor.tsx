@@ -495,6 +495,7 @@ function LegalEditorInner(
       StarterKit.configure({
         heading: false,     // replaced by CustomHeading
         paragraph: false,   // replaced by CustomParagraph
+        underline: false,   // replaced by explicit Underline below
       }),
       CustomParagraph,
       CustomHeading.configure({ levels: [1, 2, 3] }),
