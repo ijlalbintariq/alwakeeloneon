@@ -658,11 +658,14 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                         <div class="text-left p-2 rounded border mb-2 transition-all border-${r.severity === 'danger' ? 'red' : 'amber'}-200 bg-${r.severity === 'danger' ? 'red' : 'amber'}-50 text-${r.severity === 'danger' ? 'red' : 'amber'}-800 text-[11px]">
                           <strong>${r.title}</strong><br/>
                           ${r.detail}
-                          <button class="mt-1 font-bold underline" onclick="window.insertClauseFromRisk('${r.prompt.replace(/'/g, "\\'")}')">Apply Fix</button>
+                          <button class="mt-1 font-bold underline" onclick="window.applyRiskFixViaAI('${r.prompt.replace(/'/g, "\\'")}')">${r.fixClause ? 'Apply Fix' : 'Draft Fix'}</button>
                         </div>
                       `).join("");
-                      // Expose the inserter
-                      (window as any).insertClauseFromRisk = (clause: string) => onInsertClause(clause, "Fixed Risk");
+                      // Route risk fix through AI drafter instead of inserting raw prompt text
+                      (window as any).applyRiskFixViaAI = (prompt: string) => {
+                        setActiveTab("ai_chat");
+                        handleSend(prompt);
+                      };
                     }
                   }
                 } catch (e) {

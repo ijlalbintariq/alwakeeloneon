@@ -431,7 +431,25 @@ export const PreviewDrafting: React.FC = () => {
     [activeTabId, tabs, saveDraftToDb]
   );
 
-  // ─── Launchpad Actions ───────────────────────────────────────────────────
+  // ─── Template ID → Backend documentType mapping ────────────────────────────
+  const TEMPLATE_TO_DOC_TYPE: Record<string, string> = {
+    writ_199: "high-court-writ-petition",
+    bail_497: "sessions-bail-application",
+    bail_498_bba: "sessions-pre-arrest-bail",
+    civil_plaint_injunction: "civil-suit-plaint",
+    stay_order39: "temporary-injunction-application",
+    execution_order21: "execution-application",
+    criminal_misc_22a: "criminal-misc-application",
+    sessions_crim_appeal: "sessions-criminal-appeal",
+    high_court_appeal_rfa: "high-court-civil-appeal",
+    supreme_court_cpla: "supreme-court-cpla",
+    family_suit_khula: "family-suit-petition",
+    guardians_custody_s25: "family-suit-petition",
+    vakalatnama_high_court: "power-of-attorney",
+    affidavit_oath_comm: "affidavit",
+    notice_489f_cheque: "legal-notice",
+    suit_order37_summary: "recovery-suit",
+  };
 
   const handleSelectTemplateFromLaunchpad = (template: DraftingTemplate) => {
     const formattedHtml = plainTextToTiptapHTML(template.body);
@@ -444,6 +462,7 @@ export const PreviewDrafting: React.FC = () => {
       htmlContent: formattedHtml,
       textContent: template.body,
       lastModified: Date.now(),
+      documentType: TEMPLATE_TO_DOC_TYPE[template.id] || undefined,
     };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newDocId);

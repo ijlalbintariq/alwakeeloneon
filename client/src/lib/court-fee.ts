@@ -132,8 +132,22 @@ export const SUIT_TYPES: Record<SuitType, SuitTypeMeta> = {
  *   Rs 100,001-500,000   → Rs 5,750 + 7% of value over Rs 100,000
  *   Rs 500,001-1,000,000 → Rs 33,750 + 7.5% of value over Rs 500,000
  *   Above Rs 1,000,000   → Rs 71,250 + 7.5% of value over 1M, capped at Rs 200,000
+ *
+ * NOTE: Provincial amendments may impose different ceilings. Verify against
+ * the latest Punjab Court Fee (Amendment) Act before relying on these figures.
+ * The province parameter allows future per-province ceiling overrides.
  */
-function computeAdValorem(value: number): number {
+export type Province = "punjab" | "sindh" | "kpk" | "balochistan" | "islamabad";
+
+const PROVINCIAL_CEILING: Record<Province, number> = {
+  punjab: 200_000,
+  sindh: 200_000,
+  kpk: 200_000,
+  balochistan: 200_000,
+  islamabad: 200_000,
+};
+
+function computeAdValorem(value: number, province: Province = "punjab"): number {
   const v = Math.max(0, Math.floor(value));
   if (v === 0) return 0;
   let fee = 0;
@@ -148,7 +162,7 @@ function computeAdValorem(value: number): number {
   } else {
     fee = 71_250 + Math.round((v - 1_000_000) * 0.075);
   }
-  return Math.min(fee, 200_000); // statutory cap
+  return Math.min(fee, PROVINCIAL_CEILING[province]); // statutory cap per province
 }
 
 function formatRs(n: number): string {

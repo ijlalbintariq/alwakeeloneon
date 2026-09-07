@@ -116,6 +116,14 @@ export function classifyLegalDraftFollowUp(input: {
   const asksAboutPriorAction = /\b(?:what|which)\s+(?:did\s+you|was)\s+(?:change|changed|edit|edited|do|done)\b/i.test(prompt);
   const isDirectQuestion = DIRECT_QUESTION_PATTERN.test(prompt) && !EXPLICIT_MUTATION_COMMAND_PATTERN.test(prompt) && !isNewFiling;
 
+  // Guard: when a draft already exists, section-specific keywords override full-rewrite.
+  // This prevents chip prompts like "Draft post-arrest bail grounds" from rewriting the
+  // entire document when the user only wants to add/edit the grounds section.
+  const SECTION_KEYWORD_PATTERN = /\b(?:grounds?|facts?|prayer|reliefs?|objections?|verification|affidavit|jurisdiction|cause\s+of\s+action|preliminary)\b/i;
+  if (input.hasDraft && (FULL_REWRITE_PATTERN.test(prompt) || isNewFiling) && SECTION_KEYWORD_PATTERN.test(prompt)) {
+    return "section-edit";
+  }
+
   if (FULL_REWRITE_PATTERN.test(prompt) || isNewFiling) return input.hasDraft ? "full-rewrite" : "initial-draft";
   if (CONVERSION_PATTERN.test(prompt)) return input.hasDraft ? "conversion" : "initial-draft";
   if (input.hasSelection) {

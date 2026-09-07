@@ -11790,6 +11790,69 @@ RAG POLICY (STRICT):
     }
   });
 
+  app.post("/api/drafts", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { title, templateType, content, status, metadata } = req.body;
+      if (!title || !content) return res.status(400).json({ message: "title and content required" });
+      const [draft] = await db.insert(legalDrafts).values({
+        userId,
+        title,
+        templateType: templateType || null,
+        content,
+        status: status || "draft",
+        metadata: metadata || null,
+      }).returning();
+      res.status(201).json(draft);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to create draft" });
+    }
+  });
+
+  app.patch("/api/drafts/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const draftId = parseInt(req.params.id);
+      if (isNaN(draftId)) return res.status(400).json({ message: "Invalid ID" });
+      const { title, templateType, content, status, metadata } = req.body;
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (title !== undefined) updates.title = title;
+      if (templateType !== undefined) updates.templateType = templateType;
+      if (content !== undefined) updates.content = content;
+      if (status !== undefined) updates.status = status;
+      if (metadata !== undefined) updates.metadata = metadata;
+      const [updated] = await db.update(legalDrafts)
+        .set(updates)
+        .where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId)))
+        .returning();
+      if (!updated) return res.status(404).json({ message: "Draft not found" });
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to update draft" });
+    }
+  });
+
+  app.delete("/api/drafts/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const draftId = parseInt(req.params.id);
+      if (isNaN(draftId)) return res.status(400).json({ message: "Invalid ID" });
+      const [deleted] = await db.delete(legalDrafts)
+        .where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId)))
+        .returning();
+      if (!deleted) return res.status(404).json({ message: "Draft not found" });
+      res.json({ message: "Draft deleted", id: draftId });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to delete draft" });
+    }
+  });
+
   // 3. Org Activity
   app.get("/api/org/:id/activity", async (req, res) => {
     const userId = getUserId(req);
