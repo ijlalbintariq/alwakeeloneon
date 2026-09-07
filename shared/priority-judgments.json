@@ -1,861 +1,16 @@
 [
   {
-    "id": "86c6bf74-7e77-4224-a323-64310da50051",
-    "clicks": 59.0,
-    "impressions": 345.0,
-    "position": 2.75
-  },
-  {
-    "id": "f10da997-a367-42a0-ba15-7ba2f8fb7d9c",
-    "clicks": 59.0,
-    "impressions": 275.0,
-    "position": 2.97
+    "id": "ff8d297d-f10a-4f79-b4d2-b4c664091640",
+    "clicks": 2.0,
+    "impressions": 1483.0,
+    "position": 6.99
   },
   {
     "id": "c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
     "clicks": 53.0,
     "impressions": 1152.0,
-    "position": 4.81
-  },
-  {
-    "id": "3ccdadfd-6446-4407-a070-0e9586ab97e5",
-    "clicks": 28.0,
-    "impressions": 135.0,
-    "position": 2.96
-  },
-  {
-    "id": "2999ad41-2dfb-4342-a4a1-24b8bb7bfc8c",
-    "clicks": 22.0,
-    "impressions": 130.0,
-    "position": 2.42
-  },
-  {
-    "id": "3bc10e10-0be8-43f2-9e74-597291ffba1f",
-    "clicks": 20.0,
-    "impressions": 155.0,
-    "position": 4.3
-  },
-  {
-    "id": "96dbaca5-36c1-4951-a58a-1f0d3e6f4898",
-    "clicks": 20.0,
-    "impressions": 81.0,
-    "position": 4.43
-  },
-  {
-    "id": "79a28bef-b2fd-46a4-b39d-48f09740a77a",
-    "clicks": 19.0,
-    "impressions": 250.0,
-    "position": 4.66
-  },
-  {
-    "id": "df47da30-fe6c-4ae5-a1be-0a1c748d6439",
-    "clicks": 18.0,
-    "impressions": 82.0,
-    "position": 3.91
-  },
-  {
-    "id": "8ee7759b-550f-4cb3-b204-2f63e7b21a2f",
-    "clicks": 17.0,
-    "impressions": 83.0,
-    "position": 3.72
-  },
-  {
-    "id": "cdbe85c2-5755-4da5-b706-577d4984abc7",
-    "clicks": 15.0,
-    "impressions": 252.0,
-    "position": 4.27
-  },
-  {
-    "id": "08af5d0b-5143-4ab5-8cc5-8399ce3ef5bc",
-    "clicks": 14.0,
-    "impressions": 104.0,
-    "position": 3.34
-  },
-  {
-    "id": "ec076218-60ce-445b-8f30-55c026c2165c",
-    "clicks": 14.0,
-    "impressions": 81.0,
-    "position": 3.27
-  },
-  {
-    "id": "0e5aa93e-e567-42d2-a519-2baa4b1cb944",
-    "clicks": 11.0,
-    "impressions": 21.0,
-    "position": 3.62
-  },
-  {
-    "id": "f74b650b-ca8e-4fc3-9856-16821dc84b37",
-    "clicks": 10.0,
-    "impressions": 544.0,
-    "position": 3.66
-  },
-  {
-    "id": "d06ad889-fcd4-4389-a935-434aed29d72a",
-    "clicks": 10.0,
-    "impressions": 331.0,
-    "position": 3.7
-  },
-  {
-    "id": "01ad58b0-9644-490d-b014-4e8c91671b98",
-    "clicks": 9.0,
-    "impressions": 62.0,
-    "position": 4.42
-  },
-  {
-    "id": "266e9c8a-1317-4d82-88f3-2993e14847e9",
-    "clicks": 9.0,
-    "impressions": 41.0,
-    "position": 3.71
-  },
-  {
-    "id": "54a1a049-e198-43c6-b3cd-5007368d0dd6",
-    "clicks": 9.0,
-    "impressions": 29.0,
-    "position": 4.0
-  },
-  {
-    "id": "c9c0d65e-1869-4451-bf1e-69a6daec244f",
-    "clicks": 9.0,
-    "impressions": 21.0,
-    "position": 3.14
-  },
-  {
-    "id": "96dca794-8fa2-4e05-8c8d-12388a9ea1c7",
-    "clicks": 8.0,
-    "impressions": 155.0,
-    "position": 5.77
-  },
-  {
-    "id": "4c2c7eea-19be-48ac-a878-d5cf060ea0ad",
-    "clicks": 8.0,
-    "impressions": 96.0,
-    "position": 6.17
-  },
-  {
-    "id": "a1c98911-d703-4baf-be46-4c752e0058dd",
-    "clicks": 8.0,
-    "impressions": 53.0,
-    "position": 6.04
-  },
-  {
-    "id": "9ce87b54-8926-4585-8ec2-b0b515c66bc9",
-    "clicks": 8.0,
-    "impressions": 35.0,
-    "position": 5.06
-  },
-  {
-    "id": "d48c8382-9fba-4e1f-a832-7e20bf18de84",
-    "clicks": 8.0,
-    "impressions": 34.0,
-    "position": 5.56
-  },
-  {
-    "id": "50f2ef5a-d747-441b-b6b2-1bed7084c17a",
-    "clicks": 8.0,
-    "impressions": 30.0,
-    "position": 2.8
-  },
-  {
-    "id": "fc81592f-617b-4801-bf0e-bbb34be2f165",
-    "clicks": 8.0,
-    "impressions": 23.0,
-    "position": 2.13
-  },
-  {
-    "id": "71c035c9-6660-420d-99ec-4cd138767d75",
-    "clicks": 8.0,
-    "impressions": 19.0,
-    "position": 2.63
-  },
-  {
-    "id": "44953c1b-179c-4743-852f-6ae5cb759ee3",
-    "clicks": 7.0,
-    "impressions": 290.0,
-    "position": 7.93
-  },
-  {
-    "id": "3a1b29ec-84bf-4c79-a42f-745e60134ac4",
-    "clicks": 7.0,
-    "impressions": 109.0,
-    "position": 4.94
-  },
-  {
-    "id": "721c0e3d-acc4-409f-abb9-915f3272139e",
-    "clicks": 7.0,
-    "impressions": 72.0,
-    "position": 3.83
-  },
-  {
-    "id": "80ef3093-bff8-4cea-9421-baa084c87791",
-    "clicks": 7.0,
-    "impressions": 62.0,
-    "position": 7.15
-  },
-  {
-    "id": "e7024d8a-f128-410e-bfd7-9118f202bfe3",
-    "clicks": 7.0,
-    "impressions": 56.0,
-    "position": 2.82
-  },
-  {
-    "id": "65c0ae1a-ec53-4888-87ff-98ee38941ac5",
-    "clicks": 7.0,
-    "impressions": 55.0,
-    "position": 6.4
-  },
-  {
-    "id": "76caea88-7c6d-4490-ab10-e39ecc8ddd6c",
-    "clicks": 7.0,
-    "impressions": 54.0,
-    "position": 3.52
-  },
-  {
-    "id": "ae3edb01-21e6-4ea2-b25b-950199b23830",
-    "clicks": 7.0,
-    "impressions": 50.0,
-    "position": 4.5
-  },
-  {
-    "id": "799be194-e361-4efc-9029-e604da6ae07e",
-    "clicks": 7.0,
-    "impressions": 50.0,
-    "position": 5.46
-  },
-  {
-    "id": "880309eb-445a-44b6-bc0c-2bce94459f94",
-    "clicks": 7.0,
-    "impressions": 48.0,
-    "position": 5.35
-  },
-  {
-    "id": "ea45540a-c9df-4cfa-9985-2774c3a03220",
-    "clicks": 7.0,
-    "impressions": 34.0,
-    "position": 3.71
-  },
-  {
-    "id": "a1282d4e-3f25-400a-a8b5-53fc21485530",
-    "clicks": 7.0,
-    "impressions": 34.0,
-    "position": 5.74
-  },
-  {
-    "id": "2a308c6c-4e42-47f8-bed2-6062f6af3266",
-    "clicks": 7.0,
-    "impressions": 25.0,
-    "position": 6.48
-  },
-  {
-    "id": "68e31e9c-8711-4b26-a50a-f665fe4bd2e1",
-    "clicks": 7.0,
-    "impressions": 23.0,
-    "position": 4.43
-  },
-  {
-    "id": "2568a7b6-578b-4548-bf2c-e702338e0022",
-    "clicks": 7.0,
-    "impressions": 14.0,
-    "position": 3.14
-  },
-  {
-    "id": "82c6249b-ef80-4fb7-9d41-9063e2c9169c",
-    "clicks": 6.0,
-    "impressions": 70.0,
-    "position": 5.5
-  },
-  {
-    "id": "35797ad0-5a26-4487-895c-37ab1b2a5fdb",
-    "clicks": 6.0,
-    "impressions": 37.0,
-    "position": 3.27
-  },
-  {
-    "id": "01dd66f8-5a05-41b6-84f5-87619ef78f34",
-    "clicks": 6.0,
-    "impressions": 28.0,
-    "position": 2.93
-  },
-  {
-    "id": "82c1ed88-40b8-4911-9b81-823d37d1f4b1",
-    "clicks": 6.0,
-    "impressions": 28.0,
-    "position": 3.75
-  },
-  {
-    "id": "22a2dd5b-6268-419b-8faf-9a614c833102",
-    "clicks": 6.0,
-    "impressions": 23.0,
-    "position": 3.04
-  },
-  {
-    "id": "b73773f9-28dc-4533-9ea1-8610b429e7cf",
-    "clicks": 6.0,
-    "impressions": 23.0,
-    "position": 3.39
-  },
-  {
-    "id": "236fb97d-8ec2-4fff-99cc-6d82c8421b74",
-    "clicks": 6.0,
-    "impressions": 23.0,
-    "position": 4.87
-  },
-  {
-    "id": "3adfd459-7f8e-4ca1-bcfc-0d8411ac6a61",
-    "clicks": 6.0,
-    "impressions": 20.0,
-    "position": 3.05
-  },
-  {
-    "id": "69f756f3-c2b4-4c32-b6b2-eb5c9c61f5ff",
-    "clicks": 6.0,
-    "impressions": 19.0,
-    "position": 3.53
-  },
-  {
-    "id": "4e4b2581-0492-43a4-b0af-b6d81972a139",
-    "clicks": 6.0,
-    "impressions": 12.0,
-    "position": 3.58
-  },
-  {
-    "id": "8d02f948-dfe2-47d8-b2c3-6aca029a546a",
-    "clicks": 6.0,
-    "impressions": 11.0,
-    "position": 3.55
-  },
-  {
-    "id": "cd10c95b-5aa0-4601-a1fb-e04a53a26a8b",
-    "clicks": 6.0,
-    "impressions": 9.0,
-    "position": 3.22
-  },
-  {
-    "id": "24748582-62b1-4c1b-bb5b-8d2180b94ec7",
-    "clicks": 6.0,
-    "impressions": 6.0,
-    "position": 1.0
-  },
-  {
-    "id": "d617375e-0da9-4102-b70e-127ce1f86b31",
-    "clicks": 5.0,
-    "impressions": 158.0,
-    "position": 6.11
-  },
-  {
-    "id": "7c5c4646-4301-479f-9d7a-533abe9bd597",
-    "clicks": 5.0,
-    "impressions": 113.0,
-    "position": 6.4
-  },
-  {
-    "id": "c2fa7ded-d083-47e7-891f-f73bb1c2a8ae",
-    "clicks": 5.0,
-    "impressions": 66.0,
-    "position": 5.39
-  },
-  {
-    "id": "b9c43863-b201-4431-9ad7-210a1e65974b",
-    "clicks": 5.0,
-    "impressions": 55.0,
-    "position": 8.29
-  },
-  {
-    "id": "8e39af42-ec60-4a25-b04c-17c320e19521",
-    "clicks": 5.0,
-    "impressions": 45.0,
-    "position": 6.0
-  },
-  {
-    "id": "09ff2898-c3b4-4407-9120-e62442da4203",
-    "clicks": 5.0,
-    "impressions": 45.0,
-    "position": 6.82
-  },
-  {
-    "id": "0dfe0eaf-b75a-4e8b-a685-2d99bbfaad31",
-    "clicks": 5.0,
-    "impressions": 39.0,
-    "position": 4.54
-  },
-  {
-    "id": "0ee6b3b1-f33a-4d34-8cb9-c419fe7a2321",
-    "clicks": 5.0,
-    "impressions": 29.0,
-    "position": 9.66
-  },
-  {
-    "id": "37b53ff9-ab35-483e-99ea-c54c1c4b1817",
-    "clicks": 5.0,
-    "impressions": 28.0,
-    "position": 5.0
-  },
-  {
-    "id": "d1e41c8f-9fb2-466d-9fa8-822f4d6072e4",
-    "clicks": 5.0,
-    "impressions": 27.0,
-    "position": 4.52
-  },
-  {
-    "id": "91d779bb-9742-4b6e-b231-146eca3b1bf7",
-    "clicks": 5.0,
-    "impressions": 22.0,
-    "position": 2.68
-  },
-  {
-    "id": "a17e651f-76af-4237-b0a9-59caf131906f",
-    "clicks": 5.0,
-    "impressions": 21.0,
-    "position": 4.1
-  },
-  {
-    "id": "ff7f07b0-6f18-4655-bab0-06d5b66fa298",
-    "clicks": 5.0,
-    "impressions": 21.0,
-    "position": 4.52
-  },
-  {
-    "id": "47088998-e937-41b8-9ab2-d167b3f7bb2e",
-    "clicks": 5.0,
-    "impressions": 20.0,
-    "position": 3.2
-  },
-  {
-    "id": "5864337c-488d-4450-b6d7-9db6779b9fb6",
-    "clicks": 5.0,
-    "impressions": 19.0,
-    "position": 12.16
-  },
-  {
-    "id": "610f9aab-3936-48f0-8420-3df240708446",
-    "clicks": 5.0,
-    "impressions": 18.0,
-    "position": 2.11
-  },
-  {
-    "id": "c6ec1d9f-ba21-453d-9127-ae0336d5d319",
-    "clicks": 5.0,
-    "impressions": 18.0,
-    "position": 3.56
-  },
-  {
-    "id": "7e484eff-3175-4601-85c2-191425ea8436",
-    "clicks": 5.0,
-    "impressions": 17.0,
-    "position": 5.47
-  },
-  {
-    "id": "4ceda3bf-5ff2-4a24-89c1-7f3151d45048",
-    "clicks": 5.0,
-    "impressions": 14.0,
-    "position": 2.0
-  },
-  {
-    "id": "5d04487f-5bde-4405-844b-9336301fdd52",
-    "clicks": 5.0,
-    "impressions": 13.0,
-    "position": 4.31
-  },
-  {
-    "id": "6a45ab58-8044-49bf-b17f-cc73811a1c79",
-    "clicks": 5.0,
-    "impressions": 11.0,
-    "position": 3.0
-  },
-  {
-    "id": "f246870f-e7cd-4ab9-ae18-49ec5d02221c",
-    "clicks": 5.0,
-    "impressions": 11.0,
-    "position": 10.91
-  },
-  {
-    "id": "e2074c0e-e8be-41dc-8ceb-0c59608b8a1f",
-    "clicks": 5.0,
-    "impressions": 7.0,
-    "position": 2.43
-  },
-  {
-    "id": "6b29bebb-bb45-4872-9629-efdbe4171730",
-    "clicks": 5.0,
-    "impressions": 5.0,
-    "position": 1.2
-  },
-  {
-    "id": "4ad1c4a8-2139-47b6-8769-500a527fc8e6",
-    "clicks": 4.0,
-    "impressions": 484.0,
-    "position": 7.38
-  },
-  {
-    "id": "6073e9b8-e748-40db-a727-aba465b89cb3",
-    "clicks": 4.0,
-    "impressions": 185.0,
-    "position": 7.92
-  },
-  {
-    "id": "9525f4b3-f370-48c8-9e34-436b08fd6cd5",
-    "clicks": 4.0,
-    "impressions": 110.0,
-    "position": 5.65
-  },
-  {
-    "id": "dce1956b-2194-4291-9e75-98e646cb372d",
-    "clicks": 4.0,
-    "impressions": 109.0,
-    "position": 4.29
-  },
-  {
-    "id": "76bfeb9e-620b-4494-8bb6-ec03e9abba41",
-    "clicks": 4.0,
-    "impressions": 55.0,
-    "position": 5.76
-  },
-  {
-    "id": "a9b561ab-8b8c-4ddd-80d0-254f16eec416",
-    "clicks": 4.0,
-    "impressions": 51.0,
-    "position": 7.75
-  },
-  {
-    "id": "1482023f-87d2-4ebe-8456-80aa2c61b17e",
-    "clicks": 4.0,
-    "impressions": 39.0,
-    "position": 7.46
-  },
-  {
-    "id": "94567b82-0ec2-41cc-83cc-5d139ca5eef3",
-    "clicks": 4.0,
-    "impressions": 37.0,
-    "position": 7.32
-  },
-  {
-    "id": "fa7abf2a-d161-4d9e-ae30-c2cc67d5eb21",
-    "clicks": 4.0,
-    "impressions": 36.0,
-    "position": 5.39
-  },
-  {
-    "id": "23f14ff5-e729-4c87-93f8-281a16dd62e0",
-    "clicks": 4.0,
-    "impressions": 34.0,
-    "position": 5.53
-  },
-  {
-    "id": "93de4663-fb5c-4381-a60c-4bd9d852e775",
-    "clicks": 4.0,
-    "impressions": 33.0,
-    "position": 3.3
-  },
-  {
-    "id": "e3ba785e-f775-441a-b101-5172973e6f85",
-    "clicks": 4.0,
-    "impressions": 33.0,
-    "position": 4.82
-  },
-  {
-    "id": "3b9189f6-0eb4-4222-a4ad-7297adbcf622",
-    "clicks": 4.0,
-    "impressions": 31.0,
-    "position": 5.84
-  },
-  {
-    "id": "48457ee1-696f-442c-a095-3c5c3556018a",
-    "clicks": 4.0,
-    "impressions": 30.0,
-    "position": 3.07
-  },
-  {
-    "id": "e9a8dc26-3f64-4499-94dd-5560f0ca1b3a",
-    "clicks": 4.0,
-    "impressions": 29.0,
-    "position": 6.66
-  },
-  {
-    "id": "4ed0d981-7740-457a-b2d2-a2175bacbc01",
-    "clicks": 4.0,
-    "impressions": 28.0,
-    "position": 3.21
-  },
-  {
-    "id": "9300dd70-56f5-4be7-88fb-a9d48377a951",
-    "clicks": 4.0,
-    "impressions": 28.0,
-    "position": 4.64
-  },
-  {
-    "id": "e47acfc3-e71b-4848-8187-a1599fcdedaf",
-    "clicks": 4.0,
-    "impressions": 23.0,
-    "position": 8.04
-  },
-  {
-    "id": "4aca30f6-8f1c-4ee2-adac-2e47bbd0638e",
-    "clicks": 4.0,
-    "impressions": 22.0,
-    "position": 3.32
-  },
-  {
-    "id": "e2aa19cd-c841-4fd8-8ef3-035456ed4ca4",
-    "clicks": 4.0,
-    "impressions": 21.0,
-    "position": 3.86
-  },
-  {
-    "id": "eb35b5ec-aab2-4433-ab63-091703a454bd",
-    "clicks": 4.0,
-    "impressions": 21.0,
-    "position": 5.67
-  },
-  {
-    "id": "d5ec0e4d-74a9-489f-84be-4528bbb3869a",
-    "clicks": 4.0,
-    "impressions": 21.0,
-    "position": 6.38
-  },
-  {
-    "id": "7a7d0b61-c8a9-4bf2-8d15-5ffbf0e7d8a1",
-    "clicks": 4.0,
-    "impressions": 19.0,
-    "position": 3.74
-  },
-  {
-    "id": "42bd3da2-2623-48c9-9c23-b956aedda2f4",
-    "clicks": 4.0,
-    "impressions": 19.0,
-    "position": 3.79
-  },
-  {
-    "id": "392ec729-9cb2-4fe0-9c0a-0600ff1a7aa6",
-    "clicks": 4.0,
-    "impressions": 19.0,
-    "position": 5.42
-  },
-  {
-    "id": "a35aff97-a875-47aa-ab83-b40bc42f1a76",
-    "clicks": 4.0,
-    "impressions": 19.0,
-    "position": 7.32
-  },
-  {
-    "id": "cfe9a5a6-f783-43fe-a934-df0fd88d656c",
-    "clicks": 4.0,
-    "impressions": 18.0,
-    "position": 4.39
-  },
-  {
-    "id": "74d44fc6-40e3-45b1-ae7f-424657de5bf1",
-    "clicks": 4.0,
-    "impressions": 18.0,
-    "position": 28.22
-  },
-  {
-    "id": "1583cb22-b733-4834-a49c-c2101c0b05b8",
-    "clicks": 4.0,
-    "impressions": 17.0,
-    "position": 2.94
-  },
-  {
-    "id": "5fdf938d-b05b-4d60-acb2-9c649d6496b8",
-    "clicks": 4.0,
-    "impressions": 16.0,
-    "position": 3.69
-  },
-  {
-    "id": "57aae070-9632-486f-9784-3b6e16a67cce",
-    "clicks": 4.0,
-    "impressions": 16.0,
-    "position": 3.81
-  },
-  {
-    "id": "0d628876-4e67-44bd-a655-cb28d5e309ab",
-    "clicks": 4.0,
-    "impressions": 16.0,
-    "position": 5.56
-  },
-  {
-    "id": "4e6f02d9-1ac1-4d78-8520-99b7d2a1f572",
-    "clicks": 4.0,
-    "impressions": 14.0,
-    "position": 2.43
-  },
-  {
-    "id": "e3f31c06-d699-471f-a64e-d3a11b136854",
-    "clicks": 4.0,
-    "impressions": 14.0,
-    "position": 4.21
-  },
-  {
-    "id": "e3dfbd8e-59a3-41aa-bf1c-b11f28c2763d",
-    "clicks": 4.0,
-    "impressions": 14.0,
-    "position": 4.64
-  },
-  {
-    "id": "14941b58-2bf1-47b9-9454-840bf9493660",
-    "clicks": 4.0,
-    "impressions": 14.0,
-    "position": 10.07
-  },
-  {
-    "id": "d243d1e3-2be4-4fe5-8b27-ec44bcafee1b",
-    "clicks": 4.0,
-    "impressions": 13.0,
-    "position": 1.85
-  },
-  {
-    "id": "22f6506d-5bc1-4f85-9392-c013a49f9961",
-    "clicks": 4.0,
-    "impressions": 12.0,
-    "position": 2.33
-  },
-  {
-    "id": "fd72e687-662e-4f92-928c-0532d62126b6",
-    "clicks": 4.0,
-    "impressions": 12.0,
-    "position": 3.25
-  },
-  {
-    "id": "1b3e0db0-7b06-430e-b680-8f679c64ff99",
-    "clicks": 4.0,
-    "impressions": 12.0,
-    "position": 5.5
-  },
-  {
-    "id": "71ab4e1a-8636-4cf0-9749-c835bfbc3c9f",
-    "clicks": 4.0,
-    "impressions": 12.0,
-    "position": 9.0
-  },
-  {
-    "id": "4f0607a6-bcf2-473f-889f-7b1625cbb4ce",
-    "clicks": 4.0,
-    "impressions": 12.0,
-    "position": 10.83
-  },
-  {
-    "id": "8afaae40-7305-4fdd-a90a-8d09a2f7577f",
-    "clicks": 4.0,
-    "impressions": 11.0,
-    "position": 3.45
-  },
-  {
-    "id": "d80bbc23-a299-4d63-87a7-db7ae19921cc",
-    "clicks": 4.0,
-    "impressions": 11.0,
-    "position": 3.73
-  },
-  {
-    "id": "86b231fd-fff3-4135-bb8f-36a71b258d11",
-    "clicks": 4.0,
-    "impressions": 10.0,
-    "position": 2.7
-  },
-  {
-    "id": "319f59dd-d341-44ec-92de-bad041fdc786",
-    "clicks": 4.0,
-    "impressions": 10.0,
-    "position": 5.2
-  },
-  {
-    "id": "cd7e565a-18b2-4a2d-abbd-df9b1789807a",
-    "clicks": 4.0,
-    "impressions": 9.0,
-    "position": 2.44
-  },
-  {
-    "id": "d16b69bb-2a38-4a61-9bb1-e9183f63ea15",
-    "clicks": 4.0,
-    "impressions": 9.0,
-    "position": 2.56
-  },
-  {
-    "id": "5996046b-96bc-46dc-a6de-cd4b624d3710",
-    "clicks": 4.0,
-    "impressions": 9.0,
-    "position": 3.44
-  },
-  {
-    "id": "bd3c923d-dbae-416a-899a-00870f7f3c56",
-    "clicks": 4.0,
-    "impressions": 9.0,
-    "position": 4.22
-  },
-  {
-    "id": "41694046-728b-4929-bcb4-3c02fe90f2b9",
-    "clicks": 4.0,
-    "impressions": 8.0,
-    "position": 1.0
-  },
-  {
-    "id": "9f86c421-7732-4ed5-8d2d-dfd01d9c7eff",
-    "clicks": 4.0,
-    "impressions": 8.0,
-    "position": 2.62
-  },
-  {
-    "id": "70595014-f392-4d01-b90d-d6bb2d60a170",
-    "clicks": 4.0,
-    "impressions": 8.0,
-    "position": 2.75
-  },
-  {
-    "id": "70e61090-c2e4-4ef5-81af-7c348402089c",
-    "clicks": 4.0,
-    "impressions": 8.0,
-    "position": 2.75
-  },
-  {
-    "id": "00b1ad81-f40d-4f37-b7c4-52c8b395d23e",
-    "clicks": 4.0,
-    "impressions": 8.0,
-    "position": 2.88
-  },
-  {
-    "id": "986b25cf-b96d-4959-a2a6-10a810a5d821",
-    "clicks": 4.0,
-    "impressions": 8.0,
-    "position": 6.38
-  },
-  {
-    "id": "9e317767-9c2c-422e-a06f-dd6dd8fd8075",
-    "clicks": 4.0,
-    "impressions": 7.0,
-    "position": 3.86
-  },
-  {
-    "id": "0ccca65e-c825-43dc-b460-08c04c6f30b2",
-    "clicks": 4.0,
-    "impressions": 6.0,
-    "position": 1.17
-  },
-  {
-    "id": "8d929a14-099e-48ab-8d70-cc3eea9b69e3",
-    "clicks": 4.0,
-    "impressions": 6.0,
-    "position": 2.33
-  },
-  {
-    "id": "658cf5f9-3dd8-4c52-b79f-6b2f771a6c37",
-    "clicks": 4.0,
-    "impressions": 6.0,
-    "position": 3.5
-  },
-  {
-    "id": "501776dc-4fac-4395-9ddc-a2717d4e695c",
-    "clicks": 4.0,
-    "impressions": 6.0,
-    "position": 4.33
-  },
-  {
-    "id": "8ba3636d-2c3d-436b-8f87-d001df234b08",
-    "clicks": 4.0,
-    "impressions": 5.0,
-    "position": 2.8
-  },
-  {
-    "id": "5468c833-6ecc-4eeb-a65c-cfa5f778d53d",
-    "clicks": 4.0,
-    "impressions": 5.0,
-    "position": 6.4
+    "position": 4.81,
+    "gen_ai_impressions": 62.0
   },
   {
     "id": "d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
@@ -864,10 +19,216 @@
     "position": 7.09
   },
   {
+    "id": "f74b650b-ca8e-4fc3-9856-16821dc84b37",
+    "clicks": 10.0,
+    "impressions": 544.0,
+    "position": 3.66
+  },
+  {
+    "id": "4ad1c4a8-2139-47b6-8769-500a527fc8e6",
+    "clicks": 4.0,
+    "impressions": 484.0,
+    "position": 7.38,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "868d1b1b-5273-4fc9-aa4a-40002660e22c",
+    "clicks": 2.0,
+    "impressions": 480.0,
+    "position": 5.61
+  },
+  {
+    "id": "86c6bf74-7e77-4224-a323-64310da50051",
+    "clicks": 59.0,
+    "impressions": 345.0,
+    "position": 2.75,
+    "gen_ai_impressions": 61.0
+  },
+  {
+    "id": "63796fdd-df6c-4d1e-8f6a-480310d34ed1",
+    "clicks": 2.0,
+    "impressions": 392.0,
+    "position": 5.66
+  },
+  {
+    "id": "d06ad889-fcd4-4389-a935-434aed29d72a",
+    "clicks": 10.0,
+    "impressions": 331.0,
+    "position": 3.7,
+    "gen_ai_impressions": 6.0
+  },
+  {
+    "id": "f10da997-a367-42a0-ba15-7ba2f8fb7d9c",
+    "clicks": 59.0,
+    "impressions": 275.0,
+    "position": 2.97,
+    "gen_ai_impressions": 41.0
+  },
+  {
+    "id": "79a28bef-b2fd-46a4-b39d-48f09740a77a",
+    "clicks": 19.0,
+    "impressions": 250.0,
+    "position": 4.66,
+    "gen_ai_impressions": 50.0
+  },
+  {
+    "id": "cdbe85c2-5755-4da5-b706-577d4984abc7",
+    "clicks": 15.0,
+    "impressions": 252.0,
+    "position": 4.27,
+    "gen_ai_impressions": 45.0
+  },
+  {
+    "id": "44953c1b-179c-4743-852f-6ae5cb759ee3",
+    "clicks": 7.0,
+    "impressions": 290.0,
+    "position": 7.93,
+    "gen_ai_impressions": 3.0
+  },
+  {
     "id": "67eefd45-044d-481e-a827-6a0ebcde8d27",
     "clicks": 3.0,
     "impressions": 232.0,
     "position": 2.74
+  },
+  {
+    "id": "3bc10e10-0be8-43f2-9e74-597291ffba1f",
+    "clicks": 20.0,
+    "impressions": 155.0,
+    "position": 4.3,
+    "gen_ai_impressions": 35.0
+  },
+  {
+    "id": "8d1f59df-7e6f-4816-9b9e-2afd68267d55",
+    "clicks": 2.0,
+    "impressions": 189.0,
+    "position": 2.17
+  },
+  {
+    "id": "6073e9b8-e748-40db-a727-aba465b89cb3",
+    "clicks": 4.0,
+    "impressions": 185.0,
+    "position": 7.92,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "2999ad41-2dfb-4342-a4a1-24b8bb7bfc8c",
+    "clicks": 22.0,
+    "impressions": 130.0,
+    "position": 2.42,
+    "gen_ai_impressions": 40.0
+  },
+  {
+    "id": "d617375e-0da9-4102-b70e-127ce1f86b31",
+    "clicks": 5.0,
+    "impressions": 158.0,
+    "position": 6.11,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "96dca794-8fa2-4e05-8c8d-12388a9ea1c7",
+    "clicks": 8.0,
+    "impressions": 155.0,
+    "position": 5.77,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "66f3b3d9-2e92-4350-96a1-ff822ff2a26e",
+    "clicks": 2.0,
+    "impressions": 146.0,
+    "position": 6.97
+  },
+  {
+    "id": "3ccdadfd-6446-4407-a070-0e9586ab97e5",
+    "clicks": 28.0,
+    "impressions": 135.0,
+    "position": 2.96,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "6b6d14f0-c0f5-4afb-903b-f94050d32a34",
+    "clicks": 2.0,
+    "impressions": 134.0,
+    "position": 5.6
+  },
+  {
+    "id": "dce1956b-2194-4291-9e75-98e646cb372d",
+    "clicks": 4.0,
+    "impressions": 109.0,
+    "position": 4.29,
+    "gen_ai_impressions": 23.0
+  },
+  {
+    "id": "4b6dff52-d36f-40f0-a9b0-7228d431f385",
+    "clicks": 2.0,
+    "impressions": 131.0,
+    "position": 5.84
+  },
+  {
+    "id": "08af5d0b-5143-4ab5-8cc5-8399ce3ef5bc",
+    "clicks": 14.0,
+    "impressions": 104.0,
+    "position": 3.34,
+    "gen_ai_impressions": 24.0
+  },
+  {
+    "id": "4526c3a3-8155-4253-83e7-a8ee649ced1b",
+    "clicks": 2.0,
+    "impressions": 121.0,
+    "position": 6.83
+  },
+  {
+    "id": "7c5c4646-4301-479f-9d7a-533abe9bd597",
+    "clicks": 5.0,
+    "impressions": 113.0,
+    "position": 6.4,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "a156ba82-1895-40db-81cf-a5a806c35a00",
+    "clicks": 2.0,
+    "impressions": 112.0,
+    "position": 4.34
+  },
+  {
+    "id": "9525f4b3-f370-48c8-9e34-436b08fd6cd5",
+    "clicks": 4.0,
+    "impressions": 110.0,
+    "position": 5.65,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3a1b29ec-84bf-4c79-a42f-745e60134ac4",
+    "clicks": 7.0,
+    "impressions": 109.0,
+    "position": 4.94,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "13b6c016-aa9a-4514-b268-4e3072a11bcd",
+    "clicks": 2.0,
+    "impressions": 108.0,
+    "position": 4.56
+  },
+  {
+    "id": "4c2c7eea-19be-48ac-a878-d5cf060ea0ad",
+    "clicks": 8.0,
+    "impressions": 96.0,
+    "position": 6.17,
+    "gen_ai_impressions": 9.0
+  },
+  {
+    "id": "918314c0-9c5b-4cd0-927b-b9481aa331be",
+    "clicks": 2.0,
+    "impressions": 103.0,
+    "position": 3.81
+  },
+  {
+    "id": "8ee7759b-550f-4cb3-b204-2f63e7b21a2f",
+    "clicks": 17.0,
+    "impressions": 83.0,
+    "position": 3.72,
+    "gen_ai_impressions": 14.0
   },
   {
     "id": "d4be1d20-3f58-41fb-967b-5cba04a55a73",
@@ -882,1150 +243,11 @@
     "position": 6.24
   },
   {
-    "id": "1c7918fa-d617-4a0a-997c-5ae575835f74",
-    "clicks": 3.0,
-    "impressions": 70.0,
-    "position": 6.59
-  },
-  {
-    "id": "d0641a52-9033-471c-ad62-6c4dbb75ad28",
-    "clicks": 3.0,
-    "impressions": 61.0,
-    "position": 7.43
-  },
-  {
-    "id": "9da598f6-9283-4a8b-9e0b-ac8373860604",
-    "clicks": 3.0,
-    "impressions": 53.0,
-    "position": 4.81
-  },
-  {
-    "id": "8970218f-361d-4858-b641-178dade3f0e0",
-    "clicks": 3.0,
-    "impressions": 48.0,
-    "position": 5.85
-  },
-  {
-    "id": "9fed2f68-634b-41be-844c-c0d52325d149",
-    "clicks": 3.0,
-    "impressions": 45.0,
-    "position": 4.71
-  },
-  {
-    "id": "d92b01a8-cf3c-4947-96ed-b310b3880508",
-    "clicks": 3.0,
-    "impressions": 43.0,
-    "position": 5.26
-  },
-  {
-    "id": "f5f1bebe-b92e-4a16-b4f3-3e9e4b16a6c5",
-    "clicks": 3.0,
-    "impressions": 39.0,
-    "position": 8.97
-  },
-  {
-    "id": "a0c28f4e-5075-4e3e-bb4b-e4f4a9d9cb55",
-    "clicks": 3.0,
-    "impressions": 37.0,
-    "position": 6.24
-  },
-  {
-    "id": "a8b275b3-02c2-487e-b9ca-7a41d5c4c38a",
-    "clicks": 3.0,
-    "impressions": 36.0,
-    "position": 5.28
-  },
-  {
-    "id": "1e8e770a-27a4-4fb7-a252-2c027aa08983",
-    "clicks": 3.0,
-    "impressions": 36.0,
-    "position": 6.0
-  },
-  {
-    "id": "b0788268-f715-421d-a94b-8fc316993604",
-    "clicks": 3.0,
-    "impressions": 33.0,
-    "position": 3.94
-  },
-  {
-    "id": "c0231962-e030-4342-825e-7ff202bff3e5",
-    "clicks": 3.0,
-    "impressions": 33.0,
-    "position": 11.52
-  },
-  {
-    "id": "047a2aad-4a24-49de-b9b5-98197492c8b2",
-    "clicks": 3.0,
-    "impressions": 32.0,
-    "position": 2.94
-  },
-  {
-    "id": "64fabccc-78c3-4e10-8554-820d1968b99e",
-    "clicks": 3.0,
-    "impressions": 32.0,
-    "position": 4.69
-  },
-  {
-    "id": "811874a4-7f2a-43c6-a2ab-2700cac4520a",
-    "clicks": 3.0,
-    "impressions": 30.0,
-    "position": 4.9
-  },
-  {
-    "id": "797f25b2-24c3-4d93-9aaf-52573986fd1b",
-    "clicks": 3.0,
-    "impressions": 30.0,
-    "position": 7.9
-  },
-  {
-    "id": "1f171f91-9051-42d8-92d1-26f87366924d",
-    "clicks": 3.0,
-    "impressions": 29.0,
-    "position": 6.21
-  },
-  {
-    "id": "8dda48ee-cd29-4344-a99a-879324f0922a",
-    "clicks": 3.0,
-    "impressions": 28.0,
-    "position": 4.57
-  },
-  {
-    "id": "f343c08c-da7c-4b48-b89f-c90d029be298",
-    "clicks": 3.0,
-    "impressions": 27.0,
-    "position": 2.89
-  },
-  {
-    "id": "c1af338b-cf96-4b8e-a0d4-5dccf476d1cf",
-    "clicks": 3.0,
-    "impressions": 27.0,
-    "position": 5.67
-  },
-  {
-    "id": "2bb226c0-83df-4024-8ed3-2818f98e0908",
-    "clicks": 3.0,
-    "impressions": 26.0,
-    "position": 6.31
-  },
-  {
-    "id": "b1516128-d77e-4cc0-95b0-f6965ef690df",
-    "clicks": 3.0,
-    "impressions": 25.0,
-    "position": 5.32
-  },
-  {
-    "id": "4f5d988c-c922-4455-9d37-5940f27f124f",
-    "clicks": 3.0,
-    "impressions": 25.0,
-    "position": 7.44
-  },
-  {
-    "id": "c10a6145-8ea7-4988-aa30-481d95e1fb3a",
-    "clicks": 3.0,
-    "impressions": 24.0,
-    "position": 5.83
-  },
-  {
-    "id": "bf461f7b-81d3-4d99-a4a6-8bf8c1feae8c",
-    "clicks": 3.0,
-    "impressions": 23.0,
-    "position": 5.04
-  },
-  {
-    "id": "c217e9ed-599b-440b-863f-83f2a9934d13",
-    "clicks": 3.0,
-    "impressions": 23.0,
-    "position": 5.04
-  },
-  {
-    "id": "8c5fed57-9986-4979-a127-66b19e73afd4",
-    "clicks": 3.0,
-    "impressions": 22.0,
-    "position": 4.91
-  },
-  {
-    "id": "26b8c264-ed19-4f4a-a5ca-f67033d98156",
-    "clicks": 3.0,
-    "impressions": 21.0,
-    "position": 2.86
-  },
-  {
-    "id": "e3ac0978-8696-4b21-bac8-d95ba6b3b906",
-    "clicks": 3.0,
-    "impressions": 20.0,
-    "position": 3.95
-  },
-  {
-    "id": "5721babc-9ec0-4ef5-8926-daeed08e1f5c",
-    "clicks": 3.0,
-    "impressions": 20.0,
-    "position": 4.9
-  },
-  {
-    "id": "6972465d-78d8-4bb7-93f8-1e5c828f6a72",
-    "clicks": 3.0,
-    "impressions": 20.0,
-    "position": 6.0
-  },
-  {
-    "id": "3fee30a7-b531-4d30-939d-65a911ae3910",
-    "clicks": 3.0,
-    "impressions": 19.0,
-    "position": 7.11
-  },
-  {
-    "id": "6a39593e-3f39-4964-add6-f0901455e962",
-    "clicks": 3.0,
-    "impressions": 16.0,
-    "position": 3.12
-  },
-  {
-    "id": "f82cbcd5-6488-441e-a847-7666f9982ea8",
-    "clicks": 3.0,
-    "impressions": 16.0,
-    "position": 3.31
-  },
-  {
-    "id": "db61a92a-0714-49f2-b22c-7a98c48b15b9",
-    "clicks": 3.0,
-    "impressions": 16.0,
-    "position": 3.62
-  },
-  {
-    "id": "a14b6f16-520b-4069-91c9-d1d8e79d4da3",
-    "clicks": 3.0,
-    "impressions": 16.0,
-    "position": 3.75
-  },
-  {
-    "id": "1dda96d1-6b10-48c1-8719-2000b81474e8",
-    "clicks": 3.0,
-    "impressions": 16.0,
-    "position": 5.69
-  },
-  {
-    "id": "6b77833d-b584-45f9-9e25-7a66beb300d8",
-    "clicks": 3.0,
-    "impressions": 16.0,
-    "position": 7.44
-  },
-  {
-    "id": "0fbe4fd8-137b-4a12-bcfd-5fa9608cd15f",
-    "clicks": 3.0,
-    "impressions": 16.0,
-    "position": 8.31
-  },
-  {
-    "id": "17888da2-b594-4bc6-89db-5f52ca319ec6",
-    "clicks": 3.0,
-    "impressions": 16.0,
-    "position": 9.88
-  },
-  {
-    "id": "dfaaad8b-678a-4db3-9513-818eb925fb29",
-    "clicks": 3.0,
-    "impressions": 16.0,
-    "position": 11.06
-  },
-  {
-    "id": "1f0a2198-0dd2-494b-bf93-633b2939ecb9",
-    "clicks": 3.0,
-    "impressions": 15.0,
-    "position": 3.87
-  },
-  {
-    "id": "e6f82904-9f77-40a4-bd9e-3c8c9ba059aa",
-    "clicks": 3.0,
-    "impressions": 15.0,
-    "position": 5.2
-  },
-  {
-    "id": "a69cc268-f6d1-4bc8-a9ca-d7f07652339a",
-    "clicks": 3.0,
-    "impressions": 15.0,
-    "position": 5.33
-  },
-  {
-    "id": "0dd5eef9-68bb-41bd-ba68-eb333681aebb",
-    "clicks": 3.0,
-    "impressions": 15.0,
-    "position": 5.73
-  },
-  {
-    "id": "04e2f9cc-83d7-4029-95b3-d8ff2dfb4280",
-    "clicks": 3.0,
-    "impressions": 14.0,
-    "position": 4.79
-  },
-  {
-    "id": "049992ae-1183-4a99-9f66-67af82c37353",
-    "clicks": 3.0,
-    "impressions": 14.0,
-    "position": 8.5
-  },
-  {
-    "id": "13c8e270-066e-4871-9229-4433d0bfe56e",
-    "clicks": 3.0,
-    "impressions": 14.0,
-    "position": 10.57
-  },
-  {
-    "id": "46528222-643b-40de-80e5-748598df865b",
-    "clicks": 3.0,
-    "impressions": 13.0,
-    "position": 1.62
-  },
-  {
-    "id": "69465bcb-00c9-41f8-8ed7-40637df9c677",
-    "clicks": 3.0,
-    "impressions": 13.0,
-    "position": 2.62
-  },
-  {
-    "id": "8fb3e882-b6e8-4cdd-9d2b-db712f335184",
-    "clicks": 3.0,
-    "impressions": 13.0,
-    "position": 3.08
-  },
-  {
-    "id": "8b7bd1d9-c311-42d6-b056-f00e0f273a0f",
-    "clicks": 3.0,
-    "impressions": 13.0,
-    "position": 3.46
-  },
-  {
-    "id": "4d265a24-0a3b-4414-bb16-d371c50bc9b4",
-    "clicks": 3.0,
-    "impressions": 13.0,
-    "position": 4.62
-  },
-  {
-    "id": "f786dbf8-51e0-45b6-a193-4b4cc26e54f5",
-    "clicks": 3.0,
-    "impressions": 13.0,
-    "position": 4.92
-  },
-  {
-    "id": "020ec17b-b5ff-4137-9226-8e9378948609",
-    "clicks": 3.0,
-    "impressions": 13.0,
-    "position": 5.0
-  },
-  {
-    "id": "400c156c-f26c-4019-b2f5-4826365af2ec",
-    "clicks": 3.0,
-    "impressions": 13.0,
-    "position": 8.15
-  },
-  {
-    "id": "93acbaf6-1c40-4807-a1c6-51133c2c5768",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 2.25
-  },
-  {
-    "id": "da10cf37-7256-4c31-973e-ae73729269f0",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 3.58
-  },
-  {
-    "id": "211911aa-f9ca-474f-b01e-133d05d64ea4",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 3.67
-  },
-  {
-    "id": "efbc8009-c9d6-4a6e-8438-21815393dcc3",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 4.08
-  },
-  {
-    "id": "f810ae44-4d3a-447a-9693-14ace2f547b2",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 4.08
-  },
-  {
-    "id": "ce2465d5-162f-4be6-93a4-8439f5d6eeaf",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 4.17
-  },
-  {
-    "id": "e1ad9a4f-782d-48db-bfa5-74191beaefc8",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 4.5
-  },
-  {
-    "id": "d0c759fb-7822-4fb2-bb7b-c4d326777fe7",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 4.75
-  },
-  {
-    "id": "ce4556ce-cc0c-4f5a-998e-a876edd413a5",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 5.25
-  },
-  {
-    "id": "ff520b34-e5be-45ed-8fdd-00e9af8602f2",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 5.58
-  },
-  {
-    "id": "9a64b6f7-561b-43a3-9add-f8b53b747aeb",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 6.42
-  },
-  {
-    "id": "3558c3cf-bbb9-4d72-8a1c-309a3b52ba00",
-    "clicks": 3.0,
-    "impressions": 12.0,
-    "position": 7.5
-  },
-  {
-    "id": "fa9819f3-5a5f-4bea-880e-fb9601548013",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 2.09
-  },
-  {
-    "id": "68718273-243d-47da-8da6-82f75a5c3d8f",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 3.55
-  },
-  {
-    "id": "57727c58-78df-4fdd-90d8-eedd5a94d803",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 4.0
-  },
-  {
-    "id": "f95484a5-0869-4813-b854-84a064397429",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 4.0
-  },
-  {
-    "id": "55e54d93-ea98-447e-9b31-d1b3c30d7f2f",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 4.91
-  },
-  {
-    "id": "97cc33ec-f233-4609-9d1a-18d8b2415e20",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 5.55
-  },
-  {
-    "id": "6c8fda85-118d-403e-b27a-8e5035bff15c",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 6.64
-  },
-  {
-    "id": "bf48fc29-f277-45a8-8ff0-6e9e148b78ec",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 11.36
-  },
-  {
-    "id": "3899def1-fda9-46bc-86fd-145ac4b3cf9e",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 17.45
-  },
-  {
-    "id": "51fd8d6e-6a36-4589-9005-3a1f3c67dade",
-    "clicks": 3.0,
-    "impressions": 11.0,
-    "position": 17.73
-  },
-  {
-    "id": "fce5d829-b570-4c01-8062-04c418c3295d",
-    "clicks": 3.0,
-    "impressions": 10.0,
-    "position": 1.7
-  },
-  {
-    "id": "715f4720-f84b-418e-9342-cc7dc4c8e506",
-    "clicks": 3.0,
-    "impressions": 10.0,
-    "position": 4.3
-  },
-  {
-    "id": "5e7c0ec1-a268-4344-8545-ded2be2b2e0e",
-    "clicks": 3.0,
-    "impressions": 10.0,
-    "position": 4.4
-  },
-  {
-    "id": "1c3860d3-aed8-4a3b-a34a-c13f1e018633",
-    "clicks": 3.0,
-    "impressions": 10.0,
-    "position": 4.5
-  },
-  {
-    "id": "4a59ff02-c25b-4f6d-835d-02bd02f227cb",
-    "clicks": 3.0,
-    "impressions": 10.0,
-    "position": 4.8
-  },
-  {
-    "id": "c9fb63f6-8f27-41c1-8fed-d8f93f92baca",
-    "clicks": 3.0,
-    "impressions": 10.0,
-    "position": 6.9
-  },
-  {
-    "id": "71803684-e19c-405c-8eb0-3f68f873b00c",
-    "clicks": 3.0,
-    "impressions": 10.0,
-    "position": 10.6
-  },
-  {
-    "id": "b683f260-170c-436a-87a0-ecef23d1070b",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 2.56
-  },
-  {
-    "id": "9da7403f-a1b0-4e58-9937-d907038bb447",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 3.0
-  },
-  {
-    "id": "7cd630b8-4f0a-4da2-ae4b-cabaa4e55b99",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 3.33
-  },
-  {
-    "id": "fc16870d-f6e6-4b88-92fb-80cfad563053",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 3.78
-  },
-  {
-    "id": "bfb24bc0-7c3e-4899-a3dc-b0984da42de4",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 4.11
-  },
-  {
-    "id": "dff2f1ea-d5cf-4b35-b835-de993ba7c26d",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 4.22
-  },
-  {
-    "id": "988a9a2c-a3ff-4fa5-8ae1-e18fb6ff078c",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 4.56
-  },
-  {
-    "id": "d6c38d59-530f-4923-82b7-6d0e996ac02b",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 4.78
-  },
-  {
-    "id": "218d23aa-1cb1-47ea-b4a5-d208f79b71d1",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 5.56
-  },
-  {
-    "id": "56aa235b-e0dc-409b-8f5d-fb5ffc44e016",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 6.33
-  },
-  {
-    "id": "8f2c7f71-dbb1-4958-affc-2fb06e688605",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 6.56
-  },
-  {
-    "id": "0e36f283-7377-4340-a542-45f998b0d655",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 7.44
-  },
-  {
-    "id": "8ca32d69-faa9-4805-93df-816cc93b5478",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 7.56
-  },
-  {
-    "id": "5eb283f5-dd2e-4bb7-8629-8dc32f85d72e",
-    "clicks": 3.0,
-    "impressions": 9.0,
-    "position": 8.67
-  },
-  {
-    "id": "e9066933-58b6-4256-bfec-5a0c71dac05c",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 1.0
-  },
-  {
-    "id": "bb3b8275-9bb5-4820-bbb1-b118584fde36",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 2.0
-  },
-  {
-    "id": "c3668de4-9ad4-4071-bb28-221852b6985b",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 2.12
-  },
-  {
-    "id": "f9c13892-7ab0-4ba5-bc76-339f15fd521e",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 2.12
-  },
-  {
-    "id": "031e6da0-c87c-41a1-9396-3296284e0cde",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 2.38
-  },
-  {
-    "id": "a5444016-e52f-4fa6-90af-953850feea1f",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 2.38
-  },
-  {
-    "id": "5e889d98-6b1c-42ac-bc76-3a96b3455e29",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 2.5
-  },
-  {
-    "id": "fd0a0a7a-5fa4-49b2-bea9-7dda30f57a06",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 2.62
-  },
-  {
-    "id": "3d98d856-79eb-4a74-a8e5-bbdfa8f4c87f",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 3.0
-  },
-  {
-    "id": "737830fa-2a2f-43bd-bcbb-da8c9a822622",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 3.25
-  },
-  {
-    "id": "4e9565b2-b33d-4ff5-84c1-573cb3506d3c",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 3.5
-  },
-  {
-    "id": "0fd98201-5969-47e6-b4d2-1dfcc173f26b",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 5.12
-  },
-  {
-    "id": "168d9612-e0ae-413f-b3a8-16b05ceaf3ba",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 5.62
-  },
-  {
-    "id": "47e6d1ca-4774-4401-b0e2-18e3c0140649",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 7.0
-  },
-  {
-    "id": "8b32d442-2a20-4181-9b47-b6bd86df2603",
-    "clicks": 3.0,
-    "impressions": 8.0,
-    "position": 14.75
-  },
-  {
-    "id": "45f55791-82b3-496a-a060-cc98c50dff86",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 1.14
-  },
-  {
-    "id": "d67f64e8-d22f-45b6-bd0f-d796475b0907",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 1.57
-  },
-  {
-    "id": "d58b7a0a-cf08-4bc6-98e5-5d9f411c3627",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 1.86
-  },
-  {
-    "id": "9a96bfb9-f52c-4505-adb4-47a46a853f19",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 2.0
-  },
-  {
-    "id": "92799edb-7ae6-4446-b72e-1e39ec47868f",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 2.14
-  },
-  {
-    "id": "c4248b5c-005d-450c-8672-93ef38c0cebd",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 2.29
-  },
-  {
-    "id": "daf5bcd2-277b-4ecb-978d-ff10f78e8c6f",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 2.71
-  },
-  {
-    "id": "b206f7e0-ef24-4caa-8cba-824b5c086183",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 2.86
-  },
-  {
-    "id": "22b6aaf5-ea2f-4ee7-b495-cbc506f205f0",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 3.29
-  },
-  {
-    "id": "296bd3ac-e5a4-45de-a1a7-0a2fc086aa65",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 3.57
-  },
-  {
-    "id": "7540c2fa-94b5-4f4c-8d8b-f75b95217614",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 4.0
-  },
-  {
-    "id": "f68fca4c-1ee4-47fe-979d-942639f19131",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 4.29
-  },
-  {
-    "id": "83c0d259-40f7-4b4d-bf3b-588acb9cd07f",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 4.57
-  },
-  {
-    "id": "0047077b-bd61-48b6-acce-9fd8e87f998b",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 5.43
-  },
-  {
-    "id": "c2637bbf-5fdf-4797-af58-1db10a68ed6e",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 5.43
-  },
-  {
-    "id": "fbf17748-0eb0-4be6-a9fd-6dbef0b1e60a",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 5.43
-  },
-  {
-    "id": "65fb0eb4-28f7-4c3e-8c1c-33df1397b9a9",
-    "clicks": 3.0,
-    "impressions": 7.0,
-    "position": 15.29
-  },
-  {
-    "id": "f0d2804e-98da-4f33-abf8-78c526a549af",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 1.33
-  },
-  {
-    "id": "f8e9c274-3a76-4b92-b1f6-cef92523b89d",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 1.83
-  },
-  {
-    "id": "ffc7559e-c23e-4eb8-ab46-4935eb3f86e8",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 2.33
-  },
-  {
-    "id": "b5a9424f-5f0a-40dc-af59-7e42a992d865",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 2.5
-  },
-  {
-    "id": "493e614c-df85-4d73-bbcc-3d0f1cbf1583",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 2.83
-  },
-  {
-    "id": "1bb5f39c-61d6-4884-a453-9e612b83d409",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 3.17
-  },
-  {
-    "id": "b82f10b3-0dda-4fdd-bd2d-708d3c7f248b",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 3.33
-  },
-  {
-    "id": "450fa374-0bff-4c00-94ab-295a52b8e860",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 3.83
-  },
-  {
-    "id": "a222814a-54ea-40d1-b21b-f23dcded287c",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 3.83
-  },
-  {
-    "id": "70cd2c74-4e37-4e30-9f33-3f18d0886544",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 4.33
-  },
-  {
-    "id": "85d205e6-4681-48b9-8058-e2aa738d600b",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 4.5
-  },
-  {
-    "id": "7ac524fd-9435-4df7-89c2-f05a5c4b06d7",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 5.0
-  },
-  {
-    "id": "1b19af8a-f04f-423c-900b-06fa2a8e70b8",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 5.67
-  },
-  {
-    "id": "aa47281c-42d1-4685-abdb-e1210c547d1c",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 5.67
-  },
-  {
-    "id": "ba3cde49-51fa-4d74-9211-e40d56dafa64",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 10.17
-  },
-  {
-    "id": "52df918e-b6ec-46da-9728-2cc8df8e29ed",
-    "clicks": 3.0,
-    "impressions": 6.0,
-    "position": 10.33
-  },
-  {
-    "id": "cf3d0318-0f86-4622-bef3-301701b309c3",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 1.2
-  },
-  {
-    "id": "1289f546-fe23-41bc-90b5-2ae1384b21ad",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 1.4
-  },
-  {
-    "id": "0769cf24-1afb-4c4d-938e-80a72e20ffc3",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 1.8
-  },
-  {
-    "id": "cf63cbc2-4768-444f-b8dd-cfb2f77e8c68",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 1.8
-  },
-  {
-    "id": "37b2dc45-9084-4575-9ed2-02941b3de7fc",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 2.0
-  },
-  {
-    "id": "37b95fb7-0a6c-4519-8825-b275de8c2611",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 2.4
-  },
-  {
-    "id": "10c4d45e-3de5-44bf-a823-53a694dfd18d",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 2.8
-  },
-  {
-    "id": "be856d37-db0c-45eb-a19e-edcfdd31d600",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 2.8
-  },
-  {
-    "id": "ff6eeb76-3642-45e7-af7a-529845aa7fb3",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 2.8
-  },
-  {
-    "id": "250b6801-0f32-4609-a8a2-129369f7be4a",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 3.4
-  },
-  {
-    "id": "9535236b-e20c-495e-bd6f-3c8809988543",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 4.0
-  },
-  {
-    "id": "2d7b7335-47fe-483f-9550-ce5fc99d0e85",
-    "clicks": 3.0,
-    "impressions": 5.0,
-    "position": 8.0
-  },
-  {
-    "id": "226b3ff1-b955-4dd0-b88e-9cb70a7d33b0",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 1.0
-  },
-  {
-    "id": "6466a8b8-d26f-498f-ab4d-4d9da9b92a0c",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 1.0
-  },
-  {
-    "id": "a617d045-6e10-467d-8f5a-dd4af0ee5fc6",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 1.0
-  },
-  {
-    "id": "438f5ab7-8691-4f0e-8fed-c21519cce127",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 1.25
-  },
-  {
-    "id": "82213995-55f3-45ee-96be-406f75d409da",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 1.75
-  },
-  {
-    "id": "4be1f65e-ce78-4124-8872-3eb310329475",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 2.0
-  },
-  {
-    "id": "61ca0e5a-ee0f-4bcb-92ff-38e07603db29",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 2.0
-  },
-  {
-    "id": "d44d1650-0e08-4b40-88e6-83828fb7ec1d",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 2.0
-  },
-  {
-    "id": "83389359-a7b7-4637-ade7-c68b9a7cec7b",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 3.25
-  },
-  {
-    "id": "b54f314f-edce-4b79-862c-f15abe60a554",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 4.0
-  },
-  {
-    "id": "1ca5186a-11ac-4b1a-88c6-64c2a07f624d",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 4.5
-  },
-  {
-    "id": "d623e908-6251-4e98-a2d1-5ca6fe0cd6e4",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 4.75
-  },
-  {
-    "id": "320b165e-60a0-468b-a113-e6c0ec3bf249",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 5.25
-  },
-  {
-    "id": "3c69d5a5-8a88-42fe-969e-d7a5a0d265c9",
-    "clicks": 3.0,
-    "impressions": 4.0,
-    "position": 8.5
-  },
-  {
-    "id": "7f2517f4-f080-4d14-b971-fae87916e580",
-    "clicks": 3.0,
-    "impressions": 3.0,
-    "position": 1.0
-  },
-  {
-    "id": "118ef8c2-d821-4205-bd2b-6fd4ac0bc1d6",
-    "clicks": 3.0,
-    "impressions": 3.0,
-    "position": 1.33
-  },
-  {
-    "id": "1c14577b-7054-4365-8459-d00d763face0",
-    "clicks": 3.0,
-    "impressions": 3.0,
-    "position": 1.33
-  },
-  {
-    "id": "455197ee-73f1-4c92-aca6-0b07054ffeed",
-    "clicks": 3.0,
-    "impressions": 3.0,
-    "position": 2.0
-  },
-  {
-    "id": "6373135f-79a5-4280-ab4b-18774ca8e94e",
-    "clicks": 3.0,
-    "impressions": 3.0,
-    "position": 2.0
-  },
-  {
-    "id": "cc653cd1-0141-4943-b269-3ba53a963ebc",
-    "clicks": 3.0,
-    "impressions": 3.0,
-    "position": 2.0
-  },
-  {
-    "id": "042a873a-2ad8-494d-a41a-01683072c948",
-    "clicks": 3.0,
-    "impressions": 3.0,
-    "position": 2.33
-  },
-  {
-    "id": "ff8d297d-f10a-4f79-b4d2-b4c664091640",
-    "clicks": 2.0,
-    "impressions": 1483.0,
-    "position": 6.99
-  },
-  {
-    "id": "868d1b1b-5273-4fc9-aa4a-40002660e22c",
-    "clicks": 2.0,
-    "impressions": 480.0,
-    "position": 5.61
-  },
-  {
-    "id": "63796fdd-df6c-4d1e-8f6a-480310d34ed1",
-    "clicks": 2.0,
-    "impressions": 392.0,
-    "position": 5.66
-  },
-  {
-    "id": "8d1f59df-7e6f-4816-9b9e-2afd68267d55",
-    "clicks": 2.0,
-    "impressions": 189.0,
-    "position": 2.17
-  },
-  {
-    "id": "66f3b3d9-2e92-4350-96a1-ff822ff2a26e",
-    "clicks": 2.0,
-    "impressions": 146.0,
-    "position": 6.97
-  },
-  {
-    "id": "6b6d14f0-c0f5-4afb-903b-f94050d32a34",
-    "clicks": 2.0,
-    "impressions": 134.0,
-    "position": 5.6
-  },
-  {
-    "id": "4b6dff52-d36f-40f0-a9b0-7228d431f385",
-    "clicks": 2.0,
-    "impressions": 131.0,
-    "position": 5.84
-  },
-  {
-    "id": "4526c3a3-8155-4253-83e7-a8ee649ced1b",
-    "clicks": 2.0,
-    "impressions": 121.0,
-    "position": 6.83
-  },
-  {
-    "id": "a156ba82-1895-40db-81cf-a5a806c35a00",
-    "clicks": 2.0,
-    "impressions": 112.0,
-    "position": 4.34
-  },
-  {
-    "id": "13b6c016-aa9a-4514-b268-4e3072a11bcd",
-    "clicks": 2.0,
-    "impressions": 108.0,
-    "position": 4.56
-  },
-  {
-    "id": "918314c0-9c5b-4cd0-927b-b9481aa331be",
-    "clicks": 2.0,
-    "impressions": 103.0,
-    "position": 3.81
+    "id": "df47da30-fe6c-4ae5-a1be-0a1c748d6439",
+    "clicks": 18.0,
+    "impressions": 82.0,
+    "position": 3.91,
+    "gen_ai_impressions": 8.0
   },
   {
     "id": "cd6011af-a104-43b5-891d-f8de6b678f96",
@@ -2034,16 +256,69 @@
     "position": 4.92
   },
   {
+    "id": "96dbaca5-36c1-4951-a58a-1f0d3e6f4898",
+    "clicks": 20.0,
+    "impressions": 81.0,
+    "position": 4.43,
+    "gen_ai_impressions": 2.0
+  },
+  {
     "id": "827dbc05-8ccc-4796-9996-32509884275a",
     "clicks": 2.0,
     "impressions": 83.0,
     "position": 7.9
   },
   {
+    "id": "ec076218-60ce-445b-8f30-55c026c2165c",
+    "clicks": 14.0,
+    "impressions": 81.0,
+    "position": 3.27
+  },
+  {
+    "id": "721c0e3d-acc4-409f-abb9-915f3272139e",
+    "clicks": 7.0,
+    "impressions": 72.0,
+    "position": 3.83
+  },
+  {
+    "id": "82c6249b-ef80-4fb7-9d41-9063e2c9169c",
+    "clicks": 6.0,
+    "impressions": 70.0,
+    "position": 5.5,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b9c43863-b201-4431-9ad7-210a1e65974b",
+    "clicks": 5.0,
+    "impressions": 55.0,
+    "position": 8.29,
+    "gen_ai_impressions": 16.0
+  },
+  {
+    "id": "1c7918fa-d617-4a0a-997c-5ae575835f74",
+    "clicks": 3.0,
+    "impressions": 70.0,
+    "position": 6.59
+  },
+  {
     "id": "d7fda5c8-86f1-4d77-875b-ebd8dcac2649",
     "clicks": 2.0,
     "impressions": 70.0,
     "position": 3.91
+  },
+  {
+    "id": "7122ef99-24e1-4e2c-87ab-5a8eb3fe88cb",
+    "clicks": 2.0,
+    "impressions": 66.0,
+    "position": 3.7,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "80ef3093-bff8-4cea-9421-baa084c87791",
+    "clicks": 7.0,
+    "impressions": 62.0,
+    "position": 7.15,
+    "gen_ai_impressions": 5.0
   },
   {
     "id": "0f130f4f-7961-4fe7-8b5b-5dfcad0f9a12",
@@ -2058,10 +333,17 @@
     "position": 5.39
   },
   {
-    "id": "7122ef99-24e1-4e2c-87ab-5a8eb3fe88cb",
-    "clicks": 2.0,
+    "id": "c2fa7ded-d083-47e7-891f-f73bb1c2a8ae",
+    "clicks": 5.0,
     "impressions": 66.0,
-    "position": 3.7
+    "position": 5.39
+  },
+  {
+    "id": "01ad58b0-9644-490d-b014-4e8c91671b98",
+    "clicks": 9.0,
+    "impressions": 62.0,
+    "position": 4.42,
+    "gen_ai_impressions": 1.0
   },
   {
     "id": "3e36a8a6-370d-4119-9d48-479c774ff7e2",
@@ -2070,16 +352,69 @@
     "position": 4.1
   },
   {
+    "id": "880309eb-445a-44b6-bc0c-2bce94459f94",
+    "clicks": 7.0,
+    "impressions": 48.0,
+    "position": 5.35,
+    "gen_ai_impressions": 13.0
+  },
+  {
+    "id": "d0641a52-9033-471c-ad62-6c4dbb75ad28",
+    "clicks": 3.0,
+    "impressions": 61.0,
+    "position": 7.43
+  },
+  {
+    "id": "9da598f6-9283-4a8b-9e0b-ac8373860604",
+    "clicks": 3.0,
+    "impressions": 53.0,
+    "position": 4.81,
+    "gen_ai_impressions": 8.0
+  },
+  {
     "id": "4242110d-ac46-44bb-a5a5-dbcc4eb6042d",
     "clicks": 2.0,
     "impressions": 61.0,
     "position": 10.8
   },
   {
+    "id": "76caea88-7c6d-4490-ab10-e39ecc8ddd6c",
+    "clicks": 7.0,
+    "impressions": 54.0,
+    "position": 3.52,
+    "gen_ai_impressions": 6.0
+  },
+  {
+    "id": "76bfeb9e-620b-4494-8bb6-ec03e9abba41",
+    "clicks": 4.0,
+    "impressions": 55.0,
+    "position": 5.76,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "e7024d8a-f128-410e-bfd7-9118f202bfe3",
+    "clicks": 7.0,
+    "impressions": 56.0,
+    "position": 2.82
+  },
+  {
     "id": "d1c2eeb5-4941-4935-995d-187955424e82",
     "clicks": 2.0,
     "impressions": 56.0,
     "position": 7.79
+  },
+  {
+    "id": "a1c98911-d703-4baf-be46-4c752e0058dd",
+    "clicks": 8.0,
+    "impressions": 53.0,
+    "position": 6.04,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "65c0ae1a-ec53-4888-87ff-98ee38941ac5",
+    "clicks": 7.0,
+    "impressions": 55.0,
+    "position": 6.4
   },
   {
     "id": "3227e212-463d-4ad1-adaf-291649f1a095",
@@ -2100,16 +435,56 @@
     "position": 5.02
   },
   {
+    "id": "a9b561ab-8b8c-4ddd-80d0-254f16eec416",
+    "clicks": 4.0,
+    "impressions": 51.0,
+    "position": 7.75
+  },
+  {
+    "id": "ae3edb01-21e6-4ea2-b25b-950199b23830",
+    "clicks": 7.0,
+    "impressions": 50.0,
+    "position": 4.5
+  },
+  {
+    "id": "799be194-e361-4efc-9029-e604da6ae07e",
+    "clicks": 7.0,
+    "impressions": 50.0,
+    "position": 5.46
+  },
+  {
+    "id": "583ff99a-84b0-46b0-9e54-e077b65a7d6c",
+    "clicks": 2.0,
+    "impressions": 48.0,
+    "position": 7.85,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "81c42d48-5f55-471d-8ace-e9c68afd73e1",
+    "clicks": 2.0,
+    "impressions": 47.0,
+    "position": 6.19,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "8970218f-361d-4858-b641-178dade3f0e0",
+    "clicks": 3.0,
+    "impressions": 48.0,
+    "position": 5.85,
+    "gen_ai_impressions": 1.0
+  },
+  {
     "id": "97a9098a-9ca6-4d60-b8ab-25bdb8db3f0e",
     "clicks": 2.0,
     "impressions": 48.0,
     "position": 2.94
   },
   {
-    "id": "583ff99a-84b0-46b0-9e54-e077b65a7d6c",
-    "clicks": 2.0,
-    "impressions": 48.0,
-    "position": 7.85
+    "id": "9fed2f68-634b-41be-844c-c0d52325d149",
+    "clicks": 3.0,
+    "impressions": 45.0,
+    "position": 4.71,
+    "gen_ai_impressions": 2.0
   },
   {
     "id": "25d9b40a-dd14-46c0-9798-d8520f32f446",
@@ -2118,22 +493,34 @@
     "position": 5.45
   },
   {
-    "id": "81c42d48-5f55-471d-8ace-e9c68afd73e1",
-    "clicks": 2.0,
-    "impressions": 47.0,
-    "position": 6.19
-  },
-  {
     "id": "52dd6030-2e9e-4936-976b-7da91d333ec0",
     "clicks": 2.0,
     "impressions": 47.0,
     "position": 6.77
   },
   {
+    "id": "8e39af42-ec60-4a25-b04c-17c320e19521",
+    "clicks": 5.0,
+    "impressions": 45.0,
+    "position": 6.0
+  },
+  {
+    "id": "09ff2898-c3b4-4407-9120-e62442da4203",
+    "clicks": 5.0,
+    "impressions": 45.0,
+    "position": 6.82
+  },
+  {
     "id": "dfaec116-1ab6-4cde-b62c-eea8f5a04d86",
     "clicks": 2.0,
     "impressions": 45.0,
     "position": 5.22
+  },
+  {
+    "id": "d92b01a8-cf3c-4947-96ed-b310b3880508",
+    "clicks": 3.0,
+    "impressions": 43.0,
+    "position": 5.26
   },
   {
     "id": "98731674-fb9e-44a2-98d2-3d102d62dc3d",
@@ -2160,10 +547,30 @@
     "position": 7.12
   },
   {
+    "id": "c34fbe94-d368-42b1-b131-93c34f30b37f",
+    "clicks": 2.0,
+    "impressions": 39.0,
+    "position": 7.18,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "266e9c8a-1317-4d82-88f3-2993e14847e9",
+    "clicks": 9.0,
+    "impressions": 41.0,
+    "position": 3.71
+  },
+  {
     "id": "8715a649-a679-4451-8b3e-882381e393ee",
     "clicks": 2.0,
     "impressions": 41.0,
     "position": 8.32
+  },
+  {
+    "id": "0dfe0eaf-b75a-4e8b-a685-2d99bbfaad31",
+    "clicks": 5.0,
+    "impressions": 39.0,
+    "position": 4.54,
+    "gen_ai_impressions": 1.0
   },
   {
     "id": "81a636d1-bc9d-42e9-b428-33ae971b127c",
@@ -2178,6 +585,25 @@
     "position": 4.38
   },
   {
+    "id": "1482023f-87d2-4ebe-8456-80aa2c61b17e",
+    "clicks": 4.0,
+    "impressions": 39.0,
+    "position": 7.46
+  },
+  {
+    "id": "f5f1bebe-b92e-4a16-b4f3-3e9e4b16a6c5",
+    "clicks": 3.0,
+    "impressions": 39.0,
+    "position": 8.97
+  },
+  {
+    "id": "1e8e770a-27a4-4fb7-a252-2c027aa08983",
+    "clicks": 3.0,
+    "impressions": 36.0,
+    "position": 6.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
     "id": "46b5ea46-df23-42dc-a86b-39a9388dd255",
     "clicks": 2.0,
     "impressions": 39.0,
@@ -2190,16 +616,46 @@
     "position": 7.13
   },
   {
-    "id": "c34fbe94-d368-42b1-b131-93c34f30b37f",
-    "clicks": 2.0,
-    "impressions": 39.0,
-    "position": 7.18
-  },
-  {
     "id": "728bb4cf-70b7-4d45-a203-ef20a02ebe80",
     "clicks": 2.0,
     "impressions": 38.0,
-    "position": 5.55
+    "position": 5.55,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "9ce87b54-8926-4585-8ec2-b0b515c66bc9",
+    "clicks": 8.0,
+    "impressions": 35.0,
+    "position": 5.06,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "50f2ef5a-d747-441b-b6b2-1bed7084c17a",
+    "clicks": 8.0,
+    "impressions": 30.0,
+    "position": 2.8,
+    "gen_ai_impressions": 8.0
+  },
+  {
+    "id": "35797ad0-5a26-4487-895c-37ab1b2a5fdb",
+    "clicks": 6.0,
+    "impressions": 37.0,
+    "position": 3.27,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "fa7abf2a-d161-4d9e-ae30-c2cc67d5eb21",
+    "clicks": 4.0,
+    "impressions": 36.0,
+    "position": 5.39,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "a0c28f4e-5075-4e3e-bb4b-e4f4a9d9cb55",
+    "clicks": 3.0,
+    "impressions": 37.0,
+    "position": 6.24,
+    "gen_ai_impressions": 1.0
   },
   {
     "id": "f62f3c20-7441-447a-aacc-3ef7ccab7288",
@@ -2211,7 +667,28 @@
     "id": "8cded521-3444-40af-87d5-e67b0c682a4f",
     "clicks": 2.0,
     "impressions": 37.0,
-    "position": 2.14
+    "position": 2.14,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d48c8382-9fba-4e1f-a832-7e20bf18de84",
+    "clicks": 8.0,
+    "impressions": 34.0,
+    "position": 5.56,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "94567b82-0ec2-41cc-83cc-5d139ca5eef3",
+    "clicks": 4.0,
+    "impressions": 37.0,
+    "position": 7.32
+  },
+  {
+    "id": "a8b275b3-02c2-487e-b9ca-7a41d5c4c38a",
+    "clicks": 3.0,
+    "impressions": 36.0,
+    "position": 5.28,
+    "gen_ai_impressions": 1.0
   },
   {
     "id": "2b857633-327d-486d-86b5-18fc0b15cafd",
@@ -2220,16 +697,96 @@
     "position": 4.16
   },
   {
+    "id": "e6a113f8-aa07-42d2-b199-09990d22073e",
+    "clicks": 2.0,
+    "impressions": 34.0,
+    "position": 2.94,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "bd6f451a-d1c1-4f40-a00d-493c325e7197",
+    "clicks": 2.0,
+    "impressions": 22.0,
+    "position": 3.14,
+    "gen_ai_impressions": 14.0
+  },
+  {
+    "id": "ea45540a-c9df-4cfa-9985-2774c3a03220",
+    "clicks": 7.0,
+    "impressions": 34.0,
+    "position": 3.71,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "93de4663-fb5c-4381-a60c-4bd9d852e775",
+    "clicks": 4.0,
+    "impressions": 33.0,
+    "position": 3.3,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "768a8fa3-ebeb-4fea-9845-8c480e5f6adf",
+    "clicks": 2.0,
+    "impressions": 32.0,
+    "position": 8.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "a1282d4e-3f25-400a-a8b5-53fc21485530",
+    "clicks": 7.0,
+    "impressions": 34.0,
+    "position": 5.74
+  },
+  {
+    "id": "23f14ff5-e729-4c87-93f8-281a16dd62e0",
+    "clicks": 4.0,
+    "impressions": 34.0,
+    "position": 5.53
+  },
+  {
+    "id": "64fabccc-78c3-4e10-8554-820d1968b99e",
+    "clicks": 3.0,
+    "impressions": 32.0,
+    "position": 4.69,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "1f171f91-9051-42d8-92d1-26f87366924d",
+    "clicks": 3.0,
+    "impressions": 29.0,
+    "position": 6.21,
+    "gen_ai_impressions": 5.0
+  },
+  {
     "id": "0b39007e-74e4-475c-8ef8-ea7b444adf80",
     "clicks": 2.0,
     "impressions": 34.0,
     "position": 2.56
   },
   {
-    "id": "e6a113f8-aa07-42d2-b199-09990d22073e",
-    "clicks": 2.0,
-    "impressions": 34.0,
-    "position": 2.94
+    "id": "e3ba785e-f775-441a-b101-5172973e6f85",
+    "clicks": 4.0,
+    "impressions": 33.0,
+    "position": 4.82
+  },
+  {
+    "id": "3b9189f6-0eb4-4222-a4ad-7297adbcf622",
+    "clicks": 4.0,
+    "impressions": 31.0,
+    "position": 5.84,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "b0788268-f715-421d-a94b-8fc316993604",
+    "clicks": 3.0,
+    "impressions": 33.0,
+    "position": 3.94
+  },
+  {
+    "id": "c0231962-e030-4342-825e-7ff202bff3e5",
+    "clicks": 3.0,
+    "impressions": 33.0,
+    "position": 11.52
   },
   {
     "id": "ab0ed9c8-1476-4f80-9617-ea8d9f5f0521",
@@ -2250,6 +807,12 @@
     "position": 6.09
   },
   {
+    "id": "047a2aad-4a24-49de-b9b5-98197492c8b2",
+    "clicks": 3.0,
+    "impressions": 32.0,
+    "position": 2.94
+  },
+  {
     "id": "76d54b06-e395-4d61-9270-7c27b82e79b8",
     "clicks": 2.0,
     "impressions": 32.0,
@@ -2268,10 +831,71 @@
     "position": 7.41
   },
   {
-    "id": "768a8fa3-ebeb-4fea-9845-8c480e5f6adf",
+    "id": "c1af338b-cf96-4b8e-a0d4-5dccf476d1cf",
+    "clicks": 3.0,
+    "impressions": 27.0,
+    "position": 5.67,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "860e2b49-e905-44ae-8453-918569e96728",
     "clicks": 2.0,
-    "impressions": 32.0,
-    "position": 8.0
+    "impressions": 30.0,
+    "position": 6.4,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "911e7181-65aa-4235-8c67-a5ed2c47a58c",
+    "clicks": 2.0,
+    "impressions": 28.0,
+    "position": 9.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "0ee6b3b1-f33a-4d34-8cb9-c419fe7a2321",
+    "clicks": 5.0,
+    "impressions": 29.0,
+    "position": 9.66,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "37b53ff9-ab35-483e-99ea-c54c1c4b1817",
+    "clicks": 5.0,
+    "impressions": 28.0,
+    "position": 5.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "48457ee1-696f-442c-a095-3c5c3556018a",
+    "clicks": 4.0,
+    "impressions": 30.0,
+    "position": 3.07
+  },
+  {
+    "id": "e9a8dc26-3f64-4499-94dd-5560f0ca1b3a",
+    "clicks": 4.0,
+    "impressions": 29.0,
+    "position": 6.66,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "811874a4-7f2a-43c6-a2ab-2700cac4520a",
+    "clicks": 3.0,
+    "impressions": 30.0,
+    "position": 4.9
+  },
+  {
+    "id": "797f25b2-24c3-4d93-9aaf-52573986fd1b",
+    "clicks": 3.0,
+    "impressions": 30.0,
+    "position": 7.9
+  },
+  {
+    "id": "f343c08c-da7c-4b48-b89f-c90d029be298",
+    "clicks": 3.0,
+    "impressions": 27.0,
+    "position": 2.89,
+    "gen_ai_impressions": 3.0
   },
   {
     "id": "9310e3c9-f6c0-4a7e-8035-a0097801b874",
@@ -2280,16 +904,31 @@
     "position": 4.07
   },
   {
-    "id": "860e2b49-e905-44ae-8453-918569e96728",
-    "clicks": 2.0,
-    "impressions": 30.0,
-    "position": 6.4
-  },
-  {
     "id": "d2b807a3-a8de-40b0-a6cc-942d108deef0",
     "clicks": 2.0,
     "impressions": 29.0,
-    "position": 5.72
+    "position": 5.72,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "54a1a049-e198-43c6-b3cd-5007368d0dd6",
+    "clicks": 9.0,
+    "impressions": 29.0,
+    "position": 4.0
+  },
+  {
+    "id": "91d779bb-9742-4b6e-b231-146eca3b1bf7",
+    "clicks": 5.0,
+    "impressions": 22.0,
+    "position": 2.68,
+    "gen_ai_impressions": 7.0
+  },
+  {
+    "id": "8dda48ee-cd29-4344-a99a-879324f0922a",
+    "clicks": 3.0,
+    "impressions": 28.0,
+    "position": 4.57,
+    "gen_ai_impressions": 1.0
   },
   {
     "id": "e7e44873-b996-45a0-8c3a-900476e3722d",
@@ -2298,16 +937,54 @@
     "position": 6.34
   },
   {
+    "id": "8e80444c-8aa9-4894-bef8-91bb91548024",
+    "clicks": 2.0,
+    "impressions": 27.0,
+    "position": 4.96,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "01dd66f8-5a05-41b6-84f5-87619ef78f34",
+    "clicks": 6.0,
+    "impressions": 28.0,
+    "position": 2.93
+  },
+  {
+    "id": "82c1ed88-40b8-4911-9b81-823d37d1f4b1",
+    "clicks": 6.0,
+    "impressions": 28.0,
+    "position": 3.75
+  },
+  {
+    "id": "4ed0d981-7740-457a-b2d2-a2175bacbc01",
+    "clicks": 4.0,
+    "impressions": 28.0,
+    "position": 3.21
+  },
+  {
+    "id": "9300dd70-56f5-4be7-88fb-a9d48377a951",
+    "clicks": 4.0,
+    "impressions": 28.0,
+    "position": 4.64
+  },
+  {
+    "id": "c10a6145-8ea7-4988-aa30-481d95e1fb3a",
+    "clicks": 3.0,
+    "impressions": 24.0,
+    "position": 5.83,
+    "gen_ai_impressions": 4.0
+  },
+  {
     "id": "3222a8eb-0f73-4cb2-874f-ffa76c4602fd",
     "clicks": 2.0,
     "impressions": 28.0,
     "position": 3.61
   },
   {
-    "id": "911e7181-65aa-4235-8c67-a5ed2c47a58c",
-    "clicks": 2.0,
-    "impressions": 28.0,
-    "position": 9.0
+    "id": "d1e41c8f-9fb2-466d-9fa8-822f4d6072e4",
+    "clicks": 5.0,
+    "impressions": 27.0,
+    "position": 4.52
   },
   {
     "id": "0cf4a51e-8460-4fbb-8683-4948044834c4",
@@ -2322,16 +999,23 @@
     "position": 4.67
   },
   {
-    "id": "8e80444c-8aa9-4894-bef8-91bb91548024",
-    "clicks": 2.0,
-    "impressions": 27.0,
-    "position": 4.96
-  },
-  {
     "id": "9baaa420-0536-4bc7-8d51-438d4b5352f7",
     "clicks": 2.0,
     "impressions": 27.0,
     "position": 5.96
+  },
+  {
+    "id": "42bd3da2-2623-48c9-9c23-b956aedda2f4",
+    "clicks": 4.0,
+    "impressions": 19.0,
+    "position": 3.79,
+    "gen_ai_impressions": 7.0
+  },
+  {
+    "id": "2bb226c0-83df-4024-8ed3-2818f98e0908",
+    "clicks": 3.0,
+    "impressions": 26.0,
+    "position": 6.31
   },
   {
     "id": "9b759bb6-7d88-42c2-a956-495dfebed0e4",
@@ -2352,6 +1036,24 @@
     "position": 5.77
   },
   {
+    "id": "2a308c6c-4e42-47f8-bed2-6062f6af3266",
+    "clicks": 7.0,
+    "impressions": 25.0,
+    "position": 6.48
+  },
+  {
+    "id": "b1516128-d77e-4cc0-95b0-f6965ef690df",
+    "clicks": 3.0,
+    "impressions": 25.0,
+    "position": 5.32
+  },
+  {
+    "id": "4f5d988c-c922-4455-9d37-5940f27f124f",
+    "clicks": 3.0,
+    "impressions": 25.0,
+    "position": 7.44
+  },
+  {
     "id": "013acc26-570c-4e57-8015-da147d26fd75",
     "clicks": 2.0,
     "impressions": 25.0,
@@ -2370,6 +1072,13 @@
     "position": 7.08
   },
   {
+    "id": "cfeea4b9-1fda-4917-8b22-d6eb1d72c979",
+    "clicks": 2.0,
+    "impressions": 23.0,
+    "position": 15.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
     "id": "cadc865c-8dd1-464c-9e0e-3a0440e366f5",
     "clicks": 2.0,
     "impressions": 24.0,
@@ -2382,40 +1091,111 @@
     "position": 5.96
   },
   {
+    "id": "e3d79546-8f22-475b-af3a-ef76bd29ef54",
+    "clicks": 2.0,
+    "impressions": 23.0,
+    "position": 8.09,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3970dfe2-a7b8-470d-bdf3-3b30d1258a52",
+    "clicks": 2.0,
+    "impressions": 22.0,
+    "position": 3.41,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "c9c0d65e-1869-4451-bf1e-69a6daec244f",
+    "clicks": 9.0,
+    "impressions": 21.0,
+    "position": 3.14,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "fc81592f-617b-4801-bf0e-bbb34be2f165",
+    "clicks": 8.0,
+    "impressions": 23.0,
+    "position": 2.13
+  },
+  {
+    "id": "68e31e9c-8711-4b26-a50a-f665fe4bd2e1",
+    "clicks": 7.0,
+    "impressions": 23.0,
+    "position": 4.43
+  },
+  {
+    "id": "22a2dd5b-6268-419b-8faf-9a614c833102",
+    "clicks": 6.0,
+    "impressions": 23.0,
+    "position": 3.04
+  },
+  {
+    "id": "b73773f9-28dc-4533-9ea1-8610b429e7cf",
+    "clicks": 6.0,
+    "impressions": 23.0,
+    "position": 3.39
+  },
+  {
+    "id": "236fb97d-8ec2-4fff-99cc-6d82c8421b74",
+    "clicks": 6.0,
+    "impressions": 23.0,
+    "position": 4.87
+  },
+  {
+    "id": "e47acfc3-e71b-4848-8187-a1599fcdedaf",
+    "clicks": 4.0,
+    "impressions": 23.0,
+    "position": 8.04
+  },
+  {
+    "id": "bf461f7b-81d3-4d99-a4a6-8bf8c1feae8c",
+    "clicks": 3.0,
+    "impressions": 23.0,
+    "position": 5.04
+  },
+  {
+    "id": "c217e9ed-599b-440b-863f-83f2a9934d13",
+    "clicks": 3.0,
+    "impressions": 23.0,
+    "position": 5.04
+  },
+  {
     "id": "e9a70ef4-3761-42c2-a881-211e1216b748",
     "clicks": 2.0,
     "impressions": 23.0,
     "position": 5.65
   },
   {
-    "id": "e3d79546-8f22-475b-af3a-ef76bd29ef54",
-    "clicks": 2.0,
-    "impressions": 23.0,
-    "position": 8.09
+    "id": "7e484eff-3175-4601-85c2-191425ea8436",
+    "clicks": 5.0,
+    "impressions": 17.0,
+    "position": 5.47,
+    "gen_ai_impressions": 5.0
   },
   {
-    "id": "cfeea4b9-1fda-4917-8b22-d6eb1d72c979",
-    "clicks": 2.0,
-    "impressions": 23.0,
-    "position": 15.0
+    "id": "4aca30f6-8f1c-4ee2-adac-2e47bbd0638e",
+    "clicks": 4.0,
+    "impressions": 22.0,
+    "position": 3.32
+  },
+  {
+    "id": "a35aff97-a875-47aa-ab83-b40bc42f1a76",
+    "clicks": 4.0,
+    "impressions": 19.0,
+    "position": 7.32,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "8c5fed57-9986-4979-a127-66b19e73afd4",
+    "clicks": 3.0,
+    "impressions": 22.0,
+    "position": 4.91
   },
   {
     "id": "1c99338e-665d-4d0b-a2a7-09484a459ba8",
     "clicks": 2.0,
     "impressions": 22.0,
     "position": 2.23
-  },
-  {
-    "id": "bd6f451a-d1c1-4f40-a00d-493c325e7197",
-    "clicks": 2.0,
-    "impressions": 22.0,
-    "position": 3.14
-  },
-  {
-    "id": "3970dfe2-a7b8-470d-bdf3-3b30d1258a52",
-    "clicks": 2.0,
-    "impressions": 22.0,
-    "position": 3.41
   },
   {
     "id": "ef83e805-430b-4bd9-bda3-4fb5699b75c7",
@@ -2434,6 +1214,83 @@
     "clicks": 2.0,
     "impressions": 22.0,
     "position": 14.68
+  },
+  {
+    "id": "0e5aa93e-e567-42d2-a519-2baa4b1cb944",
+    "clicks": 11.0,
+    "impressions": 21.0,
+    "position": 3.62
+  },
+  {
+    "id": "3adfd459-7f8e-4ca1-bcfc-0d8411ac6a61",
+    "clicks": 6.0,
+    "impressions": 20.0,
+    "position": 3.05,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a17e651f-76af-4237-b0a9-59caf131906f",
+    "clicks": 5.0,
+    "impressions": 21.0,
+    "position": 4.1
+  },
+  {
+    "id": "ff7f07b0-6f18-4655-bab0-06d5b66fa298",
+    "clicks": 5.0,
+    "impressions": 21.0,
+    "position": 4.52
+  },
+  {
+    "id": "5864337c-488d-4450-b6d7-9db6779b9fb6",
+    "clicks": 5.0,
+    "impressions": 19.0,
+    "position": 12.16,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "c6ec1d9f-ba21-453d-9127-ae0336d5d319",
+    "clicks": 5.0,
+    "impressions": 18.0,
+    "position": 3.56,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "e2aa19cd-c841-4fd8-8ef3-035456ed4ca4",
+    "clicks": 4.0,
+    "impressions": 21.0,
+    "position": 3.86
+  },
+  {
+    "id": "eb35b5ec-aab2-4433-ab63-091703a454bd",
+    "clicks": 4.0,
+    "impressions": 21.0,
+    "position": 5.67
+  },
+  {
+    "id": "d5ec0e4d-74a9-489f-84be-4528bbb3869a",
+    "clicks": 4.0,
+    "impressions": 21.0,
+    "position": 6.38
+  },
+  {
+    "id": "392ec729-9cb2-4fe0-9c0a-0600ff1a7aa6",
+    "clicks": 4.0,
+    "impressions": 19.0,
+    "position": 5.42,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "26b8c264-ed19-4f4a-a5ca-f67033d98156",
+    "clicks": 3.0,
+    "impressions": 21.0,
+    "position": 2.86
+  },
+  {
+    "id": "5721babc-9ec0-4ef5-8926-daeed08e1f5c",
+    "clicks": 3.0,
+    "impressions": 20.0,
+    "position": 4.9,
+    "gen_ai_impressions": 1.0
   },
   {
     "id": "2a519455-4e9d-4a1d-b1e3-8f2b4a4840f9",
@@ -2460,6 +1317,52 @@
     "position": 11.33
   },
   {
+    "id": "48abad40-0720-429f-a082-3a479f967d7d",
+    "clicks": 2.0,
+    "impressions": 20.0,
+    "position": 5.2,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "800b0b37-3bf0-4a58-894b-73c392092441",
+    "clicks": 2.0,
+    "impressions": 20.0,
+    "position": 6.65,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "47088998-e937-41b8-9ab2-d167b3f7bb2e",
+    "clicks": 5.0,
+    "impressions": 20.0,
+    "position": 3.2
+  },
+  {
+    "id": "7a7d0b61-c8a9-4bf2-8d15-5ffbf0e7d8a1",
+    "clicks": 4.0,
+    "impressions": 19.0,
+    "position": 3.74,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "e3ac0978-8696-4b21-bac8-d95ba6b3b906",
+    "clicks": 3.0,
+    "impressions": 20.0,
+    "position": 3.95
+  },
+  {
+    "id": "6972465d-78d8-4bb7-93f8-1e5c828f6a72",
+    "clicks": 3.0,
+    "impressions": 20.0,
+    "position": 6.0
+  },
+  {
+    "id": "3fee30a7-b531-4d30-939d-65a911ae3910",
+    "clicks": 3.0,
+    "impressions": 19.0,
+    "position": 7.11,
+    "gen_ai_impressions": 1.0
+  },
+  {
     "id": "504f7b6b-7836-42a2-a288-2def45d18290",
     "clicks": 2.0,
     "impressions": 20.0,
@@ -2484,22 +1387,36 @@
     "position": 4.35
   },
   {
-    "id": "48abad40-0720-429f-a082-3a479f967d7d",
-    "clicks": 2.0,
-    "impressions": 20.0,
-    "position": 5.2
-  },
-  {
     "id": "02e14463-33c5-430f-b47b-b3dcc754551c",
     "clicks": 2.0,
     "impressions": 20.0,
     "position": 5.9
   },
   {
-    "id": "800b0b37-3bf0-4a58-894b-73c392092441",
+    "id": "86e77739-ad77-4e3e-b6ea-60cfc6b5d12c",
     "clicks": 2.0,
-    "impressions": 20.0,
-    "position": 6.65
+    "impressions": 17.0,
+    "position": 4.24,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "8b432f8a-5970-4be2-a94a-d10e54db3056",
+    "clicks": 0.0,
+    "impressions": 10.0,
+    "position": 0.0,
+    "gen_ai_impressions": 10.0
+  },
+  {
+    "id": "71c035c9-6660-420d-99ec-4cd138767d75",
+    "clicks": 8.0,
+    "impressions": 19.0,
+    "position": 2.63
+  },
+  {
+    "id": "69f756f3-c2b4-4c32-b6b2-eb5c9c61f5ff",
+    "clicks": 6.0,
+    "impressions": 19.0,
+    "position": 3.53
   },
   {
     "id": "50b899e5-81f3-4f5a-977e-bbb28ea4f952",
@@ -2538,6 +1455,38 @@
     "position": 7.42
   },
   {
+    "id": "1d84e5b9-08af-4f8e-9c3a-191d47b7a2ea",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 5.22,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "610f9aab-3936-48f0-8420-3df240708446",
+    "clicks": 5.0,
+    "impressions": 18.0,
+    "position": 2.11
+  },
+  {
+    "id": "cfe9a5a6-f783-43fe-a934-df0fd88d656c",
+    "clicks": 4.0,
+    "impressions": 18.0,
+    "position": 4.39
+  },
+  {
+    "id": "74d44fc6-40e3-45b1-ae7f-424657de5bf1",
+    "clicks": 4.0,
+    "impressions": 18.0,
+    "position": 28.22
+  },
+  {
+    "id": "1583cb22-b733-4834-a49c-c2101c0b05b8",
+    "clicks": 4.0,
+    "impressions": 17.0,
+    "position": 2.94,
+    "gen_ai_impressions": 1.0
+  },
+  {
     "id": "09103a7c-3b0e-4732-bff0-d65a95267093",
     "clicks": 2.0,
     "impressions": 18.0,
@@ -2566,12 +1515,6 @@
     "clicks": 2.0,
     "impressions": 18.0,
     "position": 5.06
-  },
-  {
-    "id": "1d84e5b9-08af-4f8e-9c3a-191d47b7a2ea",
-    "clicks": 2.0,
-    "impressions": 18.0,
-    "position": 5.22
   },
   {
     "id": "619bbba8-1ad8-4c78-84d6-263b3fe95933",
@@ -2604,6 +1547,34 @@
     "position": 8.78
   },
   {
+    "id": "1da25f95-e5f9-49f2-9987-6b5c3dea3aaa",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 3.88,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3dad5e58-058e-4e05-8269-6fffba209d73",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 3.69,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "27979672-9b35-413e-a68b-40a3a40f287c",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 3.53,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "02436e5b-3486-4e35-a328-eb31de78a004",
+    "clicks": 0.0,
+    "impressions": 9.0,
+    "position": 0.0,
+    "gen_ai_impressions": 9.0
+  },
+  {
     "id": "e797208b-f5b8-4010-b336-e47af44e4a2e",
     "clicks": 2.0,
     "impressions": 17.0,
@@ -2616,22 +1587,10 @@
     "position": 3.76
   },
   {
-    "id": "1da25f95-e5f9-49f2-9987-6b5c3dea3aaa",
-    "clicks": 2.0,
-    "impressions": 17.0,
-    "position": 3.88
-  },
-  {
     "id": "60e96c0e-c598-42ce-b85f-6d49a23eb197",
     "clicks": 2.0,
     "impressions": 17.0,
     "position": 4.12
-  },
-  {
-    "id": "86e77739-ad77-4e3e-b6ea-60cfc6b5d12c",
-    "clicks": 2.0,
-    "impressions": 17.0,
-    "position": 4.24
   },
   {
     "id": "ce6c6ea6-6fc2-4cb0-b785-d29c9e75354c",
@@ -2688,16 +1647,82 @@
     "position": 10.35
   },
   {
+    "id": "5fdf938d-b05b-4d60-acb2-9c649d6496b8",
+    "clicks": 4.0,
+    "impressions": 16.0,
+    "position": 3.69
+  },
+  {
+    "id": "57aae070-9632-486f-9784-3b6e16a67cce",
+    "clicks": 4.0,
+    "impressions": 16.0,
+    "position": 3.81
+  },
+  {
+    "id": "0d628876-4e67-44bd-a655-cb28d5e309ab",
+    "clicks": 4.0,
+    "impressions": 16.0,
+    "position": 5.56
+  },
+  {
+    "id": "6a39593e-3f39-4964-add6-f0901455e962",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 3.12
+  },
+  {
+    "id": "f82cbcd5-6488-441e-a847-7666f9982ea8",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 3.31
+  },
+  {
+    "id": "db61a92a-0714-49f2-b22c-7a98c48b15b9",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 3.62
+  },
+  {
+    "id": "a14b6f16-520b-4069-91c9-d1d8e79d4da3",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 3.75
+  },
+  {
+    "id": "1dda96d1-6b10-48c1-8719-2000b81474e8",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 5.69
+  },
+  {
+    "id": "6b77833d-b584-45f9-9e25-7a66beb300d8",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 7.44
+  },
+  {
+    "id": "0fbe4fd8-137b-4a12-bcfd-5fa9608cd15f",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 8.31
+  },
+  {
+    "id": "17888da2-b594-4bc6-89db-5f52ca319ec6",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 9.88
+  },
+  {
+    "id": "dfaaad8b-678a-4db3-9513-818eb925fb29",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 11.06
+  },
+  {
     "id": "2db840a2-db6b-4bd5-a7aa-a960376fe105",
     "clicks": 2.0,
     "impressions": 16.0,
     "position": 3.0
-  },
-  {
-    "id": "3dad5e58-058e-4e05-8269-6fffba209d73",
-    "clicks": 2.0,
-    "impressions": 16.0,
-    "position": 3.69
   },
   {
     "id": "c1e6e5e5-418f-46fd-ba9e-30e4fad56164",
@@ -2748,6 +1773,65 @@
     "position": 11.94
   },
   {
+    "id": "326f9c8e-537d-4398-afdd-19ba199e0f1a",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 4.8,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "951bbcb4-af4d-435e-9097-105a186e01e5",
+    "clicks": 0.0,
+    "impressions": 8.0,
+    "position": 0.0,
+    "gen_ai_impressions": 8.0
+  },
+  {
+    "id": "9c464019-99e9-44b1-b81d-d36e43a87f8e",
+    "clicks": 0.0,
+    "impressions": 8.0,
+    "position": 0.0,
+    "gen_ai_impressions": 8.0
+  },
+  {
+    "id": "2568a7b6-578b-4548-bf2c-e702338e0022",
+    "clicks": 7.0,
+    "impressions": 14.0,
+    "position": 3.14,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5d04487f-5bde-4405-844b-9336301fdd52",
+    "clicks": 5.0,
+    "impressions": 13.0,
+    "position": 4.31,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "1f0a2198-0dd2-494b-bf93-633b2939ecb9",
+    "clicks": 3.0,
+    "impressions": 15.0,
+    "position": 3.87
+  },
+  {
+    "id": "e6f82904-9f77-40a4-bd9e-3c8c9ba059aa",
+    "clicks": 3.0,
+    "impressions": 15.0,
+    "position": 5.2
+  },
+  {
+    "id": "a69cc268-f6d1-4bc8-a9ca-d7f07652339a",
+    "clicks": 3.0,
+    "impressions": 15.0,
+    "position": 5.33
+  },
+  {
+    "id": "0dd5eef9-68bb-41bd-ba68-eb333681aebb",
+    "clicks": 3.0,
+    "impressions": 15.0,
+    "position": 5.73
+  },
+  {
     "id": "7e3187da-766d-41e6-8cbd-4e1323885632",
     "clicks": 2.0,
     "impressions": 15.0,
@@ -2760,22 +1844,10 @@
     "position": 3.13
   },
   {
-    "id": "27979672-9b35-413e-a68b-40a3a40f287c",
-    "clicks": 2.0,
-    "impressions": 15.0,
-    "position": 3.53
-  },
-  {
     "id": "9a8ce457-208b-4173-b5e8-808747b7594f",
     "clicks": 2.0,
     "impressions": 15.0,
     "position": 3.87
-  },
-  {
-    "id": "326f9c8e-537d-4398-afdd-19ba199e0f1a",
-    "clicks": 2.0,
-    "impressions": 15.0,
-    "position": 4.8
   },
   {
     "id": "3ce10349-7160-4417-b3a3-6eab708fbe51",
@@ -2800,6 +1872,82 @@
     "clicks": 2.0,
     "impressions": 15.0,
     "position": 9.13
+  },
+  {
+    "id": "4e4b2581-0492-43a4-b0af-b6d81972a139",
+    "clicks": 6.0,
+    "impressions": 12.0,
+    "position": 3.58,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "4ceda3bf-5ff2-4a24-89c1-7f3151d45048",
+    "clicks": 5.0,
+    "impressions": 14.0,
+    "position": 2.0
+  },
+  {
+    "id": "4e6f02d9-1ac1-4d78-8520-99b7d2a1f572",
+    "clicks": 4.0,
+    "impressions": 14.0,
+    "position": 2.43
+  },
+  {
+    "id": "e3f31c06-d699-471f-a64e-d3a11b136854",
+    "clicks": 4.0,
+    "impressions": 14.0,
+    "position": 4.21
+  },
+  {
+    "id": "e3dfbd8e-59a3-41aa-bf1c-b11f28c2763d",
+    "clicks": 4.0,
+    "impressions": 14.0,
+    "position": 4.64
+  },
+  {
+    "id": "14941b58-2bf1-47b9-9454-840bf9493660",
+    "clicks": 4.0,
+    "impressions": 14.0,
+    "position": 10.07
+  },
+  {
+    "id": "04e2f9cc-83d7-4029-95b3-d8ff2dfb4280",
+    "clicks": 3.0,
+    "impressions": 14.0,
+    "position": 4.79
+  },
+  {
+    "id": "049992ae-1183-4a99-9f66-67af82c37353",
+    "clicks": 3.0,
+    "impressions": 14.0,
+    "position": 8.5
+  },
+  {
+    "id": "13c8e270-066e-4871-9229-4433d0bfe56e",
+    "clicks": 3.0,
+    "impressions": 14.0,
+    "position": 10.57
+  },
+  {
+    "id": "69465bcb-00c9-41f8-8ed7-40637df9c677",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 2.62,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f786dbf8-51e0-45b6-a193-4b4cc26e54f5",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 4.92,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "211911aa-f9ca-474f-b01e-133d05d64ea4",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 3.67,
+    "gen_ai_impressions": 2.0
   },
   {
     "id": "1b5bf98e-96e0-4e49-984d-09e02fcd55c4",
@@ -2872,6 +2020,76 @@
     "clicks": 2.0,
     "impressions": 14.0,
     "position": 7.0
+  },
+  {
+    "id": "03e5dfa2-f0c9-49fb-a579-6f15055d605b",
+    "clicks": 0.0,
+    "impressions": 7.0,
+    "position": 0.0,
+    "gen_ai_impressions": 7.0
+  },
+  {
+    "id": "8d02f948-dfe2-47d8-b2c3-6aca029a546a",
+    "clicks": 6.0,
+    "impressions": 11.0,
+    "position": 3.55,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "d243d1e3-2be4-4fe5-8b27-ec44bcafee1b",
+    "clicks": 4.0,
+    "impressions": 13.0,
+    "position": 1.85
+  },
+  {
+    "id": "46528222-643b-40de-80e5-748598df865b",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 1.62
+  },
+  {
+    "id": "8fb3e882-b6e8-4cdd-9d2b-db712f335184",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 3.08
+  },
+  {
+    "id": "8b7bd1d9-c311-42d6-b056-f00e0f273a0f",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 3.46
+  },
+  {
+    "id": "4d265a24-0a3b-4414-bb16-d371c50bc9b4",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 4.62
+  },
+  {
+    "id": "020ec17b-b5ff-4137-9226-8e9378948609",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 5.0
+  },
+  {
+    "id": "400c156c-f26c-4019-b2f5-4826365af2ec",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 8.15
+  },
+  {
+    "id": "f810ae44-4d3a-447a-9693-14ace2f547b2",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.08,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ff520b34-e5be-45ed-8fdd-00e9af8602f2",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 5.58,
+    "gen_ai_impressions": 1.0
   },
   {
     "id": "a6d634d1-2e91-43fe-ba66-ccf81827e73a",
@@ -2952,6 +2170,111 @@
     "position": 14.38
   },
   {
+    "id": "58de709e-ef5d-4daa-a755-36bc694b9fca",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 3.83,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b12456d4-a5a3-4154-96f3-b7ed8c550f5e",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 3.09,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "22f6506d-5bc1-4f85-9392-c013a49f9961",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 2.33
+  },
+  {
+    "id": "fd72e687-662e-4f92-928c-0532d62126b6",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 3.25
+  },
+  {
+    "id": "1b3e0db0-7b06-430e-b680-8f679c64ff99",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 5.5
+  },
+  {
+    "id": "71ab4e1a-8636-4cf0-9749-c835bfbc3c9f",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 9.0
+  },
+  {
+    "id": "4f0607a6-bcf2-473f-889f-7b1625cbb4ce",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 10.83
+  },
+  {
+    "id": "93acbaf6-1c40-4807-a1c6-51133c2c5768",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 2.25
+  },
+  {
+    "id": "da10cf37-7256-4c31-973e-ae73729269f0",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 3.58
+  },
+  {
+    "id": "efbc8009-c9d6-4a6e-8438-21815393dcc3",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.08
+  },
+  {
+    "id": "ce2465d5-162f-4be6-93a4-8439f5d6eeaf",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.17
+  },
+  {
+    "id": "e1ad9a4f-782d-48db-bfa5-74191beaefc8",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.5
+  },
+  {
+    "id": "d0c759fb-7822-4fb2-bb7b-c4d326777fe7",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.75
+  },
+  {
+    "id": "ce4556ce-cc0c-4f5a-998e-a876edd413a5",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 5.25
+  },
+  {
+    "id": "9a64b6f7-561b-43a3-9add-f8b53b747aeb",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 6.42
+  },
+  {
+    "id": "3558c3cf-bbb9-4d72-8a1c-309a3b52ba00",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 7.5
+  },
+  {
+    "id": "6c8fda85-118d-403e-b27a-8e5035bff15c",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 6.64,
+    "gen_ai_impressions": 1.0
+  },
+  {
     "id": "09952039-c542-499b-83d9-6060af97d593",
     "clicks": 2.0,
     "impressions": 12.0,
@@ -2992,12 +2315,6 @@
     "clicks": 2.0,
     "impressions": 12.0,
     "position": 3.58
-  },
-  {
-    "id": "58de709e-ef5d-4daa-a755-36bc694b9fca",
-    "clicks": 2.0,
-    "impressions": 12.0,
-    "position": 3.83
   },
   {
     "id": "4a5394cf-fc9f-4848-aa67-1bab56017f03",
@@ -3096,6 +2413,119 @@
     "position": 7.67
   },
   {
+    "id": "85aadf1b-8acf-4c5a-9eeb-2c080e65a8db",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 5.64,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "12e3a849-3a04-4330-b3fc-ceeefa292eee",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 6.5,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "95601b8a-8001-4ba7-b178-dc45938cac09",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 15.25,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "f398f27c-10c5-4e51-a387-d67bfd0fad4a",
+    "clicks": 0.0,
+    "impressions": 6.0,
+    "position": 0.0,
+    "gen_ai_impressions": 6.0
+  },
+  {
+    "id": "6a45ab58-8044-49bf-b17f-cc73811a1c79",
+    "clicks": 5.0,
+    "impressions": 11.0,
+    "position": 3.0
+  },
+  {
+    "id": "f246870f-e7cd-4ab9-ae18-49ec5d02221c",
+    "clicks": 5.0,
+    "impressions": 11.0,
+    "position": 10.91
+  },
+  {
+    "id": "8afaae40-7305-4fdd-a90a-8d09a2f7577f",
+    "clicks": 4.0,
+    "impressions": 11.0,
+    "position": 3.45
+  },
+  {
+    "id": "d80bbc23-a299-4d63-87a7-db7ae19921cc",
+    "clicks": 4.0,
+    "impressions": 11.0,
+    "position": 3.73
+  },
+  {
+    "id": "fa9819f3-5a5f-4bea-880e-fb9601548013",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 2.09
+  },
+  {
+    "id": "68718273-243d-47da-8da6-82f75a5c3d8f",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 3.55
+  },
+  {
+    "id": "57727c58-78df-4fdd-90d8-eedd5a94d803",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 4.0
+  },
+  {
+    "id": "f95484a5-0869-4813-b854-84a064397429",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 4.0
+  },
+  {
+    "id": "55e54d93-ea98-447e-9b31-d1b3c30d7f2f",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 4.91
+  },
+  {
+    "id": "97cc33ec-f233-4609-9d1a-18d8b2415e20",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 5.55
+  },
+  {
+    "id": "bf48fc29-f277-45a8-8ff0-6e9e148b78ec",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 11.36
+  },
+  {
+    "id": "3899def1-fda9-46bc-86fd-145ac4b3cf9e",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 17.45
+  },
+  {
+    "id": "51fd8d6e-6a36-4589-9005-3a1f3c67dade",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 17.73
+  },
+  {
+    "id": "031e6da0-c87c-41a1-9396-3296284e0cde",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.38,
+    "gen_ai_impressions": 3.0
+  },
+  {
     "id": "4db7f94c-9ced-4649-8252-244ea6495dc0",
     "clicks": 2.0,
     "impressions": 11.0,
@@ -3106,12 +2536,6 @@
     "clicks": 2.0,
     "impressions": 11.0,
     "position": 2.73
-  },
-  {
-    "id": "b12456d4-a5a3-4154-96f3-b7ed8c550f5e",
-    "clicks": 2.0,
-    "impressions": 11.0,
-    "position": 3.09
   },
   {
     "id": "fe24fa31-8a15-42b2-ae08-21dd177866c0",
@@ -3150,12 +2574,6 @@
     "position": 5.09
   },
   {
-    "id": "85aadf1b-8acf-4c5a-9eeb-2c080e65a8db",
-    "clicks": 2.0,
-    "impressions": 11.0,
-    "position": 5.64
-  },
-  {
     "id": "a1b1a5a6-28c9-46d1-8075-b6f764dced81",
     "clicks": 2.0,
     "impressions": 11.0,
@@ -3172,6 +2590,102 @@
     "clicks": 2.0,
     "impressions": 11.0,
     "position": 13.91
+  },
+  {
+    "id": "31ab9ea2-76ef-4913-bbe0-1faa6757552d",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 3.7,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "e5f7af21-15a4-4cd4-8d93-8648fb958d6c",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 6.6,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "dc9a5b0e-88ad-4be3-ac0b-78f03aefc729",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 7.5,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "47d0787b-3aae-449b-b6bc-5be823e535d5",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 14.2,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "86b231fd-fff3-4135-bb8f-36a71b258d11",
+    "clicks": 4.0,
+    "impressions": 10.0,
+    "position": 2.7
+  },
+  {
+    "id": "319f59dd-d341-44ec-92de-bad041fdc786",
+    "clicks": 4.0,
+    "impressions": 10.0,
+    "position": 5.2
+  },
+  {
+    "id": "fce5d829-b570-4c01-8062-04c418c3295d",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 1.7
+  },
+  {
+    "id": "715f4720-f84b-418e-9342-cc7dc4c8e506",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 4.3
+  },
+  {
+    "id": "5e7c0ec1-a268-4344-8545-ded2be2b2e0e",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 4.4
+  },
+  {
+    "id": "1c3860d3-aed8-4a3b-a34a-c13f1e018633",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 4.5
+  },
+  {
+    "id": "4a59ff02-c25b-4f6d-835d-02bd02f227cb",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 4.8
+  },
+  {
+    "id": "c9fb63f6-8f27-41c1-8fed-d8f93f92baca",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 6.9
+  },
+  {
+    "id": "71803684-e19c-405c-8eb0-3f68f873b00c",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 10.6
+  },
+  {
+    "id": "7cd630b8-4f0a-4da2-ae4b-cabaa4e55b99",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 3.33,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a5444016-e52f-4fa6-90af-953850feea1f",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.38,
+    "gen_ai_impressions": 2.0
   },
   {
     "id": "dbcfab24-e074-42c3-8ae2-1aca97319a83",
@@ -3208,12 +2722,6 @@
     "clicks": 2.0,
     "impressions": 10.0,
     "position": 3.2
-  },
-  {
-    "id": "31ab9ea2-76ef-4913-bbe0-1faa6757552d",
-    "clicks": 2.0,
-    "impressions": 10.0,
-    "position": 3.7
   },
   {
     "id": "c5d3ddf6-f2ee-4cf1-b768-293699aa1ba1",
@@ -3270,18 +2778,6 @@
     "position": 5.8
   },
   {
-    "id": "12e3a849-3a04-4330-b3fc-ceeefa292eee",
-    "clicks": 2.0,
-    "impressions": 10.0,
-    "position": 6.5
-  },
-  {
-    "id": "e5f7af21-15a4-4cd4-8d93-8648fb958d6c",
-    "clicks": 2.0,
-    "impressions": 10.0,
-    "position": 6.6
-  },
-  {
     "id": "123b75f3-4424-44d1-bb1c-59ef53e391c8",
     "clicks": 2.0,
     "impressions": 10.0,
@@ -3294,16 +2790,154 @@
     "position": 7.4
   },
   {
-    "id": "dc9a5b0e-88ad-4be3-ac0b-78f03aefc729",
+    "id": "6de0dee4-71c0-4b9d-afba-4e8f90cce243",
     "clicks": 2.0,
-    "impressions": 10.0,
-    "position": 7.5
+    "impressions": 9.0,
+    "position": 4.11,
+    "gen_ai_impressions": 1.0
   },
   {
-    "id": "47d0787b-3aae-449b-b6bc-5be823e535d5",
+    "id": "9fbf6baa-1089-41f3-b752-a2af46c2fea4",
     "clicks": 2.0,
-    "impressions": 10.0,
-    "position": 14.2
+    "impressions": 9.0,
+    "position": 5.78,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b8f2e522-1598-4ff9-b2f1-b7a7b7e3f031",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.88,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "bc50dc90-6d90-4d88-af44-48d983a5cf16",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 1.83,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "1b2da366-1881-4cf4-be80-09dde3226d4b",
+    "clicks": 0.0,
+    "impressions": 5.0,
+    "position": 0.0,
+    "gen_ai_impressions": 5.0
+  },
+  {
+    "id": "8b128ec7-e828-4235-8b7f-f603dbf5b987",
+    "clicks": 0.0,
+    "impressions": 5.0,
+    "position": 0.0,
+    "gen_ai_impressions": 5.0
+  },
+  {
+    "id": "cd10c95b-5aa0-4601-a1fb-e04a53a26a8b",
+    "clicks": 6.0,
+    "impressions": 9.0,
+    "position": 3.22
+  },
+  {
+    "id": "cd7e565a-18b2-4a2d-abbd-df9b1789807a",
+    "clicks": 4.0,
+    "impressions": 9.0,
+    "position": 2.44
+  },
+  {
+    "id": "d16b69bb-2a38-4a61-9bb1-e9183f63ea15",
+    "clicks": 4.0,
+    "impressions": 9.0,
+    "position": 2.56
+  },
+  {
+    "id": "5996046b-96bc-46dc-a6de-cd4b624d3710",
+    "clicks": 4.0,
+    "impressions": 9.0,
+    "position": 3.44
+  },
+  {
+    "id": "bd3c923d-dbae-416a-899a-00870f7f3c56",
+    "clicks": 4.0,
+    "impressions": 9.0,
+    "position": 4.22
+  },
+  {
+    "id": "b683f260-170c-436a-87a0-ecef23d1070b",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 2.56
+  },
+  {
+    "id": "9da7403f-a1b0-4e58-9937-d907038bb447",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 3.0
+  },
+  {
+    "id": "fc16870d-f6e6-4b88-92fb-80cfad563053",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 3.78
+  },
+  {
+    "id": "bfb24bc0-7c3e-4899-a3dc-b0984da42de4",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 4.11
+  },
+  {
+    "id": "dff2f1ea-d5cf-4b35-b835-de993ba7c26d",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 4.22
+  },
+  {
+    "id": "988a9a2c-a3ff-4fa5-8ae1-e18fb6ff078c",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 4.56
+  },
+  {
+    "id": "d6c38d59-530f-4923-82b7-6d0e996ac02b",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 4.78
+  },
+  {
+    "id": "218d23aa-1cb1-47ea-b4a5-d208f79b71d1",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 5.56
+  },
+  {
+    "id": "56aa235b-e0dc-409b-8f5d-fb5ffc44e016",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 6.33
+  },
+  {
+    "id": "8f2c7f71-dbb1-4958-affc-2fb06e688605",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 6.56
+  },
+  {
+    "id": "0e36f283-7377-4340-a542-45f998b0d655",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 7.44
+  },
+  {
+    "id": "8ca32d69-faa9-4805-93df-816cc93b5478",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 7.56
+  },
+  {
+    "id": "5eb283f5-dd2e-4bb7-8629-8dc32f85d72e",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 8.67
   },
   {
     "id": "84614119-4616-4349-ac5c-9441d24c0c6c",
@@ -3358,12 +2992,6 @@
     "clicks": 2.0,
     "impressions": 9.0,
     "position": 4.0
-  },
-  {
-    "id": "6de0dee4-71c0-4b9d-afba-4e8f90cce243",
-    "clicks": 2.0,
-    "impressions": 9.0,
-    "position": 4.11
   },
   {
     "id": "2ccee52a-fca0-4cde-85e8-f6e327e72803",
@@ -3438,12 +3066,6 @@
     "position": 5.33
   },
   {
-    "id": "9fbf6baa-1089-41f3-b752-a2af46c2fea4",
-    "clicks": 2.0,
-    "impressions": 9.0,
-    "position": 5.78
-  },
-  {
     "id": "72321b75-c876-432a-a0a8-0bd9ce588578",
     "clicks": 2.0,
     "impressions": 9.0,
@@ -3477,7 +3099,164 @@
     "id": "44d3e967-44bf-4588-b33c-8b2e54c61d41",
     "clicks": 2.0,
     "impressions": 8.0,
-    "position": 1.75
+    "position": 1.75,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ebcc8e8c-4f36-4cb4-ac2d-2cfff0ecd7df",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.12,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "c179974b-d097-4fe2-a781-98dec8ef0186",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.38,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "0abb6d31-4f8c-44c6-a45b-25e8f9d282bd",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.62,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "145656a0-d6ba-41e3-b349-5685be45d12c",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.86,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "6e19e627-a781-4fd2-8c14-b462069eb36b",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.0,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "41694046-728b-4929-bcb4-3c02fe90f2b9",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 1.0
+  },
+  {
+    "id": "9f86c421-7732-4ed5-8d2d-dfd01d9c7eff",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 2.62
+  },
+  {
+    "id": "70595014-f392-4d01-b90d-d6bb2d60a170",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 2.75
+  },
+  {
+    "id": "70e61090-c2e4-4ef5-81af-7c348402089c",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 2.75
+  },
+  {
+    "id": "00b1ad81-f40d-4f37-b7c4-52c8b395d23e",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 2.88
+  },
+  {
+    "id": "986b25cf-b96d-4959-a2a6-10a810a5d821",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 6.38
+  },
+  {
+    "id": "e9066933-58b6-4256-bfec-5a0c71dac05c",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 1.0
+  },
+  {
+    "id": "bb3b8275-9bb5-4820-bbb1-b118584fde36",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.0
+  },
+  {
+    "id": "c3668de4-9ad4-4071-bb28-221852b6985b",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.12
+  },
+  {
+    "id": "f9c13892-7ab0-4ba5-bc76-339f15fd521e",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.12
+  },
+  {
+    "id": "5e889d98-6b1c-42ac-bc76-3a96b3455e29",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.5
+  },
+  {
+    "id": "fd0a0a7a-5fa4-49b2-bea9-7dda30f57a06",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.62
+  },
+  {
+    "id": "3d98d856-79eb-4a74-a8e5-bbdfa8f4c87f",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 3.0
+  },
+  {
+    "id": "737830fa-2a2f-43bd-bcbb-da8c9a822622",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 3.25
+  },
+  {
+    "id": "4e9565b2-b33d-4ff5-84c1-573cb3506d3c",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 3.5
+  },
+  {
+    "id": "0fd98201-5969-47e6-b4d2-1dfcc173f26b",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 5.12
+  },
+  {
+    "id": "168d9612-e0ae-413f-b3a8-16b05ceaf3ba",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 5.62
+  },
+  {
+    "id": "47e6d1ca-4774-4401-b0e2-18e3c0140649",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 7.0
+  },
+  {
+    "id": "8b32d442-2a20-4181-9b47-b6bd86df2603",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 14.75
+  },
+  {
+    "id": "296bd3ac-e5a4-45de-a1a7-0a2fc086aa65",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 3.57,
+    "gen_ai_impressions": 1.0
   },
   {
     "id": "7d8b7db6-10a2-41dd-b332-7a5f11a8d519",
@@ -3516,19 +3295,7 @@
     "position": 3.12
   },
   {
-    "id": "ebcc8e8c-4f36-4cb4-ac2d-2cfff0ecd7df",
-    "clicks": 2.0,
-    "impressions": 8.0,
-    "position": 3.12
-  },
-  {
     "id": "14aff8cf-5838-4b67-a508-a6d07732aa88",
-    "clicks": 2.0,
-    "impressions": 8.0,
-    "position": 3.38
-  },
-  {
-    "id": "c179974b-d097-4fe2-a781-98dec8ef0186",
     "clicks": 2.0,
     "impressions": 8.0,
     "position": 3.38
@@ -3540,12 +3307,6 @@
     "position": 3.5
   },
   {
-    "id": "0abb6d31-4f8c-44c6-a45b-25e8f9d282bd",
-    "clicks": 2.0,
-    "impressions": 8.0,
-    "position": 3.62
-  },
-  {
     "id": "64dd0724-f4a7-48a9-b5be-5e7a309ce56a",
     "clicks": 2.0,
     "impressions": 8.0,
@@ -3553,12 +3314,6 @@
   },
   {
     "id": "98310cbf-e772-4738-98be-ca3b738e2dc1",
-    "clicks": 2.0,
-    "impressions": 8.0,
-    "position": 3.88
-  },
-  {
-    "id": "b8f2e522-1598-4ff9-b2f1-b7a7b7e3f031",
     "clicks": 2.0,
     "impressions": 8.0,
     "position": 3.88
@@ -3666,16 +3421,230 @@
     "position": 10.25
   },
   {
-    "id": "95601b8a-8001-4ba7-b178-dc45938cac09",
-    "clicks": 2.0,
-    "impressions": 8.0,
-    "position": 15.25
-  },
-  {
     "id": "f433ee21-6e61-4ebf-bf05-4f691e22a5bc",
     "clicks": 2.0,
     "impressions": 8.0,
     "position": 19.12
+  },
+  {
+    "id": "434471a1-013a-4a9b-a5c5-3950eb160d8b",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "29626c64-5ed9-4267-8fc0-c6544633cf3b",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d3d16fd2-a47c-4661-a667-5e153603efb7",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.71,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d5c280ae-b8a0-4efe-8ca5-e0c3f42a8482",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.86,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6968ba60-8030-4e15-bb53-f2a9ed9eb5b6",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.5,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "18ea303a-987e-4ff8-80f7-21356f8a7caf",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.8,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "cd462c44-624a-45fe-bf82-444844e75eaf",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.0,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "362d31d2-f724-409a-ae7f-7f66f737d3a6",
+    "clicks": 0.0,
+    "impressions": 4.0,
+    "position": 0.0,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "5130fab3-db93-42dc-8538-55e8103ad0ac",
+    "clicks": 0.0,
+    "impressions": 4.0,
+    "position": 0.0,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "7c44ccd5-9dac-4645-aa11-bcb4d83ef240",
+    "clicks": 0.0,
+    "impressions": 4.0,
+    "position": 0.0,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "f2ccd0d5-71db-454d-962c-c74bf107aa64",
+    "clicks": 0.0,
+    "impressions": 4.0,
+    "position": 0.0,
+    "gen_ai_impressions": 4.0
+  },
+  {
+    "id": "e2074c0e-e8be-41dc-8ceb-0c59608b8a1f",
+    "clicks": 5.0,
+    "impressions": 7.0,
+    "position": 2.43
+  },
+  {
+    "id": "9e317767-9c2c-422e-a06f-dd6dd8fd8075",
+    "clicks": 4.0,
+    "impressions": 7.0,
+    "position": 3.86
+  },
+  {
+    "id": "0ccca65e-c825-43dc-b460-08c04c6f30b2",
+    "clicks": 4.0,
+    "impressions": 6.0,
+    "position": 1.17,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8ba3636d-2c3d-436b-8f87-d001df234b08",
+    "clicks": 4.0,
+    "impressions": 5.0,
+    "position": 2.8,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "45f55791-82b3-496a-a060-cc98c50dff86",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 1.14
+  },
+  {
+    "id": "d67f64e8-d22f-45b6-bd0f-d796475b0907",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 1.57
+  },
+  {
+    "id": "d58b7a0a-cf08-4bc6-98e5-5d9f411c3627",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 1.86
+  },
+  {
+    "id": "9a96bfb9-f52c-4505-adb4-47a46a853f19",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.0
+  },
+  {
+    "id": "92799edb-7ae6-4446-b72e-1e39ec47868f",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.14
+  },
+  {
+    "id": "c4248b5c-005d-450c-8672-93ef38c0cebd",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.29
+  },
+  {
+    "id": "daf5bcd2-277b-4ecb-978d-ff10f78e8c6f",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.71
+  },
+  {
+    "id": "b206f7e0-ef24-4caa-8cba-824b5c086183",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.86
+  },
+  {
+    "id": "22b6aaf5-ea2f-4ee7-b495-cbc506f205f0",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 3.29
+  },
+  {
+    "id": "7540c2fa-94b5-4f4c-8d8b-f75b95217614",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 4.0
+  },
+  {
+    "id": "f68fca4c-1ee4-47fe-979d-942639f19131",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 4.29
+  },
+  {
+    "id": "83c0d259-40f7-4b4d-bf3b-588acb9cd07f",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 4.57
+  },
+  {
+    "id": "0047077b-bd61-48b6-acce-9fd8e87f998b",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 5.43
+  },
+  {
+    "id": "c2637bbf-5fdf-4797-af58-1db10a68ed6e",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 5.43
+  },
+  {
+    "id": "fbf17748-0eb0-4be6-a9fd-6dbef0b1e60a",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 5.43
+  },
+  {
+    "id": "65fb0eb4-28f7-4c3e-8c1c-33df1397b9a9",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 15.29
+  },
+  {
+    "id": "450fa374-0bff-4c00-94ab-295a52b8e860",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 3.83,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a222814a-54ea-40d1-b21b-f23dcded287c",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 3.83,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ba3cde49-51fa-4d74-9211-e40d56dafa64",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 10.17,
+    "gen_ai_impressions": 1.0
   },
   {
     "id": "c03e584f-ae83-4895-86cf-65b2220ea433",
@@ -3720,12 +3689,6 @@
     "position": 2.86
   },
   {
-    "id": "145656a0-d6ba-41e3-b349-5685be45d12c",
-    "clicks": 2.0,
-    "impressions": 7.0,
-    "position": 2.86
-  },
-  {
     "id": "9077a7a3-9bb0-4dc6-bbae-dd1652897279",
     "clicks": 2.0,
     "impressions": 7.0,
@@ -3736,12 +3699,6 @@
     "clicks": 2.0,
     "impressions": 7.0,
     "position": 2.86
-  },
-  {
-    "id": "434471a1-013a-4a9b-a5c5-3950eb160d8b",
-    "clicks": 2.0,
-    "impressions": 7.0,
-    "position": 3.0
   },
   {
     "id": "91ab7daf-8130-4034-9da7-17940aa87154",
@@ -3948,12 +3905,6 @@
     "position": 5.57
   },
   {
-    "id": "29626c64-5ed9-4267-8fc0-c6544633cf3b",
-    "clicks": 2.0,
-    "impressions": 7.0,
-    "position": 6.0
-  },
-  {
     "id": "4f6b4106-fca1-45d3-a092-4ba631ea74c0",
     "clicks": 2.0,
     "impressions": 7.0,
@@ -3988,18 +3939,6 @@
     "clicks": 2.0,
     "impressions": 7.0,
     "position": 6.71
-  },
-  {
-    "id": "d3d16fd2-a47c-4661-a667-5e153603efb7",
-    "clicks": 2.0,
-    "impressions": 7.0,
-    "position": 6.71
-  },
-  {
-    "id": "d5c280ae-b8a0-4efe-8ca5-e0c3f42a8482",
-    "clicks": 2.0,
-    "impressions": 7.0,
-    "position": 6.86
   },
   {
     "id": "da14a677-b1ef-4919-9a70-64b48307b1a8",
@@ -4044,6 +3983,143 @@
     "position": 9.29
   },
   {
+    "id": "7c90c625-c5a8-4bc4-9e44-1ca3a54c7693",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.17,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5a48e204-4716-4487-9d1e-8083a999c6ca",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.67,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "78471005-0e1a-4174-8946-a7262a77dc67",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 6.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "81d7b18c-e106-423e-a6c2-1e1a0c5cdc55",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 12.83,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8a6a75ec-c3b8-4661-886a-ee72a5f14021",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 6.4,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "24748582-62b1-4c1b-bb5b-8d2180b94ec7",
+    "clicks": 6.0,
+    "impressions": 6.0,
+    "position": 1.0
+  },
+  {
+    "id": "8d929a14-099e-48ab-8d70-cc3eea9b69e3",
+    "clicks": 4.0,
+    "impressions": 6.0,
+    "position": 2.33
+  },
+  {
+    "id": "658cf5f9-3dd8-4c52-b79f-6b2f771a6c37",
+    "clicks": 4.0,
+    "impressions": 6.0,
+    "position": 3.5
+  },
+  {
+    "id": "501776dc-4fac-4395-9ddc-a2717d4e695c",
+    "clicks": 4.0,
+    "impressions": 6.0,
+    "position": 4.33
+  },
+  {
+    "id": "f0d2804e-98da-4f33-abf8-78c526a549af",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 1.33
+  },
+  {
+    "id": "f8e9c274-3a76-4b92-b1f6-cef92523b89d",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 1.83
+  },
+  {
+    "id": "ffc7559e-c23e-4eb8-ab46-4935eb3f86e8",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 2.33
+  },
+  {
+    "id": "b5a9424f-5f0a-40dc-af59-7e42a992d865",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 2.5
+  },
+  {
+    "id": "493e614c-df85-4d73-bbcc-3d0f1cbf1583",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 2.83
+  },
+  {
+    "id": "1bb5f39c-61d6-4884-a453-9e612b83d409",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 3.17
+  },
+  {
+    "id": "b82f10b3-0dda-4fdd-bd2d-708d3c7f248b",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 3.33
+  },
+  {
+    "id": "70cd2c74-4e37-4e30-9f33-3f18d0886544",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 4.33
+  },
+  {
+    "id": "85d205e6-4681-48b9-8058-e2aa738d600b",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 4.5
+  },
+  {
+    "id": "7ac524fd-9435-4df7-89c2-f05a5c4b06d7",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 5.0
+  },
+  {
+    "id": "1b19af8a-f04f-423c-900b-06fa2a8e70b8",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 5.67
+  },
+  {
+    "id": "aa47281c-42d1-4685-abdb-e1210c547d1c",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 5.67
+  },
+  {
+    "id": "52df918e-b6ec-46da-9728-2cc8df8e29ed",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 10.33
+  },
+  {
     "id": "7cc792df-a75b-4310-b610-a5e4aa16b186",
     "clicks": 2.0,
     "impressions": 6.0,
@@ -4063,12 +4139,6 @@
   },
   {
     "id": "313f66e1-b349-4386-8a11-d016a3a1e29a",
-    "clicks": 2.0,
-    "impressions": 6.0,
-    "position": 1.83
-  },
-  {
-    "id": "bc50dc90-6d90-4d88-af44-48d983a5cf16",
     "clicks": 2.0,
     "impressions": 6.0,
     "position": 1.83
@@ -4128,12 +4198,6 @@
     "position": 3.17
   },
   {
-    "id": "7c90c625-c5a8-4bc4-9e44-1ca3a54c7693",
-    "clicks": 2.0,
-    "impressions": 6.0,
-    "position": 3.17
-  },
-  {
     "id": "a65efb0c-2409-4f8b-96b9-9866cee68ead",
     "clicks": 2.0,
     "impressions": 6.0,
@@ -4158,12 +4222,6 @@
     "position": 3.5
   },
   {
-    "id": "6968ba60-8030-4e15-bb53-f2a9ed9eb5b6",
-    "clicks": 2.0,
-    "impressions": 6.0,
-    "position": 3.5
-  },
-  {
     "id": "ef0a148c-91f1-40d8-8ddc-3e2c1d1aec39",
     "clicks": 2.0,
     "impressions": 6.0,
@@ -4174,12 +4232,6 @@
     "clicks": 2.0,
     "impressions": 6.0,
     "position": 3.5
-  },
-  {
-    "id": "5a48e204-4716-4487-9d1e-8083a999c6ca",
-    "clicks": 2.0,
-    "impressions": 6.0,
-    "position": 3.67
   },
   {
     "id": "72533c60-1eff-48a2-801f-40ce8eab243a",
@@ -4296,12 +4348,6 @@
     "position": 5.33
   },
   {
-    "id": "78471005-0e1a-4174-8946-a7262a77dc67",
-    "clicks": 2.0,
-    "impressions": 6.0,
-    "position": 6.0
-  },
-  {
     "id": "14f89323-0339-4c09-b7b7-aa8a9586864d",
     "clicks": 2.0,
     "impressions": 6.0,
@@ -4356,12 +4402,6 @@
     "position": 9.67
   },
   {
-    "id": "81d7b18c-e106-423e-a6c2-1e1a0c5cdc55",
-    "clicks": 2.0,
-    "impressions": 6.0,
-    "position": 12.83
-  },
-  {
     "id": "89f5400c-7722-49a2-95d7-df99b34bd044",
     "clicks": 2.0,
     "impressions": 6.0,
@@ -4398,10 +4438,214 @@
     "position": 18.67
   },
   {
-    "id": "6e19e627-a781-4fd2-8c14-b462069eb36b",
+    "id": "0527bc18-f42d-4377-9c51-0c3f13f2afac",
     "clicks": 2.0,
     "impressions": 5.0,
-    "position": 1.0
+    "position": 3.8,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "97b1439b-89cf-4a52-8154-b9de56311867",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.8,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d5f1a569-4f10-4378-9bbe-d3d32fc17683",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.75,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "083805c5-4691-4b60-a67e-1717c993c3b3",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "086d6df1-01c0-4c59-aa4f-2f58f240eb7c",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "0c1ba724-5795-4ad6-ace9-4e3b39b8cf52",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "1a86eed4-0127-47fa-8a87-9db74b3349b9",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "415e53aa-7b95-433c-a3aa-61b75bc60979",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "4a7c9db6-2955-46cb-a1c6-f2d10d37b586",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "506980e6-9bbc-4fe8-b9ef-1a24e3f0a78c",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "5c5245d9-c8ae-4b4d-b0c8-25db6f7e1098",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "6069d39f-9f9a-4cf5-83dd-0f6497915b37",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "67bc7297-5966-45ba-8d04-dc0d74ef6f78",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "7b6b5f37-193a-4c96-b8f5-a7dc90d8c52f",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "e1987e06-3cc6-4e0b-9c19-08ccf8af8ecd",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "e9ce8abf-4375-4d14-b3ad-24924250ec5f",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "f13392e7-becc-4a0a-a468-2129b9c1c881",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "f65776c7-d446-438c-b9aa-96c085fe36d9",
+    "clicks": 0.0,
+    "impressions": 3.0,
+    "position": 0.0,
+    "gen_ai_impressions": 3.0
+  },
+  {
+    "id": "6b29bebb-bb45-4872-9629-efdbe4171730",
+    "clicks": 5.0,
+    "impressions": 5.0,
+    "position": 1.2
+  },
+  {
+    "id": "5468c833-6ecc-4eeb-a65c-cfa5f778d53d",
+    "clicks": 4.0,
+    "impressions": 5.0,
+    "position": 6.4
+  },
+  {
+    "id": "cf3d0318-0f86-4622-bef3-301701b309c3",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 1.2
+  },
+  {
+    "id": "1289f546-fe23-41bc-90b5-2ae1384b21ad",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 1.4
+  },
+  {
+    "id": "0769cf24-1afb-4c4d-938e-80a72e20ffc3",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 1.8
+  },
+  {
+    "id": "cf63cbc2-4768-444f-b8dd-cfb2f77e8c68",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 1.8
+  },
+  {
+    "id": "37b2dc45-9084-4575-9ed2-02941b3de7fc",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.0
+  },
+  {
+    "id": "37b95fb7-0a6c-4519-8825-b275de8c2611",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.4
+  },
+  {
+    "id": "10c4d45e-3de5-44bf-a823-53a694dfd18d",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "be856d37-db0c-45eb-a19e-edcfdd31d600",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "ff6eeb76-3642-45e7-af7a-529845aa7fb3",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "250b6801-0f32-4609-a8a2-129369f7be4a",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 3.4
+  },
+  {
+    "id": "9535236b-e20c-495e-bd6f-3c8809988543",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 4.0
+  },
+  {
+    "id": "2d7b7335-47fe-483f-9550-ce5fc99d0e85",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 8.0
   },
   {
     "id": "795ad20c-6ed0-45c2-81bc-f8a45474733b",
@@ -4450,12 +4694,6 @@
     "clicks": 2.0,
     "impressions": 5.0,
     "position": 1.6
-  },
-  {
-    "id": "18ea303a-987e-4ff8-80f7-21356f8a7caf",
-    "clicks": 2.0,
-    "impressions": 5.0,
-    "position": 1.8
   },
   {
     "id": "2bc88150-0425-4f7a-878d-5a15208649aa",
@@ -4566,19 +4804,7 @@
     "position": 3.6
   },
   {
-    "id": "0527bc18-f42d-4377-9c51-0c3f13f2afac",
-    "clicks": 2.0,
-    "impressions": 5.0,
-    "position": 3.8
-  },
-  {
     "id": "54363fd9-4fd2-4dc4-9e48-745833622c84",
-    "clicks": 2.0,
-    "impressions": 5.0,
-    "position": 3.8
-  },
-  {
-    "id": "97b1439b-89cf-4a52-8154-b9de56311867",
     "clicks": 2.0,
     "impressions": 5.0,
     "position": 3.8
@@ -4740,12 +4966,6 @@
     "position": 6.0
   },
   {
-    "id": "8a6a75ec-c3b8-4661-886a-ee72a5f14021",
-    "clicks": 2.0,
-    "impressions": 5.0,
-    "position": 6.4
-  },
-  {
     "id": "0c4b4134-4917-43e1-a18b-2b61d4be8cdf",
     "clicks": 2.0,
     "impressions": 5.0,
@@ -4794,6 +5014,111 @@
     "position": 29.4
   },
   {
+    "id": "fb4c7660-2af5-48fc-b53d-a74d1af7a7a0",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.5,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "bf06fd82-e6a7-422f-aa8c-da8671d7e0a1",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "88127f78-c05b-4d07-aa8b-fa03540545f3",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.67,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "226b3ff1-b955-4dd0-b88e-9cb70a7d33b0",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "6466a8b8-d26f-498f-ab4d-4d9da9b92a0c",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "a617d045-6e10-467d-8f5a-dd4af0ee5fc6",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "438f5ab7-8691-4f0e-8fed-c21519cce127",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.25
+  },
+  {
+    "id": "82213995-55f3-45ee-96be-406f75d409da",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.75
+  },
+  {
+    "id": "4be1f65e-ce78-4124-8872-3eb310329475",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "61ca0e5a-ee0f-4bcb-92ff-38e07603db29",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "d44d1650-0e08-4b40-88e6-83828fb7ec1d",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "83389359-a7b7-4637-ade7-c68b9a7cec7b",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 3.25
+  },
+  {
+    "id": "b54f314f-edce-4b79-862c-f15abe60a554",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 4.0
+  },
+  {
+    "id": "1ca5186a-11ac-4b1a-88c6-64c2a07f624d",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 4.5
+  },
+  {
+    "id": "d623e908-6251-4e98-a2d1-5ca6fe0cd6e4",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 4.75
+  },
+  {
+    "id": "320b165e-60a0-468b-a113-e6c0ec3bf249",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 5.25
+  },
+  {
+    "id": "3c69d5a5-8a88-42fe-969e-d7a5a0d265c9",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 8.5
+  },
+  {
     "id": "1003a0c0-0433-4fc5-a500-47c4906f3d7e",
     "clicks": 2.0,
     "impressions": 4.0,
@@ -4807,12 +5132,6 @@
   },
   {
     "id": "93e3027d-7c94-4af1-8e76-d77ccd7dcb89",
-    "clicks": 2.0,
-    "impressions": 4.0,
-    "position": 1.0
-  },
-  {
-    "id": "cd462c44-624a-45fe-bf82-444844e75eaf",
     "clicks": 2.0,
     "impressions": 4.0,
     "position": 1.0
@@ -5106,12 +5425,6 @@
     "position": 3.5
   },
   {
-    "id": "d5f1a569-4f10-4378-9bbe-d3d32fc17683",
-    "clicks": 2.0,
-    "impressions": 4.0,
-    "position": 3.75
-  },
-  {
     "id": "fa2d82c5-c4b2-495e-a28d-4cbbbd0ef495",
     "clicks": 2.0,
     "impressions": 4.0,
@@ -5196,12 +5509,6 @@
     "position": 4.5
   },
   {
-    "id": "fb4c7660-2af5-48fc-b53d-a74d1af7a7a0",
-    "clicks": 2.0,
-    "impressions": 4.0,
-    "position": 4.5
-  },
-  {
     "id": "6e922ca3-bb6e-491c-ba19-cb05bd4959a4",
     "clicks": 2.0,
     "impressions": 4.0,
@@ -5215,12 +5522,6 @@
   },
   {
     "id": "ab2d1b48-1aa8-476f-879c-04cabf5c4535",
-    "clicks": 2.0,
-    "impressions": 4.0,
-    "position": 5.0
-  },
-  {
-    "id": "bf06fd82-e6a7-422f-aa8c-da8671d7e0a1",
     "clicks": 2.0,
     "impressions": 4.0,
     "position": 5.0
@@ -5364,6 +5665,412 @@
     "position": 16.0
   },
   {
+    "id": "80c1d25d-a8cf-4b12-8c01-38e290453bf0",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "bbeee7c3-5a12-4d8d-bc4d-dcb80320974e",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "038b6e1b-1def-4dad-9cc2-147011f21467",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "12aba1c3-d95d-418b-8305-7854aae91fd4",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "13143db6-4952-42fd-8db1-9a7398be14c7",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "1b46858a-d4e2-4bac-8aaa-f3f887f525fc",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "1de0ca89-da27-4649-9300-c4a0f572fe82",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "22718169-a9c0-4ff9-9fe2-b66d590d8e38",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "22d3e8cc-9987-429c-ac5f-3de7fb871255",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "2a710445-0e88-4b4d-8a65-18683b207170",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "2ab10a3c-1055-488d-913d-01db38cad846",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "2fa0cf37-dfa8-4850-88e1-f7af3e0325ed",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "31a9ea1b-9d10-420c-89ca-1a8ed252b5dc",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "34551dce-ca1e-42c5-b3f5-37dbe12600a7",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "399b31e3-f299-4e62-968b-a9eeeb29f706",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "3db7ce5d-10ff-4f8c-9807-aab5a0c1d329",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "4096c1a6-2bc5-41f8-9df4-29e14ac2157d",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "477a7311-7540-4322-b6e3-0adb97d4b9db",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "4c35e2ea-59ea-42ce-856e-3dd35797da99",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "60e212d6-7e0c-48e6-9374-c5c43ce3c9ee",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "61e3d64e-aaa4-4563-8d8c-0420c9cd0115",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "660cc5f7-0b93-4cd6-9daa-cc2e3d19ce84",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "67749748-e46f-45a9-a02c-93f910fd0f01",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "69b77746-08a7-492b-a3f4-1058625d64db",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "6a6b57a0-509e-409b-a9fc-dc4ef3506b1e",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "6d0ca3bb-08fa-411a-9c1d-6b627af766d9",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "6d362731-d026-4e99-a645-8d5c6acabccf",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "6d832485-4db9-48a9-9b45-e6865d5c88f9",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "72a10673-3fc8-420c-9b3a-fc38c91db149",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "7ac1980a-c6c7-46e5-80bc-8d82107f9915",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "7cac4823-6611-431a-a038-753e37179d6e",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "7d2da921-bb15-49d0-9a05-a4e17b7ef162",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "7f3ade5c-536c-4e18-80e0-c2dc0eed4132",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "86c51fcb-1c01-4759-885d-5bd450691d2d",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "89535246-cb01-4018-b3ef-a586d9ebf0fa",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "8b108ad1-a043-4ac8-be22-a0fbb1a8e030",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "8ca1a0bb-21fb-4238-85b6-aa21cd40a526",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "8daa45ad-0578-4fdb-b734-ab0009c37b5f",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "8fa60be4-0fb6-467d-b410-e90d88e3645f",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "9c3f7868-8c2a-44f1-9f2e-818f6598e2a4",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "a61441fb-3828-40d4-974b-242803eaeb9a",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "aaf8965c-daec-495c-9b28-ac830cbeb0de",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "af639867-1c9a-4ce7-9d28-fe671622d5e0",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "b02ea021-9362-4437-bc96-35b9491f34c3",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "b60f9057-0b1b-4bd9-97c6-a22114226ff0",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "b7a380f9-b805-4772-8eb7-396d2be6f371",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "cd61e747-9837-4890-a366-5b9c7eb63d5e",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "dd04b186-d273-4ebf-b76b-2bca363adf54",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "df91b67f-d0fc-4040-9b7e-84d95708f12f",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "eb22c2c2-96fd-4110-bfd9-249027bc8156",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "ecd0c5bd-d506-46e2-b8ce-ec767366d01c",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "fa1603df-3e89-468a-9cda-90ba0802cfd1",
+    "clicks": 0.0,
+    "impressions": 2.0,
+    "position": 0.0,
+    "gen_ai_impressions": 2.0
+  },
+  {
+    "id": "7f2517f4-f080-4d14-b971-fae87916e580",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 1.0
+  },
+  {
+    "id": "118ef8c2-d821-4205-bd2b-6fd4ac0bc1d6",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 1.33
+  },
+  {
+    "id": "1c14577b-7054-4365-8459-d00d763face0",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 1.33
+  },
+  {
+    "id": "455197ee-73f1-4c92-aca6-0b07054ffeed",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "6373135f-79a5-4280-ab4b-18774ca8e94e",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "cc653cd1-0141-4943-b269-3ba53a963ebc",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "042a873a-2ad8-494d-a41a-01683072c948",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 2.33
+  },
+  {
     "id": "2b745d4b-42fa-4fde-ac60-ab844b21a943",
     "clicks": 2.0,
     "impressions": 3.0,
@@ -5377,12 +6084,6 @@
   },
   {
     "id": "7dca0755-9539-43b9-8731-3faf44833d12",
-    "clicks": 2.0,
-    "impressions": 3.0,
-    "position": 1.0
-  },
-  {
-    "id": "80c1d25d-a8cf-4b12-8c01-38e290453bf0",
     "clicks": 2.0,
     "impressions": 3.0,
     "position": 1.0
@@ -5520,12 +6221,6 @@
     "position": 2.0
   },
   {
-    "id": "bbeee7c3-5a12-4d8d-bc4d-dcb80320974e",
-    "clicks": 2.0,
-    "impressions": 3.0,
-    "position": 2.0
-  },
-  {
     "id": "efac03b5-db33-4075-b771-2a0aee2b58e2",
     "clicks": 2.0,
     "impressions": 3.0,
@@ -5593,12 +6288,6 @@
   },
   {
     "id": "86a091a3-ef84-414d-92c9-d116e810bfd3",
-    "clicks": 2.0,
-    "impressions": 3.0,
-    "position": 2.67
-  },
-  {
-    "id": "88127f78-c05b-4d07-aa8b-fa03540545f3",
     "clicks": 2.0,
     "impressions": 3.0,
     "position": 2.67
@@ -5926,5 +6615,2637 @@
     "clicks": 2.0,
     "impressions": 2.0,
     "position": 1.0
+  },
+  {
+    "id": "00fdcfdc-e1d7-4897-9d7a-277037171103",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "010cacf5-901e-43fd-b8cd-7763f987cba9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "0121f7f8-3af9-4c15-8733-c9486a7cf920",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "013899a9-b76f-4acc-a306-03368c638fe3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "01c4c3ee-1aff-4ac9-820a-adbcc6a1d3bf",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "026adc65-f90a-4821-a104-08c7f6ede76c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "039d23aa-c431-403a-9c61-bae7bd6058cd",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "03dbe742-0bd5-491c-9c20-66a97e7c21b6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "03ef5b79-1e14-4b5c-b433-14ea559b47b0",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "05a2e8ee-fb8d-46db-a7ed-b5e955622b76",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "05b850d2-c090-4c37-9fb2-554d78d7bbc9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "05d2046d-40b7-477e-ba64-3342c166a0c8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "07339c03-1152-4300-bfe4-29645ce3a7ed",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "07402263-eed6-4fb3-956a-75d6b48e179f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "083c309f-e7f0-4af6-a6c5-ae431b0dc28e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "096a1375-76f4-4092-862a-adc2f12159f8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "09f9a85d-1e82-48e2-bd1e-5a23a8acf317",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "0aa2a260-3f27-4374-adcf-2b1af620bea8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "0bf49ac4-3d36-4eb2-9802-c437a8b3dc8a",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "0bfff7aa-507a-4dc0-8ff6-1aa44ecb52c3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "0c6f8ab9-1c56-42b0-81fc-23c5f9ae3778",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "0d9a9c15-c57e-4381-938d-244b3ab5fa70",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "0e7dab3d-e7e0-4839-aae8-aef8ecda352a",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "10412568-850d-4f79-9f9d-763023096652",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "131add13-b831-4b75-a8d6-f2b4427afff5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "133ad907-e0df-49b7-8064-cc336cd8f8c7",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "13c4c13e-1767-4a8c-8cf0-d3708235bdbe",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "1c8dad02-3a69-4b88-81ec-f9544b4af606",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "1d0213bf-ced1-4067-91a7-b5e65bf25d74",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "1d18fa39-2ecb-414f-8150-f1644a9517ce",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "1d9d4689-5e95-4fd8-9fe3-89d92b962361",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "1e963bff-fece-4098-b76f-57f9d2cdff1f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "1ebc7c1d-368c-4e56-8b77-80e78a57a952",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "1f8901b1-20bd-433a-8f02-61f8202814a0",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "1fc5b8bf-2177-40ae-918b-3e642142f3ef",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2087de51-924d-4a08-8edf-f1ded83e8e9c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "20c60dfd-a018-47cd-b6ef-5b74d1cd082e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "20d775ba-a6c1-4265-b882-26b8d49a1549",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "21f265e5-a3c9-454b-8331-c4f31b62ebaa",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "22060f59-3683-496b-8f2e-d1bb6686422f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "222e8600-c0af-4f58-a659-ef16de406f22",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "22859ce6-1f1e-45ba-97db-dd929d09708e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "23547189-b337-47e4-8d92-80d2a864117c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "237f095a-f773-4626-ad13-e27572d6e951",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2390245b-e1af-4f2d-9f00-182f5d6803c8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "23dc14f3-a6f9-4364-973a-c5de494560d6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "23e0598c-e90e-4d33-bfb8-d8d389449ea0",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "26021b31-5471-41c8-9906-bc9f501cebfb",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "26077bee-eb3d-4b25-9cdc-6d9d0ba4a1a2",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2643f4a3-61f1-4710-bc8f-d15840fdcbfd",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "265ca431-fce4-41d7-ad6d-77940f323aa8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "26627624-9e4b-418e-a77f-f301df0c64a5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "26c4bd5b-151c-45f1-b61d-0e6c05752363",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "26f0f5ab-b3b8-40df-a93b-0c2d735b855a",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "273134e7-4797-4797-a51d-9363b2f35202",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "279007b3-2a9a-4c8a-b951-c8a735b86044",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "281ba104-c791-4584-92b1-161393f1d4ae",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2830619d-cee4-47a5-8727-5de2e1fd0a4f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "28cc191d-1021-447e-90d0-ace6c70ebfe8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "28ce33da-8c21-42ef-a890-0d93df27a86a",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "29a5f7db-7330-4595-a313-bddb5ce3f092",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "29c9778f-2245-4dde-82d1-c80a4b5209c3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2aca8798-de65-4218-9efa-16e67e703466",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2ade7583-4296-4139-84ac-e43fa74e4761",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2be8275b-6fa2-4777-b934-bb3706c5c2e4",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2c46ed0c-7941-4789-9467-be1291fdd029",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2ef488e8-a325-4ae8-9d11-11888ee07617",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "2fccae13-f809-4187-aaab-084de49cc17e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "307e3e73-722f-4a19-a6bf-d05fc16c83be",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "30c9bb67-6f59-4624-9856-f59de2670e74",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "310857a1-5424-4756-902b-13e3db2f1dd8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "321034f5-3f9f-4d05-b65f-b2985c4e404d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "322fd7b0-a2c9-478e-a0f4-dea2e84a8725",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "329fb890-d891-4b72-b478-7d76a65413b8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3325f64f-1c1d-4d49-a7f4-c553f5de7f3f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "33449416-4586-4420-aaf2-ed3a53b89552",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3397fd99-a392-46db-8fad-22f9e2c51163",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "340e59bd-3375-4ecd-9df6-60b9ad6b2ce6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3457ff37-58c7-4737-be15-b866126855e0",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "348237c0-821e-4ddb-9451-b587dd5f519f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "353aa34a-d521-4a7f-97a6-469e519d669e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "35800c56-e371-4151-8dbb-181be4fa211b",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "362c2c40-a1c3-4092-a34d-73759288c087",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "36c4cd23-9ea9-4b75-be01-449629ef09b0",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "37bf9bb1-d273-40fd-8cda-9c77b5646522",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "381b0ee3-f762-4430-9faf-6c0087568e94",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "382c538a-cb6d-43da-97cd-965626510d0d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3880f2da-42d4-469b-8ab6-65879221dc78",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3c0b506d-bac3-42c5-86d0-0b3d978fef9e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3e51a33a-08c5-47af-a190-e9fe718e590a",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3e8a8a45-3841-47bf-946e-e704dfc8665f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3f8be8a6-0cf8-48f2-b12c-3312684e3d16",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "3f9c296d-181c-48d1-a24c-2ea8cd659562",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "402c25b4-e46b-4ab4-8606-11a480dc0a74",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "403fa72e-1211-4d0c-9f94-4fb0fdfc2fe1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4083e915-ae25-4756-b07f-1f9c0abc43ab",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "40c7654b-9e8f-4552-8e6b-4d9aa839eb79",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "40dcb950-4ddf-4aba-b5dc-d7519adf93c9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "410836da-e786-405e-9686-9615c0afad6b",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4140f1b6-9753-4b29-91b4-46c3bc8dc563",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4174df71-df84-45fe-be23-7f489e8cb189",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4190ac2b-eea9-4920-a725-1f0a685a8800",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "433a43cc-55e9-4260-b78e-669dbd09a3fd",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "43626067-8ada-43fc-9423-26aac5258ffc",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4391aed1-47f3-4b7e-ae54-f2ca48d8ed30",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4444e8db-50cb-4429-a468-51cff53ad0f6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4445bfc5-83ce-47ac-8293-2992069bb1e2",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "472796ee-7c89-4602-a664-a522cc9af633",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "47f806e3-2566-49a5-ab9e-670850516f5d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4904f1eb-1943-4f40-af46-01ac2ebe896c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "492f4046-b142-4e45-a283-14c84a331ed7",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4a2aedf0-fa7f-4479-9b85-4a56da95178d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4a79edeb-e24f-43a0-a6a5-eda521ddba51",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4ae004ca-3294-4dd7-9866-2f51be6407c2",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4b1894f9-4267-4b9c-9043-8035a5da60c1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4b275497-f055-4c54-a2d4-ec193dc4c561",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4b4d48bc-7685-4af0-8dca-670eac267cf5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4c744d19-a37c-45bf-9ad0-8d8f7cad26eb",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4cee1a69-2111-4bf9-80a4-30738f435922",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4d4effbf-71bd-4a34-9361-07246284f1d9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4d64ea08-f9b5-4ae9-8891-d8cefcbe7e87",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4e3094a7-a537-45ee-bb6a-a8940a5f1385",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4ea8b9b3-6441-4720-8abb-1f232502bdb2",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4efc56c9-f0de-4733-b9fd-464fd0168326",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "4f2d021c-520f-4733-b473-949ef90900a9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5014fa1d-8887-4b8d-847f-bb77b7942c46",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "50e6f60b-4744-43b9-afbd-3ab6c8a1ab45",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "50f98dba-90af-4808-b328-335bd3dabb47",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "52cf7bec-da3b-498c-9957-8b56e6d66697",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "53805c16-e7ee-4558-89d9-97ca173a0107",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "54c03620-1375-45db-b674-1414219a542f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5536408e-88f3-429f-97de-50dc74023c60",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "56477482-6fde-41bb-bcc8-17300b4af19b",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "57fbaa89-a028-4fb7-9245-ec915e07dd4e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5857fbf2-2926-4742-a7c4-63287b3a3e4b",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "58635d7a-7e9b-44c1-bce6-fdd54be5c9b6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "586ffb6d-4113-4728-914d-6583c4fd5ffb",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "58cda6d4-cff7-4575-978c-6b936b2b3a2f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "58d26a30-abbf-438e-ae48-5f31246422ea",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "58d6dba8-c049-402b-8521-c851b62c67e1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "59048f5e-3f09-452c-a851-d46a0f85114c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "592f50fa-5bed-415d-b269-264b55094407",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5aef4a12-9ad7-4229-b376-0021fbbdfb17",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5cbc8817-adc7-4bd0-ba72-71277300e23f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5d0d7a62-b6f5-4f53-8d82-593f03efcd2d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5dca8da3-f9dd-4d0c-bae1-9963b981b037",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5e149f1b-8b49-4874-8d05-8facb3dd7be8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5eae01d0-fabb-44c1-b395-33a06a95292b",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "5f63ff25-a1ec-4a2f-9f41-e80f1fca4abb",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "60c59ed9-ad97-4017-8d46-b953ed01e170",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "60ecc87f-1d09-4195-bdad-697954a0f7b5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "60f65be8-7172-449e-938b-f141fa873fe5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "62b6bb66-3670-44cf-a19a-6792671d58cc",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6362010d-7266-4a78-aeee-7cf9c0c01734",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "63d45be8-ae8a-4066-bc90-c6e5a70d7a25",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "63f9f6cc-a70b-4eed-9a7b-8c0ab75190f2",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "647a0511-c07f-4c74-9c59-00b7c4990b6d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "65d2e1ca-59e8-439b-9787-be0a081b4399",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "660254ec-20cc-45cc-8cd1-a71709782abd",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "661456e5-6d3a-4c31-89a0-1114131c9014",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6675fbec-d361-4948-af50-44151ce363b4",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6757b964-d37c-4666-9d9f-eaf554842372",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "68089a6c-aa89-434f-8806-a8479471b67f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6831b13d-73aa-413e-a721-b6c9f49af8b9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6908e5b4-7681-42ec-987a-d29f9755d2bf",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6914584b-7b3a-4778-ba05-6e37161df2ca",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6921d6eb-1b5f-462c-b4b4-4034707effa4",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "695d5a5f-90d4-4ef5-bb92-334df351e4f6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "69cc312c-6e39-4aaf-b952-1a58c0ecac0e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6a20662a-2c40-41dc-8983-40bbd4bb5ab5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6a6c453a-adb0-4cfb-9ed0-998e8bbf96b1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6acf93f2-5616-436e-a6fd-1d53258ff2d3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6d2045f9-442f-4a8e-ae4a-6e3d6e119278",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6d2bedff-b90d-4b41-9e85-2714a2fc0be4",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6da44815-809b-4ac1-91a6-3d34a23e73eb",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6dc911b4-9a2e-4cb0-951b-3c68fcedf1e2",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6e7d45f7-8359-4b01-9913-232ea73be1e1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6eb97997-7712-4b36-8af7-b7470940da34",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "6fc2652c-8160-4023-b53a-59194cdd6588",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "706f4b97-75f3-45c4-aa62-4d96a05d8378",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "707eb2a2-9ea2-4a3a-9f23-4e682af2d943",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "70d39a89-08d1-4ffc-bda8-eedc2b7e0965",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "71bf7557-716e-4e83-83ed-a84151524ea1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "71c43121-0f01-4add-8c52-8e21785a9c0f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "72063056-3caa-4e4f-bf03-c6222ada3926",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7228d579-203d-4440-beca-d4c1c699cae3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "727b6b2d-854e-430e-8f3a-39672e73e339",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "729d6b16-d795-48ac-9f67-9c07b0b495fa",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "72b8ab5f-d333-4b9c-8cb1-153c70508cd2",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7353820a-5730-4f1a-85ce-9cf4f1cfd6d5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "73bff2f1-c567-4c1a-a1b8-c36adbcc2d3b",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "74720f4a-8198-4b69-80aa-4a6e46fa77d3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "75a40032-f130-4f1c-a413-6eb237a5822c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "763db8e4-ec22-49bd-8cdc-6728e38ba1d4",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "76c1d10e-26fa-405e-9373-68fa84005de1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "799ff12f-e939-4ae9-980f-bd1e85273b77",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "79ba475a-fd8f-40d7-8894-83e23848e4ac",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7ad2056f-0842-4ae3-8971-f549ef68b7cc",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7b137941-cd00-432e-a457-ca4423f922c5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7b19f7c3-42ac-41f0-b13f-828de9295824",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7b227dfa-5b9b-43d1-8477-bbfa97c5e271",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7b3cad6e-1973-41b4-9358-a5c7fc86885a",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7b622e16-abcb-48e1-a71b-6b56bec9d320",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7ba03a89-7af0-4ba5-8c41-7e4d061387f1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7cb73995-389b-44a7-becf-38513ad1cd7d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7d0f5540-ad32-4c5e-82f9-359fb33df9c0",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7df8dd2b-93fc-4c24-8cf7-678b9cef6291",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7e54f539-6ef2-4a8d-9bbc-356f7b3ec8c6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7e602a75-ed40-43a1-aa38-e627ace4d9c5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7e699a88-f2ce-4919-b98b-9aaa26f50347",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7e9529c3-5963-4cf4-bb56-23729391972f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7f06b770-cd31-43f7-905d-5610739f9811",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "7ffb20ab-d2da-456f-a141-d56648b2981d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "80978500-6c91-46af-adb0-8320cdb2b3c3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "81673489-0dbb-4d45-a5a1-e933081071a7",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "819111af-a317-4f1d-8b64-ab3fb4988eca",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "81aa1e82-ced8-4411-a93e-0e8084f773ec",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "82188271-92c3-4e91-9fec-cf72e7477e31",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "821bee99-c492-4c4e-8135-f821e434c03e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "826f1c74-9f76-4ee8-a205-6a29512631d4",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "82f86790-f1f5-4c52-aa8c-b739a1adde2e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "830dc253-a56e-4168-b112-7b6c66062206",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "835e325e-4f68-42f2-8693-0a35f8ee98bc",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "838597ba-280a-43d9-9af7-67af9f9e4480",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "83b85da9-2d49-4ce9-a40c-726461906c31",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "84401e9b-12aa-4e35-87b9-5a2faeb33761",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "847773f8-645a-4169-a4cd-c5ec1783a8d9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "856d7152-4a4b-4580-94b4-e630e7825ace",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "857a4343-aa8f-4fc1-bb36-6eb731db20f8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "85a0a593-4129-4f25-866c-adbad08628a9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "85a42cba-1ab7-4be2-bf0b-1ccda2e4421c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8680e28d-fcda-47e4-817a-f73a7f531785",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "86c0d144-b847-4e52-812f-4e05c47d233f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "86dd3dca-a704-491d-b9db-6d64fb230092",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "870f684d-a6e0-4bb9-9491-f17899f713e5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "88b6846e-8452-46ac-b4da-6ee4368e1db4",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8bbc1ee4-6998-4f39-8383-f7ba6c2b465f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8bee1aaf-28c2-4570-9f8b-198db89ad53d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8c2e1191-7654-4a69-b228-871d47bcafd9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8c493d01-4a6a-4412-8631-2196ca56e2ac",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8c4adf61-ac57-456e-b12e-2ea1b7049449",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8ccf1367-96b0-4785-82cd-920bb79a2a2f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8ccfc8f6-cae6-4fb6-b11a-dcedeb043a01",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8ce03068-893d-4a0e-9cfe-d37b484d65ef",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8d2dd2b3-a4ee-4f58-969f-7dd5860a8ccb",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8d93dae7-e1a1-402b-84b3-84c026e594e3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8dc66089-4eea-42db-b255-a9bef5625f2b",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8e0c365d-15fb-49ce-8fcc-a0afbf817ac8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8e1d9ae9-bc74-46ad-a081-83ebcf126ac5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8e504170-7408-426f-843c-5a308faa0f2d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "8fc14130-069f-4099-ae7c-6b97fa6c3040",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "90bdd1cc-3e24-4f6d-bc96-01a75ebba4e9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "92464006-cf78-43f8-bbb1-44a1fac63b68",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "925ef90f-8798-4569-88f3-f392c9976abf",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "9300ef86-53c5-4a11-9913-56cd45422f1c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "93c3bcbd-4306-4fd5-9167-6e72697ad44d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "9494d9fd-7890-46f4-8e50-ea5a200c235f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "9546aa25-e02b-4eea-9e29-03653dabbbab",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "95cadd94-fd25-419e-986f-a4eac809dc52",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "95da5bde-0934-44b0-91b6-0539929a7cbc",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "96127fca-3afa-466e-8a43-26e56535ff79",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "96ef1a37-1f38-4d29-b3f4-73c34977b57d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "96f5456d-b371-42ee-a551-d27f64814253",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "97b2b590-5161-42de-9fa8-981530cccad3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "982c6270-b83d-4522-8bb2-8e16de49696e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "9856abaa-8367-4e65-81ce-efebe9eaaf14",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "9b33cb2f-c3be-4acc-b4df-f3b0857f74fe",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "9c980b86-416f-47cf-acb0-3dd688ef9873",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "9caf9700-d998-4115-8f1d-43c9fc016c92",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "9f494078-f517-428d-9e2a-16eefc5b9d2d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a0a397d2-da5d-4d3a-850a-7433756d9953",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a0be1bce-622f-4eb0-9466-f09fa6bfb519",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a1ddd760-56d5-4899-b1fa-f2bb36e68588",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a23571fe-c4ad-4361-a124-ea7ad6a631e9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a29a9b45-087a-4139-a28b-e122c3c21d01",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a62985a3-05af-47f5-81a2-dcddee83bd83",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a6423ca1-44e5-4842-8c75-5ca7f2862e9c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a727daf6-d043-494f-ad7b-336ae9963584",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "a93ffd99-d7f6-43d2-b44e-91b59737612f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "aa0c8690-51bd-470f-9b54-e4c78d382609",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "aade071e-e3da-44d9-9099-5f4f53ec6479",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ab1b7e4b-04d1-45b0-b83e-7f66c56d54f6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ab55ac91-32fd-43a8-baa8-ebfd205e464d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ab96dbf0-fc00-4bbb-abd8-33613f1387f4",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "abb7d4a4-93f5-4bdc-a3a1-7fd59fd5f234",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ac92c5ac-d3e4-4756-88eb-d5d790161faf",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "adf15588-fcd1-476f-a49a-c2be8e446695",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ae9b9ba0-1dc0-4dea-8010-f4b205722506",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "aec94c53-819c-4f16-ae81-23f6eb4afa60",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "aefa743a-020e-48c7-96b7-02ae2f15b2bd",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "af17f701-b316-40d4-af57-7c15298403fc",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "af5da8be-275f-4139-b9e3-87ac792a33e3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "afe4028a-9813-4f4c-8aa8-19b54b126a41",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b082a5f4-8af7-4930-9acf-13e6ae7bd9c8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b0d701be-2890-4f89-b524-d04625349d34",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b208be27-b9a4-4d8b-a652-d2b7753621d3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b25c81c8-3890-4992-9373-1b29b54d8847",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b281f542-64a8-4075-877b-64a4ae9184d6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b2a503e8-a9b2-43e1-be9e-ca8fa0dd98cf",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b2cda952-3659-4251-958b-5d1f2e7b9b97",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b38a0059-32fb-4619-986b-58cc7a0c3362",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b52885f6-b50e-4579-96f1-d4ea631f831f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b5ae9711-fded-4e06-b002-550fb2190b1d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b5d67c89-646a-4b25-8eba-439978171fd9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b63ac223-7572-416f-b0ac-3496e2a10b8e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b66471e4-75d0-4986-8c0e-2d9cb7b8fb40",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b740512f-c8ad-4c57-bf32-96e5ad9f32f1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b7f9c8cb-24a9-4cc8-8d60-899411def04a",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b80e13a8-c68e-41d1-9008-60ffd61ac874",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b8782aed-5b51-4aa6-a891-a57e52e258e5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "b9161f0a-4562-45de-a197-f28e11ccb17c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "bc196612-2b2e-4894-b73c-f3c933688237",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "bcb6ed7c-f8de-4e8b-aeb6-474f2c37cf73",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "be90f053-7373-4f3b-a883-add4d791c033",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "bf24d5c5-30cb-4bb0-bb80-ac9f9a666d3f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "c22d9ef5-9e21-421e-a968-6ebb8cd9f482",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "c2abc511-16b7-48fd-be18-e3494ce60f92",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "c3568f3c-9184-4f6d-938c-f5e0ebf06b8a",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "c35fa725-21dd-4039-bc6f-25d18cdd6d62",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "c4537f37-da06-4055-be77-6af4a39d57d9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "c5b32433-1b36-4220-ab2b-58def4f60327",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "c78a7341-3065-4388-9685-f080e34de2a4",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "cb2faf44-5e78-4f6a-8303-2f500b9f0fde",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "cd9c6d6b-a231-4373-9fa3-6dc165295032",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ce5bd8b8-d116-4b9a-b8b9-d97644e65fa0",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d0d2b109-83e0-45c7-a0b5-b9e8ad686bd1",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d1b71b24-5170-427b-9e6c-b4bb1461565c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d2952760-e48e-4095-9397-882313f0d0d3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d3b6a6a7-62e8-41f0-9de7-1fb87ca9ef18",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d427a317-ccfa-4a65-aa05-8e45a678e7bc",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d50cb21c-7129-4946-888e-408d984f1bcb",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d789c302-5a4d-4bd0-84f8-c3eab5530b1b",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d81aa41d-e972-4529-a520-86e226d18773",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d83cc31c-e10b-4530-8c69-0ffa7f2a59f3",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "d85f9c7e-213d-48c9-bbbd-6b72b5be9cc9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "da1a6a8f-5bcc-424b-a2a7-3bba0d653136",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "dbde36f7-f616-4078-9d10-af68856dfe5c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "dbde4e46-ab29-40d8-b954-296339dbf0bb",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "dd823422-df2e-48ed-8cc8-bbb635fc51ca",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "de82f881-a20a-434c-8c5b-67c3735992fc",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "def56f6e-667d-4c72-9890-7391388119c5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "e0c980e1-1360-4e6b-8f26-7f982134c33a",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "e0f7509a-9060-4158-8f8c-c5759b3b5cc6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "e173878d-0fbd-448a-9044-3dbdaa1f7666",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "e5337cd7-1b38-4f5c-809c-7ff2f5f861b0",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "e6c5880d-2467-4974-89b2-9305a69a6833",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "e780a823-70df-47a0-82fe-19c68348a933",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "e9f540ae-feec-4341-9807-94bfdb96c69e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ebb9fc91-df75-4022-ab9a-4cbc76be2914",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ebdf675c-0825-4d19-8e46-da2542e91275",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ed999cba-5979-4ff5-aece-88ed307294aa",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "edf99d7e-01fc-454b-8f93-adbcf4ca0f3b",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "eeae7bd5-032d-4351-87a0-69208c852bb6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ef1f4b75-d865-49d9-a206-46798f7d61a7",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "ef256203-4970-41f7-8406-2ef1e7d7acee",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f1f53172-2688-4152-b948-5f1e771bf198",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f262fccb-aeeb-4193-b718-3fd7def9cdfd",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f2a5016c-d92c-4aec-b319-146570fd9cbe",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f2f10e81-2901-4d4e-85dc-eddfd2a3ba0d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f3382588-9a96-43a3-ba0f-629261a4d300",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f34c0c83-ca9c-448e-9ceb-917f1ed053cd",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f34f9d33-991e-4763-81c4-4c85f40da70c",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f3550594-9f01-4756-9195-4745d216509e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f36d9811-2803-43c1-8a79-4317cd648ff5",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f47f08c6-7e27-40e2-8964-f400a4e2b90e",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f4c769a3-d805-4dba-922a-30aa98e660c9",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f65d4e92-f7e3-4287-8cec-9bb95a8629f8",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f712dee7-331e-45f9-9091-96b33d58fa17",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f7b83da3-8c38-4ff6-b99e-465b4d2c2c72",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f89018e0-7a68-4358-bc26-85384573ef35",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f8ac67ba-b0b8-4c5f-897e-204f351ff6c6",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f908add1-c64c-40bf-95f4-f8ba8b97d676",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "f9221744-4e22-42af-8c35-ba76cf5e0a72",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "fd42d7a3-f21a-4ee7-abe1-2f59fe505965",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "fe7cbafc-cace-4192-b307-f4bd1464bf2d",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
+  },
+  {
+    "id": "fec421ea-2d77-43b3-8c5a-e80bcd3c057f",
+    "clicks": 0.0,
+    "impressions": 1.0,
+    "position": 0.0,
+    "gen_ai_impressions": 1.0
   }
 ]

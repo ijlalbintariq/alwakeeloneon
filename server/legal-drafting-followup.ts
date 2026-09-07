@@ -19,9 +19,9 @@ export type LegalDraftEditTarget = {
 };
 
 const FULL_REWRITE_PATTERN =
-  /\b(full|complete|entire|whole)\s+(rewrite|redraft|regenerate|draft|version)\b|\bfrom\s+scratch\b|\bstart\s+over\b|\brewrite\s+everything\b|\bregenerate\s+everything\b|\bfresh\s+draft\b/i;
+  /\b(full|complete|entire|whole)\s+(rewrite|redraft|regenerate|draft|version)\b|\bfrom\s+scratch\b|\bstart\s+over\b|\brewrite\s+(?:the\s+)?(everything|entire|whole)\b|\bregenerate\s+(?:the\s+)?(everything|entire|whole)\b|\bfresh\s+draft\b/i;
 const CONVERSION_PATTERN =
-  /\b(convert|transform|turn)\s+(?:this|it|the\s+draft)?\s*(?:into|to)\s+(?:a|an)?\s*(?:civil|criminal|constitutional|writ|bail|appeal|revision|petition|plaint|suit|application|affidavit|notice|power\s+of\s+attorney|written\s+statement)\b|\bmake\s+(?:this|it|the\s+draft)\s+into\s+(?:a|an)?\s*(?:petition|plaint|suit|application|affidavit|notice|appeal|revision|written\s+statement)\b/i;
+  /\b(convert|transform|turn|rewrite|redraft)\s+(?:this|it|the\s+draft|the\s+entire\s+document)?\s*(?:into|to|as)\s+(?:a|an)?\s*(?:civil|criminal|constitutional|writ|bail|appeal|revision|petition|plaint|suit|application|affidavit|notice|power\s+of\s+attorney|written\s+statement)\b|\bmake\s+(?:this|it|the\s+draft)\s+into\s+(?:a|an)?\s*(?:petition|plaint|suit|application|affidavit|notice|appeal|revision|written\s+statement)\b/i;
 const MUTATION_PATTERN =
   /\b(add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|reword|rephrase|restructure|move|make|undo|revert)\b/i;
 const EXPLICIT_DRAFT_ACTION_PATTERN =
@@ -100,7 +100,8 @@ function resolveAction(prompt: string): LegalDraftEditAction {
   if (/\b(?:in|into|within)\s+(?:the\s+)?(?:grounds?|facts?|prayer|preliminary\s+objections?|verification|affidavit)\b/i.test(prompt)) {
     return "replace";
   }
-  if (/\b(?:add|insert|include|incorporate)\b/i.test(prompt)) return "insert-after";
+  // Generic "add a new ground" targeting the whole section implies enrichment of the section (rewrite).
+  // "insert-after" is only appropriate if the prompt explicitly says "after X".
   return "replace";
 }
 

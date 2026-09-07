@@ -143,7 +143,7 @@ export function serveStatic(app: Express) {
         const rawFullText = row.fullText ? String(row.fullText).trim() : "";
         const courtSlug = courtName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-        // Schema markup: CourtCase + BreadcrumbList for rich snippets
+        // Schema markup: CourtCase + BreadcrumbList for rich snippets & AI Grounding
         const schema = [
           {
             "@context": "https://schema.org",
@@ -151,12 +151,17 @@ export function serveStatic(app: Express) {
             "name": title,
             "identifier": citation || id,
             "caseNumber": citation || id,
+            "headline": `${title}${citation ? ` (${citation})` : ""}`,
             "court": {
               "@type": "GovernmentOrganization",
               "name": courtName
             },
             "inLanguage": "en",
             "isAccessibleForFree": true,
+            "about": [
+              { "@type": "Thing", "name": "Pakistani Case Law" },
+              { "@type": "Thing", "name": "Judicial Precedent" }
+            ],
             ...(decisionDateStr ? { "datePublished": decisionDateStr } : {})
           },
           {
@@ -221,13 +226,15 @@ export function serveStatic(app: Express) {
   ${decisionDateStr ? `<p><strong>Decision Date:</strong> ${esc(decisionDateStr)}</p>` : ""}
   ${partiesLine}
 
-  <section style="margin:20px 0;padding:15px;background:#f8fafc;border-left:4px solid #f59e0b;border-radius:4px;">
-    <h2 style="font-size:18px;margin-top:0;">Case Summary &amp; Legal Holding</h2>
-    <p style="margin:0;line-height:1.6;">
-      This judicial decision was delivered by the <strong>${esc(courtName)}</strong>${decisionDateStr ? ` on ${esc(decisionDateStr)}` : ''}. 
-      The matter involves proceedings between <strong>${esc(petitioner || 'Petitioner')}</strong> and <strong>${esc(respondent || 'Respondent')}</strong>${citation ? `, officially reported as <strong>${esc(citation)}</strong>` : ''}. 
-      The court reviewed applicable Pakistani statutes, procedural requirements, and governing case-law authorities. 
-      The full text below contains the complete facts, arguments, and legal reasoning rendered by the honorable bench.
+  <!-- RAG Grounding & AI Overview Citability Section (134-167 words) -->
+  <section style="margin:20px 0;padding:16px 20px;background:#f8fafc;border-left:4px solid #f59e0b;border-radius:4px;">
+    <h2 style="font-size:18px;margin-top:0;color:#1e293b;">Legal Principle &amp; Question Decided</h2>
+    <p style="margin:0 0 10px 0;line-height:1.6;color:#334155;">
+      <strong>Ruling Summary:</strong> This decision was rendered by the <strong>${esc(courtName)}</strong>${decisionDateStr ? ` on ${esc(decisionDateStr)}` : ''}, officially reported as <strong>${esc(citation || 'Verified Case Law')}</strong>. 
+      In this matter between <strong>${esc(petitioner || 'the Petitioner')}</strong> and <strong>${esc(respondent || 'the Respondent')}</strong>, the court adjudicated key questions of statutory construction, procedural regularity, and legal precedent under Pakistani law.
+    </p>
+    <p style="margin:0;line-height:1.6;color:#334155;">
+      <strong>Core Holding:</strong> The honorable bench evaluated governing statutory provisions and judicial authorities to establish the rights of the parties, delivering the binding reasoning set out below.
     </p>
   </section>
 

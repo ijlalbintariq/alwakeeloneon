@@ -453,6 +453,7 @@ export async function gatherKnowledgeWithHits(
       topics: [],
       durationMs: 0,
       caseLawHits: [],
+      maxRelevanceScore: 0,
     };
   }
 }

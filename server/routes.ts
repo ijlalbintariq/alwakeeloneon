@@ -15201,10 +15201,10 @@ Targeted edit mode (strict):
   {
     "operation": "targeted-edit",
     "target_section": "${editTarget.label}",
-    "replacement_html": "...",
+    "replacement_text": "...",
     "reason": "..."
   }
-- The \`replacement_html\` must contain the fully formatted HTML for the targeted section.
+- The \`replacement_text\` must contain the fully rewritten text for the targeted section. Use standard newlines (\\n), NOT html tags.
 - Do NOT output raw markdown. Output ONLY the JSON object.
 - Keep Pakistani court drafting language and formatting.
 - Do not invent facts, citations, or statutory sections.
@@ -16448,9 +16448,9 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       const knowledgePromise: Promise<PipelineRunResult> = knowledgeNeeded
         ? gatherKnowledgeWithHits(lastUserMessage!.content, userId, priorTurns, { module: moduleType }).catch((err) => {
             console.warn("[AI Chat] Knowledge pipeline unavailable:", getErrorMessage(err));
-            return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[] };
+            return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[], maxRelevanceScore: 0 };
           })
-        : Promise.resolve({ contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[] });
+        : Promise.resolve({ contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[], maxRelevanceScore: 0 });
 
       // Tool-based judgment search: AI calls search_judgments with its own short queries.
       // NOW FALLBACK-ONLY: only runs AFTER the pipeline if pipeline returned 0 case law.
