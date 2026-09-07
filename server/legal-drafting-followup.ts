@@ -87,7 +87,7 @@ const SECTION_PATTERNS: Array<{
 ];
 
 const ANY_MAJOR_HEADING =
-  /^\s*(?:PRELIMINARY\s+OBJECTIONS?|CAUSE\s+OF\s+ACTION|JURISDICTION(?:\s+AND\s+VALUATION)?|BRIEF\s+FACTS|MATERIAL\s+FACTS|FACTS(?:\s+OF\s+THE\s+CASE)?|GROUNDS?(?:\s+OF\s+(?:APPEAL|PETITION|APPLICATION|REVISION))?|PRAYER|RELIEF\s+SOUGHT|VERIFICATION|AFFIDAVIT|ANNEXURES?|INDEX\s+OF\s+DOCUMENTS|INTERIM\s+RELIEF)\s*:?[ \t]*$/gim;
+  /^\s*(?:PRELIMINARY\s+OBJECTIONS?|CAUSE\s+OF\s+ACTION|JURISDICTION(?:\s+AND\s+VALUATION)?|BRIEF\s+FACTS|MATERIAL\s+FACTS|FACTS(?:\s+OF\s+THE\s+CASE)?|GROUNDS?(?:\s+OF\s+(?:APPEAL|PETITION|APPLICATION|REVISION))?|PRAYER|RELIEF\s+SOUGHT|VERIFICATION|AFFIDAVIT|ANNEXURES?|INDEX\s+OF\s+DOCUMENTS|INTERIM\s+RELIEF|APPLICANT|RESPONDENT|DEFENDANT|PLAINTIFF|PETITIONER|DEPONENT|ACCUSED)\s*:?[ \t]*$/gim;
 
 function resolveAction(prompt: string): LegalDraftEditAction {
   if (/\b(delete|remove|omit)\b/i.test(prompt)) return "delete";
@@ -294,7 +294,8 @@ export function applyLegalDraftEdit(input: {
       ANY_MAJOR_HEADING.lastIndex = 0;
       const repMatch = ANY_MAJOR_HEADING.exec(replacement);
       if (repMatch) {
-        const firstHeadingIsSame = targetMatch && repMatch[0].trim().toUpperCase() === targetMatch[0].trim().toUpperCase();
+        const norm = (s: string) => s.replace(/[^A-Z]/gi, '').toUpperCase();
+        const firstHeadingIsSame = targetMatch && norm(repMatch[0]) === norm(targetMatch[0]);
         let overgenMatch = firstHeadingIsSame ? ANY_MAJOR_HEADING.exec(replacement) : repMatch;
         if (!targetMatch) overgenMatch = repMatch;
         
