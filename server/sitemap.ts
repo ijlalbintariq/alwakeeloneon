@@ -122,12 +122,7 @@ export async function handleSitemapIndex(req: Request, res: Response): Promise<v
     const entries: string[] = [];
     entries.push(sitemapIndexEntry(`${origin}/sitemap-static.xml`, today));
     entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-priority.xml`, today));
-    // Cap bulk judgment sitemaps to top 2 pages (20k most recent cases) + priority sitemap
-    // to protect Neon database from 240,000 crawler queries 24/7.
-    const activeJudgmentPages = Math.min(judgmentPages, 2);
-    for (let n = 1; n <= activeJudgmentPages; n += 1) {
-      entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-${n}.xml`, today));
-    }
+    entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-tier2.xml`, today));
     for (let n = 1; n <= statutePages; n += 1) {
       entries.push(sitemapIndexEntry(`${origin}/sitemap-statutes-${n}.xml`, today));
     }
@@ -283,6 +278,30 @@ export function handleSitemapJudgmentsPriority(req: Request, res: Response): voi
   } catch (err) {
     console.error("[sitemap:judgments:priority] failed", err);
     res.status(500).type("text/plain").send("Priority judgments sitemap failed");
+  }
+}
+
+export function handleSitemapJudgmentsTier2(req: Request, res: Response): void {
+  try {
+    const origin = siteOrigin(req);
+    const today = new Date().toISOString().slice(0, 10);
+    // 10,000 verified high-value Supreme Court & High Court cases (2023-2026)
+    const tier2Judgments: Array<{ id: string; date?: string }> = require("../shared/tier2-judgments.json");
+
+    const blocks = tier2Judgments.map((row) =>
+      urlBlock(`${origin}/judgment/${row.id}`, row.date || today, "monthly", "0.8"),
+    );
+    const body =
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      blocks.join("\n") +
+      `\n</urlset>\n`;
+
+    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400"); // 24h
+    res.type("application/xml").send(body);
+  } catch (err) {
+    console.error("[sitemap:judgments:tier2] failed", err);
+    res.status(500).type("text/plain").send("Tier 2 judgments sitemap failed");
   }
 }
 

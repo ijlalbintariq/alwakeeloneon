@@ -77,7 +77,7 @@ import { scanUploadedBuffer } from "./file-scan";
 import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
 import { generateDocxBuffer } from "./services/docx-generator";
-import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, handleSitemapJudgmentsPriority, handleSitemapStatutes, clearSitemapCache } from "./sitemap";
+import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, handleSitemapJudgmentsPriority, handleSitemapJudgmentsTier2, handleSitemapStatutes, clearSitemapCache } from "./sitemap";
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
@@ -7791,6 +7791,7 @@ export async function registerRoutes(
   app.get("/sitemap.xml", handleSitemapIndex);
   app.get("/sitemap-static.xml", handleSitemapStatic);
   app.get("/sitemap-judgments-priority.xml", handleSitemapJudgmentsPriority);
+  app.get("/sitemap-judgments-tier2.xml", handleSitemapJudgmentsTier2);
   app.get("/sitemap-judgments-:n.xml", handleSitemapJudgments);
   app.get("/sitemap-statutes-:n.xml", handleSitemapStatutes);
 
