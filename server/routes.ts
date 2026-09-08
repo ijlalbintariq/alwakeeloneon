@@ -11489,6 +11489,48 @@ RAG POLICY (STRICT):
     }
   });
 
+  
+  app.get("/api/judges/directory/:name/cases", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const name = req.params.name;
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.max(10, Math.min(100, parseInt(req.query.limit as string) || 20));
+      const offset = (page - 1) * limit;
+
+      const [totalCount] = await db.select({ count: count(judgeCaseLinks.id) })
+        .from(judgeCaseLinks)
+        .where(eq(judgeCaseLinks.judgeName, name));
+
+      const cases = await db.select({
+        id: judgments.id,
+        citation: judgments.citationString,
+        title: judgments.title,
+        court: judgments.courtNameSnapshot,
+        year: judgments.year,
+        summary: judgments.summary
+      })
+      .from(judgeCaseLinks)
+      .innerJoin(judgments, eq(judgeCaseLinks.judgmentId, judgments.id))
+      .where(eq(judgeCaseLinks.judgeName, name))
+      .orderBy(desc(judgments.year), desc(judgments.id))
+      .limit(limit)
+      .offset(offset);
+
+      res.json({
+        total: Number(totalCount?.count || 0),
+        page,
+        limit,
+        totalPages: Math.ceil(Number(totalCount?.count || 0) / limit),
+        cases
+      });
+    } catch (err) {
+      console.error("Error fetching judge cases:", err);
+      res.status(500).json({ message: "Failed to fetch judge cases" });
+    }
+  });
+
   app.get("/api/judges/directory/:name", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);

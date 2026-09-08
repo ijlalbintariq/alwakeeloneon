@@ -269,7 +269,7 @@ export function PreviewJudges() {
                   <Card 
                     key={judge.name} 
                     className="bg-card overflow-hidden border-slate-200 dark:border-slate-800 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => toggleJudge(judge.name)}
+                    onClick={() => setLocation(`/preview/judges/${encodeURIComponent(judge.name)}`)}
                   >
                     <CardContent className="p-6">
                       <div className="flex justify-between items-start mb-4">
