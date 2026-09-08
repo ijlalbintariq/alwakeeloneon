@@ -76,8 +76,8 @@ async function main() {
   }
 
   // Save to file for safety
-  fs.writeFileSync("data/judge-mappings.json", JSON.stringify(allMappings, null, 2));
-  console.log("Saved mapping to data/judge-mappings.json");
+  fs.writeFileSync("script/judge-mappings.json", JSON.stringify(allMappings, null, 2));
+  console.log("Saved mapping to script/judge-mappings.json");
 
   // Now apply the mappings
   console.log("Applying mappings to the database...");
@@ -99,4 +99,4 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(console.error);
+main().catch((err) => { console.error(err); process.exit(1); });
