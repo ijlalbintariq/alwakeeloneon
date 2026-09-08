@@ -134,6 +134,7 @@ async function fetchVoyageWithFailover(url: string, payload: object, init?: Requ
           "Authorization": `Bearer ${key}`,
         },
         body: JSON.stringify(payload),
+        signal: init?.signal,
       });
 
       if (resp.ok) {
