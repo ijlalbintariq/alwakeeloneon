@@ -11509,7 +11509,7 @@ RAG POLICY (STRICT):
         title: judgments.title,
         court: judgments.courtNameSnapshot,
         year: judgments.year,
-        summary: judgments.summary
+        summary: judgments.headnotes
       })
       .from(judgeCaseLinks)
       .innerJoin(judgments, eq(judgeCaseLinks.judgmentId, judgments.id))
