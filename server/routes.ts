@@ -12747,6 +12747,23 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
     }
   });
 
+
+  // Temporary endpoint to trigger citation backfill in the background on the cloud server
+  app.get("/api/admin/trigger-backfill", async (req, res) => {
+    // Basic admin check
+    if (!(await isAdmin(req, res))) return;
+
+    // Spawn the backfill process in the background so it doesn't block the request
+    const { spawn } = await import("child_process");
+    const child = spawn("npx", ["tsx", "script/backfill-citation-links.ts", "--batch", "500"], {
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
+
+    res.json({ message: "Backfill process started in the background on the server." });
+  });
+
   app.post("/api/judgments", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
