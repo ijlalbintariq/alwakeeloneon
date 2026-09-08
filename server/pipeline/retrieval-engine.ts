@@ -321,7 +321,7 @@ function scoreCaseLawRow(row: CaseLaw, intent: QueryIntent): number {
   else if (qLower.includes("shariat") && court.includes("shariat")) score *= 1.2;
 
   // Smooth continuous recency bonus
-  const rowYear = row.citationYear || row.year || 0;
+  const rowYear = row.citationYear || 0;
   if (rowYear > 1900) {
     score += (rowYear - 2000) * 0.5; 
   }
@@ -650,11 +650,10 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
       const docsToRerank = topCandidates.map(
         (c) => `TITLE: ${c.row.title}\nCOURT: ${c.row.court}\nCITATION: ${c.row.citation}\nSUMMARY:\n${c.row.summary}`
       );
-      const rerankResult = await withTimeout(
-        rerankVoyage(expandedQuery, docsToRerank),
-        8000,
-        [],
-      );
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const rerankResult = await rerankVoyage(expandedQuery, docsToRerank, undefined, controller.signal).catch(() => []);
+      clearTimeout(timeoutId);
       
       const rerankScores = new Map<number, number>();
       for (const item of rerankResult) {

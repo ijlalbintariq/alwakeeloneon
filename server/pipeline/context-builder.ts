@@ -241,7 +241,7 @@ export function buildContext(
 ### Issue
 Identify the core legal issue.
 ### Rule
-State the law and cite the highest-ranked judgments from the VERIFIED JUDGMENTS section below. For EVERY citation, you MUST include a direct 1-2 sentence quote from the provided judgment snippet to prove your point. Do not pick cases lower in the list merely because they are more famous; the FIRST entries are computed as the most directly on point.
+State the law and cite the highest-ranked judgments from the VERIFIED JUDGMENTS section below. For EVERY citation, you MUST include a direct 1-2 sentence quote from the provided judgment snippet to prove your point. If the snippet is too short or garbled to quote accurately, cite the case but note 'full text not available in context'. Do not pick cases lower in the list merely because they are more famous; the FIRST entries are computed as the most directly on point.
 ### Application
 Apply the rule to the user's specific facts.
 ### Conclusion

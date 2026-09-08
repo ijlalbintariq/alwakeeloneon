@@ -117,7 +117,7 @@ async function embedTextOpenAI(text: string, dim: number = DEFAULT_DIM): Promise
 /**
  * Executes a POST request to Voyage API with automatic fallback to backup key on failure.
  */
-async function fetchVoyageWithFailover(url: string, payload: object): Promise<Response> {
+async function fetchVoyageWithFailover(url: string, payload: object, init?: RequestInit): Promise<Response> {
   const keys = [VOYAGE_API_KEY, VOYAGE_API_KEY_BACKUP].filter(Boolean);
   if (keys.length === 0) {
     throw new Error("No Voyage API keys configured");
@@ -198,14 +198,14 @@ async function embedTextsVoyage(texts: string[], dim: number = DEFAULT_DIM, inpu
  * Calls Voyage Reranker API with automatic backup key failover.
  * Returns relative relevance scores for the input documents.
  */
-export async function rerankVoyage(query: string, documents: string[], topN?: number): Promise<Array<{ index: number; score: number }>> {
+export async function rerankVoyage(query: string, documents: string[], topN?: number, signal?: AbortSignal): Promise<Array<{ index: number; score: number }>> {
   try {
     const resp = await fetchVoyageWithFailover(VOYAGE_RERANK_URL, {
       model: "rerank-2",
       query: query,
       documents: documents,
       top_n: topN,
-    });
+    }, { signal });
     const json = await resp.json() as any;
     const data = json?.data as Array<{ index: number; relevance_score: number }> | undefined;
     if (!data) return [];
