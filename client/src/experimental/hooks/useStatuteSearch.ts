@@ -98,6 +98,7 @@ export function useStatuteSearch(options: UseStatuteSearchOptions = {}): UseStat
     }
 
     let isMounted = true;
+    const queryAtFetch = debouncedQuery;
     setIsSearching(true);
 
     async function fetchLiveDbStatutes() {
@@ -107,7 +108,7 @@ export function useStatuteSearch(options: UseStatuteSearchOptions = {}): UseStat
 
         // 1. Query /api/statute/lookup?q=...
         try {
-          const res = await fetch(`/api/statute/lookup?q=${encodeURIComponent(debouncedQuery)}`, {
+          const res = await fetch(`/api/statute/lookup?q=${encodeURIComponent(queryAtFetch)}`, {
             credentials: "include",
           });
           if (res.ok) {
@@ -144,7 +145,7 @@ export function useStatuteSearch(options: UseStatuteSearchOptions = {}): UseStat
 
         // 2. Query /api/statute-documents/search?q=...
         try {
-          const docRes = await fetch(`/api/statute-documents/search?q=${encodeURIComponent(debouncedQuery)}`, {
+          const docRes = await fetch(`/api/statute-documents/search?q=${encodeURIComponent(queryAtFetch)}`, {
             credentials: "include",
           });
           if (docRes.ok) {

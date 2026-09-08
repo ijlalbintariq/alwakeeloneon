@@ -410,7 +410,7 @@ export const PreviewStatutes: React.FC = () => {
       keywords: firstSec.keywords,
       crossReferences: firstSec.crossReferences,
     };
-  }, [selectedSectionId, searchResults]);
+  }, [selectedSectionId, searchResults, loadedActSections]);
 
   // Hook: Resolve Hybrid Precedents (Query live database with real DB seed fallback)
   const {
