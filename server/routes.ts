@@ -11675,8 +11675,9 @@ RAG POLICY (STRICT):
       const courtsResult = await db.selectDistinct({ name: judgments.courtNameSnapshot }).from(judgments).where(isNotNull(judgments.courtNameSnapshot));
       const courtsList = courtsResult.map((c: any) => c.name).filter(Boolean);
 
+const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).from(citationLinks);
       const stats = {
-        totalLinks: 616506, // Hardcoded for performance, or could be dynamic
+        totalLinks: totalLinksResult?.cnt || 0,
         totalJudgmentsCited: total,
         topCourt: "Supreme Court of Pakistan" // Standard logic
       };
