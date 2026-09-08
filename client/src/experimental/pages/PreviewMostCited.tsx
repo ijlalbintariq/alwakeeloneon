@@ -168,7 +168,7 @@ export function PreviewMostCited() {
             Most Cited Precedents
           </h1>
           <p className="text-base text-muted-foreground max-w-3xl">
-            Ranked by citation frequency across {data?.stats.totalLinks ? data.stats.totalLinks.toLocaleString() : '616,506'} inter-judgment citation links.
+            Ranked by citation frequency across {data?.stats?.totalLinks !== undefined ? data.stats.totalLinks.toLocaleString() : '616,506'} inter-judgment citation links.
           </p>
         </div>
 
