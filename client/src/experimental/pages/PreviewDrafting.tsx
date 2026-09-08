@@ -119,6 +119,33 @@ export const PreviewDrafting: React.FC = () => {
     }
   }, [savedDrafts]);
 
+  // Auto-insert a citation from ?cite= URL param (e.g. from Chat Inspector "Cite in Draft")
+  const citeInsertedRef = useRef(false);
+  useEffect(() => {
+    if (citeInsertedRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const cite = params.get("cite");
+    if (!cite || cite.length < 5) return;
+    citeInsertedRef.current = true;
+    window.history.replaceState({}, "", "/preview/drafting");
+    toast({
+      title: "Citation Inserted",
+      description: `"${cite}" has been inserted into the active document.`,
+    });
+    const citationLine = cite.trim();
+    // Insert at end of current text content
+    setCurrentText((prev) => {
+      const sep = prev.trim() ? "\n\n" : "";
+      return `${prev}${sep}${citationLine}`;
+    });
+    // Also insert as HTML into TipTap editor
+    const editor = editorRef.current;
+    if (editor) {
+      const html = `<p><strong>${citationLine}</strong></p>`;
+      editor.insertContent(html);
+    }
+  }, []);
+
   // Save/Autosave draft to PostgreSQL
   const saveDraftToDb = useCallback(async (tabToSave?: DocumentTab, isManual = false) => {
     const tab = tabToSave || activeTab;

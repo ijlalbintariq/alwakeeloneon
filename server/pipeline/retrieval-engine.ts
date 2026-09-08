@@ -591,8 +591,9 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
   // The DB already filtered results for relevance via ILIKE — the results came back
   // because they matched the query. Don't re-filter them heavily with a second scorer.
   // The client-side scorer adds a relevance RANKING signal but must not drop valid results.
-  // Use a flat low threshold of 5 — just enough to exclude truly unrelated rows.
-  const rawMinScore = isCitationLookup ? 0 : 2;
+  // Use a flat low threshold of 10 — enough to drop results that only matched on
+  // generic words ("section", "court") without any topic or statute term.
+  const rawMinScore = isCitationLookup ? 0 : 10;
 
   // ── Reciprocal Rank Fusion (RRF) Multi-Stream Rank Scoring ─────────────────
   const rrfScores = new Map<string, number>();

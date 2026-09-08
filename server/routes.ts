@@ -12544,6 +12544,66 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
     }
   });
 
+  // Helper to resolve case law citations (used by both single and batch lookups)
+  async function resolveCaseLawCitation(q: string) {
+    const courtStripped = q
+      .replace(/\bS\.\s*C\.?/gi, " ")
+      .replace(/\bF\.\s*S\.\s*C\.?/gi, " ")
+      .replace(
+        /\b(Supreme\s+Court|Lahore|Peshawar|Karachi|Sindh|Islamabad|Balochistan|Federal\s+Shariat(?:\s+Court)?|FSC|AJK|SC)\b/gi,
+        " ",
+      )
+      .replace(/(\d)\s*\.\s*(\d)/g, "$1 $2")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const parsed = parseCaseLawCitationQuery(courtStripped) || parseCaseLawCitationQuery(q);
+    if (parsed && isTrustedCaseLawCitationParts(parsed)) {
+      const byParts = await storage.searchJudgmentsByCitation({
+        year: parsed.year,
+        journalCode: parsed.report,
+        page: parsed.page,
+      }).catch(() => []);
+      if (byParts.length > 0) {
+        const r = byParts[0];
+        return {
+          found: true,
+          id: r.id,
+          citation: r.citation,
+          title: r.title,
+          court: r.court,
+          decisionDate: r.decisionDate,
+        };
+      }
+    }
+
+    // Fallback — substring LIKE on citation string only.
+    const cleanQ = q.replace(/\s+/g, "").toUpperCase();
+    const [result] = await db
+      .select({
+        id: judgments.id,
+        citationString: judgments.citationString,
+        court: courtsRef.name,
+        decisionDate: judgments.decisionDate,
+      })
+      .from(judgments)
+      .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+      .where(like(sql`upper(replace(${judgments.citationString}, ' ', ''))`, `%${cleanQ}%`))
+      .limit(1);
+
+    if (result) {
+      return {
+        found: true,
+        id: result.id,
+        citation: result.citationString,
+        court: result.court,
+        decisionDate: result.decisionDate,
+      };
+    }
+
+    return { found: false };
+  }
+
   // Lookup case law / judgment by citation - returns judgment ID for direct opening
   // Public lookup (used by landing-page chat widget).
   // Rate-limited: 30 requests/min per IP, min 5-char query.
@@ -12568,63 +12628,17 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         return res.status(400).json({ message: "Query must be at least 5 characters" });
       }
 
-      // STEP 1: Parsed-parts match (year + report code + page).
-      const courtStripped = q
-        .replace(/\bS\.\s*C\.?/gi, " ")
-        .replace(/\bF\.\s*S\.\s*C\.?/gi, " ")
-        .replace(
-          /\b(Supreme\s+Court|Lahore|Peshawar|Karachi|Sindh|Islamabad|Balochistan|Federal\s+Shariat(?:\s+Court)?|FSC|AJK|SC)\b/gi,
-          " ",
-        )
-        .replace(/(\d)\s*\.\s*(\d)/g, "$1 $2")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      const parsed = parseCaseLawCitationQuery(courtStripped) || parseCaseLawCitationQuery(q);
-      if (parsed && isTrustedCaseLawCitationParts(parsed)) {
-        const byParts = await storage.searchJudgmentsByCitation({
-          year: parsed.year,
-          journalCode: parsed.report,
-          page: parsed.page,
-        }).catch(() => []);
-        if (byParts.length > 0) {
-          const r = byParts[0];
-          return res.json({
-            found: true,
-            id: r.id,
-            judgment: {
-              citation: r.citation,
-              title: r.title,
-              court: r.court,
-              decisionDate: r.decisionDate,
-            },
-          });
-        }
-      }
-
-      // STEP 2: Fallback — substring LIKE on citation string only.
-      // Title search disabled for public endpoint to prevent data probing.
-      const cleanQ = q.replace(/\s+/g, "").toUpperCase();
-      const [result] = await db
-        .select({
-          id: judgments.id,
-          citationString: judgments.citationString,
-          court: courtsRef.name,
-          decisionDate: judgments.decisionDate,
-        })
-        .from(judgments)
-        .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-        .where(like(sql`upper(replace(${judgments.citationString}, ' ', ''))`, `%${cleanQ}%`))
-        .limit(1);
-
-      if (result) {
+      const resolved = await resolveCaseLawCitation(q);
+      
+      if (resolved.found) {
         return res.json({
           found: true,
-          id: result.id,
+          id: resolved.id,
           judgment: {
-            citation: result.citationString,
-            court: result.court,
-            decisionDate: result.decisionDate,
+            citation: resolved.citation,
+            title: resolved.title,
+            court: resolved.court,
+            decisionDate: resolved.decisionDate,
           },
         });
       }
@@ -12632,6 +12646,45 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       res.json({ found: false });
     } catch (err) {
       console.error("Error looking up case law:", err);
+      res.status(500).json({ message: "Failed to lookup case law" });
+    }
+  });
+
+  // Batch case law lookup by citations - single request for the chat Inspector drawer.
+  // Mirrors the single-lookup logic per citation; returns a map keyed by citation string.
+  app.post("/api/caseLaw/lookup-batch", async (req, res) => {
+    try {
+      const raw = req.body?.citations;
+      const citations = Array.isArray(raw)
+        ? raw.map((c: any) => String(c || "").trim()).filter((c: string) => c.length >= 5)
+        : [];
+      if (citations.length === 0) {
+        return res.json({ results: {} });
+      }
+      if (citations.length > 50) {
+        return res.status(400).json({ message: "Too many citations in batch (max 50)" });
+      }
+
+      const results: Record<string, { found: boolean; id?: number | string; title?: string; court?: string; citation?: string }> = {};
+
+      for (const q of citations) {
+        const resolved = await resolveCaseLawCitation(q);
+        if (resolved.found) {
+          results[q] = {
+            found: true,
+            id: resolved.id,
+            title: resolved.citation, // Using citation string as title for UI consistency
+            citation: resolved.citation,
+            court: resolved.court,
+          };
+        } else {
+          results[q] = { found: false };
+        }
+      }
+
+      res.json({ results });
+    } catch (err) {
+      console.error("Error in batch case law lookup:", err);
       res.status(500).json({ message: "Failed to lookup case law" });
     }
   });

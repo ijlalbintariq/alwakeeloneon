@@ -72,40 +72,64 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
   const [filterQuery, setFilterQuery] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [verifiedMap, setVerifiedMap] = useState<Record<string, { verified: boolean; id?: number; title?: string; court?: string }>>({});
-  const [verifyingMap, setVerifyingMap] = useState<Record<string, boolean>>({});
+  const [batchLoading, setBatchLoading] = useState(false);
   const [expandedSnippets, setExpandedSnippets] = useState<Record<number, boolean>>({});
   const [expandedBookmarks, setExpandedBookmarks] = useState<Record<number, boolean>>({});
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Verify citations against /api/caseLaw/lookup
-  useEffect(() => {
-    citations.forEach((c) => {
-      const citeStr = c.citation;
-      if (!citeStr || verifiedMap[citeStr] !== undefined || verifyingMap[citeStr]) return;
+  // Track which citation sets we've already fetched — avoids re-fetching on parent re-renders
+  const verifiedCitationsRef = useRef<Set<string>>(new Set());
+  const lastCitationsHashRef = useRef<string>("");
 
-      setVerifyingMap((prev) => ({ ...prev, [citeStr]: true }));
-      fetch(`/api/caseLaw/lookup?q=${encodeURIComponent(citeStr)}`, { credentials: "include" })
-        .then((res) => (res.ok ? res.json() : { found: false }))
-        .then((data) => {
-          setVerifiedMap((prev) => ({
-            ...prev,
-            [citeStr]: {
-              verified: !!data.found,
-              id: data.id,
-              title: data.title,
-              court: data.court,
-            },
-          }));
-        })
-        .catch(() => {
-          setVerifiedMap((prev) => ({ ...prev, [citeStr]: { verified: false } }));
-        })
-        .finally(() => {
-          setVerifyingMap((prev) => ({ ...prev, [citeStr]: false }));
+  // Batch-verify citations against /api/caseLaw/lookup-batch (single request, no N+1)
+  useEffect(() => {
+    const pending = citations.filter(
+      (c) => c.citation && !verifiedCitationsRef.current.has(c.citation)
+    );
+    if (pending.length === 0) return;
+
+    // Build a hash of pending citation strings to detect real changes
+    const hash = pending.map((c) => c.citation).sort().join("||");
+    if (hash === lastCitationsHashRef.current) return;
+    lastCitationsHashRef.current = hash;
+
+    pending.forEach((c) => verifiedCitationsRef.current.add(c.citation));
+    setBatchLoading(true);
+
+    fetch("/api/caseLaw/lookup-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ citations: pending.map((c) => c.citation) }),
+    })
+      .then((res) => (res.ok ? res.json() : { results: {} }))
+      .then((data) => {
+        const results = data.results || {};
+        setVerifiedMap((prev) => {
+          const next = { ...prev };
+          for (const citeStr of Object.keys(results)) {
+            const r = results[citeStr];
+            next[citeStr] = {
+              verified: !!r.found,
+              id: r.id,
+              title: r.title,
+              court: r.court,
+            };
+          }
+          return next;
         });
-    });
-  }, [citations, verifiedMap, verifyingMap]);
+      })
+      .catch(() => {
+        // Mark as unverified so we don't retry endlessly
+        pending.forEach((c) => {
+          verifiedCitationsRef.current.delete(c.citation);
+        });
+      })
+      .finally(() => {
+        setBatchLoading(false);
+      });
+  }, [citations]);
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -308,7 +332,6 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                 ) : (
                   filteredCitations.map((c, i) => {
                     const verifiedInfo = verifiedMap[c.citation];
-                    const isVerifying = verifyingMap[c.citation];
                     const isVerified = verifiedInfo?.verified;
                     const isSnippetExpanded = !!expandedSnippets[i];
 
@@ -324,7 +347,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
                               <span className="font-mono font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC] tracking-tight">
                                 {c.citation}
                               </span>
-                              {isVerifying ? (
+                              {batchLoading && !verifiedInfo ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
                                   <Loader2 className="w-2.5 h-2.5 animate-spin" /> Verifying DB...
                                 </span>

@@ -664,6 +664,19 @@ export const PreviewChat: React.FC = () => {
     return [...messages].reverse().find((m) => m.role === "assistant");
   }, [messages]);
 
+  // Memoized cleaning of assistant messages — avoids re-running the regex suite on
+  // every historical message during unrelated re-renders (typing, drawer toggles,
+  // and the 100ms elapsed-timer ticks while streaming).
+  const cleanedMessagesMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof cleanLegalChatResponse>>();
+    for (const m of messages) {
+      if (m.role === "assistant") {
+        map.set(`${m.id}::${m.content}`, cleanLegalChatResponse(m.content));
+      }
+    }
+    return map;
+  }, [messages]);
+
   const inspectorData = useMemo(() => {
     if (!latestAssistantMessage) {
       return { citations: [], statutes: [] };
@@ -713,6 +726,13 @@ export const PreviewChat: React.FC = () => {
 
     return { citations, statutes };
   }, [latestAssistantMessage]);
+
+  // Set of citation strings the AI actually referenced in its prose body
+  // (passed to CaseLawCard to light up the "AI Cited" badge)
+  const aiCitedSet = useMemo(
+    () => new Set(inspectorData.citations.map((c) => c.citation)),
+    [inspectorData]
+  );
 
   return (
     <PreviewShell noPadding>
@@ -919,7 +939,7 @@ export const PreviewChat: React.FC = () => {
             {messages.map((msg, index) => {
               const isUser = msg.role === "user";
               const isBookmarked = bookmarks.some((b) => b.content === msg.content);
-              const cleaned = !isUser ? cleanLegalChatResponse(msg.content) : null;
+              const cleaned = !isUser ? cleanedMessagesMap.get(`${msg.id}::${msg.content}`) ?? null : null;
               const displayContent = cleaned ? cleaned.cleanContent : msg.content;
               const effectiveCaseLawCard = msg.caseLawCard || (cleaned?.references?.judgments && cleaned.references.judgments.length > 0 ? {
                 hits: cleaned.references.judgments.map((j) => ({
@@ -1023,6 +1043,7 @@ export const PreviewChat: React.FC = () => {
                       {effectiveCaseLawCard && (
                         <CaseLawCard
                           data={effectiveCaseLawCard}
+                          aiCitedCitations={aiCitedSet}
                           onCitationClick={(cite) => {
                             setRightDrawerOpen(true);
                           }}

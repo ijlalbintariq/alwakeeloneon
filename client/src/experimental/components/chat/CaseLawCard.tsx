@@ -51,10 +51,10 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
 }) => {
   const [sectionExpanded, setSectionExpanded] = useState(defaultExpanded);
   const [expandedAll, setExpandedAll] = useState(false);
-  const [expandedHitIdx, setExpandedHitIdx] = useState<number | null>(null);
-  const [summaryData, setSummaryData] = useState<Record<number, AiSummary | null>>({});
-  const [summaryLoading, setSummaryLoading] = useState<Record<number, boolean>>({});
-  const [resolvedJudgmentIds, setResolvedJudgmentIds] = useState<Record<number, string | null>>({});
+  const [expandedHitKey, setExpandedHitKey] = useState<string | null>(null);
+  const [summaryData, setSummaryData] = useState<Record<string, AiSummary | null>>({});
+  const [summaryLoading, setSummaryLoading] = useState<Record<string, boolean>>({});
+  const [resolvedJudgmentIds, setResolvedJudgmentIds] = useState<Record<string, string | null>>({});
 
   const normalizedCited = useMemo(() => {
     if (!aiCitedCitations) return new Set<string>();
@@ -71,17 +71,18 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
   };
 
   const handleHitClick = async (hit: CaseLawHit, idx: number) => {
-    if (expandedHitIdx === idx) {
-      setExpandedHitIdx(null);
+    const hitKey = hit.citation;
+    if (expandedHitKey === hitKey) {
+      setExpandedHitKey(null);
       return;
     }
 
-    setExpandedHitIdx(idx);
-    if (idx in summaryData) return;
+    setExpandedHitKey(hitKey);
+    if (hitKey in summaryData) return;
 
-    setSummaryLoading((prev) => ({ ...prev, [idx]: true }));
+    setSummaryLoading((prev) => ({ ...prev, [hitKey]: true }));
     try {
-      let jId = resolvedJudgmentIds[idx];
+      let jId = resolvedJudgmentIds[hitKey];
       if (jId === undefined) {
         if (hit.id) {
           jId = String(hit.id);
@@ -97,26 +98,26 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
             jId = null;
           }
         }
-        setResolvedJudgmentIds((prev) => ({ ...prev, [idx]: jId }));
+        setResolvedJudgmentIds((prev) => ({ ...prev, [hitKey]: jId }));
       }
 
       if (!jId) {
-        setSummaryData((prev) => ({ ...prev, [idx]: null }));
+        setSummaryData((prev) => ({ ...prev, [hitKey]: null }));
         return;
       }
 
       const res = await fetch(`/api/judgments/${jId}/summary`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
-        setSummaryData((prev) => ({ ...prev, [idx]: d }));
+        setSummaryData((prev) => ({ ...prev, [hitKey]: d }));
       } else {
-        setSummaryData((prev) => ({ ...prev, [idx]: null }));
+        setSummaryData((prev) => ({ ...prev, [hitKey]: null }));
       }
     } catch (err) {
       console.error("Failed to fetch AI summary:", err);
-      setSummaryData((prev) => ({ ...prev, [idx]: null }));
+      setSummaryData((prev) => ({ ...prev, [hitKey]: null }));
     } finally {
-      setSummaryLoading((prev) => ({ ...prev, [idx]: false }));
+      setSummaryLoading((prev) => ({ ...prev, [hitKey]: false }));
     }
   };
 
@@ -165,13 +166,14 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
         <div className="p-2 sm:p-3 space-y-2">
           {visibleHits.map((hit, idx) => {
             const isAiCited = wasAiCited(hit.citation);
-            const isHitExpanded = expandedHitIdx === idx;
-            const summary = summaryData[idx];
-            const loading = summaryLoading[idx];
+            const hitKey = hit.citation;
+            const isHitExpanded = expandedHitKey === hitKey;
+            const summary = summaryData[hitKey];
+            const loading = summaryLoading[hitKey];
 
             return (
               <div
-                key={`${hit.citation}-${idx}`}
+                key={hitKey}
                 className="rounded-lg border border-[#E5E4E2] dark:border-[#1E2D44] bg-[#FAFAF9] hover:border-[#D9D8D6] transition-all overflow-hidden"
               >
                 <div

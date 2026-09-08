@@ -53,7 +53,7 @@ const EXCERPT_CHARS_EXTRACTED = 1000;
 function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSection | null {
   const lines: string[] = [];
 
-  for (const { row } of caseLaw) {
+  for (const [rank, { row }] of caseLaw.entries()) {
     const citation = String(row.citation || "").trim();
     if (!citation) continue;
 
@@ -81,7 +81,9 @@ function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSect
     const reportingInfo = reportingType ? ` | REPORTING: ${reportingType}` : "";
     // Judgment rows: mark explicitly so AI knows this is from the verified DB
     const sourceTag = row.sourceType === "judgment" ? " | SOURCE: Verified Judgment DB" : "";
-    lines.push(`- CITATION: ${citation} | COURT: ${courtName}${reportingInfo}${sourceTag}${summary}`);
+    // Ordinal rank label — the LLM is instructed to prefer lower ranks (higher relevance)
+    const rankLabel = rank === 0 ? "[1] HIGHEST RELEVANCE" : `[${rank + 1}] RELEVANCE RANK ${rank + 1}`;
+    lines.push(`- ${rankLabel} | CITATION: ${citation} | COURT: ${courtName}${reportingInfo}${sourceTag}${summary}`);
   }
 
   if (lines.length === 0) return null;
@@ -236,6 +238,8 @@ export function buildContext(
 
   if (hasCaseLawCitations) {
     parts.push(`CASE LAW RULE (MANDATORY): You MUST cite 1 to 4 of the judgments from the VERIFIED JUDGMENTS section below under a '### Leading Case Law' header. Copy each CITATION string verbatim (e.g. **[2024 SCMR 142]**). Explain how each cited case applies to the user's scenario. Include the citation and case title naturally. NEVER write 'No relevant judgments found' when cases are present in the VERIFIED JUDGMENTS section below. Never invent or recall citations from training data.
+
+RELEVANCE RANKING RULE (CRITICAL): The judgments below are listed in order of computed relevance to the user's question — the FIRST entries are the most directly on point. Cite the TOP 2-3 highest-scored cases that most directly answer the user's specific question. Do NOT pick cases lower in the list merely because they are more famous or more recent. If the top entries are clearly on-topic, cite them. Only skip a top entry if it is genuinely unrelated to the user's facts or legal issue.
 
 For EACH cited case, provide a FULL SHORT SUMMARY using this EXACT format:
 

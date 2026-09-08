@@ -20,8 +20,9 @@ export const ChatCitationChip: React.FC<ChatCitationChipProps> = ({
 
   useEffect(() => {
     if (!citation || citation.length < 5) return;
+    const controller = new AbortController();
     setStatus("loading");
-    fetch(`/api/caseLaw/lookup?q=${encodeURIComponent(citation)}`, { credentials: "include" })
+    fetch(`/api/caseLaw/lookup?q=${encodeURIComponent(citation)}`, { credentials: "include", signal: controller.signal })
       .then((res) => (res.ok ? res.json() : { found: false }))
       .then((data) => {
         if (data.found && data.id) {
@@ -32,9 +33,10 @@ export const ChatCitationChip: React.FC<ChatCitationChipProps> = ({
           setStatus("unverified");
         }
       })
-      .catch(() => {
-        setStatus("unverified");
+      .catch((err) => {
+        if (err.name !== "AbortError") setStatus("unverified");
       });
+    return () => controller.abort();
   }, [citation]);
 
   return (
