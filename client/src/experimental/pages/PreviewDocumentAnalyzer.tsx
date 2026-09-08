@@ -155,7 +155,7 @@ function autoDetectDocumentType(text: string): "pleading" | "contract" | "fir" |
   const t = text.toLowerCase();
   const pleadingScore = ["plaint", "petition", "appeal", "suit", "versus", "vs.", "v.", "respondent", "appellant", "defendant", "plaintiff", "in the court of", "civil judge", "high court", "supreme court", "writ", "jurisdiction", "prayer", "prays that"].filter(k => t.includes(k)).length;
   const contractScore = ["agreement", "deed", "memorandum", "mou", "contract", "between", "party of the first part", "hereinafter referred to as", "whereby", "witnesseth", "agreed terms", "lease", "partnership", "indemnity", "terms and conditions", "now this deed", "this agreement"].filter(k => t.includes(k)).length;
-  const firScore = ["fir", "first information report", "police station", "ps", "offence", "accused", "complainant", "crpc", "ppc", "f.i.r"].filter(k => t.includes(k)).length;
+  const firScore = ["\\bf\\.?i\\.?r\\b", "first information report", "police station", "\\bps\\b", "offence", "accused", "complainant", "\\bcrpc\\b", "\\bppc\\b"].filter(k => new RegExp(k, "i").test(t)).length;
   const appScore = ["application for", "stay application", "bail", "under section", "read with section 151", "applicant", "affidavit", "respectfully sheweth", "humbly submitted"].filter(k => t.includes(k)).length;
   const noticeScore = ["legal notice", "under instructions from my client", "defamation", "demand", "damages", "hereby give you notice", "advocate high court", "serve you with this legal notice"].filter(k => t.includes(k)).length;
   
@@ -614,7 +614,9 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
 
     if (target.originalSnippet && updatedText.includes(target.originalSnippet)) {
       replacedText = target.originalSnippet;
-      updatedText = updatedText.replace(target.originalSnippet, target.recommendedRedline);
+      // Escape regex special chars in snippet so replaceAll matches the literal text
+      const escaped = target.originalSnippet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      updatedText = updatedText.replace(new RegExp(escaped, "g"), target.recommendedRedline);
     } else {
       if (updatedText.includes("PRAYER:")) {
         updatedText = updatedText.replace("PRAYER:", `${target.recommendedRedline}\n\nPRAYER:`);
@@ -642,9 +644,11 @@ Return your findings ONLY as a JSON array inside a \`\`\`json block with objects
 
     let updatedText = documentText;
     if (target.insertedText && target.replacedText && updatedText.includes(target.insertedText)) {
-      updatedText = updatedText.replace(target.insertedText, target.replacedText);
+      const escaped = target.insertedText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      updatedText = updatedText.replace(new RegExp(escaped, "g"), target.replacedText);
     } else if (target.insertedText && updatedText.includes(target.insertedText)) {
-      updatedText = updatedText.replace(target.insertedText, "");
+      const escaped = target.insertedText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      updatedText = updatedText.replace(new RegExp(escaped, "g"), "");
     }
 
     const updatedFindings = findings.map((f) =>
