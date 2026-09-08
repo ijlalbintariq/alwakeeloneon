@@ -3,9 +3,10 @@ import { useLocation, useParams } from 'wouter';
 import { PreviewShell } from '@/experimental/components/PreviewShell';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Users, Building2, Calendar, Loader2, ArrowLeft, ChevronLeft, ChevronRight, Gavel
+  Users, Building2, Calendar, Loader2, ArrowLeft, ChevronLeft, ChevronRight, Gavel, Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -47,6 +48,13 @@ const PreviewJudgeProfile = () => {
   const [isLoadingCases, setIsLoadingCases] = useState(true);
   const [page, setPage] = useState(1);
   const limit = 20;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     if (!decodedName) return;
@@ -80,7 +88,7 @@ const PreviewJudgeProfile = () => {
     const fetchCases = async () => {
       setIsLoadingCases(true);
       try {
-        const res = await fetch(`/api/judges/directory/${encodeURIComponent(decodedName)}/cases?page=${page}&limit=${limit}`, {
+        const res = await fetch(`/api/judges/directory/${encodeURIComponent(decodedName)}/cases?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}`, {
           credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to fetch judge cases');
@@ -99,7 +107,7 @@ const PreviewJudgeProfile = () => {
     };
     
     fetchCases();
-  }, [decodedName, page, toast]);
+  }, [decodedName, page, debouncedSearch, toast]);
 
   return (
     <PreviewShell>
@@ -162,16 +170,28 @@ const PreviewJudgeProfile = () => {
           </div>
         )}
 
-        <div className="mb-6 flex justify-between items-center">
+                <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Gavel className="w-5 h-5 text-emerald-600" />
             All Judgments
+            {casesData && (
+              <Badge variant="outline" className="bg-white dark:bg-zinc-950 font-normal ml-2">
+                Showing {casesData.total === 0 ? 0 : ((page - 1) * limit) + 1}-{Math.min(page * limit, casesData.total)} of {casesData.total.toLocaleString()}
+              </Badge>
+            )}
           </h2>
-          {casesData && (
-            <Badge variant="outline" className="bg-white dark:bg-zinc-950 font-normal">
-              Showing {((page - 1) * limit) + 1}-{Math.min(page * limit, casesData.total)} of {casesData.total.toLocaleString()}
-            </Badge>
-          )}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input 
+              placeholder="Search judgments..." 
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1); // Reset page on new search
+              }}
+              className="pl-9 bg-white dark:bg-zinc-950"
+            />
+          </div>
         </div>
 
         {isLoadingCases ? (

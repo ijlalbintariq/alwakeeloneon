@@ -11497,11 +11497,27 @@ RAG POLICY (STRICT):
       const name = req.params.name;
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
       const limit = Math.max(10, Math.min(100, parseInt(req.query.limit as string) || 20));
+      const search = ((req.query.search as string) || "").trim();
       const offset = (page - 1) * limit;
 
-      const [totalCount] = await db.select({ count: count(judgeCaseLinks.id) })
+      const conditions = [eq(judgeCaseLinks.judgeName, name)];
+      
+      if (search) {
+        conditions.push(
+          or(
+            ilike(judgments.title, `%${search}%`),
+            ilike(judgments.citationString, `%${search}%`),
+            ilike(judgments.headnotes, `%${search}%`)
+          )!
+        );
+      }
+
+      const countQuery = db.select({ count: count(judgeCaseLinks.id) })
         .from(judgeCaseLinks)
-        .where(eq(judgeCaseLinks.judgeName, name));
+        .innerJoin(judgments, eq(judgeCaseLinks.judgmentId, judgments.id))
+        .where(and(...conditions));
+
+      const [totalCount] = await countQuery;
 
       const cases = await db.select({
         id: judgments.id,
@@ -11513,7 +11529,7 @@ RAG POLICY (STRICT):
       })
       .from(judgeCaseLinks)
       .innerJoin(judgments, eq(judgeCaseLinks.judgmentId, judgments.id))
-      .where(eq(judgeCaseLinks.judgeName, name))
+      .where(and(...conditions))
       .orderBy(desc(judgments.year), desc(judgments.id))
       .limit(limit)
       .offset(offset);
