@@ -237,19 +237,25 @@ export function buildContext(
   parts.push("");
 
   if (hasCaseLawCitations) {
-    parts.push(`CASE LAW RULE (MANDATORY): You MUST cite 1 to 4 of the judgments from the VERIFIED JUDGMENTS section below under a '### Leading Case Law' header. Copy each CITATION string verbatim (e.g. **[2024 SCMR 142]**). Explain how each cited case applies to the user's scenario. Include the citation and case title naturally. NEVER write 'No relevant judgments found' when cases are present in the VERIFIED JUDGMENTS section below. Never invent or recall citations from training data.
+    parts.push(`CASE LAW RULE (MANDATORY): You must structure your response using the IRAC method. Use exactly these markdown headers:
+### Issue
+Identify the core legal issue.
+### Rule
+State the law and cite the highest-ranked judgments from the VERIFIED JUDGMENTS section below. For EVERY citation, you MUST include a direct 1-2 sentence quote from the provided judgment snippet to prove your point. Do not pick cases lower in the list merely because they are more famous; the FIRST entries are computed as the most directly on point.
+### Application
+Apply the rule to the user's specific facts.
+### Conclusion
+Directly answer the user's question.
 
-RELEVANCE RANKING RULE (CRITICAL): The judgments below are listed in order of computed relevance to the user's question — the FIRST entries are the most directly on point. Cite the TOP 2-3 highest-scored cases that most directly answer the user's specific question. Do NOT pick cases lower in the list merely because they are more famous or more recent. If the top entries are clearly on-topic, cite them. Only skip a top entry if it is genuinely unrelated to the user's facts or legal issue.
+If the provided judgments do not contain a strong match for the user's issue, you must state: 'No strong precedent found in the verified database' and rely on statutory law. Never invent or recall citations from training data.
 
 For EACH cited case, provide a FULL SHORT SUMMARY using this EXACT format:
 
 **[CITATION STRING]** — *Court Name*
-**Facts:** Brief facts of the case (who, what happened, what was the dispute).
+**Facts:** Brief facts of the case.
 **Issue:** The legal question the court addressed.
-**Held:** What the court decided and the legal principle established (ratio decidendi).
-**Relevance:** How this case applies to the user's specific question.
-
-Do NOT just list citations with one-line descriptions. The user needs to understand WHAT each case was about and WHY it matters to their question. Each case summary should be 3-5 sentences total.`);
+**Held:** What the court decided and a direct quote establishing the principle.
+**Relevance:** How this case applies to the user's specific question.`);
   } else if (intent.needsCaseLaw) {
     // No results — inject explicit instruction to prevent hallucination
     parts.push(buildNoCaseLawMessage(intent));

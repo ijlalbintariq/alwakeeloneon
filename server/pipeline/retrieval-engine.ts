@@ -310,14 +310,23 @@ function scoreCaseLawRow(row: CaseLaw, intent: QueryIntent): number {
   else if (court.includes("federal shariat"))     score += 12;
   else if (court.includes("high court"))          score += 8;
 
-  // Recency bonus — recent cases reflect current law
-  const rowYear = row.citationYear || 0;
-  const currentYear = new Date().getFullYear();
-  if (rowYear >= currentYear - 5)       score += 10;
-  else if (rowYear >= currentYear - 10) score += 5;
-  else if (rowYear >= currentYear - 20) score += 2;
+  // Jurisdiction specific bonus (requested by user)
+  const qLower = intent.normalized.toLowerCase();
+  if (qLower.includes("supreme court") && court.includes("supreme court")) score *= 1.2;
+  else if (qLower.includes("lahore") && court.includes("lahore")) score *= 1.2;
+  else if (qLower.includes("sindh") && court.includes("sindh")) score *= 1.2;
+  else if (qLower.includes("islamabad") && court.includes("islamabad")) score *= 1.2;
+  else if (qLower.includes("peshawar") && court.includes("peshawar")) score *= 1.2;
+  else if (qLower.includes("balochistan") && court.includes("balochistan")) score *= 1.2;
+  else if (qLower.includes("shariat") && court.includes("shariat")) score *= 1.2;
 
-  return score;
+  // Smooth continuous recency bonus
+  const rowYear = row.citationYear || row.year || 0;
+  if (rowYear > 1900) {
+    score += (rowYear - 2000) * 0.5; 
+  }
+
+  return Math.max(0, score);
 }
 
 function scoreCaseLawRowForCitationLookup(row: CaseLaw, intent: QueryIntent): number {
@@ -632,7 +641,39 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
     .filter((item) => item.relevanceScore >= rawMinScore)
     .sort((a, b) => b.relevanceScore - a.relevanceScore);
 
-  return scored.slice(0, limit);
+  let topCandidates = scored.slice(0, Math.max(30, limit));
+
+  // ── Apply Voyage Reranker if active ──
+  if (!isCitationLookup && topCandidates.length > 0 && process.env.RAG_EMBEDDING_PROVIDER?.toLowerCase() === "voyage") {
+    try {
+      const { rerankVoyage } = await import("../rag/embedding-local");
+      const docsToRerank = topCandidates.map(
+        (c) => `TITLE: ${c.row.title}\nCOURT: ${c.row.court}\nCITATION: ${c.row.citation}\nSUMMARY:\n${c.row.summary}`
+      );
+      const rerankResult = await withTimeout(
+        rerankVoyage(expandedQuery, docsToRerank),
+        8000,
+        [],
+      );
+      
+      const rerankScores = new Map<number, number>();
+      for (const item of rerankResult) {
+        rerankScores.set(item.index, item.score);
+      }
+
+      for (let idx = 0; idx < topCandidates.length; idx++) {
+        const rerankScore = rerankScores.get(idx) ?? 0;
+        topCandidates[idx].relevanceScore = Math.round(
+          (rerankScore * 0.70 + (topCandidates[idx].relevanceScore / 100) * 0.30) * 100
+        );
+      }
+      topCandidates.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    } catch (err) {
+      console.warn(`[RAG:CaseLaw] Voyage reranking failed:`, err);
+    }
+  }
+
+  return topCandidates.slice(0, limit);
 }
 
 // ---------------------------------------------------------------------------
