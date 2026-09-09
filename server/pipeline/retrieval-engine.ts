@@ -716,7 +716,7 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
         STATUTE_TIMEOUT_MS,
         undefined,
       );
-      if (directMatch) {
+      console.log("directMatch:", !!directMatch); if (directMatch) {
         return [{
           shortTitle: String(directMatch.shortTitle || ""),
           section: String(directMatch.section || ""),
@@ -1202,7 +1202,7 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
       statutesFetched: statuteResults.length,
       adminDocsFetched: adminDocResults.length,
       strategyUsed: intent.type,
-      topicsMatched: intent.topics.map((t) => t.label),
+      topicsMatched: intent.topics?.map((t) => t.label) || [],
       durationMs,
     },
   };

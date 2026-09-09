@@ -106,7 +106,7 @@ function buildVerifiedStatutesSection(statutes: RetrievedStatute[]): ContextSect
     const fullTitle = s.statuteDocumentTitle || s.shortTitle;
     const punishmentPart = s.punishment ? ` | PUNISHMENT: ${s.punishment}` : "";
     const openRef = fullTitle ? ` | [Open full statute: "${fullTitle}"]` : "";
-    return `- STATUTE: ${fullTitle} | SECTION: ${s.section} | ${s.description}${punishmentPart}${openRef}`;
+    return `- STATUTE: ${fullTitle} | SECTION: ${s.section} | VERBATIM TEXT: "${s.description}"${punishmentPart}${openRef}`;
   });
   return {
     id: "verified-statutes",
@@ -241,7 +241,7 @@ export function buildContext(
 ### Issue
 Identify the core legal issue.
 ### Rule
-State the law and cite the highest-ranked judgments from the VERIFIED JUDGMENTS section below. For EVERY citation, you MUST include a direct 1-2 sentence quote from the provided judgment snippet to prove your point. If the snippet is too short or garbled to quote accurately, cite the case but note 'full text not available in context'. Do not pick cases lower in the list merely because they are more famous; the FIRST entries are computed as the most directly on point.
+State the law and cite the highest-ranked judgments from the VERIFIED JUDGMENTS section below. For EVERY citation, you MUST include a direct 1-2 sentence quote from the provided judgment snippet to prove your point. If the snippet is too short or garbled to quote accurately, cite the case but note 'full text not available in context'. Do not pick cases lower in the list merely because they are more famous; the FIRST entries are computed as the most directly on point.${hasStatutes ? "\nSTATUTORY TEXT MANDATE: Under '### Rule', you MUST FIRST present the verbatim statutory text of the provision in a markdown blockquote (> ...) with the exact section and full statute title, BEFORE presenting any case law. Do not paraphrase or alter the statutory wording." : ""}
 ### Application
 Apply the rule to the user's specific facts.
 ### Conclusion
