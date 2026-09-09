@@ -1,5 +1,8 @@
 import type { InsertCitationLink, InsertUnresolvedCitation } from "@shared/schema";
 import { storage } from "../storage";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
+import { judgments, lawJournals } from "@shared/schema";
 
 export type CitationType = "relied_upon" | "referred_to" | "distinguished" | "overruled";
 
@@ -71,22 +74,34 @@ export class CitationExtractor {
   }
 
   async resolveCitations(citations: ExtractedCitation[]): Promise<ResolvedCitation[]> {
-    const resolved: ResolvedCitation[] = [];
+    if (citations.length === 0) return [];
 
-    for (const citation of citations) {
-      const matches = await storage.searchJudgmentsByCitation({
-        year: citation.year,
-        journalCode: citation.journalCode,
-        page: citation.page,
-      });
+    // Build one bulk query: SELECT WHERE (year, page) IN (...) with journal code filter
+    // Groups all lookups into a single DB round-trip instead of N sequential awaits.
+    const tuples = citations
+      .map((c) => `(${c.year}, ${c.page})`)
+      .join(", ");
 
-      resolved.push({
-        ...citation,
-        citedJudgmentId: matches[0]?.id || null,
-      });
+    const rows = await db.execute(
+      sql`SELECT j.id, j.year, j.page, lower(lj.code) as journal_code
+          FROM judgments j
+          INNER JOIN law_journals lj ON lj.id = j.journal_id
+          WHERE (j.year, j.page) IN (${sql.raw(tuples)})
+            AND j.is_active = true`
+    );
+
+    // Build a lookup map keyed by "year:journalCode:page"
+    const lookup = new Map<string, string>();
+    for (const row of (rows as any).rows ?? rows) {
+      const key = `${row.year}:${String(row.journal_code).toUpperCase()}:${row.page}`;
+      lookup.set(key, row.id);
     }
 
-    return resolved;
+    return citations.map((c) => ({
+      ...c,
+      citedJudgmentId:
+        lookup.get(`${c.year}:${c.journalCode}:${c.page}`) ?? null,
+    }));
   }
 
   inferCitationType(contextText: string): CitationType {
