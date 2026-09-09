@@ -17381,6 +17381,17 @@ The user has attached the following documents for your reference. Analyze them c
           res.write(`data: ${JSON.stringify({ text: fullContent })}\n\n`);
         }
 
+        const { verifyQuotesAgainstSources } = await import("./pipeline/context-builder");
+        const verification = verifyQuotesAgainstSources(fullContent, pipelineCaseLawHits.map((h: any) => ({
+          contextExcerpt: h.summary ?? undefined,
+        })));
+        if (verification.unverifiedQuotes.length > 0) {
+          fullContent += `\n\n> **VERIFICATION NOTE:** The following quotes could not be traced to the retrieved source text and may be inaccurate: ${verification.unverifiedQuotes.map(q => `"${q}"`).join("; ")}`;
+          res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+          res.write(`data: ${JSON.stringify({ text: fullContent })}\n\n`);
+        }
+
+
         // Safety net: inject verified case law if the AI failed to cite any
         // Source priority: tool search hits > pipeline verified judgments ONLY
         // Level 3 (direct DB search) DISABLED — it returns random, topic-blind results

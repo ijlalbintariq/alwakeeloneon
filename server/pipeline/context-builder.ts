@@ -283,3 +283,47 @@ For EACH cited case, provide a FULL SHORT SUMMARY using this EXACT format:
     hasStatutes,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Verbatim Quote Grounding — verify LLM quotes against retrieved sources
+// ---------------------------------------------------------------------------
+
+export interface QuoteVerificationResult {
+  verifiedQuotes: string[];
+  unverifiedQuotes: string[];
+}
+
+export function verifyQuotesAgainstSources(
+  response: string,
+  sources: { contextExcerpt?: string; fullText?: string }[]
+): QuoteVerificationResult {
+  // Extract quotes from ### Rule section (markdown blockquotes or quoted strings)
+  const quoteRegex = /(?:>|\")([^\"\n]{20,300})(?:\"|$)/g;
+  const quotes: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = quoteRegex.exec(response)) !== null) {
+    quotes.push(match[1].trim());
+  }
+
+  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/[^\w\s]/g, "").trim();
+
+  const verifiedQuotes: string[] = [];
+  const unverifiedQuotes: string[] = [];
+
+  for (const quote of quotes) {
+    const nq = normalize(quote);
+    const found = sources.some((src) => {
+      const text = normalize(src.contextExcerpt ?? src.fullText ?? "");
+      if (!text || nq.length < 20) return false;
+      // Fuzzy match: 80% of quote chars present in source text
+      const quoteChars = new Set(nq.split(""));
+      let overlap = 0;
+      for (const ch of quoteChars) if (text.includes(ch)) overlap++;
+      return overlap / quoteChars.size >= 0.8;
+    });
+    if (found) verifiedQuotes.push(quote);
+    else unverifiedQuotes.push(quote);
+  }
+
+  return { verifiedQuotes, unverifiedQuotes };
+}

@@ -23,6 +23,53 @@ import type { QueryIntent, LegalTopic } from "./intent-classifier";
 import { normalizeCitationKey } from "../tools/citation-search-tool";
 
 // ---------------------------------------------------------------------------
+// Query Decomposition — split complex queries into focused sub-queries
+// ---------------------------------------------------------------------------
+
+const DECOMPOSE_TIMEOUT_MS = 3000;
+
+async function decomposeQuery(query: string): Promise<string[]> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), DECOMPOSE_TIMEOUT_MS);
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.0-flash-001",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You decompose complex legal queries into 2-3 focused sub-queries for legal case retrieval. " +
+              "Return ONLY a JSON array of strings, no other text. " +
+              "Each sub-query must be a distinct angle of the original question.",
+          },
+          { role: "user", content: query },
+        ],
+        temperature: 0.2,
+        max_tokens: 200,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return [query];
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content ?? "";
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed) && parsed.length >= 1) {
+      return parsed.filter((s: unknown): s is string => typeof s === "string" && s.length > 3).slice(0, 3);
+    }
+    return [query];
+  } catch {
+    return [query]; // fallback: single query
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -310,6 +357,13 @@ function scoreCaseLawRow(row: CaseLaw, intent: QueryIntent): number {
   else if (court.includes("federal shariat"))     score += 12;
   else if (court.includes("high court"))          score += 8;
 
+  // --- COURT HIERARCHY BASELINE (applies always) ---
+  // Supreme Court 1.3x, High Courts 1.1x, others 1.0x
+  const courtHierarchyMultiplier =
+    /supreme/i.test(court) ? 1.3 :
+    /high court/i.test(court) ? 1.1 : 1.0;
+  score *= courtHierarchyMultiplier;
+
   // Jurisdiction specific bonus (requested by user)
   const qLower = intent.normalized.toLowerCase();
   if (qLower.includes("supreme court") && court.includes("supreme court")) score *= 1.2;
@@ -373,6 +427,11 @@ function scoreCaseLawRowForCitationLookup(row: CaseLaw, intent: QueryIntent): nu
 
 async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, focusedQueries?: string[]): Promise<RetrievedCaseLaw[]> {
   const expandedQuery = intent.expandedQuery || intent.normalized;
+
+  // Decompose complex queries into sub-queries for better recall
+  const subQueries = await decomposeQuery(expandedQuery);
+  const allQueries = [expandedQuery, ...subQueries.filter((q) => q !== expandedQuery)];
+  focusedQueries = focusedQueries ? [...focusedQueries, ...allQueries.slice(1)] : allQueries.slice(1);
 
   // Path 1 (PRIMARY): Direct judgment table search — 223k verified, structured records.
   // When a statute reference is detected (e.g. "354 ppc" → PPC § 354), construct a
