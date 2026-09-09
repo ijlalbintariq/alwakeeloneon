@@ -274,6 +274,8 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
         documentClassification: "case_law" as const,
         fallbackExtraction: false,
         statuteReferences: [],
+        authorityScore: Number(m.metadata?.authorityScore || 0),
+        isOverruled: Boolean(m.metadata?.isOverruled || false),
         tsvCitationTitleSummaryCourt: null,
       };
     });

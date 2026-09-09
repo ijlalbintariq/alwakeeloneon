@@ -2193,6 +2193,8 @@ export class DatabaseStorage implements IStorage {
               courtName: courtsRef.name,
               courtSnapshot: judgments.courtNameSnapshot,
               journalCode: lawJournals.code,
+              authorityScore: judgments.authorityScore,
+              isOverruled: judgments.isOverruled,
             })
             .from(judgments)
             .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
@@ -2271,6 +2273,8 @@ export class DatabaseStorage implements IStorage {
                 documentClassification: null,
                 fallbackExtraction: false,
                 statuteReferences: [] as string[],
+                authorityScore: Number(row.authorityScore || 0),
+                isOverruled: Boolean(row.isOverruled || false),
               } as unknown as CaseLaw);
             }
           }
@@ -2519,6 +2523,7 @@ export class DatabaseStorage implements IStorage {
           j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
           LEFT(j.full_text, 1500) as "fullTextHead",
           c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode",
+          j.authority_score as "authorityScore", j.is_overruled as "isOverruled",
           cand.relevance
         FROM candidates cand
         INNER JOIN judgments j ON cand.id = j.id
@@ -2556,6 +2561,7 @@ export class DatabaseStorage implements IStorage {
           j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
           LEFT(j.full_text, 1500) as "fullTextHead",
           c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode",
+          j.authority_score as "authorityScore", j.is_overruled as "isOverruled",
           0.0 as relevance
         FROM judgments j
         LEFT JOIN courts_ref c ON j.court_id = c.id
@@ -2573,6 +2579,7 @@ export class DatabaseStorage implements IStorage {
             j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
             LEFT(j.full_text, 1500) as "fullTextHead",
             c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode",
+            j.authority_score as "authorityScore", j.is_overruled as "isOverruled",
             0.0 as relevance
           FROM judgments j
           LEFT JOIN courts_ref c ON j.court_id = c.id
@@ -2671,6 +2678,8 @@ export class DatabaseStorage implements IStorage {
         documentClassification: null,
         fallbackExtraction: false,
         statuteReferences: [] as string[],
+        authorityScore: Number(row.authorityScore || 0),
+        isOverruled: Boolean(row.isOverruled || false),
       } as unknown as CaseLaw);
 
       if (results.length >= safeLimit) break;

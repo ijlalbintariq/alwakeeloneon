@@ -323,7 +323,24 @@ function scoreCaseLawRow(row: CaseLaw, intent: QueryIntent): number {
   // Smooth continuous recency bonus
   const rowYear = row.citationYear || 0;
   if (rowYear > 1900) {
-    score += (rowYear - 2000) * 0.5; 
+    score += (rowYear - 2000) * 0.5;
+  }
+
+  // ── Authority multiplier (PageRank) ────────────────────────────────
+  // Cases cited by many high-authority judgments rank higher.
+  // authorityScore is 0-100 (computed by script/update-engine-intelligence.ts).
+  // Multiplier: 1.0x (score 0) to 1.5x (score 100).
+  const authorityScore = Number(row.authorityScore || 0);
+  if (authorityScore > 0) {
+    score *= 1 + (Math.min(100, authorityScore) / 100) * 0.5;
+  }
+
+  // ── Overruled penalty ──────────────────────────────────────────────
+  // A judgment overruled by a later case is not good law — demote heavily.
+  // isOverruled is set by script/update-engine-intelligence.ts from
+  // citation_links.treatment propagation.
+  if (row.isOverruled) {
+    score *= 0.3;
   }
 
   return Math.max(0, score);

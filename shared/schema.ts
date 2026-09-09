@@ -1,5 +1,5 @@
 
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, index, jsonb, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, index, jsonb, customType, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -154,6 +154,8 @@ export const caseLaw = pgTable("case_law", {
   documentClassification: text("document_classification", { enum: ["case_law", "statute_document", "legal_analysis", "contract", "procedure_guide", "other"] }).default("case_law").notNull(),
   fallbackExtraction: boolean("fallback_extraction").default(false).notNull(),
   statuteReferences: text("statute_references").array().default([]).notNull(),
+  authorityScore: doublePrecision("authority_score").default(0).notNull(),
+  isOverruled: boolean("is_overruled").default(false).notNull(),
   tsvCitationTitleSummaryCourt: tsvector("tsv_citation_title_summary_court").generatedAlwaysAs(
     () => sql`to_tsvector('simple', coalesce(citation, '') || ' ' || coalesce(title, '') || ' ' || coalesce(summary, '') || ' ' || coalesce(court, ''))`
   ),
@@ -209,6 +211,8 @@ export const judgments = pgTable(
     pdfUrl: text("pdf_url"),
     bench: text("bench"),
     isActive: boolean("is_active").default(true).notNull(),
+    authorityScore: doublePrecision("authority_score").default(0).notNull(),
+    isOverruled: boolean("is_overruled").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
     tsvTitleHeadnotes: tsvector("tsv_title_headnotes").generatedAlwaysAs(
@@ -242,6 +246,7 @@ export const citationLinks = pgTable(
     sourceJudgmentId: uuid("source_judgment_id").references(() => judgments.id).notNull(),
     targetJudgmentId: uuid("target_judgment_id").references(() => judgments.id).notNull(),
     citationType: text("citation_type").notNull(),
+    treatment: text("treatment").default("cited").notNull(),
     contextExcerpt: text("context_excerpt"),
     citationText: text("citation_text").notNull(),
     startOffset: integer("start_offset"),
