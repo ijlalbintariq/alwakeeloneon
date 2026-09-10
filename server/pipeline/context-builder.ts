@@ -293,36 +293,96 @@ export interface QuoteVerificationResult {
   unverifiedQuotes: string[];
 }
 
+const STOP_WORDS = new Set([
+  "a","an","the","and","or","but","if","then","else","when","at","by","for",
+  "in","of","on","to","from","with","as","is","was","are","were","been",
+  "be","have","has","had","do","does","did","it","its","this","that",
+  "these","those","i","you","he","she","we","they","me","him","her",
+  "us","them","my","your","his","our","their","no","not","so","very",
+  "can","will","just","about","into","over","also","than","them","which",
+  "what","who","how","all","each","every","both","few","more","most",
+  "other","some","such","only","own","same","too","would","could","should",
+  "may","might","shall","must","need","must","there","here","where","why",
+]);
+
+function meaningfulWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+}
+
+function wordOverlapRatio(quoteText: string, sourceText: string): number {
+  const quoteWords = meaningfulWords(quoteText);
+  const sourceWords = new Set(meaningfulWords(sourceText));
+
+  if (quoteWords.length === 0) return 1; 
+
+  const matched = quoteWords.filter((w) => sourceWords.has(w)).length;
+  return matched / quoteWords.length;
+}
+
+function extractQuotes(text: string): string[] {
+  const quotes: string[] = [];
+  const lines = text.split("\n");
+  let currentBlock: string[] = [];
+
+  const flushBlock = () => {
+    if (currentBlock.length > 0) {
+      const joined = currentBlock.join(" ").trim();
+      if (joined.length > 0) quotes.push(joined);
+      currentBlock = [];
+    }
+  };
+
+  for (const line of lines) {
+    const m = line.match(/^>\s*(?:["\u201C\u201D])?(.*?)(?:["\u201C\u201D])?\s*$/);
+    if (m) {
+      const content = m[1].trim();
+      if (content.length > 0) currentBlock.push(content);
+    } else {
+      flushBlock();
+    }
+  }
+  flushBlock();
+
+  const inlineRe = /["\u201C\u201D]([^"\n\u201C\u201D]{15,500})["\u201C\u201D]/g;
+  let m: RegExpExecArray | null;
+  while ((m = inlineRe.exec(text)) !== null) {
+    quotes.push(m[1].trim());
+  }
+
+  return [...new Set(quotes)];
+}
+
 export function verifyQuotesAgainstSources(
   response: string,
   sources: { contextExcerpt?: string; fullText?: string }[]
 ): QuoteVerificationResult {
-  // Extract quotes from ### Rule section (markdown blockquotes or quoted strings)
-  const quoteRegex = /(?:>|\")([^\"\n]{20,300})(?:\"|$)/g;
-  const quotes: string[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = quoteRegex.exec(response)) !== null) {
-    quotes.push(match[1].trim());
-  }
-
-  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/[^\w\s]/g, "").trim();
-
+  const quotes = extractQuotes(response);
   const verifiedQuotes: string[] = [];
   const unverifiedQuotes: string[] = [];
 
-  for (const quote of quotes) {
-    const nq = normalize(quote);
-    const found = sources.some((src) => {
-      const text = normalize(src.contextExcerpt ?? src.fullText ?? "");
-      if (!text || nq.length < 20) return false;
-      // Fuzzy match: 80% of quote chars present in source text
-      const quoteChars = new Set(nq.split(""));
-      let overlap = 0;
-      for (const ch of quoteChars) if (text.includes(ch)) overlap++;
-      return overlap / quoteChars.size >= 0.8;
-    });
-    if (found) verifiedQuotes.push(quote);
-    else unverifiedQuotes.push(quote);
+  if (quotes.length === 0) {
+    return { verifiedQuotes, unverifiedQuotes };
+  }
+
+  // Combine all sources into a single corpus string
+  const sourceMaterial = sources.map(s => (s.contextExcerpt || "") + " " + (s.fullText || "")).join("\n");
+
+  for (const rawQuote of quotes) {
+    // Skip very short quotes
+    if (rawQuote.split(/\s+/).filter(Boolean).length < 4) {
+      continue; 
+    }
+
+    const similarity = wordOverlapRatio(rawQuote, sourceMaterial);
+    
+    if (similarity >= 0.8) {
+      verifiedQuotes.push(rawQuote);
+    } else {
+      unverifiedQuotes.push(rawQuote);
+    }
   }
 
   return { verifiedQuotes, unverifiedQuotes };
