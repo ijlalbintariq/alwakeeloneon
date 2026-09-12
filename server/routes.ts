@@ -8,6 +8,7 @@ import { legalDraftWorkspaceStateSchema } from "@shared/legal-drafting";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import calendarRouter from "./routes/calendar-routes";
+import benchRouter from "./routes/bench-routes";
 import {
   insertBookmarkSchema,
   insertSearchHistorySchema,
@@ -7428,14 +7429,16 @@ export async function checkUsageLimit(userId: string, feature: string, res: any)
   }
 }
 
-export async function logUsageCost(userId: string, feature: string, model: string, inputText: string, outputText: string, extra?: { userQuery?: string; responseTimeMs?: number }) {
+export async function logUsageCost(userId: string, feature: string, model: string, inputText: string, outputText: string, extra?: { userQuery?: string; responseTimeMs?: number; skipQualityLog?: boolean }) {
   try {
     const inputTokens = estimateTokens(inputText);
     const outputTokens = estimateTokens(outputText);
     const cost = estimateCost(model, inputText, outputText);
     await storage.logUsageCost(userId, feature, inputTokens, outputTokens, cost);
-    // Also log output quality (fire-and-forget)
-    logOutputQuality(userId, feature, model, inputText, outputText, extra).catch(() => {});
+    // Also log output quality (fire-and-forget) unless skipped
+    if (!extra?.skipQualityLog) {
+      logOutputQuality(userId, feature, model, inputText, outputText, extra).catch(() => {});
+    }
   } catch (err) {
     console.error("[Cost] Error logging cost:", err);
   }
@@ -7768,6 +7771,24 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
   app.use("/api/calendar", calendarRouter);
+  app.use("/api/bench", benchRouter);
+
+  app.get("/api/judges/autocomplete", async (req, res) => {
+    try {
+      const q = req.query.q ? String(req.query.q).toLowerCase() : "";
+      let results;
+      if (q) {
+        results = await db.execute(sql`SELECT DISTINCT judge_name FROM judge_case_links WHERE LOWER(judge_name) LIKE ${'%' + q + '%'} LIMIT 20`);
+      } else {
+        results = await db.execute(sql`SELECT DISTINCT judge_name FROM judge_case_links LIMIT 20`);
+      }
+      res.json(results.rows.map((r: any) => r.judge_name));
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
 
   app.get(["/download/manifest.xml", "/word-addin/manifest.xml"], (_req, res) => {
     const manifestPath = path.resolve(process.cwd(), "word-addin/manifest.xml");
@@ -23242,7 +23263,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       if (!allowed) return;
 
       const contextString = await gatherKnowledgeContextV2(query, userId, undefined, { module: req.body.module });
-      await logUsageCost(userId, "chat", "deepseek-chat", query, contextString, { userQuery: query });
+      await logUsageCost(userId, "chat", "mcp-rag-context", query, contextString, { userQuery: query, skipQualityLog: true });
 
       // Update key last used
       db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});

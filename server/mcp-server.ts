@@ -53,15 +53,32 @@ async function enforceQuota(userId: string, feature: string): Promise<void> {
  */
 async function logToolUsage(userId: string, feature: string, query: string, outputText = ""): Promise<void> {
   try {
+    // 1. Core usage tracking (rate limits)
     if (feature === "chat" || feature === "legal-research") {
-      // LLM/RAG cost tracking
-      await logUsageCost(userId, "chat", "deepseek-chat", query, outputText, {
+      const modelName = feature === "legal-research" ? "mcp-rag-context" : "deepseek-chat";
+      await logUsageCost(userId, "chat", modelName, query, outputText, {
         userQuery: query,
+        skipQualityLog: true, // We will manually handle output logging below for everything
       });
     } else {
-      // Non-LLM feature query logging
       await storage.logUsage(userId, feature).catch(() => {});
     }
+
+    // 2. Always log to AI Output Log for visibility as requested by admin
+    const logModel = feature === "legal-research" ? "mcp-rag-context" : (feature === "chat" ? "deepseek-chat" : `mcp-tool:${feature}`);
+    await storage.logOutputQuality({
+      userId,
+      feature: "chat", // Log as chat so it appears uniformly in the dashboard
+      model: logModel,
+      inputSnippet: query.slice(0, 500),
+      outputSnippet: (outputText || `[Tool Executed Successfully: ${feature}]`).slice(0, 1500),
+      outputLength: (outputText || "").length,
+      qualityScore: 5,
+      qualityFlags: [],
+      userQuery: query,
+      responseTimeMs: 0
+    }).catch(() => {});
+
   } catch (err) {
     console.error(`[MCP] Failed to log usage metrics for ${feature}:`, err);
   }
