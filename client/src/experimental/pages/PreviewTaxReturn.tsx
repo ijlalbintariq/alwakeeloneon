@@ -13,7 +13,7 @@ export default function PreviewTaxReturn() {
                   <Sparkles size={12} className="animate-pulse" />
                   New Service
                 </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 rounded-full text-xs text-[#105B38] font-bold uppercase tracking-widest">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 rounded-full text-xs text-[#105B38] dark:text-emerald-500 font-bold uppercase tracking-widest">
                   <FileText size={14} />
                   Professional Tax Return Services
                 </div>
@@ -23,7 +23,7 @@ export default function PreviewTaxReturn() {
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 Expert Income Tax Return <br />
-                <span className="text-[#105B38] italic">
+                <span className="text-[#105B38] dark:text-emerald-500 italic">
                   Quick, Compliant & Hassle-Free
                 </span>
               </h1>
@@ -32,16 +32,16 @@ export default function PreviewTaxReturn() {
               </p>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#105B38]"/> FBR Tax Return Filing</div>
-                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#105B38]"/> Online Tax Registration (NTN)</div>
-                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#105B38]"/> Wealth Statement Reconciliation</div>
-                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#105B38]"/> Tax Audit & Notice Replies</div>
+                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#105B38] dark:text-emerald-500"/> FBR Tax Return Filing</div>
+                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#105B38] dark:text-emerald-500"/> Online Tax Registration (NTN)</div>
+                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#105B38] dark:text-emerald-500"/> Wealth Statement Reconciliation</div>
+                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#105B38] dark:text-emerald-500"/> Tax Audit & Notice Replies</div>
               </div>
 
               <div className="flex flex-col gap-2 pt-6">
                 <div className="flex items-center gap-3 text-sm font-bold text-foreground bg-muted/50 p-5 rounded-xl border border-border inline-flex w-fit shadow-sm">
-                  <PhoneCall size={20} className="text-[#105B38]" />
-                  Direct Contact: <a href="tel:03394099906" className="text-[#105B38] hover:underline text-lg">03394099906</a> <span className="text-muted-foreground ml-1">(Warzan Shahid)</span>
+                  <PhoneCall size={20} className="text-[#105B38] dark:text-emerald-500" />
+                  Direct Contact: <a href="tel:03394099906" className="text-[#105B38] dark:text-emerald-500 hover:underline text-lg">03394099906</a> <span className="text-muted-foreground ml-1">(Warzan Shahid)</span>
                 </div>
               </div>
             </div>
