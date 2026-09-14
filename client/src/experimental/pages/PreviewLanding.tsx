@@ -371,6 +371,16 @@ export default function PreviewLanding() {
             >
               Blog
             </a>
+            <a
+              href="/preview/tax-return"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/preview/tax-return");
+              }}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Tax Return
+            </a>
           </div>
 
           <div className="flex items-center gap-2">
@@ -501,6 +511,17 @@ export default function PreviewLanding() {
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
                 Blog
+              </a>
+              <a
+                href="/preview/tax-return"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMobileNavOpen(false);
+                  navigate("/preview/tax-return");
+                }}
+                className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
+              >
+                Tax Return
               </a>
               <div className="pt-2 border-t border-border/80 flex flex-col gap-2">
                 <a

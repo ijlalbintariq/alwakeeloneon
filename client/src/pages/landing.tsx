@@ -155,6 +155,7 @@ export default function LandingPage() {
             <a href="/contact" onClick={(e) => { e.preventDefault(); navigate("/contact"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</a>
             <a href="/faq" onClick={(e) => { e.preventDefault(); navigate("/faq"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
             <a href="/blog" onClick={(e) => { e.preventDefault(); navigate("/blog"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Blog</a>
+            <a href="/tax-return" onClick={(e) => { e.preventDefault(); navigate("/tax-return"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Tax Return</a>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -192,6 +193,7 @@ export default function LandingPage() {
               <a href="/contact" onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); navigate("/contact"); }} className="text-sm text-foreground hover:text-foreground transition-colors">Contact</a>
               <a href="/faq" onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); navigate("/faq"); }} className="text-sm text-foreground hover:text-foreground transition-colors">FAQ</a>
               <a href="/blog" onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); navigate("/blog"); }} className="text-sm text-foreground hover:text-foreground transition-colors">Blog</a>
+              <a href="/tax-return" onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); navigate("/tax-return"); }} className="text-sm text-foreground hover:text-foreground transition-colors">Tax Return</a>
               <div className="pt-2 border-t border-border/80 flex flex-col gap-2">
                 <a href="mailto:support@alwakeelo.com" className="inline-flex items-center gap-2 text-sm text-primary hover:text-foreground transition-colors">
                   <Mail size={14} /> support@alwakeelo.com

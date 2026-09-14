@@ -136,6 +136,8 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/preview/reset-password" component={PreviewResetPassword} />
         <Route path="/onboarding" component={PreviewOnboarding} />
         <Route path="/preview/onboarding" component={PreviewOnboarding} />
+        <Route path="/tax-return" component={PreviewTaxReturn} />
+        <Route path="/preview/tax-return" component={PreviewTaxReturn} />
         <ProtectedRoute path="/oauth/consent" component={OauthConsentPage} />
         <ProtectedRoute path="/oauth/authorize" component={OauthConsentPage} />
         <ProtectedRoute path="/preview/oauth/consent" component={OauthConsentPage} />

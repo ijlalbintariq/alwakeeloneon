@@ -44,6 +44,7 @@ const AboutPage = lazy(() => import("@/pages/about"));
 const ContactPage = lazy(() => import("@/pages/contact"));
 const FaqPage = lazy(() => import("@/pages/faq"));
 const McpPublicLandingPage = lazy(() => import("@/pages/mcp-public-landing"));
+const TaxReturnPage = lazy(() => import("@/experimental/pages/PreviewTaxReturn"));
 const BlogPage = lazy(() => import("@/pages/blog"));
 const BlogDetailPage = lazy(() => import("@/pages/blog-detail"));
 const OrganizationPage = lazy(() => import("@/pages/organization"));
