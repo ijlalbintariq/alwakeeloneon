@@ -89,7 +89,7 @@ import {
   getMajorSectionById,
   type StatutorySection,
 } from "@/experimental/data/majorEnactmentsData";
-import { TOTAL_PAKISTANI_ACTS_COUNT } from "@/experimental/data/actsManifest";
+import { TOTAL_PAKISTANI_ACTS_COUNT, MAJOR_ACT_SHORT_CODES } from "@/experimental/data/actsManifest";
 import {
   loadSectionsForAct,
   getCachedSectionsForAct,
@@ -184,13 +184,51 @@ export const PreviewStatutes: React.FC = () => {
     return "statutes";
   });
 
+  const [totalStatutesCount, setTotalStatutesCount] = useState<string>("...");
+  const [totalStatutesRawCount, setTotalStatutesRawCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchStatutesCount = async () => {
+      try {
+        const res = await fetch("/api/statutes/count");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.total > 0) {
+            setTotalStatutesRawCount(data.total);
+            const formatted = data.total > 1000 
+              ? (data.total / 1000).toFixed(1) + "k" 
+              : data.total.toString();
+            setTotalStatutesCount(formatted);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch statutes count", err);
+      }
+    };
+    fetchStatutesCount();
+  }, []);
+
   // ─── TAB 1: STATUTES WORKSTATION STATE ─────────────────────────────────────
-  const [selectedStatute, setSelectedStatute] = useState<string>("Pakistan Penal Code 1860");
-  const [selectedStatuteShortCode, setSelectedStatuteShortCode] = useState<string>("PPC");
+  const initialStatute = Object.keys(MAJOR_ACT_SHORT_CODES)[0] || "Pakistan Penal Code 1860";
+  const initialShortCode = MAJOR_ACT_SHORT_CODES[initialStatute] || "PPC";
+
+  const [selectedStatute, setSelectedStatute] = useState<string>(initialStatute);
+  const [selectedStatuteShortCode, setSelectedStatuteShortCode] = useState<string>(initialShortCode);
   const [statuteDomain, setStatuteDomain] = useState<StatuteDomain | "all">("all");
-  const [selectedSectionId, setSelectedSectionId] = useState<string>("ppc-sec-302");
   const [inActFilter, setInActFilter] = useState<string>("");
   const [searchLimit, setSearchLimit] = useState<number>(60);
+
+  // Dynamic Act Section Loader State (for all acts)
+  const [loadedActSections, setLoadedActSections] = useState<StatutorySection[]>(() => {
+    const cached = getCachedSectionsForAct(initialStatute);
+    return cached || getSectionsForEnactment(initialStatute);
+  });
+
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => {
+    const defaultSecs = getCachedSectionsForAct(initialStatute) || getSectionsForEnactment(initialStatute);
+    return defaultSecs.length > 0 ? defaultSecs[0].id : "";
+  });
+  const [isLoadingActSections, setIsLoadingActSections] = useState<boolean>(false);
 
   // ─── TAB 1: STATUTES SEARCH ENGINE & BROWSER ───────────────────────────────
   const {
@@ -216,14 +254,6 @@ export const PreviewStatutes: React.FC = () => {
   const [precedentModalOpen, setPrecedentModalOpen] = useState<boolean>(false);
   const [selectedPrecedentCitation, setSelectedPrecedentCitation] = useState<string | null>(null);
   const [selectedPrecedentInitial, setSelectedPrecedentInitial] = useState<any | null>(null);
-
-  // Dynamic Act Section Loader State (for all 5,887 Acts)
-  const [loadedActSections, setLoadedActSections] = useState<StatutorySection[]>(() => {
-    const defaultStatute = "Pakistan Penal Code 1860";
-    const cached = getCachedSectionsForAct(defaultStatute);
-    return cached || getSectionsForEnactment(defaultStatute);
-  });
-  const [isLoadingActSections, setIsLoadingActSections] = useState<boolean>(false);
 
   // On-demand loader effect when selectedStatute changes
   useEffect(() => {
@@ -384,7 +414,7 @@ export const PreviewStatutes: React.FC = () => {
         text: s.description,
         commentary: s.punishment
           ? `Statutory Punishment:\n${s.punishment}`
-          : "Retrieved from Pakistani Statutes Catalog (83,117 sections index).",
+          : `Retrieved from Pakistani Statutes Catalog (${totalStatutesRawCount ? totalStatutesRawCount.toLocaleString() : "..."} sections index).`,
         punishmentOrRelief: s.punishment || undefined,
         landmarkCitations: (s.landmarkCitations || []) as LandmarkCitation[],
         keywords: [s.statute, s.section, s.title].filter(Boolean),
@@ -693,7 +723,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
 
             <div className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700 dark:text-slate-400 font-semibold">
               <Database className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-              <span>83,117 Sections</span>
+              <span>{totalStatutesRawCount ? totalStatutesRawCount.toLocaleString() : "..."} Sections</span>
               <span className="text-slate-400">•</span>
               <span>{TOTAL_PAKISTANI_ACTS_COUNT.toLocaleString()} Acts</span>
             </div>
@@ -703,7 +733,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
             Statutes, Major Codes & Procedural Guides
           </h1>
           <p className="text-[11px] sm:text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-3xl leading-relaxed">
-            Authoritative repository of Pakistani primary legislation, 83k statutory sections, 21 major codes, Limitation Act schedule calculator, provincial court fees & apex-to-district court directory.
+            Authoritative repository of Pakistani primary legislation, {totalStatutesCount} statutory sections, {Object.keys(MAJOR_ACT_SHORT_CODES).length} major codes, Limitation Act schedule calculator, provincial court fees & apex-to-district court directory.
           </p>
         </div>
 
@@ -723,10 +753,10 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
             <span
               className={cn(
                 "ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono",
-                activeTab === "statutes" ? "bg-white dark:bg-[#131E2E]/20 text-white" : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
+                activeTab === "statutes" ? "bg-white/20 text-white" : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
               )}
             >
-              83.1k
+              {totalStatutesCount}
             </span>
           </button>
 
@@ -744,7 +774,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
             <span
               className={cn(
                 "ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono",
-                activeTab === "limitation" ? "bg-white dark:bg-[#131E2E]/20 text-white" : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
+                activeTab === "limitation" ? "bg-white/20 text-white" : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
               )}
             >
               {LIMITATION_SCHEDULE_ENTRIES.length}
@@ -765,10 +795,10 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
             <span
               className={cn(
                 "ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono",
-                activeTab === "court-fees" ? "bg-white dark:bg-[#131E2E]/20 text-white" : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
+                activeTab === "court-fees" ? "bg-white/20 text-white" : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
               )}
             >
-              5 Provinces
+              {Object.keys(PROVINCIAL_COURT_FEE_RULES).length} Provinces
             </span>
           </button>
 
@@ -786,7 +816,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
             <span
               className={cn(
                 "ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono",
-                activeTab === "courts" ? "bg-white dark:bg-[#131E2E]/20 text-white" : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
+                activeTab === "courts" ? "bg-white/20 text-white" : "bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]"
               )}
             >
               {PAKISTAN_COURT_DIRECTORY.length}
@@ -809,7 +839,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                   type="text"
                   value={universalSearchQuery}
                   onChange={(e) => setUniversalSearchQuery(e.target.value)}
-                  placeholder="Universal Search across 83,117 sections (e.g. PPC 302, CrPC 497, O.7 R.11 CPC, SRA 24(c), Art 199, PECA 11, cheque)..."
+                  placeholder={`Universal Search across ${totalStatutesRawCount ? totalStatutesRawCount.toLocaleString() : "..."} sections (e.g. PPC 302, CrPC 497, O.7 R.11 CPC, SRA 24(c), Art 199, PECA 11, cheque)...`}
                   className="w-full pl-11 pr-24 py-3 rounded-xl bg-slate-50/70 dark:bg-slate-500/10 border border-slate-200 dark:border-slate-500/20 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] focus:outline-hidden focus:ring-2 focus:ring-[#105B38]/20 transition-all font-medium"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">

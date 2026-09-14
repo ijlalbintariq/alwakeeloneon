@@ -10916,6 +10916,15 @@ RAG POLICY (STRICT):
       res.status(500).json({ message: "Failed to search statutes" });
     }
   });
+  app.get("/api/statutes/count", async (req, res) => {
+    try {
+      const [countRow] = await db.select({ total: count() }).from(statutes);
+      res.json({ total: Number(countRow?.total || 0) });
+    } catch (err) {
+      console.error("Error fetching statutes count:", err);
+      res.status(500).json({ message: "Failed to fetch statutes count" });
+    }
+  });
 
   app.get("/api/statute-documents/search", async (req, res) => {
     const userId = getUserId(req);
