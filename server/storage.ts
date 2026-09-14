@@ -2616,7 +2616,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // ── Tier 2 FALLBACK: pg_trgm ILIKE if tsvector returned 0 ───────────
-    if (rows.length === 0) {
+    if (rows.length === 0 && !options.fastAutocomplete) {
       // Use per-token ILIKE on title + headnotes only (not full_text — too slow even with trigram)
       const perTokenExprs = queryTokens.slice(0, 4).map((token) => {
         return or(
