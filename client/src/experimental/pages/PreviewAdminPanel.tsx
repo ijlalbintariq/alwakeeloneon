@@ -163,7 +163,7 @@ export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads" | "broadcast" | "output-quality">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads" | "broadcast" | "output-quality" | "blogs">("stats");
 
   const isSuperAdmin = user?.email?.toLowerCase() === "ijlalbintariq420@gmail.com" || !!user?.isAdmin;
   const isAuthorizedAdmin = isSuperAdmin || !!user?.isAdmin;
@@ -198,6 +198,8 @@ export default function AdminPanelPage() {
           { id: "users" as const, label: "Users", icon: Users },
           { id: "audit" as const, label: "Audit Logs", icon: Shield },
           { id: "knowledge" as const, label: "Knowledge Vault", icon: Database },
+          { id: "blogs" as const, label: "Blog CMS", icon: FileText },
+          { id: "blogs" as const, label: "Blog CMS", icon: FileText },
           { id: "client-leads" as const, label: "Client Leads", icon: FileText },
           { id: "case-law" as const, label: "Case Law", icon: Scale },
           { id: "statute-docs" as const, label: "Statute Library", icon: FileText },
@@ -223,6 +225,8 @@ export default function AdminPanelPage() {
       {activeTab === "users" && <UsersSection />}
       {activeTab === "audit" && <AuditLogsSection />}
       {activeTab === "knowledge" && <KnowledgeSection />}
+      {activeTab === "blogs" && <BlogCMSSection />}
+      {activeTab === "blogs" && <BlogCMSSection />}
       {activeTab === "client-leads" && <ClientLeadsSection />}
       {activeTab === "case-law" && <CaseLawSection />}
       {activeTab === "statute-docs" && <StatuteDocumentsSection />}
@@ -4707,6 +4711,138 @@ function BroadcastEmailSection() {
           </Button>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+
+function BlogCMSSection() {
+  const [blogs, setBlogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [topic, setTopic] = useState("");
+  const [generating, setGenerating] = useState(false);
+  
+  const [editorState, setEditorState] = useState<{ id?: string, title: string, slug: string, summary: string, content: string, category: string, readTime: number }>({
+    title: "", slug: "", summary: "", content: "", category: "General Legal", readTime: 5
+  });
+
+  const loadBlogs = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/blogs");
+      if (res.ok) {
+        setBlogs(await res.json());
+      }
+    } catch (e) {}
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadBlogs();
+  }, []);
+
+  const seedBlogs = async () => {
+    const res = await fetch("/api/admin/blogs/seed", { method: "POST" });
+    if (res.ok) loadBlogs();
+  };
+
+  const handleSave = async () => {
+    const method = editorState.id ? "PATCH" : "POST";
+    const url = editorState.id ? `/api/admin/blogs/${editorState.id}` : "/api/admin/blogs";
+    
+    await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editorState),
+    });
+    setEditorState({ title: "", slug: "", summary: "", content: "", category: "General Legal", readTime: 5 });
+    loadBlogs();
+  };
+
+  const handleGenerateAI = async () => {
+    if (!topic) return alert("Enter a topic");
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/admin/blogs/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEditorState(data);
+      } else {
+        alert("Generation failed");
+      }
+    } catch (e) {
+      alert("Error generating");
+    }
+    setGenerating(false);
+  };
+
+  return (
+    <div className="space-y-6 fade-in">
+      <div className="flex justify-between items-center bg-card p-4 rounded-xl border border-border">
+        <div>
+          <h2 className="text-lg font-bold">Blog CMS & AI Generator</h2>
+          <p className="text-xs text-muted-foreground">Manage your blogs and auto-generate legal posts with Gemini 2.5 Flash.</p>
+        </div>
+        <button onClick={seedBlogs} className="px-3 py-1 bg-muted rounded-md text-xs">Migrate Old Blogs</button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-card p-5 rounded-xl border border-border space-y-4">
+          <h3 className="font-bold">Editor</h3>
+          
+          <div className="flex gap-2 mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-900">
+            <input 
+              value={topic} 
+              onChange={e => setTopic(e.target.value)} 
+              placeholder="e.g. Divorce Laws in Pakistan" 
+              className="flex-1 text-sm bg-transparent border-b border-blue-200 focus:outline-none focus:border-blue-500"
+            />
+            <button 
+              onClick={handleGenerateAI} 
+              disabled={generating}
+              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded shadow disabled:opacity-50 flex items-center gap-2"
+            >
+              {generating ? "Generating..." : "✨ Generate via AI"}
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <input value={editorState.title} onChange={e => setEditorState({...editorState, title: e.target.value})} placeholder="Title" className="w-full text-sm p-2 rounded border border-border bg-background" />
+            <input value={editorState.slug} onChange={e => setEditorState({...editorState, slug: e.target.value})} placeholder="slug-url" className="w-full text-sm p-2 rounded border border-border bg-background" />
+            <textarea value={editorState.summary} onChange={e => setEditorState({...editorState, summary: e.target.value})} placeholder="Summary/Meta description" className="w-full text-sm p-2 rounded border border-border bg-background h-16" />
+            <textarea value={editorState.content} onChange={e => setEditorState({...editorState, content: e.target.value})} placeholder="<p>HTML Content...</p>" className="w-full text-sm p-2 rounded border border-border bg-background h-48 font-mono text-xs" />
+            
+            <div className="flex gap-2">
+              <input value={editorState.category} onChange={e => setEditorState({...editorState, category: e.target.value})} placeholder="Category" className="flex-1 text-sm p-2 rounded border border-border bg-background" />
+              <input type="number" value={editorState.readTime} onChange={e => setEditorState({...editorState, readTime: parseInt(e.target.value) || 5})} className="w-24 text-sm p-2 rounded border border-border bg-background" />
+            </div>
+
+            <button onClick={handleSave} className="w-full py-2 bg-[#105B38] text-white rounded font-bold text-sm">
+              {editorState.id ? "Update Blog" : "Publish Blog"}
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-card p-5 rounded-xl border border-border">
+          <h3 className="font-bold mb-4">Published Blogs</h3>
+          <div className="space-y-2">
+            {blogs.map(b => (
+              <div key={b.id} className="p-3 border border-border rounded flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => setEditorState(b)}>
+                <div>
+                  <div className="text-sm font-bold">{b.title}</div>
+                  <div className="text-xs text-muted-foreground">{b.category} • {b.readTime}m read</div>
+                </div>
+              </div>
+            ))}
+            {blogs.length === 0 && !loading && <div className="text-xs text-muted-foreground">No blogs found.</div>}
+            {loading && <div className="text-xs text-muted-foreground">Loading...</div>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

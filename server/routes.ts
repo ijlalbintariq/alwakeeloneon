@@ -7748,6 +7748,147 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Public Blog Routes
+  app.get("/api/blogs", async (req, res) => {
+    try {
+      const posts = await storage.getBlogPosts();
+      // filter only published for public
+      res.json(posts.filter(p => p.status === "published"));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch blogs" });
+    }
+  });
+
+  app.get("/api/blogs/:slug", async (req, res) => {
+    try {
+      const post = await storage.getBlogPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ error: "Blog not found" });
+      res.json(post);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch blog" });
+    }
+  });
+
+  // Admin Blog Routes
+  app.get("/api/admin/blogs", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    try {
+      const posts = await storage.getBlogPosts();
+      res.json(posts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch blogs" });
+    }
+  });
+
+  app.post("/api/admin/blogs", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    try {
+      const post = await storage.createBlogPost(req.body);
+      res.status(201).json(post);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.patch("/api/admin/blogs/:id", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    try {
+      const post = await storage.updateBlogPost(req.params.id, req.body);
+      res.json(post);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.delete("/api/admin/blogs/:id", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    try {
+      await storage.deleteBlogPost(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  
+  app.post("/api/admin/blogs/seed", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    try {
+      const { BLOG_ARTICLES } = require("../shared/blog-data");
+      const existing = await storage.getBlogPosts();
+      if (existing.length > 0) {
+        return res.json({ message: "Already seeded", count: existing.length });
+      }
+      
+      let count = 0;
+      for (const article of BLOG_ARTICLES) {
+        await storage.createBlogPost({
+          title: article.title,
+          slug: article.id, // using id as slug
+          summary: article.summary,
+          content: article.content, // HTML content
+          category: article.category,
+          author: article.author || "Al Wakeelo Editors",
+          readTime: parseInt(article.readTime) || 5,
+          status: "published"
+        });
+        count++;
+      }
+      res.json({ message: "Seeded successfully", count });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+app.post("/api/admin/blogs/generate", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    try {
+      const { topic } = req.body;
+      if (!topic) return res.status(400).json({ error: "Topic is required" });
+      
+      const { GoogleGenerativeAI } = require("@google/generative-ai");
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
+      }
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      
+      const prompt = `You are an expert Pakistani legal content writer for Al Wakeelo. 
+      Write a comprehensive, SEO-optimized blog post about: "${topic}".
+      Return ONLY a raw JSON object with NO markdown wrapping, containing:
+      {
+        "title": "A catchy, SEO friendly title",
+        "slug": "url-friendly-slug",
+        "summary": "A 2-3 sentence meta description",
+        "content": "The full blog content in rich HTML format (use <h2>, <p>, <ul>, <strong>, etc.)",
+        "category": "One relevant category (e.g., Family Law, Corporate Law, General)",
+        "readTime": 5
+      }`;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      const cleaned = responseText.replace(/^\s*```json/m, "").replace(/```\s*$/m, "").trim();
+      const blogData = JSON.parse(cleaned);
+      
+      res.json(blogData);
+    } catch (error) {
+      console.error("AI Blog Generation Error:", error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   const extractionGuards = getExtractionQueueStats();
   console.log(
     `[Extraction Guards] concurrency=${extractionGuards.concurrency} maxPending=${extractionGuards.maxPending} worker=${extractionGuards.workerEnabled}`,

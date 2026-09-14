@@ -1,6 +1,6 @@
 import { useRoute, useLocation, Link } from "wouter";
 import { useDocumentHead } from "@/hooks/use-document-head";
-import { BLOG_ARTICLES } from "@shared/blog-data";
+import { useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { ArrowLeft, Clock, Calendar, ChevronRight } from "lucide-react";
 import { PublicPreviewShell } from "@/experimental/components/public/PublicPreviewShell";
@@ -10,13 +10,26 @@ export default function PreviewBlogDetail() {
   const [, params] = useRoute("/preview/blog/:slug");
   const slug = params?.slug;
 
-  const article = BLOG_ARTICLES.find((a) => a.slug === slug);
+  const { data: article, isLoading } = useQuery({
+    queryKey: [`/api/blogs/${slug}`],
+    enabled: !!slug
+  });
 
   useDocumentHead({
     title: article ? `${article.title} | Al Wakeelo Legal Guides` : "Legal Guide | Al Wakeelo",
     description: article ? article.summary : "Read comprehensive Pakistani legal guides on Al Wakeelo.",
     path: slug ? `/preview/blog/${slug}` : undefined,
   });
+
+  if (isLoading) {
+    return (
+      <PublicPreviewShell>
+        <div className="preview-theme-scope py-24 text-center text-[#0F172A] dark:text-[#F8FAFC]">
+          <p>Loading article...</p>
+        </div>
+      </PublicPreviewShell>
+    );
+  }
 
   if (!article) {
     return (

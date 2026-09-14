@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useDocumentHead } from "@/hooks/use-document-head";
-import { BLOG_ARTICLES } from "@shared/blog-data";
+import { useQuery } from "@tanstack/react-query";
 import { Search, BookOpen, Clock, ChevronRight } from "lucide-react";
 import { PublicPreviewShell } from "@/experimental/components/public/PublicPreviewShell";
 

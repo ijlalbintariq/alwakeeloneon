@@ -437,6 +437,13 @@ function buildCaseLawDedupKey(entry: Partial<Pick<CaseLaw, "citation" | "citatio
 }
 
 export interface IStorage {
+  // Blog Posts
+  getBlogPosts(): Promise<BlogPost[]>;
+  getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
+  createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
+  updateBlogPost(id: string, post: Partial<InsertBlogPost>): Promise<BlogPost>;
+  deleteBlogPost(id: string): Promise<void>;
+
   createThread(thread: InsertThread & { userId: string }): Promise<Thread>;
   getThreads(userId: string): Promise<Thread[]>;
   getThread(id: number): Promise<Thread | undefined>;
@@ -671,6 +678,33 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async getBlogPosts(): Promise<BlogPost[]> {
+    return await db.select().from(blogPosts).orderBy(desc(blogPosts.createdAt));
+  }
+
+  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.slug, slug));
+    return post;
+  }
+
+  async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
+    const [newPost] = await db.insert(blogPosts).values(post).returning();
+    return newPost;
+  }
+
+  async updateBlogPost(id: string, post: Partial<InsertBlogPost>): Promise<BlogPost> {
+    const [updatedPost] = await db
+      .update(blogPosts)
+      .set({ ...post, updatedAt: new Date() })
+      .where(eq(blogPosts.id, id))
+      .returning();
+    return updatedPost;
+  }
+
+  async deleteBlogPost(id: string): Promise<void> {
+    await db.delete(blogPosts).where(eq(blogPosts.id, id));
+  }
+
   async createThread(insertThread: InsertThread & { userId: string }): Promise<Thread> {
     const [thread] = await db.insert(threads).values(insertThread).returning();
     return thread;
@@ -5438,13 +5472,13 @@ export const ALL_CAPS_PREFIX_REGEX = /^[A-Z][A-Z .'-]{3,}/;
 export const PLACEHOLDER_TITLE_REGEX = /^case\s+(?:reported\s+at|cited\s+as|no\.?)\b/i;
 export const PLACEHOLDER_HEADNOTES_REGEX = /^case\s+(?:cited\s+as|reported\s+at)\b/i;
 
-export const TITLE_HEADER_REGEX = /(?:^|\n)\s*Title\s*:\s*([\s\S]*?)(?=\n\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
-export const COURT_NAME_HEADER_REGEX = /(?:^|\n)\s*Court Name\s*:\s*([\s\S]*?)(?=\n\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
-export const COURT_HEADER_REGEX = /(?:^|\n)\s*Court\s*:\s*([\s\S]*?)(?=\n\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
+export const TITLE_HEADER_REGEX = /(?:^|)\s*Title\s*:\s*([\s\S]*?)(?=\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
+export const COURT_NAME_HEADER_REGEX = /(?:^|)\s*Court Name\s*:\s*([\s\S]*?)(?=\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
+export const COURT_HEADER_REGEX = /(?:^|)\s*Court\s*:\s*([\s\S]*?)(?=\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
 
-export const STANDALONE_JUDGMENT_REGEX = /(?:^|\r?\n)\s*(JUDGMENT|ORDER)\s*(?:\r?\n)+([\s\S]*)$/i;
+export const STANDALONE_JUDGMENT_REGEX = /(?:^|\r?)\s*(JUDGMENT|ORDER)\s*(?:\r?)+([\s\S]*)$/i;
 export const STRIP_JUDGE_SIGNATURE_REGEX = /^[A-Z\s,.'’-]+,\s*(?:[J|C]\.?\s*){1,2}[:\-–—\s]+/i;
-export const STRIP_TITLE_HEADER_REGEX = /^[\s\S]*?\bTitle\s*:\s*[^\n]*/i;
+export const STRIP_TITLE_HEADER_REGEX = /^[\s\S]*?\bTitle\s*:\s*[^]*/i;
 
 export const METADATA_BULLET_REGEX = /\([a-z]\)\s*$/;
 export const METADATA_NARRATIVE_REGEX = /\b(held|observed|dismissed|allowed|declared|illegal|lawful|entitled|refund|order|judgment|appeal|contended)\b/i;

@@ -1443,3 +1443,22 @@ export const submitBenchRoundRequestSchema = z.object({
 export type SubmitBenchRoundRequest = z.infer<typeof submitBenchRoundRequestSchema>;
 
 
+
+export const blogPosts = pgTable("blog_posts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  title: text("title").notNull(),
+  slug: text("slug").unique().notNull(),
+  summary: text("summary").notNull(),
+  content: text("content").notNull(),
+  category: text("category").notNull(),
+  author: text("author").notNull(),
+  readTime: integer("read_time").notNull(),
+  status: text("status").default("published").notNull(), // 'draft' or 'published'
+  featuredImage: text("featured_image"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
+export type BlogPost = typeof blogPosts.$inferSelect;
