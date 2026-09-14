@@ -7806,7 +7806,22 @@ export async function registerRoutes(
     // the apex domain; using it here caused Google's "Duplicate, Google
     // chose different canonical than user" warning.
     const CANONICAL = "https://www.alwakeelo.com";
-    res.type("text/plain").send(`User-agent: *\nAllow: /\n\nSitemap: ${CANONICAL}/sitemap.xml\n`);
+    const robots = [
+      "User-agent: *",
+      "Allow: /",
+      "",
+      "User-agent: Bytespider",
+      "Disallow: /",
+      "",
+      "User-agent: PetalBot",
+      "Disallow: /",
+      "",
+      "User-agent: Amazonbot",
+      "Disallow: /",
+      "",
+      `Sitemap: ${CANONICAL}/sitemap.xml`,
+    ].join("\n") + "\n";
+    res.type("text/plain").send(robots);
   });
 
   app.get("/sitemap.xml", handleSitemapIndex);
@@ -14489,7 +14504,8 @@ Rules:
 
   const DOC_TYPE_SIGNALS: Record<LegalDraftingDocType, DocTypeSignal[]> = {
     "application-to-police": [
-      { keywords: ["application", "darkhast"], phrases: ["application to sho", "application to police", "complaint to sho", "complaint to police", "application to thana"], weight: 10 },
+      { keywords: ["application", "darkhast"], phrases: [], weight: 3 },
+      { keywords: [], phrases: ["application to sho", "application to police", "complaint to sho", "complaint to police", "application to thana"], weight: 10 },
       { keywords: ["sho", "thana"], phrases: ["police station"], weight: 5 },
       { keywords: [], phrases: ["darkhast ba naam sho", "darkhast baraye police"], weight: 10 },
     ],
@@ -14564,10 +14580,10 @@ Rules:
       { keywords: [], phrases: ["temporary injunction", "ad interim", "order xxxix"], weight: 10 },
     ],
     "civil-misc-application": [
-      { keywords: ["cma"], phrases: ["civil misc", "interim relief", "151 cpc"], weight: 8 },
+      { keywords: ["cma", "application"], phrases: ["civil misc", "interim relief", "151 cpc", "civil application", "application in civil court"], weight: 8 },
     ],
     "civil-suit-plaint": [
-      { keywords: ["plaint"], phrases: ["civil suit", "declaration suit", "injunction suit"], weight: 8 },
+      { keywords: ["plaint"], phrases: ["civil suit", "declaration suit", "injunction suit", "civil court"], weight: 8 },
     ],
   };
 

@@ -238,11 +238,10 @@ function classifyLegalDraftPrompt(prompt: string, hasDraft: boolean): "guidance"
 
   const hasLegalAnalysisIntent =
     LEGAL_ANALYSIS_HINTS_REGEX.test(normalized) ||
-    /\?$/.test(normalized) ||
-    normalized.length >= 60;
+    /\?$/.test(normalized);
   if (hasLegalAnalysisIntent) return "analysis";
 
-  return hasDraft ? "analysis" : "guidance";
+  return hasDraft ? "analysis" : "draft";
 }
 
 function buildLegalDraftConversationHistory(messages: DraftChatMessage[]): Array<{ role: "user" | "assistant"; content: string }> {
