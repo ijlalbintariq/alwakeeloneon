@@ -14116,7 +14116,7 @@ Never place a Family matter in High Court/Sessions format unless explicitly a co
 
 DOCUMENT FORMAT
 
-All drafts must follow this structure.
+Unless the user explicitly requests a custom format (like a table, list, or comparison), all drafts must follow this structure.
 
 IMPORTANT: Every legal document has TWO distinct sections — a TITLE/INDEX PAGE (Page 1) and the MEMO/BODY (Page 2+). Both must be generated.
 
@@ -15459,9 +15459,9 @@ ${profile.label}
 Drafting checklist:
 ${profile.checklist}
 
-Court-ready formatting requirements (mandatory):
-- Output plain court pleading text only.
-- Do not use markdown symbols such as *, **, #, -, backticks, or bullet markers.
+Court-ready formatting requirements (default unless user requests a custom format like a table):
+- Output plain court pleading text, but you MAY use markdown tables or bullet points IF the user specifically asks for them.
+- Do not use markdown symbols such as *, **, #, -, backticks for standard pleadings.
 - Keep professional Pakistani court format with clean headings and paragraphs.
 - Use uppercase captions for core headings: court title, case title, RESPECTFULLY SHEWETH:, BRIEF FACTS, GROUNDS, PRAYER, VERIFICATION.
 - Do NOT include a "VALUATION AND COURT FEE" section.

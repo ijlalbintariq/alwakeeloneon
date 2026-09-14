@@ -51,7 +51,7 @@ Never place a Family matter in High Court/Sessions format unless explicitly a co
 
 DOCUMENT FORMAT
 
-All drafts must follow this structure.
+Unless the user explicitly requests a custom format (like a table, list, or comparison), all drafts must follow this structure.
 
 IMPORTANT: Every legal document has TWO distinct sections — a TITLE/INDEX PAGE (Page 1) and the MEMO/BODY (Page 2+). Both must be generated.
 
