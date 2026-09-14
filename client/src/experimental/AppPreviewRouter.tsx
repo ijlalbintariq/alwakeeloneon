@@ -37,6 +37,7 @@ const PreviewDashboard = lazy(() => import("./pages/PreviewDashboard"));
 const PreviewChat = lazy(() => import("./pages/PreviewChat"));
 const PreviewDrafting = lazy(() => import("./pages/PreviewDrafting"));
 const PreviewJudgments = lazy(() => import("./pages/PreviewJudgments"));
+const PreviewTaxReturn = lazy(() => import("./pages/PreviewTaxReturn"));
 const PreviewCaseFiles = lazy(() => import("./pages/PreviewCaseFiles"));
 const BenchSimulator = lazy(() => import("@/pages/bench-simulator"));
 const PreviewDailyDiary = lazy(() => import("./pages/PreviewDailyDiary"));
