@@ -36,3 +36,31 @@ Develop an automated test suite to objectively verify the core workflows of the 
 
 ### Verification
 - [ ] The newly created automated test suite executes successfully and passes, confirming the stability of the audited modules.
+
+## 2026-09-10T16:52:17Z
+
+Build Phase 3: Judicial Bench Simulator, a multi-turn adversarial RAG system where the AI acts as both Opposing Counsel (finding hostile case law) and a strict Judge (grilling the user on their legal grounds). The system will dynamically adjust its persona and search strategy based on the Court Level, Case Nature, and Proceeding Stage.
+
+Working directory: /Users/macbook/Downloads/Alwakeelo
+Integrity mode: development
+
+## Requirements
+
+### R1. State Management Database
+Implement schema updates in `shared/schema.ts` to track session configuration, hidden attack plans, and scoring. This includes adding `bench_sessions` and `bench_messages` tables.
+
+### R2. Adversarial Retrieval Pipeline
+Create `server/pipeline/bench-pipeline.ts` with logic for generating adversarial queries, running vector searches that strictly filter out overruled cases, and synthesizing a JSON counter-brief.
+
+### R3. API Route & Streaming
+Implement the `POST /api/ai/bench-simulator` route to handle multi-turn session rounds. This route must check round status, construct a dynamic system prompt using the attack plan, stream the Judge's hostile question back to the client, and synchronously trigger an LLM evaluation to update the score.
+
+### R4. Frontend UI
+Build an immersive chat interface at `client/src/pages/bench-simulator.tsx`. This must include a Pre-session Modal (to select Court Level, Case Nature, and Stage), a Live Score HUD, a formal chat interface, and a Post-Session Report.
+
+## Acceptance Criteria
+
+### Verification & Testing
+- [ ] An automated test script (`test-bench-rag.ts`) successfully simulates an argument and verifies that the RAG returns valid hostile cases without returning overruled ones.
+- [ ] The API successfully streams the AI Judge's response and updates the Live Score synchronously in the database.
+- [ ] The frontend HUD accurately reflects the Live Score and Current Round updates after each user message without race conditions.

@@ -213,6 +213,7 @@ export type CaseLawSearchOptions = {
   parsedCitation?: CaseLawCitationParts | null;
   includeSourceContentSearch?: boolean;
   offset?: number;
+  fastAutocomplete?: boolean;
 };
 
 function normalizeCaseLawCitationReport(token: string): string {
@@ -2473,16 +2474,66 @@ export class DatabaseStorage implements IStorage {
     };
     const signalTokens = allTokens.filter(isSignalToken);
     const otherTokens = allTokens.filter((t) => !isSignalToken(t));
-    const queryTokens = [...new Set([...signalTokens, ...otherTokens])].slice(0, 6);
+    let queryTokens = [...new Set([...signalTokens, ...otherTokens])].slice(0, 6);
+    
+    if (parsedCitation) {
+      const partsToStrip = [
+        String(parsedCitation.year),
+        String(parsedCitation.report).toLowerCase(),
+        String(parsedCitation.page),
+        "sc", "lahore", "karachi", "peshawar", "islamabad", "fsc", "shc", "phc", "ihc", "bhc", "ajkhc", "lhc"
+      ];
+      queryTokens = queryTokens.filter(t => !partsToStrip.includes(t));
+    }
 
-    if (queryTokens.length === 0) return [];
+    if (queryTokens.length === 0) {
+      if (parsedCitation && parsedCitation.year && parsedCitation.report && parsedCitation.page) {
+        // Pure citation lookup, no keywords. Avoid FTS entirely.
+        const res = await db.execute(sql`
+          SELECT
+            j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
+            LEFT(j.full_text, 1500) as "fullTextHead",
+            c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode",
+            j.authority_score as "authorityScore", j.is_overruled as "isOverruled",
+            1.0 as relevance
+          FROM judgments j
+          LEFT JOIN courts_ref c ON j.court_id = c.id
+          LEFT JOIN law_journals l ON j.journal_id = l.id
+          WHERE j.is_active = true
+            AND j.year = ${parsedCitation.year}
+            AND l.code ILIKE ${parsedCitation.report}
+            AND j.page = ${parsedCitation.page}
+          ORDER BY j.year DESC
+          LIMIT 1
+        `);
+        // We must jump to the end format loop, so we'll just return early here.
+        const rows = res.rows as any[];
+        return rows.map((row) => ({
+          id: row.id,
+          judgmentId: row.id,
+          citation: String(row.citationString || "").trim(),
+          citationYear: Number.isInteger(row.year) ? row.year : null,
+          citationReport: row.journalCode || null,
+          citationPage: Number.isInteger(row.page) && row.page > 0 ? row.page : null,
+          citationRole: "primary" as const,
+          court: row.courtSnapshot || row.courtName || "Supreme Court of Pakistan",
+          title: row.title || "Untitled",
+          summary: row.headnotes || row.fullTextHead || "",
+          keywords: [] as string[],
+          sourceDocId: null,
+          sourceType: "judgment",
+          sourceFilename: null,
+        }));
+      }
+      return [];
+    }
 
     // ── Tier 1: tsvector @@ tsquery (GIN indexed) ───────────────────────
     // Build tsquery strings:
     // Narrow: AND of top 3 signal tokens (precise search)
     // Broad: OR of all tokens (fallback for broader results)
-    const topCoreTokens = signalTokens.length > 0
-      ? [...new Set(signalTokens)].slice(0, 3)
+    const topCoreTokens = signalTokens.filter(t => queryTokens.includes(t)).length > 0
+      ? [...new Set(signalTokens.filter(t => queryTokens.includes(t)))].slice(0, 3)
       : queryTokens.slice(0, 3);
     const tsQueryNarrow = topCoreTokens.join(' & ');
     const tsQueryBroad = queryTokens.join(' | ');
@@ -2501,7 +2552,15 @@ export class DatabaseStorage implements IStorage {
     // to that year. Otherwise years like "2026" get stripped by YEAR_RE and
     // the query becomes just "scmr" — matching ALL years indiscriminately.
     const yearFilter = parsedCitation?.year
-      ? sql`AND year = ${parsedCitation.year}`
+      ? sql`AND j.year = ${parsedCitation.year}`
+      : sql``;
+
+    const journalFilter = parsedCitation?.report
+      ? sql`AND l.code ILIKE ${parsedCitation.report}`
+      : sql``;
+
+    const pageFilter = parsedCitation?.page
+      ? sql`AND j.page = ${parsedCitation.page}`
       : sql``;
 
     const courtFilterExpr = court
@@ -2509,17 +2568,28 @@ export class DatabaseStorage implements IStorage {
       : sql``;
 
     const fetchRows = async (tsqStr: string): Promise<any[]> => {
+      const relevanceSelector = options.fastAutocomplete
+        ? sql`1.0 as relevance`
+        : sql`ts_rank_cd(j.tsv_title_headnotes, to_tsquery('simple', ${allTsTerms})) as relevance`;
+        
+      const orderByClause = options.fastAutocomplete
+        ? sql`ORDER BY j.year DESC`
+        : sql`ORDER BY relevance DESC, j.year DESC`;
+
       const res = await db.execute(sql`
         WITH candidates AS (
           SELECT j.id,
-            ts_rank_cd(j.tsv_title_headnotes, to_tsquery('simple', ${allTsTerms})) as relevance
+            ${relevanceSelector}
           FROM judgments j
           LEFT JOIN courts_ref c ON j.court_id = c.id
+          LEFT JOIN law_journals l ON j.journal_id = l.id
           WHERE j.is_active = true
             AND j.tsv_title_headnotes @@ to_tsquery('simple', ${tsqStr})
             ${yearFilter}
+            ${journalFilter}
+            ${pageFilter}
             ${courtFilterExpr}
-          ORDER BY relevance DESC, j.year DESC
+          ${orderByClause}
           LIMIT ${safeLimit * 8}
         )
         SELECT
@@ -2532,7 +2602,7 @@ export class DatabaseStorage implements IStorage {
         INNER JOIN judgments j ON cand.id = j.id
         LEFT JOIN courts_ref c ON j.court_id = c.id
         INNER JOIN law_journals l ON j.journal_id = l.id
-        ORDER BY cand.relevance DESC, j.year DESC
+        ${orderByClause}
         LIMIT ${safeLimit * 2}
       `);
       return res.rows as any[];

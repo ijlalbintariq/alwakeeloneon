@@ -11248,6 +11248,7 @@ RAG POLICY (STRICT):
         sort: "relevance",
         parsedCitation,
         includeSourceContentSearch: false,
+        fastAutocomplete: true,
       });
 
       const results = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(resultsRaw)).slice(0, limit);

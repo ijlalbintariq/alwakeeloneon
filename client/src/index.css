@@ -285,6 +285,7 @@
   color: hsl(var(--foreground));
   text-align: justify;
   box-sizing: border-box;
+  position: relative;
   padding: var(--legal-margin-top) var(--legal-margin-right) var(--legal-margin-bottom) var(--legal-margin-left);
   min-height: var(--legal-document-height, var(--legal-page-height));
   width: var(--legal-page-width);
@@ -292,16 +293,7 @@
   border: 0;
   border-radius: 2px;
   cursor: text;
-  background-image: linear-gradient(
-    to bottom,
-    hsl(var(--background)) 0,
-    hsl(var(--background)) var(--legal-page-height),
-    transparent var(--legal-page-height),
-    transparent calc(var(--legal-page-height) + var(--legal-page-gap))
-  );
-  background-size: 100% calc(var(--legal-page-height) + var(--legal-page-gap));
-  background-repeat: repeat-y;
-  background-position: top;
+  background-color: hsl(var(--background));
   filter: drop-shadow(0 4px 12px hsl(var(--foreground) / 0.1));
 }
 
@@ -476,22 +468,40 @@
 }
 
 .legal-draft-editor .legal-auto-page-break {
-  margin-top: var(--legal-page-break-gap) !important;
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+  border-top: 2px dashed hsl(var(--border) / 0.5);
+  position: relative;
+  width: 100%;
+}
+
+.legal-draft-editor .legal-auto-page-break::after {
+  content: "PAGE BREAK (Auto)";
+  position: absolute;
+  top: -9px;
+  right: 12px;
+  background: hsl(var(--background));
+  padding: 0 4px;
+  font-size: 9px;
+  color: hsl(var(--muted-foreground));
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
 .legal-draft-editor .legal-page-break {
   box-sizing: border-box;
-  height: var(--legal-page-break-gap, 0px);
-  margin: 0;
   position: relative;
+  height: 2rem;
+  margin: 1rem 0;
+  border-top: 2px dashed hsl(var(--border) / 0.8);
+  width: 100%;
   user-select: none;
 }
 
 .legal-draft-editor .legal-page-break-label {
   position: absolute;
-  top: calc(var(--legal-page-break-gap) - var(--legal-margin-top) - var(--legal-page-gap-half));
+  top: -10px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   padding: 2px 8px;
   border: 1px solid hsl(var(--border) / 0.7);
   border-radius: 999px;

@@ -1,0 +1,61 @@
+const fs = require("fs");
+const path = "./shared/blog-data.ts";
+let content = fs.readFileSync(path, "utf8");
+
+const hubs = [
+  {
+    slug: "ppc-302",
+    title: "Section 302 PPC: Murder, Intent, Grave Provocation & Bail Law",
+    category: "Statutory Hub",
+    summary: "Comprehensive guide to Section 302 of the Pakistan Penal Code (PPC). Learn the differences between Qatl-i-Amd, grave and sudden provocation, evidentiary requirements, and the latest Supreme Court precedents on bail.",
+    publishedAt: "2026-09-13",
+    readTime: "12 min read",
+    content: "## Section 302 PPC: Qatl-i-Amd (Intentional Murder)\\n\\nSection 302 of the Pakistan Penal Code (PPC) 1860 governs the punishment for *Qatl-i-Amd* (intentional murder). It is one of the most heavily litigated sections in Pakistan's criminal justice system.\\n\\n### The Three Tiers of Punishment under 302 PPC\\nThe section is divided into three clauses based on the circumstances of the murder:\\n1. **302(a): Qisas** — Death as a direct equal retribution, subject to strict evidentiary standards (Tazkiya-tul-Shuhood).\\n2. **302(b): Ta\\'zir** — Death or life imprisonment when the strict evidentiary requirements of Qisas are not met. This is the most common charging statute.\\n3. **302(c): Maximum 25 Years** — Punishment when Qisas is not applicable according to Islamic Injunctions, often invoked in cases of sudden provocation or self-defense exceeding limits.\\n\\n### Grave and Sudden Provocation\\nA critical defense often raised under 302(c) is \\"grave and sudden provocation.\\" Pakistani courts require the provocation to be both grave (depriving the accused of self-control) and sudden (no time for passions to cool).\\n\\n### Evidentiary Requirements\\nConvictions typically rely on:\\n- **Ocular Account:** Eyewitness testimony.\\n- **Medical Evidence:** Post-mortem reports confirming the cause and time of death.\\n- **Recoveries:** The murder weapon recovered under Section 27 of the Qanun-e-Shahadat Order 1984.\\n- **Motive:** Establishing the *mens rea* (intent) behind the act.\\n\\n### Bail under Section 302 PPC\\nBail in 302 cases is governed by the prohibitory clause of Section 497 CrPC. Bail is generally denied unless:\\n- There are **further inquiries** needed (Section 497(2) CrPC).\\n- **Statutory delay:** The trial has not concluded within the mandated statutory period.\\n- **Medical grounds:** Severe illness of the accused.\\n\\n*Disclaimer: This is for educational purposes only. Always consult a criminal defense attorney.*"
+  },
+  {
+    slug: "crpc-497",
+    title: "Section 497 CrPC: Grounds for Bail in Non-Bailable Offences",
+    category: "Statutory Hub",
+    summary: "A complete practitioner's breakdown of Section 497 CrPC. Covers the prohibitory clause, rule of 'further inquiry', statutory delay, and landmark judgments governing bail in Pakistan.",
+    publishedAt: "2026-09-13",
+    readTime: "10 min read",
+    content: "## Section 497 CrPC: Bail in Non-Bailable Offences\\n\\nSection 497 of the Code of Criminal Procedure (CrPC) 1898 is the cornerstone of bail jurisprudence in Pakistan. It governs when and how a person accused of a non-bailable offence may be released on bail.\\n\\n### The Prohibitory Clause\\nUnder Section 497(1), a person shall **not** be released on bail if there appear reasonable grounds for believing that they have been guilty of an offence punishable with:\\n- Death\\n- Imprisonment for life\\n- Imprisonment for 10 years or more\\n\\n### Exceptions to the Prohibitory Clause\\nEven if an offence falls within the prohibitory clause, bail can be granted under specific exceptions:\\n1. **Minors:** Accused is under 16 years of age.\\n2. **Women:** The accused is a female.\\n3. **Sick or Infirm:** The accused requires medical attention not available in jail.\\n\\n### Section 497(2): Further Inquiry\\nThis is the most frequently invoked ground for bail. If it appears to the court that there are no reasonable grounds for believing the accused committed a non-bailable offence, but there are sufficient grounds for **further inquiry** into their guilt, the accused shall be released on bail pending such inquiry.\\n\\n### Statutory Delay\\nThe law guarantees a speedy trial. If a trial does not conclude within a specific timeframe (often 1 or 2 years depending on the severity of the charge) through no fault of the accused, they acquire a statutory right to bail.\\n\\n### Supreme Court Precedents\\nThe Supreme Court of Pakistan has repeatedly held that **\\"Bail is the rule, and committal to jail is an exception.\\"** The basic philosophy is that an accused is presumed innocent until proven guilty, and pre-trial detention should not be used as punishment.\\n\\n*Disclaimer: This is for educational purposes only. Always consult a criminal defense attorney.*"
+  },
+  {
+    slug: "constitution-article-199",
+    title: "Article 199: High Court Writ Jurisdiction & Landmark Precedents",
+    category: "Statutory Hub",
+    summary: "An in-depth guide to Article 199 of the Constitution of Pakistan. Understand Habeas Corpus, Mandamus, Prohibition, Certiorari, and Quo Warranto writ petitions.",
+    publishedAt: "2026-09-13",
+    readTime: "15 min read",
+    content: "## Article 199: The Writ Jurisdiction of High Courts\\n\\nArticle 199 of the Constitution of the Islamic Republic of Pakistan, 1973, vests the High Courts with extraordinary constitutional jurisdiction to issue writs. It is the primary tool for citizens to enforce fundamental rights and hold the state accountable.\\n\\n### The Five Types of Writs\\n\\n1. **Habeas Corpus (Produce the Body):** \\n   Used to secure the release of a person who has been unlawfully detained or wrongfully confined by law enforcement or private individuals.\\n2. **Mandamus (We Command):** \\n   A directive to a person, corporation, or lower court holding a public office to perform a statutory public duty that they have refused to perform.\\n3. **Prohibition:** \\n   Issued to a lower court or quasi-judicial body to stop them from doing something beyond their legal jurisdiction.\\n4. **Certiorari (To be Certified):** \\n   Used to quash the order of a lower court or administrative tribunal if the order was passed without jurisdiction or in violation of the principles of natural justice.\\n5. **Quo Warranto (By What Authority):** \\n   Challenges a person holding a public office to prove by what legal authority they hold that position.\\n\\n### When Can a Writ be Filed?\\nA writ under Article 199 can only be filed if:\\n- **No Alternate Remedy:** The petitioner has no other adequate, prompt, and efficacious legal remedy available under the law.\\n- **Aggrieved Person:** The petitioner must be an \\"aggrieved person\\" (except in Habeas Corpus and Quo Warranto, which can be filed by any person).\\n\\n### Limitations\\nThe High Court will not usually interfere in factual disputes requiring the recording of evidence; writ jurisdiction is primarily meant for resolving questions of law and jurisdictional overreaches.\\n\\n*Disclaimer: This is for educational purposes only. Always consult a constitutional lawyer.*"
+  },
+  {
+    slug: "ppc-489f",
+    title: "Section 489-F PPC: Dishonoured Cheques & Defense Arguments",
+    category: "Statutory Hub",
+    summary: "Navigate the complexities of Section 489-F PPC (dishonour of cheques). Learn the essential ingredients of the offence, civil vs. criminal liabilities, and strategies for prosecution and defense.",
+    publishedAt: "2026-09-13",
+    readTime: "11 min read",
+    content: "## Section 489-F PPC: Dishonestly Issuing a Cheque\\n\\nSection 489-F of the Pakistan Penal Code criminalizes the issuance of a cheque that is subsequently dishonoured, provided certain strict conditions are met. This section bridges the gap between civil breach of contract and criminal fraud.\\n\\n### Essential Ingredients of the Offence\\nFor a conviction or even a robust FIR under 489-F, the prosecution must prove three core elements:\\n1. **Issued with Dishonest Intent:** The cheque was issued dishonestly.\\n2. **Towards Repayment of a Loan or Fulfillment of an Obligation:** The cheque was not a gift or advance payment, but given to discharge an existing legal obligation.\\n3. **Dishonour:** The cheque was presented to the bank and bounced (usually due to insufficient funds or \\"stop payment\\" orders).\\n\\n### Criminal vs. Civil Liability\\nA bouncing cheque often triggers simultaneous civil and criminal proceedings:\\n- **Criminal (FIR under 489-F):** Punishable by up to 3 years in prison and/or a fine. It focuses on the deceptive intent.\\n- **Civil (Order XXXVII CPC):** A summary suit for the swift recovery of the money owed.\\n\\n### Defenses against 489-F\\nCommon defense arguments include:\\n- **Security Cheque:** The cheque was given merely as a guarantee or security, not for the discharge of an immediate financial obligation.\\n- **No Legal Obligation:** The underlying contract was void, or the debt was not legally enforceable.\\n- **Stolen or Misused Cheque:** The accused did not issue the cheque; it was stolen or misused by the complainant.\\n- **Civil Dispute:** The matter is purely a civil accounting dispute and does not involve criminal *mens rea* (intent).\\n\\n### Bail Considerations\\nSince the maximum punishment is 3 years, the offence does not fall within the prohibitory clause of Section 497 CrPC. Consequently, bail is generally granted as a rule in 489-F cases, provided the accused is not a flight risk or a repeat offender.\\n\\n*Disclaimer: This is for educational purposes only. Always consult a lawyer.*"
+  }
+];
+
+let generatedStr = hubs.map(h => {
+  return "  {\n" +
+    "    slug: " + JSON.stringify(h.slug) + ",\n" +
+    "    title: " + JSON.stringify(h.title) + ",\n" +
+    "    category: " + JSON.stringify(h.category) + ",\n" +
+    "    summary: " + JSON.stringify(h.summary) + ",\n" +
+    "    publishedAt: " + JSON.stringify(h.publishedAt) + ",\n" +
+    "    readTime: " + JSON.stringify(h.readTime) + ",\n" +
+    "    content: `" + h.content + "`\n" +
+  "  }";
+}).join(",\n");
+
+const index = content.lastIndexOf("];");
+if (index !== -1) {
+  content = content.slice(0, index) + ",\n" + generatedStr + "\n];\n";
+  fs.writeFileSync(path, content);
+  console.log("Topic Hubs appended successfully to blog-data.ts");
+}

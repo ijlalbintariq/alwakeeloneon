@@ -243,22 +243,12 @@
   padding: var(--legal-margin-top, 96px) var(--legal-margin-right, 96px) var(--legal-margin-bottom, 96px) var(--legal-margin-left, 120px) !important;
   min-height: var(--legal-document-height, var(--legal-page-height, 1344px)) !important;
   font-family: 'Times New Roman', 'TimesNewRomanPSMT', 'Liberation Serif', serif !important;
-  font-size: 13pt !important;
+  font-size: 13.5pt !important;
   line-height: 1.35 !important;
   text-align: justify !important;
   color: #0F172A !important;
   box-sizing: border-box !important;
-  background-color: transparent !important;
-  background-image: linear-gradient(
-    to bottom,
-    #FFFFFF 0,
-    #FFFFFF var(--legal-page-height, 1344px),
-    transparent var(--legal-page-height, 1344px),
-    transparent calc(var(--legal-page-height, 1344px) + var(--legal-page-gap, 28px))
-  ) !important;
-  background-size: 100% calc(var(--legal-page-height, 1344px) + var(--legal-page-gap, 28px)) !important;
-  background-repeat: repeat-y !important;
-  background-position: top !important;
+  background-color: #FFFFFF !important;
   transition: width 200ms ease, padding 200ms ease;
 }
 
@@ -416,17 +406,7 @@
 .preview-theme-scope [data-paper-mode="dark"].legal-editor-page-shell .legal-draft-editor,
 .preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor,
 [data-paper-mode="dark"] .legal-draft-editor {
-  background-color: transparent !important;
-  background-image: linear-gradient(
-    to bottom,
-    #1E293B 0,
-    #1E293B var(--legal-page-height, 1344px),
-    transparent var(--legal-page-height, 1344px),
-    transparent calc(var(--legal-page-height, 1344px) + var(--legal-page-gap, 28px))
-  ) !important;
-  background-size: 100% calc(var(--legal-page-height, 1344px) + var(--legal-page-gap, 28px)) !important;
-  background-repeat: repeat-y !important;
-  background-position: top !important;
+  background-color: #1E293B !important;
   color: #F8FAFC !important;
   border: 1px solid #334155 !important;
   box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.3) !important;
