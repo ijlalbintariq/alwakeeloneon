@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, pool, dbAvailable } from "./db";
 import { clearSitemapCache } from "./sitemap";
 import { triggerGoogleIndexing } from "./services/google-indexing";
 import {
@@ -38,6 +38,9 @@ import {
   type CaseDocument, type InsertCaseDocument,
   type CaseNote, type InsertCaseNote,
   type PaymentRecord, type InsertPaymentRecord,
+  benchSessions, benchMessages,
+  type BenchSession, type InsertBenchSession,
+  type BenchMessage, type InsertBenchMessage,
 } from "@shared/schema";
 import { users, passwordResetTokens, emailVerificationTokens, type User } from "@shared/models/auth";
 import { eq, desc, asc, or, ilike, sql, and, lt, gte, lte, ne, count, inArray, isNotNull } from "drizzle-orm";
@@ -5166,6 +5169,11 @@ export async function ensureSearchIndexes(): Promise<void> {
     console.warn("[Indexes] Could not ensure idx_style_memory_chunks_embedding_cosine:", err?.cause?.message || err?.message || err);
   }
   try {
+    await ensureBenchSimulatorSchema(migrationPool);
+  } catch (err: any) {
+    console.warn("[BenchSimulator] Could not ensure bench simulator schema on migration pool:", err?.message || err);
+  }
+  try {
     await migrationPool.end();
     console.log("[Indexes] Dedicated migration connection closed.");
   } catch (err: any) {
@@ -5177,12 +5185,119 @@ export async function ensureSearchIndexes(): Promise<void> {
   } catch (err: any) {
     console.warn("[RAG] Could not ensure RAG schema:", err?.message || err);
   }
+  try {
+    await ensureBenchSimulatorSchema();
+  } catch (err: any) {
+    console.warn("[BenchSimulator] Could not ensure bench simulator schema:", err?.message || err);
+  }
   await ensureCitationReferenceSeedData();
   // Start background backfilling of judgments.tsv_title_headnotes
   backfillTsvColumn().catch((err) => {
     console.error("[Indexes] Background backfill failed:", err?.message || err);
   });
   console.log("Search indexes verification complete.");
+}
+
+let benchSchemaEnsured = false;
+let benchSchemaEnsuringPromise: Promise<void> | null = null;
+
+export function _resetBenchSimulatorSchemaState(): void {
+  benchSchemaEnsured = false;
+  benchSchemaEnsuringPromise = null;
+}
+
+export async function ensureBenchSimulatorSchema(client?: any): Promise<void> {
+  const activePool = client || (dbAvailable ? pool : null);
+  if (!activePool) return;
+  if (benchSchemaEnsured) return;
+  if (benchSchemaEnsuringPromise) return benchSchemaEnsuringPromise;
+
+  benchSchemaEnsuringPromise = (async () => {
+    try {
+      await activePool.query(`
+        CREATE TABLE IF NOT EXISTS bench_sessions (
+          id serial PRIMARY KEY,
+          user_id varchar REFERENCES users(id) ON DELETE CASCADE,
+          case_id integer REFERENCES case_files(id) ON DELETE SET NULL,
+          title text,
+          court_level text NOT NULL,
+          case_nature text NOT NULL,
+          proceeding_stage text NOT NULL,
+          court_name text,
+          judge_persona text DEFAULT 'Strict textualist, procedural purist',
+          user_brief text NOT NULL,
+          attack_plan jsonb,
+          status text NOT NULL DEFAULT 'active',
+          current_round integer NOT NULL DEFAULT 1,
+          max_rounds integer NOT NULL DEFAULT 5,
+          live_score integer NOT NULL DEFAULT 70,
+          score_breakdown jsonb,
+          post_session_report jsonb,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now(),
+          completed_at timestamp
+        );
+
+        CREATE TABLE IF NOT EXISTS bench_messages (
+          id serial PRIMARY KEY,
+          session_id integer NOT NULL REFERENCES bench_sessions(id) ON DELETE CASCADE,
+          round_index integer NOT NULL DEFAULT 1,
+          speaker_role text NOT NULL,
+          content text NOT NULL,
+          evaluation jsonb,
+          cited_cases jsonb,
+          metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamp NOT NULL DEFAULT now()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_bench_sessions_user_id ON bench_sessions (user_id);
+        CREATE INDEX IF NOT EXISTS idx_bench_sessions_status ON bench_sessions (status);
+        CREATE INDEX IF NOT EXISTS idx_bench_sessions_created_at ON bench_sessions (created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_bench_messages_session_id ON bench_messages (session_id);
+        CREATE INDEX IF NOT EXISTS idx_bench_messages_session_round ON bench_messages (session_id, round_index);
+        CREATE INDEX IF NOT EXISTS idx_bench_messages_created_at ON bench_messages (created_at);
+
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS user_id varchar;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS case_id integer;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS title text;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS court_level text;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS case_nature text;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS proceeding_stage text;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS court_name text;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS judge_persona text DEFAULT 'Strict textualist, procedural purist';
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS user_brief text;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS attack_plan jsonb;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS status text DEFAULT 'active';
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS current_round integer DEFAULT 1;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS max_rounds integer DEFAULT 5;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS live_score integer DEFAULT 70;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS score_breakdown jsonb;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS post_session_report jsonb;
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT now();
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS updated_at timestamp DEFAULT now();
+        ALTER TABLE bench_sessions ADD COLUMN IF NOT EXISTS completed_at timestamp;
+
+        ALTER TABLE bench_messages ADD COLUMN IF NOT EXISTS session_id integer;
+        ALTER TABLE bench_messages ADD COLUMN IF NOT EXISTS round_index integer DEFAULT 1;
+        ALTER TABLE bench_messages ADD COLUMN IF NOT EXISTS speaker_role text;
+        ALTER TABLE bench_messages ADD COLUMN IF NOT EXISTS content text;
+        ALTER TABLE bench_messages ADD COLUMN IF NOT EXISTS evaluation jsonb;
+        ALTER TABLE bench_messages ADD COLUMN IF NOT EXISTS cited_cases jsonb;
+        ALTER TABLE bench_messages ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}'::jsonb;
+        ALTER TABLE bench_messages ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT now();
+      `);
+
+      benchSchemaEnsured = true;
+      console.log("[BenchSimulator] Schema and indexes ensured successfully.");
+    } catch (err: any) {
+      console.warn("[BenchSimulator] Could not ensure bench simulator schema:", err?.cause?.message || err?.message || err);
+    }
+  })().finally(() => {
+    benchSchemaEnsuringPromise = null;
+  });
+
+  return benchSchemaEnsuringPromise;
 }
 
 // Critical legal signal tokens that MUST be strictly matched (never bypassed in OR fallbacks)

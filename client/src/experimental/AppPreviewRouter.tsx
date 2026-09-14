@@ -38,6 +38,7 @@ const PreviewChat = lazy(() => import("./pages/PreviewChat"));
 const PreviewDrafting = lazy(() => import("./pages/PreviewDrafting"));
 const PreviewJudgments = lazy(() => import("./pages/PreviewJudgments"));
 const PreviewCaseFiles = lazy(() => import("./pages/PreviewCaseFiles"));
+const BenchSimulator = lazy(() => import("@/pages/bench-simulator"));
 const PreviewDailyDiary = lazy(() => import("./pages/PreviewDailyDiary"));
 const PreviewSettings = lazy(() => import("./pages/PreviewSettings"));
 const PreviewKnowledgeVault = lazy(() => import("./pages/PreviewKnowledgeVault"));
@@ -102,7 +103,7 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/preview/mcp" component={McpPublicLandingPage} />
         <Route path="/blog" component={PreviewBlog} />
         <Route path="/preview/blog" component={PreviewBlog} />
-        <Route path="/preview/blog/:slug" component={PreviewBlogDetail} />
+        <Route path="/blog/:slug" component={PreviewBlogDetail} />\n        <Route path="/preview/blog/:slug" component={PreviewBlogDetail} />
         <Route path="/privacy" component={PreviewPrivacy} />
         <Route path="/preview/privacy" component={PreviewPrivacy} />
         <Route path="/terms" component={PreviewTerms} />
@@ -178,6 +179,7 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/judgments" component={PreviewJudgments} />
         <Route path="/judgment-search" component={PreviewJudgments} />
         <Route path="/judgments/:id" component={PreviewJudgments} />
+        <Route path="/workspace/bench-simulator" component={BenchSimulator} />
         <Route path="/preview/judgments" component={PreviewJudgments} />
         <Route path="/preview/judgments/:id" component={PreviewJudgments} />
         <Route path="/preview/p/:id" component={PreviewPublicJudgment} />

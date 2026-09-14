@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
   History, FileBadge, Sparkles, Database, LogOut, Briefcase, CalendarDays,
-  User as UserIcon, Shield, Settings, Building2, Sun, Moon
+  User as UserIcon, Shield, Settings, Building2, Sun, Moon, Lock
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import {
@@ -29,6 +29,7 @@ type NavigationItem = {
   description: string;
   icon: React.ComponentType<{ size?: number | string; className?: string }>;
   href: string;
+  premiumOnly?: boolean;
 };
 
 type NavigationGroup = {
@@ -55,6 +56,14 @@ const NAVIGATION_GROUPS: NavigationGroup[] = [
         description: "Main legal AI workspace",
         icon: Scale,
         href: "/al-wakeelo",
+      },
+      {
+        id: "bench-simulator",
+        label: "Bench Simulator",
+        description: "Adversarial courtroom practice",
+        icon: Shield,
+        href: "/workspace/bench-simulator",
+        premiumOnly: true,
       },
     ],
   },
@@ -204,6 +213,11 @@ function AppSidebar() {
                     (isJudgmentsItem && location.startsWith("/judgments")) ||
                     location === item.href ||
                     (item.href === "/dashboard" && location === "/");
+                    
+                  const tier = user?.subscriptionTier || "free";
+                  const isPremium = tier === "pro" || tier === "chamber" || tier === "enterprise";
+                  const isLocked = item.premiumOnly && !isPremium;
+
                   return (
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton
@@ -214,10 +228,11 @@ function AppSidebar() {
                           "nav-glow-button h-auto rounded-lg border border-transparent px-1.5 py-1 transition-all",
                           "hover:border-sidebar-border hover:bg-sidebar-accent",
                           isActive &&
-                            "border-sidebar-primary/35 bg-sidebar-accent text-sidebar-accent-foreground"
+                            "border-sidebar-primary/35 bg-sidebar-accent text-sidebar-accent-foreground",
+                          isLocked && "opacity-70"
                         )}
                       >
-                        <Link href={item.href} className="flex w-full items-center gap-2" title={item.description}>
+                        <Link href={isLocked ? "/pricing" : item.href} className="flex w-full items-center gap-2" title={isLocked ? "Upgrade to Pro to access this feature" : item.description}>
                           <span
                             className={cn(
                               "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all",
@@ -228,10 +243,11 @@ function AppSidebar() {
                           >
                             <Icon size={12} />
                           </span>
-                          <span className="nav-label min-w-0 flex-1">
+                          <span className="nav-label min-w-0 flex-1 flex items-center justify-between">
                             <span className={cn("block truncate text-[11px] font-semibold leading-tight", isActive ? "text-sidebar-foreground" : "text-sidebar-foreground/80")}>
                               {item.label}
                             </span>
+                            {isLocked && <Lock size={10} className="ml-2 text-muted-foreground shrink-0" />}
                           </span>
                         </Link>
                       </SidebarMenuButton>

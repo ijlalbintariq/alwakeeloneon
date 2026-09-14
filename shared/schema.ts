@@ -762,6 +762,329 @@ export const legalDrafts = pgTable("legal_drafts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ── Judicial Bench Simulator ────────────────────────────────────────────────
+
+export const courtLevelSchema = z.enum([
+  "supreme_court", 
+  "high_court", 
+  "district_sessions",
+  "special_tribunal_nab",
+  "special_tribunal_atc",
+  "banking_court",
+  "customs_appellate"
+]);
+export type CourtLevel = z.infer<typeof courtLevelSchema>;
+
+export const caseNatureSchema = z.enum([
+  "civil", 
+  "criminal", 
+  "constitutional", 
+  "corporate",
+  "taxation",
+  "family",
+  "rent",
+  "cyber_crime",
+  "quashment"
+]);
+export type CaseNature = z.infer<typeof caseNatureSchema>;
+
+export const proceedingStageSchema = z.enum([
+  "preliminary_hearing",
+  "bail_pre_arrest",
+  "bail_post_arrest",
+  "framing_of_issues",
+  "framing_of_charge",
+  "cross_examination",
+  "evidence_recording",
+  "final_arguments",
+  "appellate_arguments"
+]);
+export type ProceedingStage = z.infer<typeof proceedingStageSchema>;
+
+export const benchSpeakerRoleSchema = z.enum(["user", "judge", "opposing_counsel", "system"]);
+export type BenchSpeakerRole = z.infer<typeof benchSpeakerRoleSchema>;
+
+export const benchSessionStatusSchema = z.enum(["active", "completed", "abandoned"]);
+export type BenchSessionStatus = z.infer<typeof benchSessionStatusSchema>;
+
+export interface ScoreBreakdown {
+  legalSoundness: number; // 0-100
+  precedentGrounding: number; // 0-100
+  proceduralAdherence: number; // 0-100
+  demeanor: number; // 0-100
+  feedback?: string;
+}
+
+export const scoreBreakdownSchema = z.object({
+  legalSoundness: z.number().min(0).max(100),
+  precedentGrounding: z.number().min(0).max(100),
+  proceduralAdherence: z.number().min(0).max(100),
+  demeanor: z.number().min(0).max(100),
+  feedback: z.string().optional(),
+});
+
+export interface BenchCitedCase {
+  citation: string;
+  title: string;
+  court?: string;
+  year?: number;
+  isOverruled: boolean;
+  relevanceSnippet: string;
+  negativeTreatmentDetails?: string;
+}
+
+export const benchCitedCaseSchema = z.object({
+  citation: z.string(),
+  title: z.string(),
+  court: z.string().optional(),
+  year: z.number().optional(),
+  isOverruled: z.boolean().default(false),
+  relevanceSnippet: z.string(),
+  negativeTreatmentDetails: z.string().optional(),
+});
+
+export interface HostilePrecedent {
+  id?: number;
+  citation: string;
+  title: string;
+  court?: string;
+  year?: number;
+  snippet?: string;
+  relevanceReason: string;
+  isOverruled: boolean;
+  ratioDecidendi?: string;
+}
+
+export interface TurnEvaluation {
+  scoreChange: number; // Delta (e.g. +5, -10)
+  currentLiveScore: number; // Cumulative 0-100
+  breakdown: ScoreBreakdown;
+  critique: string;
+  weaknessesIdentified: string[];
+  strengthsIdentified: string[];
+  suggestedRebuttal?: string;
+}
+
+export const turnEvaluationSchema = z.object({
+  scoreChange: z.number(),
+  currentLiveScore: z.number().min(0).max(100),
+  breakdown: scoreBreakdownSchema,
+  critique: z.string(),
+  weaknessesIdentified: z.array(z.string()),
+  strengthsIdentified: z.array(z.string()),
+  suggestedRebuttal: z.string().optional(),
+});
+
+export interface AttackPlanVulnerability {
+  area: string; // e.g. "Locus Standi", "Limitation", "Lack of Material Particulars"
+  severity: "fatal" | "major" | "moderate";
+  description: string;
+  targetedPrecedents: string[];
+  suggestedQuestions: string[];
+}
+
+export interface AttackPlanRound {
+  roundIndex: number;
+  phase: string;
+  opposingArgument: string;
+  judgeQuestion: string;
+  hostileCitations: string[];
+  expectedDefenseAngle: string;
+}
+
+export interface HiddenAttackPlan {
+  strategySummary: string;
+  vulnerabilities: AttackPlanVulnerability[];
+  rounds: AttackPlanRound[];
+  primaryHostileThemes: string[];
+  courtDemeanorDirectives?: string[];
+}
+
+export const hiddenAttackPlanSchema = z.object({
+  strategySummary: z.string(),
+  vulnerabilities: z.array(
+    z.object({
+      area: z.string(),
+      severity: z.enum(["fatal", "major", "moderate"]),
+      description: z.string(),
+      targetedPrecedents: z.array(z.string()),
+      suggestedQuestions: z.array(z.string()),
+    })
+  ),
+  rounds: z.array(
+    z.object({
+      roundIndex: z.number(),
+      phase: z.string(),
+      opposingArgument: z.string(),
+      judgeQuestion: z.string(),
+      hostileCitations: z.array(z.string()),
+      expectedDefenseAngle: z.string(),
+    })
+  ),
+  primaryHostileThemes: z.array(z.string()),
+  courtDemeanorDirectives: z.array(z.string()).optional(),
+});
+
+export interface PostSessionReport {
+  overallVerdict: "admitted" | "dismissed" | "adjourned_with_strictures" | "interim_relief_granted" | "interim_relief_denied";
+  finalScore: number;
+  finalBreakdown: ScoreBreakdown;
+  radarScores: {
+    legalSoundness: number;
+    precedentGrounding: number;
+    proceduralAdherence: number;
+    demeanor: number;
+    rebuttalEffectiveness: number;
+  };
+  strengths: string[];
+  vulnerabilities: string[];
+  judicialOrderSnippet: string;
+  remedialPrecedents: Array<{
+    citation: string;
+    title: string;
+    principle: string;
+    whyHelpful: string;
+  }>;
+  roundsSummary: Array<{
+    roundIndex: number;
+    userArgumentSummary: string;
+    judgeReaction: string;
+    scoreDelta: number;
+  }>;
+}
+
+export const postSessionReportSchema = z.object({
+  overallVerdict: z.enum([
+    "admitted",
+    "dismissed",
+    "adjourned_with_strictures",
+    "interim_relief_granted",
+    "interim_relief_denied",
+  ]),
+  finalScore: z.number().min(0).max(100),
+  finalBreakdown: scoreBreakdownSchema,
+  radarScores: z.object({
+    legalSoundness: z.number().min(0).max(100),
+    precedentGrounding: z.number().min(0).max(100),
+    proceduralAdherence: z.number().min(0).max(100),
+    demeanor: z.number().min(0).max(100),
+    rebuttalEffectiveness: z.number().min(0).max(100),
+  }),
+  strengths: z.array(z.string()),
+  vulnerabilities: z.array(z.string()),
+  judicialOrderSnippet: z.string(),
+  remedialPrecedents: z.array(
+    z.object({
+      citation: z.string(),
+      title: z.string(),
+      principle: z.string(),
+      whyHelpful: z.string(),
+    })
+  ),
+  roundsSummary: z.array(
+    z.object({
+      roundIndex: z.number(),
+      userArgumentSummary: z.string(),
+      judgeReaction: z.string(),
+      scoreDelta: z.number(),
+    })
+  ),
+});
+
+export interface CounterBrief {
+  preliminaryObjections: string[];
+  statutoryBars: string[];
+  hostilePrecedents: Array<{
+    citation: string;
+    title: string;
+    court: string;
+    year?: number;
+    isOverruled: boolean;
+    relevanceSnippet: string;
+    ratioDecidendi: string;
+  }>;
+  rebuttalStrategy: string;
+}
+
+export const counterBriefSchema = z.object({
+  preliminaryObjections: z.array(z.string()),
+  statutoryBars: z.array(z.string()),
+  hostilePrecedents: z.array(
+    z.object({
+      citation: z.string(),
+      title: z.string(),
+      court: z.string(),
+      year: z.number().optional(),
+      isOverruled: z.boolean(),
+      relevanceSnippet: z.string(),
+      ratioDecidendi: z.string(),
+    })
+  ),
+  rebuttalStrategy: z.string(),
+});
+
+export const benchSessions = pgTable(
+  "bench_sessions",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+    caseId: integer("case_id").references(() => caseFiles.id, { onDelete: "set null" }),
+    title: text("title"),
+    courtLevel: text("court_level").notNull(),
+    caseNature: text("case_nature").notNull(),
+    proceedingStage: text("proceeding_stage").notNull(),
+    courtName: text("court_name"),
+    judgeId: integer("judge_id"),
+    selectedJudgeName: text("selected_judge_name"),
+    selectedJudgeName2: text("selected_judge_name2"),
+    benchSize: text("bench_size").default("single"),
+    judgePersona: text("judge_persona").default("Strict textualist, procedural purist"),
+    judgeProfile: jsonb("judge_profile"),
+    userBrief: text("user_brief").notNull(),
+    attackPlan: jsonb("attack_plan").$type<HiddenAttackPlan>(),
+    status: text("status", {
+      enum: ["active", "completed", "abandoned"],
+    }).notNull().default("active"),
+    currentRound: integer("current_round").notNull().default(1),
+    maxRounds: integer("max_rounds").notNull().default(5),
+    liveScore: integer("live_score").notNull().default(70),
+    scoreBreakdown: jsonb("score_breakdown").$type<ScoreBreakdown>(),
+    postSessionReport: jsonb("post_session_report").$type<PostSessionReport>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    completedAt: timestamp("completed_at"),
+  },
+  (table) => ({
+    userIdIdx: index("idx_bench_sessions_user_id").on(table.userId),
+    statusIdx: index("idx_bench_sessions_status").on(table.status),
+    createdAtIdx: index("idx_bench_sessions_created_at").on(table.createdAt),
+  })
+);
+
+export const benchMessages = pgTable(
+  "bench_messages",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .references(() => benchSessions.id, { onDelete: "cascade" })
+      .notNull(),
+    roundIndex: integer("round_index").notNull().default(1),
+    speakerRole: text("speaker_role", {
+      enum: ["user", "judge", "opposing_counsel", "system"],
+    }).notNull(),
+    content: text("content").notNull(),
+    evaluation: jsonb("evaluation").$type<TurnEvaluation>(),
+    citedCases: jsonb("cited_cases").$type<BenchCitedCase[]>(),
+    metadata: jsonb("metadata").default({}).$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    sessionIdIdx: index("idx_bench_messages_session_id").on(table.sessionId),
+    sessionRoundIdx: index("idx_bench_messages_session_round").on(table.sessionId, table.roundIndex),
+    createdAtIdx: index("idx_bench_messages_created_at").on(table.createdAt),
+  })
+);
+
 // ── Relations ───────────────────────────────────────────────────────────────
 
 export const documentScansRelations = relations(documentScans, ({ one, many }) => ({
@@ -794,6 +1117,25 @@ export const legalDraftsRelations = relations(legalDrafts, ({ one }) => ({
   user: one(users, {
     fields: [legalDrafts.userId],
     references: [users.id],
+  }),
+}));
+
+export const benchSessionsRelations = relations(benchSessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [benchSessions.userId],
+    references: [users.id],
+  }),
+  caseFile: one(caseFiles, {
+    fields: [benchSessions.caseId],
+    references: [caseFiles.id],
+  }),
+  messages: many(benchMessages),
+}));
+
+export const benchMessagesRelations = relations(benchMessages, ({ one }) => ({
+  session: one(benchSessions, {
+    fields: [benchMessages.sessionId],
+    references: [benchSessions.id],
   }),
 }));
 
@@ -846,6 +1188,8 @@ export const insertDocumentScanSchema = createInsertSchema(documentScans).omit({
 export const insertScanFindingSchema = createInsertSchema(scanFindings).omit({ id: true, createdAt: true });
 export const insertOrgActivityLogSchema = createInsertSchema(orgActivityLogs).omit({ id: true, createdAt: true });
 export const insertLegalDraftSchema = createInsertSchema(legalDrafts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBenchSessionSchema = createInsertSchema(benchSessions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBenchMessageSchema = createInsertSchema(benchMessages).omit({ id: true, createdAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -1069,4 +1413,33 @@ export type OrgActivityLog = typeof orgActivityLogs.$inferSelect;
 export type InsertOrgActivityLog = z.infer<typeof insertOrgActivityLogSchema>;
 export type LegalDraft = typeof legalDrafts.$inferSelect;
 export type InsertLegalDraft = z.infer<typeof insertLegalDraftSchema>;
+
+export type BenchSession = typeof benchSessions.$inferSelect;
+export type InsertBenchSession = z.infer<typeof insertBenchSessionSchema>;
+export type BenchMessage = typeof benchMessages.$inferSelect;
+export type InsertBenchMessage = z.infer<typeof insertBenchMessageSchema>;
+
+export const createBenchSessionRequestSchema = z.object({
+  courtLevel: courtLevelSchema,
+  caseNature: caseNatureSchema,
+  proceedingStage: proceedingStageSchema,
+  userBrief: z.string().min(10, "Brief must be at least 10 characters"),
+  title: z.string().optional(),
+  courtName: z.string().optional(),
+  judgeId: z.number().int().positive().optional(),
+  selectedJudgeName: z.string().optional(),
+  selectedJudgeName2: z.string().optional(),
+  benchSize: z.enum(["single", "division", "full"]).optional().default("single"),
+  judgePersona: z.string().optional(),
+  caseId: z.number().int().positive().optional(),
+  maxRounds: z.number().int().min(1).max(10).optional().default(5),
+});
+export type CreateBenchSessionRequest = z.infer<typeof createBenchSessionRequestSchema>;
+
+export const submitBenchRoundRequestSchema = z.object({
+  sessionId: z.number().int().positive(),
+  userArgument: z.string().min(2, "Argument cannot be empty"),
+});
+export type SubmitBenchRoundRequest = z.infer<typeof submitBenchRoundRequestSchema>;
+
 

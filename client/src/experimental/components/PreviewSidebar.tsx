@@ -23,6 +23,7 @@ import {
   Users,
   Trophy,
   PlayCircle,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ interface NavItem {
   onClick?: () => void;
   icon: React.ComponentType<{ className?: string }>;
   description?: string;
+  premiumOnly?: boolean;
 }
 
 interface NavGroup {
@@ -89,6 +91,14 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
           href: "/preview/chat",
           icon: Bot,
           description: "RAG precedent assistant",
+        },
+        {
+          id: "bench-simulator",
+          title: "Bench Simulator",
+          href: "/workspace/bench-simulator",
+          icon: Shield,
+          description: "Adversarial courtroom practice",
+          premiumOnly: true,
         },
         {
           id: "analyzer",
@@ -279,6 +289,10 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
                   (location === item.href ||
                     (item.href === "/preview/dashboard" && location === "/preview"));
 
+                const tier = user?.subscriptionTier || "free";
+                const isPremium = tier === "pro" || tier === "chamber" || tier === "enterprise";
+                const isLocked = item.premiumOnly && !isPremium;
+
                 const content = (
                   <>
                     <item.icon
@@ -289,8 +303,9 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
                     />
 
                     {!collapsed && (
-                      <span className="flex-1 truncate min-w-0 font-medium">
-                        {item.title}
+                      <span className="flex-1 truncate min-w-0 font-medium flex items-center justify-between gap-1">
+                        <span className="truncate">{item.title}</span>
+                        {isLocked && <Lock size={12} className="text-muted-foreground shrink-0 opacity-70" />}
                       </span>
                     )}
                   </>
@@ -301,7 +316,8 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
                   collapsed ? "justify-center px-2" : "gap-3 px-3",
                   isActive
                     ? "bg-[#105B38] text-white font-semibold shadow-xs"
-                    : "text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:hover:bg-[#1E2D44]"
+                    : "text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F8FAFC] hover:bg-[#F1F5F9] dark:hover:bg-[#1E2D44]",
+                  isLocked && "opacity-70"
                 );
 
                 if (item.onClick) {
@@ -322,8 +338,8 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
                 return (
                   <Link
                     key={item.id}
-                    href={item.href || "#"}
-                    title={collapsed ? item.title : undefined}
+                    href={isLocked ? "/preview/pricing" : (item.href || "#")}
+                    title={collapsed ? (isLocked ? "Upgrade to access" : item.title) : undefined}
                     className={itemClasses}
                     data-tour={item.id}
                   >

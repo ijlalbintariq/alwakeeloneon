@@ -63,6 +63,13 @@ const TOUR_STEPS: TourStep[] = [
     route: "/preview/chat"
   },
   {
+    id: "bench-simulator",
+    title: "Bench Simulator",
+    content: "Test your arguments against an AI Judge configured with real behavioral patterns extracted from past judgments.",
+    placement: "right",
+    route: "/workspace/bench-simulator"
+  },
+  {
     id: "judgments",
     title: "Case Law / Judgments",
     content: "Conduct deep, semantic searches across 180,000+ Supreme Court and High Court judgments.",
@@ -128,20 +135,9 @@ const TOUR_STEPS: TourStep[] = [
 ];
 
 export const TourProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isActive, setIsActive] = useState(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("aw_tour_active") === "true";
-    }
-    return false;
-  });
+  const [isActive, setIsActive] = useState(false);
   
-  const [currentStepIndex, setCurrentStepIndex] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = sessionStorage.getItem("aw_tour_step");
-      return saved ? parseInt(saved, 10) : 0;
-    }
-    return 0;
-  });
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   
   const [hasSeenTour, setHasSeenTour] = useState(() => {
     if (typeof window !== "undefined") {
@@ -155,24 +151,23 @@ export const TourProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const seen = localStorage.getItem("aw_tour_completed");
     if (!seen) {
       setHasSeenTour(false);
-      // Auto start tour if not seen and not already active
-      if (sessionStorage.getItem("aw_tour_active") !== "true") {
-        const timer = setTimeout(() => {
-          setIsActive(true);
-          sessionStorage.setItem("aw_tour_active", "true");
-        }, 1000);
-        return () => clearTimeout(timer);
-      }
+      // Auto start tour if not seen
+      const timer = setTimeout(() => {
+        setIsActive(true);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, []);
 
   useEffect(() => {
-    sessionStorage.setItem("aw_tour_active", isActive.toString());
+    if (isActive) {
+      sessionStorage.setItem("aw_tour_active", "true");
+    } else {
+      sessionStorage.removeItem("aw_tour_active");
+    }
   }, [isActive]);
 
-  useEffect(() => {
-    sessionStorage.setItem("aw_tour_step", currentStepIndex.toString());
-  }, [currentStepIndex]);
+
 
   const startTour = () => {
     setCurrentStepIndex(0);

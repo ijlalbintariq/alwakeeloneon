@@ -131,7 +131,10 @@ export function serveStatic(app: Express) {
       seoActiveQueries = Math.max(0, seoActiveQueries - 1);
 
       if (row) {
-        const title = row.title ? String(row.title).trim() : "";
+        let rawTitle = row.title ? String(row.title).trim() : "";
+        let cleanTitle = rawTitle.replace(/(?:Honou?rable\s+Justice|Mr\.?\s+Justice|Justice\s+|Chief\s+Justice|Before\s+).*$/i, "").replace(/\s+/g, " ").trim();
+        cleanTitle = cleanTitle.replace(/[-–—,:;]+$/, "").trim() || rawTitle;
+
         const citation = row.citationString ? String(row.citationString).trim() : "";
         const courtName = row.courtNameSnapshot ? String(row.courtNameSnapshot).trim() : "Supreme Court / High Court of Pakistan";
         const decisionDateStr = row.decisionDate ? new Date(row.decisionDate).toISOString().slice(0, 10) : "";
@@ -143,15 +146,23 @@ export function serveStatic(app: Express) {
         const rawFullText = row.fullText ? String(row.fullText).trim() : "";
         const courtSlug = courtName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+        const pageTitle = citation
+          ? `${citation}: ${cleanTitle} — ${courtName} | Al Wakeelo`
+          : `${cleanTitle} — ${courtName} | Al Wakeelo`;
+
+        const pageDescription = citation
+          ? `Read Pakistani case law ${citation}: ${cleanTitle} decided by ${courtName}. Full text, ratio decidendi, and citations on Al Wakeelo.`
+          : `Read Pakistani case law: ${cleanTitle} decided by ${courtName}. Full text, legal holding, and citations on Al Wakeelo.`;
+
         // Schema markup: CourtCase + BreadcrumbList for rich snippets & AI Grounding
         const schema = [
           {
             "@context": "https://schema.org",
             "@type": "CourtCase",
-            "name": title,
+            "name": cleanTitle,
             "identifier": citation || id,
             "caseNumber": citation || id,
-            "headline": `${title}${citation ? ` (${citation})` : ""}`,
+            "headline": pageTitle,
             "court": {
               "@type": "GovernmentOrganization",
               "name": courtName
@@ -171,15 +182,28 @@ export function serveStatic(app: Express) {
               { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.alwakeelo.com/" },
               { "@type": "ListItem", "position": 2, "name": "Judgments", "item": "https://www.alwakeelo.com/judgments" },
               { "@type": "ListItem", "position": 3, "name": courtName, "item": `https://www.alwakeelo.com/judgments/browse?court=${encodeURIComponent(courtSlug)}` },
-              { "@type": "ListItem", "position": 4, "name": citation || title, "item": `https://www.alwakeelo.com/judgment/${id}` }
+              { "@type": "ListItem", "position": 4, "name": citation || cleanTitle, "item": `https://www.alwakeelo.com/judgment/${id}` }
             ]
           }
         ];
-        const schemaMarkup = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>`;
+        
+        const faqSchema = {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [{
+            "@type": "Question",
+            "name": `What was the legal principle decided in ${citation || cleanTitle}?`,
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": `This decision was rendered by the ${courtName}. In this matter between ${petitioner || "the Petitioner"} and ${respondent || "the Respondent"}, the court adjudicated key questions of statutory construction, procedural regularity, and legal precedent under Pakistani law. The honorable bench evaluated governing statutory provisions and judicial authorities to establish the rights of the parties.`
+            }
+          }]
+        };
+        const schemaMarkup = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>\n<script type="application/ld+json">\n${JSON.stringify(faqSchema, null, 2)}\n</script>`;
 
         const meta: SeoMeta = {
-          title: `${title}${citation ? ` (${citation})` : ""} | Al Wakeelo`,
-          description: `Read the full case law: ${title}${citation ? `, ${citation}` : ""} on Al Wakeelo — Pakistan's AI legal assistant. Full judgment text, court, and citations.`,
+          title: pageTitle,
+          description: pageDescription,
           index: true,
           schemaMarkup,
         };
@@ -196,63 +220,67 @@ export function serveStatic(app: Express) {
               .split(/\n\s*\n/)
               .map(p => p.trim())
               .filter(Boolean)
-              .map(p => `<p style="margin-bottom:12px;line-height:1.6;">${esc(p)}</p>`)
+              .map(p => `<p style="margin-bottom:14px;line-height:1.75;font-size:15px;color:#1e293b;">${esc(p)}</p>`)
               .join("\n")
           : "<p>Judgment text available in database.</p>";
 
         const partiesLine = petitioner && respondent
-          ? `<p><strong>Parties:</strong> ${esc(petitioner)} vs ${esc(respondent)}</p>`
-          : petitioner
-            ? `<p><strong>Petitioner:</strong> ${esc(petitioner)}</p>`
-            : "";
-        const headnotesBlock = headnotes
-          ? `<div style="margin:20px 0;padding:15px;background:#fdfcf9;border:1px solid #e5e0d8;border-radius:6px;"><h2>Headnotes</h2><p style="white-space:pre-wrap;line-height:1.6;">${esc(headnotes.slice(0, 3000))}</p></div>`
+          ? `<p style="font-size:14px;color:#475569;margin-bottom:12px;"><strong>Petitioner:</strong> ${esc(petitioner)} <span style="margin:0 8px;">VS</span> <strong>Respondent:</strong> ${esc(respondent)}</p>`
           : "";
 
-        // Visible prerender block with breadcrumbs, /seo-geo legal summary block, full text, and internal links
-        const preRenderBlock = `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <nav aria-label="Breadcrumb" style="margin-bottom:15px;font-size:14px;color:#666;">
-    <a href="/" style="color:#0066cc;text-decoration:none;">Home</a> &gt; 
-    <a href="/judgments" style="color:#0066cc;text-decoration:none;">Judgments</a> &gt; 
-    <a href="/judgments/browse?court=${encodeURIComponent(courtSlug)}" style="color:#0066cc;text-decoration:none;">${esc(courtName)}</a>
-    ${yearStr ? ` &gt; <a href="/judgments/browse?year=${encodeURIComponent(yearStr)}" style="color:#0066cc;text-decoration:none;">${esc(yearStr)}</a>` : ''} &gt; 
-    <span>${esc(citation || title)}</span>
+        const headnotesBlock = headnotes
+          ? `<div style="margin:24px 0;padding:20px 24px;background:#fdfcf9;border:1px solid #e2e8f0;border-radius:12px;"><h2 style="font-family:'Playfair Display',serif;font-size:18px;color:#0f172a;margin-top:0;margin-bottom:12px;">Headnotes</h2><p style="white-space:pre-wrap;line-height:1.75;font-size:14.5px;color:#334155;margin:0;">${esc(headnotes.slice(0, 3000))}</p></div>`
+          : "";
+
+        // Visible prerender block styled identically to Alwakeelo's Tailwind tokens
+        const preRenderBlock = `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <nav aria-label="Breadcrumb" style="margin-bottom:20px;font-size:13px;color:#64748b;font-weight:500;">
+    <a href="/" style="color:#475569;text-decoration:none;">Home</a> &nbsp;/&nbsp; 
+    <a href="/judgments" style="color:#475569;text-decoration:none;">Judgments</a> &nbsp;/&nbsp; 
+    <a href="/judgments/browse?court=${encodeURIComponent(courtSlug)}" style="color:#475569;text-decoration:none;">${esc(courtName)}</a>
+    ${yearStr ? ` &nbsp;/&nbsp; <a href="/judgments/browse?year=${encodeURIComponent(yearStr)}" style="color:#475569;text-decoration:none;">${esc(yearStr)}</a>` : ''} &nbsp;/&nbsp; 
+    <span style="color:#0f172a;">${esc(citation || cleanTitle)}</span>
   </nav>
 
-  <h1>${esc(title)}${citation ? ` — ${esc(citation)}` : ""}</h1>
-  ${citation ? `<p><strong>Official Citation:</strong> ${esc(citation)}</p>` : ""}
-  <p><strong>Court / Jurisdiction:</strong> <a href="/judgments/browse?court=${encodeURIComponent(courtSlug)}" style="color:#0066cc;">${esc(courtName)}</a></p>
-  ${yearStr ? `<p><strong>Year of Decision:</strong> <a href="/judgments/browse?year=${encodeURIComponent(yearStr)}" style="color:#0066cc;">${esc(yearStr)}</a></p>` : ""}
-  ${decisionDateStr ? `<p><strong>Decision Date:</strong> ${esc(decisionDateStr)}</p>` : ""}
-  ${partiesLine}
+  <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:22px 28px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+    ${citation ? `<span style="display:inline-block;padding:4px 12px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:#1e40af;margin-bottom:14px;">${esc(citation)}</span>` : ""}
+    <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">${esc(cleanTitle)}</h1>
+    
+    ${partiesLine}
+    
+    <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:14px;color:#64748b;margin-bottom:8px;">
+      <span><strong>Court:</strong> <a href="/judgments/browse?court=${encodeURIComponent(courtSlug)}" style="color:#1e40af;text-decoration:none;">${esc(courtName)}</a></span>
+      ${decisionDateStr ? `<span><strong>Decision Date:</strong> ${esc(decisionDateStr)}</span>` : ""}
+    </div>
+  </div>
 
   <!-- RAG Grounding & AI Overview Citability Section (134-167 words) -->
-  <section style="margin:20px 0;padding:16px 20px;background:#f8fafc;border-left:4px solid #f59e0b;border-radius:4px;">
-    <h2 style="font-size:18px;margin-top:0;color:#1e293b;">Legal Principle &amp; Question Decided</h2>
-    <p style="margin:0 0 10px 0;line-height:1.6;color:#334155;">
+  <section style="margin:28px 0;padding:20px 24px;background:#faf8f5;border:1px solid #f3ebd8;border-left:4px solid #b45309;border-radius:8px;">
+    <h2 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#78350f;margin-top:0;margin-bottom:10px;">Legal Principle &amp; Question Decided</h2>
+    <p style="margin:0 0 12px 0;line-height:1.65;font-size:14.5px;color:#334155;">
       <strong>Ruling Summary:</strong> This decision was rendered by the <strong>${esc(courtName)}</strong>${decisionDateStr ? ` on ${esc(decisionDateStr)}` : ''}, officially reported as <strong>${esc(citation || 'Verified Case Law')}</strong>. 
       In this matter between <strong>${esc(petitioner || 'the Petitioner')}</strong> and <strong>${esc(respondent || 'the Respondent')}</strong>, the court adjudicated key questions of statutory construction, procedural regularity, and legal precedent under Pakistani law.
     </p>
-    <p style="margin:0;line-height:1.6;color:#334155;">
+    <p style="margin:0;line-height:1.65;font-size:14.5px;color:#334155;">
       <strong>Core Holding:</strong> The honorable bench evaluated governing statutory provisions and judicial authorities to establish the rights of the parties, delivering the binding reasoning set out below.
     </p>
   </section>
 
   ${headnotesBlock}
 
-  <section style="margin:25px 0;">
-    <h2>Full Judgment Text &amp; Judicial Ruling</h2>
+  <section style="margin:28px 0;padding:24px 28px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;">
+    <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-top:0;margin-bottom:20px;">Full Judgment Text &amp; Judicial Ruling</h2>
     ${formattedParagraphs}
-    ${isTruncated ? `<p style="font-style:italic;color:#666;margin-top:15px;">Read the unabridged text and precedent citation network on <a href="https://www.alwakeelo.com/judgment/${id}">Al Wakeelo Legal Research Platform</a>.</p>` : ''}
+    ${isTruncated ? `<p style="font-style:italic;color:#64748b;margin-top:20px;padding-top:16px;border-top:1px dashed #cbd5e1;">Read the unabridged text and precedent citation network on <a href="https://www.alwakeelo.com/judgment/${id}" style="color:#b45309;text-decoration:none;font-weight:600;">Al Wakeelo Legal Research Platform</a>.</p>` : ''}
   </section>
 
-  <section style="margin-top:30px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:14px;">
-    <h3>Related Legal Research &amp; Directories</h3>
-    <ul style="line-height:1.8;">
-      <li>Browse all judgments from <a href="/judgments/browse?court=${encodeURIComponent(courtSlug)}">${esc(courtName)}</a></li>
-      ${yearStr ? `<li>Browse Pakistani court decisions from the year <a href="/judgments/browse?year=${encodeURIComponent(yearStr)}">${esc(yearStr)}</a></li>` : ''}
-      <li>Search Pakistani statutes: <a href="/statute-search">Constitution of Pakistan 1973, PPC, CrPC, CPC &amp; Family Laws</a></li>
-      <li>Analyze this case with <a href="/al-wakeelo">Al Wakeelo AI Legal Assistant</a></li>
+  <section style="margin-top:36px;padding:20px 24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;font-size:14px;color:#334155;">
+    <h3 style="font-family:'Playfair Display',serif;font-size:16px;color:#0f172a;margin-top:0;margin-bottom:12px;">Related Legal Research &amp; Directories</h3>
+    <ul style="line-height:2.0;margin:0;padding-left:20px;">
+      <li>Browse all judgments from <a href="/judgments/browse?court=${encodeURIComponent(courtSlug)}" style="color:#1e40af;text-decoration:none;font-weight:500;">${esc(courtName)}</a></li>
+      ${yearStr ? `<li>Browse Pakistani court decisions from the year <a href="/judgments/browse?year=${encodeURIComponent(yearStr)}" style="color:#1e40af;text-decoration:none;font-weight:500;">${esc(yearStr)}</a></li>` : ''}
+      <li>Search Pakistani statutes: <a href="/statute-search" style="color:#1e40af;text-decoration:none;font-weight:500;">Constitution of Pakistan 1973, PPC, CrPC, CPC &amp; Family Laws</a></li>
+      <li>Analyze this case with <a href="/al-wakeelo" style="color:#1e40af;text-decoration:none;font-weight:500;">Al Wakeelo AI Legal Assistant</a></li>
     </ul>
   </section>
 </div>`;
@@ -275,10 +303,10 @@ export function serveStatic(app: Express) {
   // without needing to execute JavaScript. Hidden from sighted users via
   // display:none — React's #root takes over visually.
   const STATIC_PRERENDER: Record<string, string> = {
-    "/": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Alwakeelo AI — Pakistan's AI-Powered Legal Assistant</h1>
+    "/": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Alwakeelo AI — Pakistan's AI-Powered Legal Assistant</h1>
   <p>Alwakeelo AI is Pakistan's first AI legal assistant, built for lawyers, law students, and anyone navigating Pakistani law. Search over 600,000 judgments from the Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, and Federal Shariat Court.</p>
-  <h2>Features</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Features</h2>
   <ul>
     <li><strong>Judgment Search</strong> — Search 600,000+ Pakistani judgments by citation, party name, court, year, and keyword. Includes PLD, SCMR, YLR, MLD, CLD, CLC, PCrLJ law reports.</li>
     <li><strong>AI Legal Chat</strong> — Ask questions about Pakistani law and receive answers grounded in verified case law and statutes. Al Wakeelo cites real judgments and sections.</li>
@@ -287,48 +315,48 @@ export function serveStatic(app: Express) {
     <li><strong>Statute Search</strong> — Search the Constitution of Pakistan, Pakistan Penal Code (PPC), Code of Criminal Procedure (CrPC), Code of Civil Procedure (CPC), Qanun-e-Shahadat Order, Family Laws, and more.</li>
     <li><strong>Citation Network</strong> — Explore which cases cite each other and trace the legal reasoning chain across Pakistani courts.</li>
   </ul>
-  <h2>Jurisdictions Covered</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Jurisdictions Covered</h2>
   <p>The Supreme Bench of Pakistan, Lahore High Bench, Sindh High Bench, Peshawar High Bench, Islamabad judiciary, Balochistan judiciary, Federal Shariat appellate forum, district-level forums, and specialized tribunals.</p>
-  <h2>Law Reports</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Law Reports</h2>
   <p>PLD (Pakistan Legal Decisions), SCMR (Supreme Court Monthly Review), YLR (Yearly Law Reporter), MLD (Monthly Law Digest), CLC (Civil Law Cases), CLD (Corporate Law Decisions), PCrLJ (Pakistan Criminal Law Journal), and more.</p>
-  <h2>How Al Wakeelo Works</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">How Al Wakeelo Works</h2>
   <p>Al Wakeelo uses Retrieval-Augmented Generation (RAG) technology to ground every response in verified Pakistani legal sources. When you ask a question, the AI searches our database of 600,000+ judgments and Pakistani statutes, retrieves relevant precedents, and constructs its answer using only verified citations. This eliminates the hallucination problem common in standard AI models.</p>
-  <h2>Who Uses Al Wakeelo</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Who Uses Al Wakeelo</h2>
   <p>Al Wakeelo serves practicing advocates across Pakistan, law firms and chambers in Karachi, Lahore, Islamabad, Peshawar, and Quetta, law students preparing for bar examinations and legal research, corporate legal departments needing contract drafting and compliance review, and citizens seeking to understand their rights under Pakistani law.</p>
-  <h2>Pakistani Statutes Available</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Pakistani Statutes Available</h2>
   <p>Search the full text of major Pakistani legislation: Constitution of Pakistan 1973, Pakistan Penal Code 1860 (PPC), Code of Criminal Procedure 1898 (CrPC), Code of Civil Procedure 1908 (CPC), Qanun-e-Shahadat Order 1984 (QSO), Contract Act 1872, Transfer of Property Act 1882, Specific Relief Act 1877, Muslim Family Laws Ordinance 1961, Prevention of Electronic Crimes Act 2016 (PECA), Companies Act 2017, and more.</p>
-  <h2>AI-Powered Legal Drafting</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">AI-Powered Legal Drafting</h2>
   <p>Draft court-ready legal documents including writ petitions under Article 199 of the Constitution, bail applications (pre-arrest and post-arrest), civil suit plaints, legal notices, appeals, and stay applications. All drafts follow Pakistani judicial formatting standards with proper prayer clauses, statutory references, and verification statements. Contract drafting covers lease agreements, employment contracts, NDAs, partnership deeds, and sale agreements under the Contract Act 1872, Stamp Act 1899, and Registration Act 1908.</p>
 </div>`,
 
-    "/judgments": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Pakistani Judgment Search — 600,000+ Cases</h1>
+    "/judgments": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Pakistani Judgment Search — 600,000+ Cases</h1>
   <p>Search over 600,000 Pakistani judicial decisions from the Supreme Bench, provincial High Benches, the Federal Shariat forum, and special tribunals. Find case law by citation number, party name, jurisdiction, year, and legal keywords.</p>
-  <h2>Search by Citation</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Search by Citation</h2>
   <p>Look up judgments by their official citation — PLD 2024 SC 100, 2023 SCMR 500, 2022 YLR 200, MLD, CLC, CLD, PCrLJ citations are all searchable across every reporting journal.</p>
-  <h2>Search by Party Name</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Search by Party Name</h2>
   <p>Find cases by petitioner or respondent name. Search for proceedings involving the State, Federation of Pakistan, Provincial Governments, NAB, FIA, or private parties.</p>
-  <h2>Jurisdictions Covered</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Jurisdictions Covered</h2>
   <p>The Supreme Bench of Pakistan, Lahore High Bench, Sindh High Bench, Peshawar High Bench, Islamabad judiciary, Balochistan judiciary, and the Federal Shariat appellate forum.</p>
-  <h2>Full Judgment Text</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Full Judgment Text</h2>
   <p>Read the complete text of each decision including headnotes, case summary, parties, decision date, and related citations. Every judgment links to the precedents it relies on and subsequent decisions that reference it.</p>
 </div>`,
 
-    "/judgments/browse": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Browse Pakistani Case Law &amp; Judgments Directory</h1>
+    "/judgments/browse": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Browse Pakistani Case Law &amp; Judgments Directory</h1>
   <p>Browse our directory of 600,000+ Pakistani judicial decisions organized by jurisdiction, year, and law journal. Find cases from the Supreme Bench, all five provincial High Benches, and the Federal Shariat appellate forum.</p>
-  <h2>Browse by Jurisdiction</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Browse by Jurisdiction</h2>
   <p>Select any Pakistani judicial body to browse its decisions chronologically — the apex bench, regional High Benches, the Shariat appellate forum, and specialized tribunals.</p>
-  <h2>Browse by Year</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Browse by Year</h2>
   <p>Navigate decisions by year from 1947 to present. Find landmark rulings and recent precedents across every tier of the Pakistani judiciary.</p>
-  <h2>Browse by Law Journal</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Browse by Law Journal</h2>
   <p>PLD (Pakistan Legal Decisions), SCMR (Supreme Monthly Review), YLR (Yearly Law Reporter), MLD (Monthly Law Digest), CLC (Civil Law Cases), CLD (Corporate Law Decisions), PCrLJ (Pakistan Criminal Law Journal).</p>
 </div>`,
 
-    "/statute-search": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Pakistani Statute Search — Constitution, PPC, CPC, CrPC, Family Laws</h1>
+    "/statute-search": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Pakistani Statute Search — Constitution, PPC, CPC, CrPC, Family Laws</h1>
   <p>Search Pakistani statutes by name, section number, or keyword. Access the full text of every major Pakistani law including the Constitution, criminal codes, civil procedure, family law, and commercial legislation.</p>
-  <h2>Major Statutes Available</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Major Statutes Available</h2>
   <ul>
     <li><strong>Constitution of Pakistan, 1973</strong> — Fundamental rights, governance structure, and constitutional provisions.</li>
     <li><strong>Pakistan Penal Code, 1860 (PPC)</strong> — Criminal offences, punishments, and definitions under Pakistani criminal law.</li>
@@ -342,10 +370,10 @@ export function serveStatic(app: Express) {
   </ul>
 </div>`,
 
-    "/al-wakeelo": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Al Wakeelo Engine — Pakistani Legal AI Chat</h1>
+    "/al-wakeelo": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Al Wakeelo Engine — Pakistani Legal AI Chat</h1>
   <p>Chat with Al Wakeelo, Pakistan's AI legal assistant. Ask questions about Pakistani statutes, judgments, court procedures, and legal rights. Al Wakeelo provides answers grounded in verified case law citations from 600,000+ Pakistani judgments.</p>
-  <h2>What You Can Ask</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">What You Can Ask</h2>
   <ul>
     <li>Questions about Pakistani criminal law — bail, FIR, arrest, quashment, acquittal, PPC sections</li>
     <li>Civil matters — property disputes, contracts, injunctions, declaratory suits, partition, pre-emption</li>
@@ -355,14 +383,14 @@ export function serveStatic(app: Express) {
     <li>Tax and revenue matters — income tax, sales tax, customs, FBR appeals</li>
     <li>Banking and financial law — recovery suits, banking courts, negotiable instruments</li>
   </ul>
-  <h2>How It Works</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">How It Works</h2>
   <p>Al Wakeelo uses retrieval-augmented generation (RAG) to search verified Pakistani judgments and statutes before answering. Every citation is verified against our database of 600,000+ cases. Responses include exact case citations (PLD, SCMR, YLR, MLD) and statute sections you can click to read the full text.</p>
 </div>`,
 
-    "/legal-drafting": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Legal Drafting — Court-Ready Petitions &amp; Applications</h1>
+    "/legal-drafting": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Legal Drafting — Court-Ready Petitions &amp; Applications</h1>
   <p>Draft writ petitions, bail applications, appeals, legal notices, and court documents under Pakistani law. Al Wakeelo's AI-assisted legal drafting generates court-ready documents with verified case law citations and proper Pakistani judicial formatting.</p>
-  <h2>Document Types</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Document Types</h2>
   <ul>
     <li><strong>Writ Petitions</strong> — Under Article 199 of the Constitution for High Court jurisdiction.</li>
     <li><strong>Bail Applications</strong> — Pre-arrest bail, post-arrest bail, and bail confirmation applications.</li>
@@ -371,14 +399,14 @@ export function serveStatic(app: Express) {
     <li><strong>Legal Notices</strong> — Demand notices, eviction notices, and statutory notices under Pakistani law.</li>
     <li><strong>Applications</strong> — Stay applications, transfer applications, and miscellaneous court applications.</li>
   </ul>
-  <h2>Pakistani Court Formatting</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Pakistani Court Formatting</h2>
   <p>All drafts follow Pakistani judicial formatting standards with proper prayer clauses, section references, case law citations, and verification statements required by Pakistani courts.</p>
 </div>`,
 
-    "/contract-drafting": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Contract Drafting — Pakistani Contract Act 1872</h1>
+    "/contract-drafting": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Contract Drafting — Pakistani Contract Act 1872</h1>
   <p>Draft legally compliant contracts under Pakistani law. Al Wakeelo generates rental agreements, employment contracts, sale agreements, partnership deeds, and more — all compliant with the Contract Act 1872 and relevant Pakistani legislation.</p>
-  <h2>Contract Types</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Contract Types</h2>
   <ul>
     <li><strong>Rental &amp; Lease Agreements</strong> — Residential and commercial tenancy agreements with rent escalation, security deposit, and eviction clauses.</li>
     <li><strong>Employment Contracts</strong> — Employment agreements with probation, termination, gratuity, and non-compete clauses.</li>
@@ -387,23 +415,23 @@ export function serveStatic(app: Express) {
     <li><strong>Service Agreements</strong> — Consulting, freelance, and professional service contracts.</li>
     <li><strong>Non-Disclosure Agreements</strong> — Confidentiality agreements for business and legal matters.</li>
   </ul>
-  <h2>Legal Compliance</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Legal Compliance</h2>
   <p>All contracts reference applicable Pakistani statutes including the Contract Act 1872, Stamp Act 1899, Registration Act 1908, and Arbitration Act 1940.</p>
 </div>`,
 
-    "/citation-search": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Citation Search — Pakistani Case Law</h1>
+    "/citation-search": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Citation Search — Pakistani Case Law</h1>
   <p>Look up Pakistani case law by citation. Search PLD, SCMR, CLC, MLD, YLR, CLD, PCrLJ, and other Pakistani law report citations. Find the full text of any cited judgment instantly.</p>
-  <h2>Supported Citation Formats</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Supported Citation Formats</h2>
   <p>PLD 2024 Supreme Court 100, 2023 SCMR 500, 2022 YLR 200, 2021 MLD 1500, 2020 CLC 300, PCrLJ 2023 Lahore 800, and all standard Pakistani law report citation formats.</p>
-  <h2>Citation Network</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Citation Network</h2>
   <p>See which cases cite a given judgment and which judgments it relies on. Trace legal reasoning chains across Pakistani courts.</p>
 </div>`,
 
-    "/install": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Install Al Wakeelo on iPhone, Android, or Desktop</h1>
+    "/install": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Install Al Wakeelo on iPhone, Android, or Desktop</h1>
   <p>Install Al Wakeelo as a Progressive Web App (PWA) on your device. Get instant access to Pakistan's AI legal assistant without downloading from an app store. Works on iPhone, Android, Windows, and macOS.</p>
-  <h2>Installation Guides</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Installation Guides</h2>
   <ul>
     <li><strong>iPhone / iPad</strong> — Open Al Wakeelo in Safari, tap the Share button, and select "Add to Home Screen."</li>
     <li><strong>Android</strong> — Open Al Wakeelo in Chrome, tap the three-dot menu, and select "Add to Home Screen" or "Install App."</li>
@@ -411,44 +439,44 @@ export function serveStatic(app: Express) {
   </ul>
 </div>`,
 
-    "/privacy": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Privacy Policy — Al Wakeelo</h1>
+    "/privacy": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Privacy Policy — Al Wakeelo</h1>
   <p>How Al Wakeelo collects, uses, and protects your data. This privacy policy covers account information, AI chat history, document uploads, search history, and your rights as a user in Pakistan.</p>
   <p>Al Wakeelo is committed to protecting your privacy and complying with applicable Pakistani data protection laws. We use industry-standard security measures to protect your personal and legal data.</p>
 </div>`,
 
-    "/terms": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Terms of Service — Al Wakeelo</h1>
+    "/terms": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Terms of Service — Al Wakeelo</h1>
   <p>Al Wakeelo terms of service covering acceptable use, AI output disclaimer, subscription terms, and legal notices for users in Pakistan. By using Al Wakeelo, you agree to these terms.</p>
   <p>Al Wakeelo provides AI-generated legal information and drafting suggestions. AI outputs are not binding legal advice. Users should consult a licensed attorney for official legal representation in Pakistani courts.</p>
 </div>`,
 
-    "/cancellation-return-refund-policy": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Cancellation, Return &amp; Refund Policy — Al Wakeelo</h1>
+    "/cancellation-return-refund-policy": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Cancellation, Return &amp; Refund Policy — Al Wakeelo</h1>
   <p>Al Wakeelo subscription cancellation, return, and refund policy. Learn about billing cycle handling, refund eligibility, pro-rated refunds, and how to cancel your Al Wakeelo subscription plan.</p>
   <p>Since Al Wakeelo provides digital services, AI responses, and document processing, physical returns do not apply. Refund requests are evaluated on a case-by-case basis.</p>
 </div>`,
 
-    "/ownership-statement": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Ownership Statement — Al Wakeelo</h1>
+    "/ownership-statement": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Ownership Statement — Al Wakeelo</h1>
   <p>Al Wakeelo ownership and operator information. Company details, registration, and the team behind Pakistan's AI legal assistant. Al Wakeelo is a product focused on making Pakistani legal research accessible through artificial intelligence.</p>
 </div>`,
 
-    "/about": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>About Al Wakeelo</h1>
+    "/about": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">About Al Wakeelo</h1>
   <p>Al Wakeelo is Pakistan's premier AI legal assistant workspace. Our mission is to make justice and legal knowledge accessible to all citizens, advocates, and chambers in Pakistan using advanced artificial intelligence.</p>
   <p>Operated by Majnoon Studio, Al Wakeelo brings together a database of over 600,000 court judgments, federal and provincial statutes, and case-intake logs in a single secure platform.</p>
   
-  <h2>Mission and Vision</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Mission and Vision</h2>
   <p>Our vision is to revolutionize the legal landscape of Pakistan by democratizing access to case law and statutory information. We believe that empowering legal professionals with cutting-edge AI tools will significantly reduce the time spent on manual research, allowing advocates to focus on strategy, argumentation, and client advocacy. We are committed to transparency, accuracy, and providing an unbiased, reliable legal assistant that acts as a digital co-counsel for every legal practitioner.</p>
   
-  <h2>The Technology</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">The Technology</h2>
   <p>At the core of Al Wakeelo is our advanced Retrieval-Augmented Generation (RAG) pipeline. Traditional AI models often suffer from "hallucinations"—inventing fake case laws or sections. Al Wakeelo solves this by explicitly searching our proprietary database of over 600,000 verified Pakistani court judgments and statutes before generating an answer. Every legal principle or citation provided by our engine is grounded in actual judicial precedents from the Supreme Court, High Courts, and Federal Shariat Court, ensuring unparalleled accuracy and reliability for our users.</p>
   
-  <h2>The Team</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">The Team</h2>
   <p>Al Wakeelo is built and maintained by Majnoon Studio, a dedicated team of engineers, legal researchers, and data scientists. We work closely with practicing advocates and legal experts in Pakistan to ensure our platform meets the rigorous demands of court-ready drafting and profound legal analysis. Our team continuously updates our legal databases and refines our AI models to stay current with the latest jurisprudence and amendments in Pakistani law.</p>
 
-  <h2>Our Core Values</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Our Core Values</h2>
   <ul>
     <li><strong>Accuracy and Grounding</strong> — We verify citations against real judgments to eliminate hallucinations.</li>
     <li><strong>Privacy First</strong> — Your queries, chat history, and files are protected with industry-standard encryption and access controls.</li>
@@ -456,11 +484,11 @@ export function serveStatic(app: Express) {
   </ul>
 </div>`,
 
-    "/contact": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Contact Al Wakeelo</h1>
+    "/contact": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Contact Al Wakeelo</h1>
   <p>Have questions, need technical support, or want to explore enterprise solutions for your law firm? Reach out to Al Wakeelo and the dedicated team at Majnoon Studio. We are here to assist you with platform navigation, subscription inquiries, and providing demonstrations of our AI capabilities.</p>
   
-  <h2>Support Channels</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Support Channels</h2>
   <p>We offer multiple ways to get in touch with our support and sales teams to ensure you receive timely assistance.</p>
   <ul>
     <li><strong>Email Support:</strong> Send us an email at support@alwakeelo.com. We typically respond to all technical support and billing inquiries within 24 hours.</li>
@@ -468,23 +496,23 @@ export function serveStatic(app: Express) {
     <li><strong>In-App Chat:</strong> Registered users can utilize the built-in feedback and support features directly from the Al Wakeelo dashboard.</li>
   </ul>
   
-  <h2>Business Hours</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Business Hours</h2>
   <p>Our support team is available during standard business hours to assist you with any questions or issues you may encounter while using the platform.</p>
   <ul>
     <li>Monday to Friday: 9:00 AM - 5:00 PM (PKT)</li>
     <li>Saturday & Sunday: Closed (System maintenance and automated support only)</li>
   </ul>
   
-  <h2>Office Location & Consultations</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Office Location & Consultations</h2>
   <p>Al Wakeelo is operated by Majnoon Studio. While our platform is fully digital and accessible online from anywhere in Pakistan, we do arrange virtual meetings and professional chamber consultations for law firms looking to integrate our AI solutions into their existing workflows. Please contact us via email or WhatsApp to schedule a dedicated session with our implementation team.</p>
 
   <p>For immediate assistance with common queries, you can also check our comprehensive FAQ section or submit your messages directly using the contact form on our web application.</p>
 </div>`,
 
-    "/faq": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Frequently Asked Questions (FAQ)</h1>
+    "/faq": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Frequently Asked Questions (FAQ)</h1>
   <p>Answers to common questions about Al Wakeelo, Pakistan's AI legal assistant.</p>
-  <h2>General FAQ</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">General FAQ</h2>
   <h3>What is Al Wakeelo?</h3>
   <p>Al Wakeelo is an AI-powered legal assistant designed to search Pakistani judgments, statutes, and help draft petitions, contracts, and legal documents.</p>
   <h3>Can Al Wakeelo give binding legal advice?</h3>
@@ -493,10 +521,10 @@ export function serveStatic(app: Express) {
   <p>We index over 600,000 Pakistani judgments from 1947 to present day, including Supreme Court, High Courts, and Federal Shariat Court decisions.</p>
 </div>`,
 
-    "/blog": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Al Wakeelo Legal Guides &amp; Blog</h1>
+    "/blog": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Al Wakeelo Legal Guides &amp; Blog</h1>
   <p>Read comprehensive legal guides and articles written by advocates and legal experts on Pakistani law. Learn about your rights, legal procedures, and contract requirements under Pakistani legislation.</p>
-  <h2>Available Guides</h2>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Available Guides</h2>
   <ul>
     <li>Guide to Muslim Family Laws in Pakistan: Nikah, Talaq, and Khula</li>
     <li>Understanding Bail and Criminal Procedure under Pakistani CrPC</li>
@@ -603,10 +631,10 @@ export function serveStatic(app: Express) {
         };
 
         const preRenderBlock = `<div id="seo-prerender" style="display:none" aria-hidden="true">
-  <h1>${esc(title)}</h1>
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">${esc(title)}</h1>
   <p><strong>Category:</strong> ${esc(category)}</p>
   <p><strong>Jurisdiction:</strong> Pakistan</p>
-  <div><h2>Statute Text</h2><p>${esc(contentExcerpt)}</p></div>
+  <div><h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Statute Text</h2><p>${esc(contentExcerpt)}</p></div>
   <p><em>Read the full statute on <a href="https://www.alwakeelo.com/statute-view/${id}">Al Wakeelo</a> — Pakistan's AI-powered legal research platform.</em></p>
 </div>`;
 
@@ -653,8 +681,8 @@ export function serveStatic(app: Express) {
             description: "Read full text Pakistani court judgments, legal precedents, and verified citations on Al Wakeelo — Pakistan's AI legal assistant.",
             index: true,
           };
-          preRenderBlock = `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>Pakistani Case Law &amp; Judgments — Al Wakeelo</h1>
+          preRenderBlock = `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Pakistani Case Law &amp; Judgments — Al Wakeelo</h1>
   <p>Search over 600,000 Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court on Al Wakeelo.</p>
   <p><a href="/judgments">Browse All Judgments</a> | <a href="/judgments/browse">Judgments Directory</a> | <a href="/">Home</a></p>
 </div>`;
@@ -725,8 +753,8 @@ export function serveStatic(app: Express) {
           schemaMarkup,
         };
         const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-        preRenderBlock = `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
-  <h1>${esc(article.title)}</h1>
+        preRenderBlock = `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">${esc(article.title)}</h1>
   <p><strong>Category:</strong> ${esc(article.category)}</p>
   <p><strong>Published:</strong> ${esc(article.publishedAt)}</p>
   <p><strong>Read Time:</strong> ${esc(article.readTime)}</p>
