@@ -208,7 +208,7 @@ const DEFAULT_DOC = "";
 const LEGACY_DEFAULT_DOC_PREFIX = "IN THE COURT OF THE CIVIL JUDGE";
 
 const DRAFT_ACTION_VERBS_REGEX =
-  /\b(draft|drafting|prepare|write|generate|create|file|redraft|rewrite|revise|amend|edit|improve|finalize|make|update|format|polish|convert|add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|enhance|correct|reword|rephrase|restructure|move|undo|revert)\b/i;
+  /\b(draft|draf|drft|drafting|prepare|write|wirte|generate|genrate|create|file|redraft|rewrite|revise|amend|edit|improve|finalize|make|update|format|polish|convert|add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|enhance|correct|reword|rephrase|restructure|move|undo|revert)\b/i;
 const EXPLICIT_DRAFT_ACTION_REGEX =
   /\b(?:task\s*:?\s*)?(?:draft|prepare|write|generate|create)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:draft|prepare|write|generate|create)\b/i;
 const DRAFTING_DOCUMENT_HINTS_REGEX =
@@ -241,7 +241,8 @@ function classifyLegalDraftPrompt(prompt: string, hasDraft: boolean): "guidance"
     /\?$/.test(normalized);
   if (hasLegalAnalysisIntent) return "analysis";
 
-  return hasDraft ? "analysis" : "draft";
+  // Aggressive fallback to draft mode: users expect factual inputs to be added to the document automatically.
+  return "draft";
 }
 
 function buildLegalDraftConversationHistory(messages: DraftChatMessage[]): Array<{ role: "user" | "assistant"; content: string }> {
