@@ -3,9 +3,9 @@ import { Link } from "wouter";
 
 export default function PreviewTaxReturn() {
   return (
-    <div className="min-h-screen bg-background flex flex-col pt-16">
+    <div className="preview-theme-scope min-h-screen bg-white dark:bg-[#0B131E] flex flex-col pt-16">
       <main className="flex-1 flex flex-col">
-        <section className="py-16 md:py-24 px-6 bg-gradient-to-b from-background to-card border-b border-border/60 flex-1 flex items-center">
+        <section className="py-16 md:py-24 px-6 bg-white dark:bg-[#0B131E] border-b border-border/60 flex-1 flex items-center">
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-start w-full">
             <div className="lg:col-span-6 space-y-6">
               <div className="flex flex-wrap items-center gap-2">
@@ -84,7 +84,7 @@ export default function PreviewTaxReturn() {
         </section>
 
         {/* SEO Hidden Text / Bottom Footer Context */}
-        <section className="bg-background py-8 px-6 border-b border-border/60">
+        <section className="bg-[#F8FAFC] dark:bg-[#131E2E] py-8 px-6 border-b border-border/60">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-sm font-bold text-foreground mb-2">Comprehensive Tax Return Services in Pakistan</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
