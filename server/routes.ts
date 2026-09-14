@@ -11237,8 +11237,7 @@ RAG POLICY (STRICT):
       const query = ((req.query.q as string) || "").trim();
       const limitRaw = Number(req.query.limit);
       const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(20, Math.floor(limitRaw))) : 8;
-      if (!query || query.length < 3) return res.json([]);
-
+      
       const parsedCitation = parseCaseLawCitationQuery(query);
 
       const resultsRaw = await storage.searchCaseLaw(query, limit * 2, {

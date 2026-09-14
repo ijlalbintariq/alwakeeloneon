@@ -2525,7 +2525,40 @@ export class DatabaseStorage implements IStorage {
           sourceFilename: null,
         }));
       }
-      return [];
+
+      // Empty query (e.g. /cite on a blank line). Return top recent cases.
+      const res = await db.execute(sql`
+        SELECT
+          j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
+          LEFT(j.full_text, 1500) as "fullTextHead",
+          c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode",
+          j.authority_score as "authorityScore", j.is_overruled as "isOverruled",
+          1.0 as relevance
+        FROM judgments j
+        LEFT JOIN courts_ref c ON j.court_id = c.id
+        LEFT JOIN law_journals l ON j.journal_id = l.id
+        WHERE j.is_active = true
+        ORDER BY j.year DESC, j.authority_score DESC
+        LIMIT ${safeLimit}
+      `);
+      
+      const rows = res.rows as any[];
+      return rows.map((row) => ({
+        id: row.id,
+        judgmentId: row.id,
+        citation: String(row.citationString || "").trim(),
+        citationYear: Number.isInteger(row.year) ? row.year : null,
+        citationReport: row.journalCode || null,
+        citationPage: Number.isInteger(row.page) && row.page > 0 ? row.page : null,
+        citationRole: "primary" as const,
+        court: row.courtSnapshot || row.courtName || "Supreme Court of Pakistan",
+        title: row.title || "Untitled",
+        summary: row.headnotes || row.fullTextHead || "",
+        keywords: [] as string[],
+        sourceDocId: null,
+        sourceType: "judgment",
+        sourceFilename: null,
+      }));
     }
 
     // ── Tier 1: tsvector @@ tsquery (GIN indexed) ───────────────────────
