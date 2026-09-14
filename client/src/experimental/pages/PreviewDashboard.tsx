@@ -238,6 +238,13 @@ export const PreviewDashboard: React.FC = () => {
       iconBg: "bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-500/20",
     },
     {
+      title: "Tax Return",
+      subtitle: "File your FBR returns",
+      href: "/preview/tax-return",
+      icon: FileText,
+      iconBg: "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-500/20",
+    },
+    {
       title: "Court Fee Calculator",
       subtitle: "Stamp & valuation",
       onClick: () => setFeeModalOpen(true),

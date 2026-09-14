@@ -24,7 +24,7 @@ export const PublicPreviewShell: React.FC<PublicPreviewShellProps> = ({
   fullWidth = false,
 }) => {
   return (
-    <div className="preview-theme-scope min-h-screen flex flex-col bg-[#F8FAFC] dark:bg-[#0B131E] text-[#0F172A] dark:text-[#F8FAFC] antialiased selection:bg-[#105B38]/20 selection:text-[#0F172A] dark:text-[#F8FAFC]">
+    <div className="preview-theme-scope min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-[#105B38]/20 selection:text-[#0F172A] dark:text-[#F8FAFC]">
       {/* 1. Global Preview Sandbox Banner */}
       
       {/* Optional Top Notification Bar */}

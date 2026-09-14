@@ -64,6 +64,33 @@ export default function PreviewAbout() {
         </div>
       </section>
 
+      <section className="border-t border-[#E2E8F0] dark:border-[#1E2D44] pt-10 pb-6">
+        <h2 className="text-3xl font-bold italic text-center mb-10" style={{ fontFamily: "'Playfair Display', serif" }}>
+          Meet the Founder
+        </h2>
+        <div className="flex flex-col md:flex-row gap-10 items-center md:items-start max-w-4xl mx-auto px-4 md:px-0">
+          <div className="shrink-0">
+            <img src="/founder.jpg" alt="Ijlal Bin Tariq" className="w-48 h-48 rounded-full border-4 border-[#105B38]/20 object-cover shadow-lg" />
+          </div>
+          <div className="space-y-4">
+            <p className="text-base text-[#0F172A] dark:text-[#F8FAFC] leading-relaxed">
+              Hello, I'm <strong className="font-bold">Ijlal Bin Tariq</strong>, an Advocate and Co Founder of <strong className="font-bold text-[#105B38] dark:text-emerald-500">Al Wakeelo</strong>.
+            </p>
+            <p className="text-sm text-[#64748B] dark:text-[#94A3B8] leading-relaxed">
+              I'm a practicing lawyer with a strong interest in legal technology, artificial intelligence, and the future of the legal profession in Pakistan. My work combines traditional legal practice with technology to make legal research and legal services more accessible, efficient, and practical.
+            </p>
+            <p className="text-sm text-[#64748B] dark:text-[#94A3B8] leading-relaxed">
+              At Al Wakeelo, I'm working to build AI tools specifically for Pakistani lawyers, law students, and legal professionals, with a focus on Pakistani case law, statutes, legal research, and everyday legal workflows.
+            </p>
+            <div className="mt-6 p-4 rounded-xl bg-[#105B38]/5 border border-[#105B38]/10 dark:border-[#105B38]/20">
+              <p className="text-sm font-semibold text-[#105B38] dark:text-emerald-400 leading-relaxed italic">
+                "I believe AI should not replace lawyers. It should make lawyers better, faster, and more capable."
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="border-t border-[#E2E8F0] dark:border-[#1E2D44] pt-10 space-y-6">
         <h2 className="text-2xl font-bold italic text-center" style={{ fontFamily: "'Playfair Display', serif" }}>
           Our Core Operations &amp; Team
