@@ -15293,26 +15293,32 @@ If they want to change a specific part, return section-edit. If they want a comp
 
         const skipRefine = shouldSkipRefinement(safePrompt);
 
-        // Build knowledge query using safePrompt (allows parallel refinement)
-        const legalKnowledgeQuery = trimTextToTokenBudget(
-          [
-            safePrompt,
-            profile.label,
-            jurisdiction || "",
-            baseDraftText.slice(0, 2200),
-            attachmentContext.slice(0, 2200),
-          ]
-            .filter((part) => String(part || "").trim().length > 0)
-            .join("\n"),
-          2600,
-        );
-
-        // Start refinement promise (non-blocking when not skipped)
-        const draftRefinePromise = skipRefine
+        // Await refinement first so we can use the clean legal issue for case law search
+        const draftRefineResult = await (skipRefine
           ? Promise.resolve({ refined: safePrompt, wasRefined: false, elapsedMs: 0 })
           : refineUserQuery(safePrompt, [], 3000).catch(() => ({
               refined: safePrompt, wasRefined: false, elapsedMs: 0,
-            }));
+            })));
+
+        const refinedDraftPrompt = draftRefineResult.refined;
+        if (draftRefineResult.wasRefined) {
+          console.log(`[LegalDrafting:QueryRefine] Refined in ${draftRefineResult.elapsedMs}ms`);
+        } else if (skipRefine) {
+          console.log(`[LegalDrafting:QueryRefine] Skipped — prompt already clear (${safePrompt.length} chars)`);
+        }
+
+        // Build knowledge query using refined prompt and metadata ONLY.
+        // Do NOT append baseDraftText or attachments here, as they pollute semantic search with facts/names.
+        const legalKnowledgeQuery = trimTextToTokenBudget(
+          [
+            refinedDraftPrompt,
+            profile.label,
+            jurisdiction || "",
+          ]
+            .filter((part) => String(part || "").trim().length > 0)
+            .join("\n"),
+          1000,
+        );
 
         // --- Phase 1: Pipeline knowledge gathering (returns caseLawHits) ---
         // Uses gatherKnowledgeWithHits (same as chat engine) to get both
@@ -15327,20 +15333,10 @@ If they want to change a specific part, return section-edit. If they want a comp
         }
         const emptyToolResult: DraftToolSearchResult = { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
 
-        // Run refinement and knowledge pipeline in parallel
-        const [draftRefineResult, knowledgePipelineResult] = await Promise.all([
-          draftRefinePromise,
-          gatherKnowledgeWithHits(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
+        const knowledgePipelineResult = await gatherKnowledgeWithHits(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
             console.warn("[LegalDrafting:Pipeline] Knowledge pipeline unavailable:", err?.message || err);
             return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[], maxRelevanceScore: 0 };
-          }),
-        ]);
-        const refinedDraftPrompt = draftRefineResult.refined;
-        if (draftRefineResult.wasRefined) {
-          console.log(`[LegalDrafting:QueryRefine] Refined in ${draftRefineResult.elapsedMs}ms`);
-        } else if (skipRefine) {
-          console.log(`[LegalDrafting:QueryRefine] Skipped — prompt already clear (${safePrompt.length} chars)`);
-        }
+        });
         const legalKnowledgeContext = trimTextToTokenBudget(knowledgePipelineResult.contextString, 8000);
         const pipelineCaseLawHits = knowledgePipelineResult.caseLawHits || [];
 
@@ -15622,6 +15618,15 @@ Court-ready formatting requirements (default unless user requests a custom forma
 - In GROUNDS, provide brief explanation for each ground (at least 2 to 4 sentences), not heading-only points.
 - Do not create a separate heading "LEGAL AUTHORITIES"; place all statutes/case citations inside relevant GROUNDS lines.
 - Court hierarchy rule (strict): use the correct Pakistani forum for selected filing type (e.g., Writ/Article 199 -> High Court; family matters -> Family Court; CPLA -> Supreme Court). Never place writ petitions in Family Court.
+- Court forum mapping (common confusions — follow strictly):
+  * Control of Narcotic Substances Act (CNSA), 1997 -> Special Judge (Control of Narcotic Substances) / Special Court CNS
+  * Prohibition (Enforcement of Hadd) Order, 1979 (liquor/prohibition) -> Judicial Magistrate / Sessions Court (NOT Special Judge CNS — this is a separate statute)
+  * Anti-Terrorism Act (ATA), 1997 -> Anti-Terrorism Court (ATC)
+  * National Accountability Bureau (NAB) Ordinance, 1999 -> Accountability Court
+  * PPC offenses -> Sessions Court or Judicial Magistrate depending on punishment quantum
+  * Family laws (MFLO, Guardianship, Khula) -> Family Court
+  * Constitutional petitions (Article 199) -> High Court
+  * CPLA (Article 185(3)) -> Supreme Court
 - Keep prayer specific to this filing type and facts; avoid generic/contract wording.
 - Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
 - Case law citation rule (strict): cite ONLY judgments provided in the case-law conversation turns above. Do not invent, guess, or fabricate any citation string, volume number, or page number.

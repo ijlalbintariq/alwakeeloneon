@@ -218,14 +218,29 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
       let data;
       try {
         let res;
+        // Build conversation history from chat messages (last 12, skip intro)
+        const conversationHistory = messages
+          .filter((m) => m.id !== "msg-init")
+          .slice(-12)
+          .map((m) => ({
+            role: m.role,
+            content: m.role === "assistant" && (m.insertableClause || "").length > 2000
+              ? "[The assistant updated the active draft during this turn.]"
+              : (m.insertableClause || m.text).slice(0, 2000),
+          }))
+          .filter((m) => m.content.trim().length > 0);
+
         if (aiContextFiles.length > 0) {
           const formData = new FormData();
           formData.append("prompt", query);
           formData.append("draftText", currentDocumentText);
           formData.append("documentType", activeDocumentType || "");
+          formData.append("documentTypeOverride", activeDocumentType || "");
+          formData.append("assistantMode", "draft");
           formData.append("jurisdiction", "Pakistan");
           formData.append("module", "legal-drafting");
           formData.append("stream", "false");
+          formData.append("conversationHistory", JSON.stringify(conversationHistory));
           aiContextFiles.forEach(f => formData.append("attachments", f));
 
           res = await fetch("/api/retrieval/clauses/generate", {
@@ -241,9 +256,12 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
             prompt: query,
             draftText: currentDocumentText,
             documentType: activeDocumentType,
+            documentTypeOverride: activeDocumentType || undefined,
+            assistantMode: "draft",
             jurisdiction: "Pakistan",
             module: "legal-drafting",
             stream: false,
+            conversationHistory,
           };
           res = await apiRequest("POST", "/api/retrieval/clauses/generate", payload);
         }

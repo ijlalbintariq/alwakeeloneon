@@ -23,13 +23,13 @@ const FULL_REWRITE_PATTERN =
 const CONVERSION_PATTERN =
   /\b(convert|transform|turn|rewrite|redraft)\s+(?:this|it|the\s+draft|the\s+entire\s+document)?\s*(?:into|to|as)\s+(?:a|an)?\s*(?:civil|criminal|constitutional|writ|bail|appeal|revision|petition|plaint|suit|application|affidavit|notice|power\s+of\s+attorney|written\s+statement)\b|\bmake\s+(?:this|it|the\s+draft)\s+into\s+(?:a|an)?\s*(?:petition|plaint|suit|application|affidavit|notice|appeal|revision|written\s+statement)\b/i;
 const MUTATION_PATTERN =
-  /\b(add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|reword|rephrase|restructure|move|make|undo|revert)\b/i;
+  /\b(add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|c[io]{1,2}r{1,2}ect|reword|rephrase|restructure|move|make|undo|revert)\b/i;
 const EXPLICIT_DRAFT_ACTION_PATTERN =
   /\b(?:task\s*:?\s*)?(?:draft|prepare|write|generate|create)\s+(?:a|an|the|this|new|fresh|court|constitutional|writ|bail|plaint|suit|petition|application|pleading|affidavit|notice|agreement|contract)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:draft|prepare|write|generate|create)\b|^(?:please\s+)?(?:draft|prepare|write|generate|create)\b/i;
 const EXPLICIT_NEW_FILING_PATTERN =
   /\b(?:task\s*:?\s*)?(?:draft|prepare|write|generate|create)\b[\s\S]{0,60}\b(?:petition|writ|suit|plaint|bail|application|affidavit|appeal|revision|reply|statement|notice|contract|agreement|power\s+of\s+attorney|constitutional\s+petition)\b/i;
 const ANSWER_PATTERN =
-  /\b(review|explain|analyse|analyze|check|identify|tell|compare|opinion|advice|why|what|which|whether|maintainable|valid|correct|wrong|risk|issue|problem|contradict)\b|\?\s*$/i;
+  /\b(review|explain|analyse|analyze|check|identify|tell|compare|opinion|advice|why|what|which|whether|maintainable|valid|correct|c[io]{1,2}r{1,2}ect|wrong|risk|issue|problem|contradict)\b|\?\s*$/i;
 const DIRECT_QUESTION_PATTERN = /^(?:is|are|was|were|do|does|did|can|could|would|should|will|what|why|which|whether|how)\b/i;
 const EXPLICIT_MUTATION_COMMAND_PATTERN =
   /^(?:please\s+)?(?:add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|reword|rephrase|restructure|move|make|undo|revert)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|reword|rephrase|restructure|move|make|undo|revert)\b/i;
