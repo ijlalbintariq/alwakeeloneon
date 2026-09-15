@@ -1,3 +1,34 @@
+import {
+  PAK_WRIT_199_TEMPLATE,
+  PAK_BAIL_497_TEMPLATE,
+  PAK_BAIL_498_BBA_TEMPLATE,
+  PAK_CIVIL_PLAINT_TEMPLATE,
+  PAK_STAY_ORDER39_TEMPLATE,
+  PAK_CIVIL_MISC_151_TEMPLATE,
+  PAK_EXECUTION_ORDER21_TEMPLATE,
+  PAK_CRIMINAL_MISC_22A_TEMPLATE,
+  PAK_SESSIONS_CRIM_APPEAL_TEMPLATE,
+  PAK_SESSIONS_CRIM_REVISION_TEMPLATE,
+  PAK_HIGH_COURT_APPEAL_RFA_TEMPLATE,
+  PAK_HIGH_COURT_CRIM_APPEAL_TEMPLATE,
+  PAK_HIGH_COURT_CRIM_REVISION_TEMPLATE,
+  PAK_HIGH_COURT_BBA_TEMPLATE,
+  PAK_SUPREME_CPLA_TEMPLATE,
+  PAK_SUPREME_CRIM_PETITION_TEMPLATE,
+  PAK_FAMILY_SUIT_KHULA_TEMPLATE,
+  PAK_GUARDIANS_CUSTODY_S25_TEMPLATE,
+  PAK_SUIT_ORDER37_SUMMARY_TEMPLATE,
+  PAK_QUASHMENT_561A_TEMPLATE,
+  PAK_HABEAS_CORPUS_491_TEMPLATE,
+  PAK_CIVIL_REVISION_115_TEMPLATE,
+  PAK_VAKALATNAMA_TEMPLATE,
+  PAK_AFFIDAVIT_TEMPLATE,
+  PAK_LEGAL_NOTICE_GENERIC_TEMPLATE,
+  PAK_NOTICE_489F_PPC_TEMPLATE,
+  PAK_POWER_OF_ATTORNEY_GENERAL_TEMPLATE,
+  PAK_SALE_DEED_TEMPLATE,
+} from "@/lib/pakistan-court-templates";
+import { NDA_TEMPLATE } from "@/lib/templates-data";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -382,900 +413,30 @@ function normalizeLegalDraftReferences(input: unknown): LegalDraftReferencesPayl
     unresolvedStatutes,
   };
 }
-const CIVIL_SUIT_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
-[District], Pakistan
-
-Civil Suit No. ______ of 20__
-
-IN THE MATTER OF:
-Plaintiff: ____________________
-VERSUS
-Defendant: ____________________
-
-SUIT FOR DECLARATION, PERMANENT INJUNCTION, AND CONSEQUENTIAL RELIEF
-
-Respectfully submitted:
-1. That the Plaintiff is lawfully entitled to the relief claimed.
-2. That the Defendant has acted in violation of the Plaintiff's legal rights.
-3. That cause of action accrued on ____________.
-4. That this Hon'ble Court has territorial and pecuniary jurisdiction.
-
-PRAYER:
-It is respectfully prayed that this Hon'ble Court may kindly:
-a) declare ____________________;
-b) permanently restrain the Defendant from ____________________;
-c) grant any other relief deemed just and proper.
-`;
-
-const CIVIL_MISC_APPLICATION_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
-[District], Pakistan
-
-Civil Misc. Application No. ______ of 20__
-in
-Civil Suit No. ______ of 20__
-
-Applicant: ____________________
-VERSUS
-Respondent: ____________________
-
-APPLICATION UNDER SECTION 151 CPC FOR INTERIM RELIEF
-
-Most respectfully submitted:
-1. That the accompanying suit is pending before this Hon'ble Court.
-2. That immediate interim protection is required because ____________________.
-3. That balance of convenience lies in favour of the Applicant and irreparable loss will be caused otherwise.
-
-PRAYER:
-It is prayed that interim relief may kindly be granted till final decision of the suit.
-`;
-
-const CRIMINAL_MISC_APPLICATION_TEMPLATE = `IN THE COURT OF THE JUSTICE OF PEACE / EX-OFFICIO JUSTICE OF PEACE
-AT [District], Pakistan
-
-CRIMINAL MISCELLANEOUS APPLICATION NO. ______ OF 20__
-
-IN RE:
-[Applicant/Complainant Name], [Parentage], resident of [Address]
-... APPLICANT/COMPLAINANT
-
-VERSUS
-
-1. THE STATE THROUGH SHO, POLICE STATION [______]
-2. [Proposed Accused Name], [Parentage], resident of [Address]
-... RESPONDENTS
-
-APPLICATION UNDER SECTIONS 22-A & 22-B Cr.P.C. READ WITH SECTION 154 Cr.P.C. FOR REGISTRATION OF FIR
-
-RESPECTFULLY SHEWETH:
-
-BRIEF FACTS
-1. That ____________________________________________.
-2. That ____________________________________________.
-3. That ____________________________________________.
-
-GROUNDS
-A. That ____________________________________________.
-B. That ____________________________________________.
-C. That ____________________________________________.
-
-PRAYER
-In view of the above, it is respectfully prayed that this Honourable Court may kindly:
-a. direct registration of FIR in accordance with law;
-b. direct fair and lawful investigation by the police;
-c. grant any other relief deemed just and proper.
-
-VERIFICATION
-Verified on oath at [City] on this ___ day of ______, 20__ that contents of this application are true and correct to the best of my knowledge and belief.
-
-APPLICANT/COMPLAINANT
-THROUGH COUNSEL
-
-PLACE: [City]
-DATE: [______]
-`;
-
-const TEMPORARY_INJUNCTION_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
-[District], Pakistan
-
-Civil Misc. Application No. ______ of 20__
-in
-Civil Suit No. ______ of 20__
-
-Applicant/Plaintiff: ____________________
-VERSUS
-Respondent/Defendant: ____________________
-
-APPLICATION UNDER ORDER XXXIX RULES 1 & 2 CPC FOR TEMPORARY INJUNCTION
-
-Respectfully submitted:
-1. That the Plaintiff has a prima facie case on merits.
-2. That balance of convenience lies in favour of the Plaintiff.
-3. That irreparable loss will be caused if interim restraint is not granted.
-
-PRAYER:
-It is prayed that Defendant may be restrained from ____________________ till decision of the suit.
-`;
-
-const EXECUTION_APPLICATION_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
-[District], Pakistan
-
-Execution Application No. ______ of 20__
-
-Decree Holder: ____________________
-VERSUS
-Judgment Debtor: ____________________
-
-APPLICATION FOR EXECUTION OF DECREE UNDER ORDER XXI CPC
-
-Respectfully submitted:
-1. That decree dated ______ was passed in Civil Suit No. ______.
-2. That the Judgment Debtor has failed to satisfy the decree.
-3. That execution is sought through ____________________.
-
-PRAYER:
-It is prayed that decree may kindly be executed in accordance with law.
-`;
-
-const SESSIONS_BAIL_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE
-[District], Pakistan
-
-Criminal Bail Application No. ______ of 20__
-
-Applicant/Accused: ____________________
-VERSUS
-The State
-
-APPLICATION FOR POST-ARREST BAIL UNDER SECTION 497 Cr.P.C.
-
-Respectfully submitted:
-1. FIR No. ______ dated ______ under sections ______ P.P.C. was registered at P.S. ______.
-2. That the Applicant is innocent and has been falsely implicated.
-3. That further inquiry is made out and no useful purpose will be served by continued detention.
-4. That the Applicant undertakes to join trial and comply with all directions.
-
-PRAYER:
-It is prayed that post-arrest bail may kindly be granted in the interest of justice.
-`;
-
-const SESSIONS_PRE_ARREST_BAIL_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE
-[District], Pakistan
-
-Pre-Arrest Bail Application No. ______ of 20__
-
-Applicant/Accused: ____________________
-VERSUS
-The State
-
-APPLICATION FOR PRE-ARREST BAIL UNDER SECTION 498 Cr.P.C.
-
-Respectfully submitted:
-1. FIR No. ______ dated ______ under sections ______ P.P.C. at P.S. ______.
-2. Applicant apprehends arrest due to mala fide and false implication.
-3. Applicant undertakes full cooperation in investigation/trial.
-
-PRAYER:
-It is prayed that pre-arrest bail may kindly be confirmed till final decision of the case.
-`;
-
-const SESSIONS_CRIMINAL_APPEAL_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE
-[District], Pakistan
-
-Criminal Appeal No. ______ of 20__
-
-Appellant: ____________________
-VERSUS
-The State / Respondent: ____________________
-
-MEMORANDUM OF CRIMINAL APPEAL
-
-Respectfully submitted:
-1. That judgment dated ______ passed by learned ______ is contrary to law and facts.
-2. That material evidence has been misread/non-read.
-3. That findings are unsustainable.
-
-PRAYER:
-It is prayed that conviction/order may kindly be set aside and appeal be accepted.
-`;
-
-const SESSIONS_CRIMINAL_REVISION_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE
-[District], Pakistan
-
-Criminal Revision No. ______ of 20__
-
-Petitioner: ____________________
-VERSUS
-Respondent: ____________________
-
-CRIMINAL REVISION PETITION
-
-Respectfully submitted:
-1. That impugned order dated ______ suffers from jurisdictional and legal defects.
-2. That grave miscarriage of justice has occurred.
-3. That revisional interference is warranted.
-
-PRAYER:
-It is prayed that impugned order may kindly be set aside/modified in the interest of justice.
-`;
-
-const FAMILY_SUIT_TEMPLATE = `IN THE FAMILY COURT AT [District], Pakistan
-
-Family Suit/Petition No. ______ of 20__
-
-Plaintiff/Petitioner: ____________________
-VERSUS
-Defendant/Respondent: ____________________
-
-SUIT/PETITION FOR ____________________
-
-Respectfully submitted:
-1. That parties are related as ____________________.
-2. That cause of action accrued on ______.
-3. That this Hon'ble Family Court has jurisdiction.
-
-PRAYER:
-It is prayed that relief of ____________________ may kindly be granted.
-`;
-
-const HIGH_COURT_WRIT_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
-
-Writ Petition No. ______ of 20__
-
-Petitioner: ____________________
-VERSUS
-Respondents: ____________________
-
-CONSTITUTIONAL PETITION UNDER ARTICLE 199 OF THE CONSTITUTION OF ISLAMIC REPUBLIC OF PAKISTAN, 1973
-
-Respectfully submitted:
-1. That the Petitioner is aggrieved by order/action dated ______ passed by Respondent No. ___.
-2. That the impugned action is without lawful authority and of no legal effect.
-3. That no efficacious alternate remedy is available.
-4. That this Hon'ble Court has constitutional jurisdiction.
-
-PRAYER:
-It is prayed that this Hon'ble Court may kindly set aside the impugned order and grant consequential relief.
-`;
-
-const HIGH_COURT_APPEAL_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
-
-Civil Appeal No. ______ of 20__
-
-Appellant: ____________________
-VERSUS
-Respondent: ____________________
-
-MEMORANDUM OF CIVIL APPEAL
-
-The Appellant respectfully submits:
-1. That the judgment and decree dated ______ passed by learned ______ is against law and facts.
-2. That material evidence was misread/non-read.
-3. That findings are perverse and liable to be set aside.
-
-GROUNDS OF APPEAL:
-a) ____________________
-b) ____________________
-c) ____________________
-
-PRAYER:
-It is prayed that the impugned judgment/decree may kindly be set aside and appeal be accepted.
-`;
-
-const HIGH_COURT_CRIMINAL_APPEAL_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
-
-Criminal Appeal No. ______ of 20__
-
-Appellant: ____________________
-VERSUS
-The State / Respondent: ____________________
-
-MEMORANDUM OF CRIMINAL APPEAL
-
-Respectfully submitted:
-1. That conviction/order dated ______ is illegal and unsustainable.
-2. That evidence has been misappreciated by learned trial court.
-3. That Appellant is entitled to acquittal/benefit under law.
-
-PRAYER:
-It is prayed that appeal may kindly be accepted and impugned judgment/order set aside.
-`;
-
-const HIGH_COURT_CRIMINAL_REVISION_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
-
-Criminal Revision No. ______ of 20__
-
-Petitioner: ____________________
-VERSUS
-Respondent: ____________________
-
-CRIMINAL REVISION PETITION
-
-Respectfully submitted:
-1. That impugned order dated ______ suffers from patent illegality.
-2. That findings are arbitrary and without lawful justification.
-3. That revisional jurisdiction may kindly be exercised.
-
-PRAYER:
-It is prayed that impugned order may kindly be set aside/modified.
-`;
-
-const HIGH_COURT_BBA_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
-
-Criminal Bail Before Arrest No. ______ of 20__
-
-Petitioner/Accused: ____________________
-VERSUS
-The State
-
-PETITION FOR BAIL BEFORE ARREST UNDER SECTION 498 Cr.P.C.
-
-Respectfully submitted:
-1. FIR No. ______ dated ______ at P.S. ______ under sections ______.
-2. Petitioner is innocent and implicated with mala fide intent.
-3. Petitioner undertakes to join investigation/trial.
-
-PRAYER:
-It is prayed that bail before arrest may kindly be granted/confirmed in the interest of justice.
-`;
-
-const SUPREME_CPLA_TEMPLATE = `IN THE SUPREME COURT OF PAKISTAN
-[Appellate Jurisdiction]
-
-Civil Petition for Leave to Appeal No. ______ of 20__
-
-Petitioner: ____________________
-VERSUS
-Respondent: ____________________
-
-PETITION FOR LEAVE TO APPEAL
-
-The Petitioner respectfully submits:
-1. That the impugned judgment dated ______ passed by the High Court suffers from legal infirmities.
-2. That questions of public importance and legal significance arise for determination.
-3. That substantial miscarriage of justice has occurred.
-
-GROUNDS:
-a) ____________________
-b) ____________________
-c) ____________________
-
-PRAYER:
-Leave to appeal may kindly be granted and the impugned judgment be set aside in the interest of justice.
-`;
-
-const SUPREME_CRIMINAL_PETITION_TEMPLATE = `IN THE SUPREME COURT OF PAKISTAN
-[Appellate Jurisdiction]
-
-Criminal Petition for Leave to Appeal No. ______ of 20__
-
-Petitioner: ____________________
-VERSUS
-Respondent: ____________________
-
-CRIMINAL PETITION FOR LEAVE TO APPEAL
-
-Respectfully submitted:
-1. That impugned High Court judgment/order dated ______ suffers from legal infirmities.
-2. That important questions of law arise for determination.
-3. That grave miscarriage of justice has occurred.
-
-PRAYER:
-Leave to appeal may kindly be granted and impugned judgment/order be set aside.
-`;
-
-// ─── New transactional / notice / affidavit templates ──────────────────────
-const VAKALATNAMA_TEMPLATE = `IN THE COURT OF [Court Name], [City]
-
-[Cause Title — e.g. Civil Suit No. _____ / 20__]
-
-[Plaintiff/Petitioner Name]                              ... PLAINTIFF / PETITIONER
-
-VERSUS
-
-[Defendant/Respondent Name]                              ... DEFENDANT / RESPONDENT
-
-VAKALATNAMA
-
-I/We, the above-named [Plaintiff/Petitioner/Defendant/Respondent], do hereby
-appoint and authorise [Advocate Name], Advocate of the [Court of Enrollment],
-holding Bar Council Enrollment No. _______, to appear, plead, act, sign,
-verify, file, and conduct the above proceedings on my/our behalf, and to do
-all acts and things necessary or incidental thereto including filing of
-affidavits, applications, replies, withdrawal, compromise, and engaging
-junior counsel if required.
-
-I/We further authorise the said Advocate to receive on my/our behalf any
-amount decreed, ordered, or awarded by the Court.
-
-Dated this ____ day of _________, 20__ at [City].
-
-___________________________
-Signature of Client / Thumb Impression
-Name: ___________________________
-CNIC: ___________________________
-
-ACCEPTED:
-___________________________
-[Advocate Name]
-Bar Council Enrollment No. _______
-Office: ___________________________
-`;
-
-const AFFIDAVIT_TEMPLATE = `IN THE COURT OF [Court Name], [City]
-
-[Cause Title]
-
-AFFIDAVIT OF [Deponent Name]
-
-I, [Deponent Full Name] S/o (or D/o or W/o) ____________, aged about ____
-years, R/o ____________, holding CNIC No. _____________, Pakistani national,
-do hereby solemnly affirm and state on oath as under:
-
-1. That I am the [role — e.g. Plaintiff / Petitioner / Defendant / Witness]
-   in the captioned matter and am fully conversant with the facts deposed
-   herein from my own knowledge.
-
-2. That [State the fact(s) being attested. Use one numbered paragraph per
-   fact. Do not include argumentative or conclusory statements].
-
-3. That [Continue with additional factual paragraphs as required].
-
-4. That the contents of this affidavit are true and correct to the best of
-   my knowledge and belief, and nothing material has been concealed or
-   misstated.
-
-DEPONENT
-___________________________
-[Deponent Name]
-CNIC: _____________
-
-VERIFICATION
-
-Verified on oath at [City] on this ____ day of _________, 20__ that the
-contents of paragraphs 1 to ____ above are true and correct to the best of
-my knowledge and belief.
-
-DEPONENT
-___________________________
-
-Solemnly affirmed before me by the Deponent who is identified to me by
-[Identifier Name, CNIC No.] who is personally known to me.
-
-___________________________
-Oath Commissioner / Notary Public
-Seal & Stamp
-`;
-
-const LEGAL_NOTICE_GENERIC_TEMPLATE = `LEGAL NOTICE
-
-Without Prejudice
-
-To,
-[Recipient Name]
-[Recipient Address]
-[CNIC if individual / Registration No. if company]
-
-Through: [Counsel Name], Advocate
-Office: ____________________________
-Bar Council Enrollment No. _______
-
-Date: ____ ____________, 20__
-
-SUBJECT: LEGAL NOTICE FOR [State subject — e.g. Recovery of Outstanding
-Amount / Breach of Contract / Defamation / Cease and Desist]
-
-Sir/Madam,
-
-Under instructions from and on behalf of my client, [Client Full Name],
-S/o ____________, R/o ____________, holding CNIC No. _____________
-(hereinafter referred to as "my Client"), I do hereby serve upon you the
-following notice:
-
-1. That my Client and you entered into [describe relationship/transaction
-   — e.g. agreement dated ____, business dealing, employment, etc.].
-
-2. That [state the wrongful act/breach/grievance with specific dates,
-   amounts, and supporting facts].
-
-3. That despite repeated requests/demands, you have failed and neglected to
-   [comply / pay / perform / desist]. Your conduct constitutes a clear
-   breach of [statute / agreement / common law obligation].
-
-4. That my Client has suffered loss/injury amounting to Rs. _____________
-   (Rupees ____________ Only) on account of your acts/omissions.
-
-DEMAND:
-
-You are hereby called upon, within FIFTEEN (15) DAYS of receipt of this
-notice (or sixty (60) days where Section 80 CPC applies for suits against
-Government), to:
-
-(a) [Specific demand — e.g. Pay Rs. _______ to my Client];
-(b) [Cease and desist from further breach];
-(c) Render written apology / formal undertaking;
-
-failing which my Client shall be constrained to initiate appropriate civil
-and/or criminal proceedings against you, including but not limited to:
-[list of remedies — e.g. recovery suit, contempt, FIR under Section 489-F
-PPC, defamation suit under Defamation Ordinance 2002], at your sole risk
-and cost, of which kindly take notice.
-
-A copy of this notice has been retained in my office for record and future
-reference.
-
-Yours truly,
-
-___________________________
-[Counsel Name]
-Advocate
-Bar Council Enrollment No. _______
-[Office Address]
-[Contact]
-
-CC: My Client.
-`;
-
-const NOTICE_489F_PPC_TEMPLATE = `LEGAL NOTICE REGARDING DISHONOURED CHEQUE
-AND DISHONEST ISSUANCE UNDER SECTION 489-F OF THE PAKISTAN PENAL CODE, 1860
-
-Without Prejudice
-
-To,
-[Drawer Name]
-[Address]
-CNIC: _____________
-
-Through: [Counsel Name], Advocate
-Bar Council Enrollment No. _______
-
-Date: ____ ____________, 20__
-
-Sir,
-
-Under instructions from my client, [Payee Name], R/o ____________, CNIC
-_____________, I serve upon you the following notice:
-
-1. That you, in discharge of [state liability/transaction], issued cheque
-   No. _________ dated ____ ____________, drawn on [Bank & Branch],
-   for Rs. ____________ (Rupees ____________ Only) in favour of my client.
-
-2. That my client presented the said cheque for encashment on ____
-   ____________ at [Bank & Branch], whereupon the cheque was DISHONOURED
-   and returned with the bank memo bearing the remarks
-   "[Insufficient Funds / Account Closed / Stop Payment / Signature
-   Mismatch]" dated ____ ____________.
-
-3. That the cheque was issued toward repayment of the above loan or
-   fulfilment of the above obligation, and its dishonour, read with the
-   surrounding facts, gives rise to civil remedies and may attract
-   Section 489-F of the Pakistan Penal Code, 1860 where dishonest intent
-   and the other statutory ingredients are established.
-
-DEMAND:
-
-You are hereby called upon, within [SEVEN (7) / FIFTEEN (15)] DAYS of receipt of this
-notice, to:
-
-(a) Pay the cheque amount of Rs. ____________ in full by demand draft or
-    pay order in favour of my client; and
-(b) Reimburse Rs. ________ as costs of this notice and bank charges.
-
-Failing the above within the stated period, my client shall be at liberty,
-without further notice, to initiate such proceedings as are available in
-law, including:
-
-(i) Appropriate criminal proceedings under Section 489-F PPC in
-    accordance with law, subject to proof of its ingredients;
-(ii) A civil suit for recovery, including proceedings under Order XXXVII
-     of the Code of Civil Procedure, 1908 where maintainable; and
-(iii) Any other remedy available in law,
-
-at your sole risk, cost, and consequence.
-
-This notice provides a final opportunity to resolve the matter before
-proceedings are initiated. It is not represented as a statutory
-prerequisite to proceedings under Pakistani law.
-
-Yours truly,
-
-___________________________
-[Counsel Name]
-Advocate
-Bar Council Enrollment No. _______
-[Office Address]
-
-Encl: Photocopy of cheque, bank memo, and proof of presentation.
-`;
-
-const POWER_OF_ATTORNEY_GENERAL_TEMPLATE = `GENERAL POWER OF ATTORNEY
-
-KNOW ALL MEN BY THESE PRESENTS:
-
-THIS GENERAL POWER OF ATTORNEY is made and executed on this ____ day of
-____________, 20__ at [City], Pakistan,
-
-BY:
-
-[Principal Full Name], S/o ____________, aged ____ years, R/o
-____________, holding CNIC No. _____________, Pakistani national,
-hereinafter called the "PRINCIPAL"
-
-IN FAVOUR OF:
-
-[Attorney Full Name], S/o ____________, aged ____ years, R/o
-____________, holding CNIC No. _____________, Pakistani national,
-hereinafter called the "ATTORNEY"
-
-WHEREAS the Principal is desirous of authorising the Attorney to act on
-the Principal's behalf in respect of the following matters:
-
-NOW THIS DEED WITNESSES that the Principal does hereby nominate, constitute,
-and appoint the Attorney as his/her true and lawful Attorney to do, execute,
-and perform all or any of the following acts, deeds, and things:
-
-1. To manage, supervise, and operate all immovable properties of the
-   Principal, including but not limited to [describe properties or
-   "all properties owned by the Principal"].
-
-2. To collect, receive, and grant valid receipts for all rents, profits,
-   compensation, sale proceeds, and other moneys due or accruing to the
-   Principal.
-
-3. To file, defend, compromise, withdraw, and conduct any suits, appeals,
-   revisions, applications, references, complaints, or other proceedings
-   of any kind in any court, tribunal, or authority within Pakistan, and
-   to engage advocates and execute Vakalatnamas on the Principal's behalf.
-
-4. To operate the Principal's bank accounts, sign cheques, deposit and
-   withdraw funds, and execute any banking instruments.
-
-5. To execute, sign, verify, present for registration, and admit
-   execution of agreements, sale deeds, gift deeds, mortgage deeds, lease
-   deeds, partition deeds, and any other deeds or documents.
-
-6. To represent the Principal before any government department, revenue
-   authority, registration office, NADRA, FBR, customs, or any other
-   public office.
-
-7. Generally, to do all such acts as may be necessary or incidental to
-   the management of the Principal's affairs.
-
-The Principal hereby ratifies and confirms whatever the Attorney shall
-lawfully do or cause to be done by virtue of this Power of Attorney.
-
-This Power of Attorney shall remain in force until expressly revoked in
-writing by the Principal and shall be irrevocable for [period] from the
-date hereof.
-
-IN WITNESS WHEREOF, the Principal has signed this General Power of
-Attorney on the date and at the place first above written.
-
-___________________________
-SIGNATURE OF PRINCIPAL
-[Name], CNIC: _____________
-
-WITNESSES:
-
-1. ___________________________
-   Name: ____________________
-   CNIC: ____________________
-   Address: _________________
-
-2. ___________________________
-   Name: ____________________
-   CNIC: ____________________
-   Address: _________________
-
-[To be attested by Sub-Registrar / Notary Public / Pakistani Consular
-Officer (if executed abroad) under the Powers of Attorney Act 1882 and
-the Registration Act 1908]
-`;
-
-const NDA_TEMPLATE = `NON-DISCLOSURE AGREEMENT
-
-THIS NON-DISCLOSURE AGREEMENT (the "Agreement") is entered into on this
-____ day of ____________, 20__ at [City], Pakistan,
-
-BETWEEN:
-
-[Disclosing Party Name], a [individual / company incorporated under the
-Companies Act 2017] having CNIC/Registration No. _____________ and
-registered office at ____________ ("Disclosing Party"),
-
-AND:
-
-[Receiving Party Name], a [individual / company] having CNIC/Registration
-No. _____________ and address at ____________ ("Receiving Party"),
-
-(each a "Party" and collectively the "Parties").
-
-RECITALS:
-
-A. The Disclosing Party possesses certain confidential and proprietary
-   information in connection with [describe purpose, e.g. employment,
-   business negotiation, joint venture].
-B. The Parties wish to enter into discussions/transactions which may
-   involve disclosure of such confidential information by the Disclosing
-   Party to the Receiving Party.
-
-NOW IT IS HEREBY AGREED AS FOLLOWS:
-
-1. CONFIDENTIAL INFORMATION
-   "Confidential Information" means any non-public information disclosed
-   by the Disclosing Party to the Receiving Party, whether orally, in
-   writing, or by any other means, including but not limited to: business
-   plans, financial data, customer lists, trade secrets, technical
-   specifications, source code, intellectual property, marketing
-   strategies, and any information marked or identified as confidential.
-
-2. OBLIGATIONS OF THE RECEIVING PARTY
-   The Receiving Party shall:
-   (a) Hold all Confidential Information in strict confidence;
-   (b) Not disclose Confidential Information to any third party without
-       the Disclosing Party's prior written consent;
-   (c) Use Confidential Information solely for the agreed Purpose;
-   (d) Take reasonable measures to protect the Confidential Information
-       at the same standard of care it applies to its own confidential
-       information, but in no event less than reasonable care.
-
-3. EXCLUSIONS
-   This Agreement shall not apply to information that:
-   (a) Was already in the public domain at the time of disclosure;
-   (b) Is independently developed by the Receiving Party without use of
-       Confidential Information;
-   (c) Is rightfully received from a third party without breach of
-       confidentiality; or
-   (d) Is required to be disclosed by law, court order, or government
-       authority, provided the Receiving Party gives prior notice to the
-       Disclosing Party.
-
-4. TERM
-   This Agreement shall remain in force for a period of [number] years
-   from the date of execution, except that obligations relating to trade
-   secrets shall continue until such information is no longer a trade
-   secret.
-
-5. RETURN OF MATERIALS
-   Upon termination or upon request, the Receiving Party shall return or
-   destroy all Confidential Information and certify in writing that it
-   has done so.
-
-6. REMEDIES
-   The Parties acknowledge that breach of this Agreement may cause
-   irreparable injury for which monetary damages would be inadequate. The
-   Disclosing Party shall be entitled to seek injunctive relief in
-   addition to any other remedies available in law and equity.
-
-7. GOVERNING LAW & JURISDICTION
-   This Agreement shall be governed by and construed in accordance with
-   the laws of the Islamic Republic of Pakistan. Any dispute shall be
-   subject to the exclusive jurisdiction of the courts at [City].
-
-8. ARBITRATION (Optional)
-   Any dispute arising out of or in connection with this Agreement shall
-   first be referred to arbitration under the Arbitration Act, 1940. The
-   seat of arbitration shall be [City], the language English, and the
-   number of arbitrators shall be [one/three].
-
-9. ENTIRE AGREEMENT
-   This Agreement constitutes the entire agreement between the Parties
-   regarding its subject matter and supersedes all prior agreements,
-   negotiations, and understandings.
-
-IN WITNESS WHEREOF, the Parties have executed this Agreement on the date
-and at the place first above written.
-
-DISCLOSING PARTY                          RECEIVING PARTY
-
-___________________________               ___________________________
-[Name]                                    [Name]
-[Designation]                             [Designation]
-CNIC: _____________                       CNIC: _____________
-
-WITNESSES:
-
-1. ___________________________            2. ___________________________
-   Name: ____________________               Name: ____________________
-   CNIC: ____________________               CNIC: ____________________
-`;
-
-const SALE_DEED_TEMPLATE = `SALE DEED
-
-(Under the Transfer of Property Act, 1882 and the Registration Act, 1908)
-
-THIS SALE DEED is executed on this ____ day of ____________, 20__ at
-[City], Pakistan,
-
-BY:
-
-[Vendor Name], S/o ____________, aged ____ years, R/o ____________, CNIC
-_____________, Pakistani national,
-hereinafter called the "VENDOR"
-
-IN FAVOUR OF:
-
-[Vendee Name], S/o ____________, aged ____ years, R/o ____________, CNIC
-_____________, Pakistani national,
-hereinafter called the "VENDEE"
-
-WHEREAS the Vendor is the absolute and exclusive owner in possession of
-the property fully described in Schedule-A hereto (the "Property"), having
-acquired the same vide [previous title document, registration no., date]
-free from all encumbrances, charges, and liens.
-
-AND WHEREAS the Vendor has agreed to sell the Property to the Vendee for
-a total sale consideration of Rs. ____________ (Rupees ____________
-Only), and the Vendee has agreed to purchase the same on the terms and
-conditions herein contained.
-
-NOW THIS DEED WITNESSES AS FOLLOWS:
-
-1. SALE AND TRANSFER
-   In consideration of Rs. ____________ (the "Sale Consideration"),
-   receipt whereof is hereby acknowledged by the Vendor (a separate
-   receipt being executed even date herewith), the Vendor hereby grants,
-   transfers, conveys, and assures unto the Vendee the entire right,
-   title, and interest in the Property described in Schedule-A, together
-   with all easements, appurtenances, and benefits attached thereto.
-
-2. POSSESSION
-   The Vendor has this day delivered actual physical and vacant possession
-   of the Property to the Vendee.
-
-3. INDEMNITY AND COVENANT FOR TITLE
-   The Vendor warrants that:
-   (a) The Property is the absolute property of the Vendor;
-   (b) The Property is free from all encumbrances, mortgages, charges,
-       attachments, claims, demands, and adverse interests;
-   (c) The Vendor has full right and authority to sell the Property;
-   (d) The Vendor shall indemnify the Vendee against any loss, damage,
-       claim, or expense arising from any defect in title or breach of
-       above warranties.
-
-4. STAMP DUTY AND REGISTRATION
-   The stamp duty, registration fee, and other incidental expenses shall
-   be borne by the Vendee. The parties shall present this Deed for
-   registration before the Sub-Registrar at [City] within the period
-   prescribed under the Registration Act, 1908.
-
-5. MUTATION
-   The Vendor undertakes to assist the Vendee in obtaining mutation of
-   the Property in the relevant revenue records.
-
-6. LAW APPLICABLE
-   This Deed shall be governed by the laws of the Islamic Republic of
-   Pakistan, including the Transfer of Property Act 1882, Registration
-   Act 1908, and applicable provincial revenue laws.
-
-SCHEDULE-A
-(Description of Property)
-
-[Provide complete description: full address, plot/khasra/khatuni numbers,
-boundaries, total area, type — residential/commercial/agricultural,
-constructed area if any, registration details of source title document]
-
-IN WITNESS WHEREOF, the Vendor and Vendee have executed this Sale Deed on
-the date and at the place first above written.
-
-VENDOR                                    VENDEE
-
-___________________________               ___________________________
-[Vendor Name]                             [Vendee Name]
-CNIC: _____________                       CNIC: _____________
-
-WITNESSES:
-
-1. ___________________________            2. ___________________________
-   Name: ____________________               Name: ____________________
-   CNIC: ____________________               CNIC: ____________________
-   Father's Name: ___________               Father's Name: ___________
-   Address: _________________               Address: _________________
-
-[FOR REGISTRATION USE ONLY]
-Stamp Paper Value: Rs. ____________
-Registration Fee: Rs. ____________
-Sub-Registrar Office: ____________
-Book No., Volume No., Page Nos.: ____________
-`;
+// ─── GOD-LEVEL PAKISTANI COURT TEMPLATES (Senior Advocate Standard) ─────────
+const CIVIL_SUIT_TEMPLATE = PAK_CIVIL_PLAINT_TEMPLATE;
+const CIVIL_MISC_APPLICATION_TEMPLATE = PAK_CIVIL_MISC_151_TEMPLATE;
+const CRIMINAL_MISC_APPLICATION_TEMPLATE = PAK_CRIMINAL_MISC_22A_TEMPLATE;
+const TEMPORARY_INJUNCTION_TEMPLATE = PAK_STAY_ORDER39_TEMPLATE;
+const EXECUTION_APPLICATION_TEMPLATE = PAK_EXECUTION_ORDER21_TEMPLATE;
+const SESSIONS_BAIL_TEMPLATE = PAK_BAIL_497_TEMPLATE;
+const SESSIONS_PRE_ARREST_BAIL_TEMPLATE = PAK_BAIL_498_BBA_TEMPLATE;
+const SESSIONS_CRIMINAL_APPEAL_TEMPLATE = PAK_SESSIONS_CRIM_APPEAL_TEMPLATE;
+const SESSIONS_CRIMINAL_REVISION_TEMPLATE = PAK_SESSIONS_CRIM_REVISION_TEMPLATE;
+const FAMILY_SUIT_TEMPLATE = PAK_FAMILY_SUIT_KHULA_TEMPLATE;
+const HIGH_COURT_WRIT_TEMPLATE = PAK_WRIT_199_TEMPLATE;
+const HIGH_COURT_APPEAL_TEMPLATE = PAK_HIGH_COURT_APPEAL_RFA_TEMPLATE;
+const HIGH_COURT_CRIMINAL_APPEAL_TEMPLATE = PAK_HIGH_COURT_CRIM_APPEAL_TEMPLATE;
+const HIGH_COURT_CRIMINAL_REVISION_TEMPLATE = PAK_HIGH_COURT_CRIM_REVISION_TEMPLATE;
+const HIGH_COURT_BBA_TEMPLATE = PAK_BAIL_498_BBA_TEMPLATE;
+const SUPREME_CPLA_TEMPLATE = PAK_SUPREME_CPLA_TEMPLATE;
+const SUPREME_CRIMINAL_PETITION_TEMPLATE = PAK_SUPREME_CRIM_PETITION_TEMPLATE;
+const VAKALATNAMA_TEMPLATE = PAK_VAKALATNAMA_TEMPLATE;
+const AFFIDAVIT_TEMPLATE = PAK_AFFIDAVIT_TEMPLATE;
+const LEGAL_NOTICE_GENERIC_TEMPLATE = PAK_LEGAL_NOTICE_GENERIC_TEMPLATE;
+const NOTICE_489F_PPC_TEMPLATE = PAK_NOTICE_489F_PPC_TEMPLATE;
+const POWER_OF_ATTORNEY_GENERAL_TEMPLATE = PAK_POWER_OF_ATTORNEY_GENERAL_TEMPLATE;
+const SALE_DEED_TEMPLATE = PAK_SALE_DEED_TEMPLATE;
 
 const TEMPLATES: DraftTemplate[] = [
   // ─── Court Filings ───
@@ -1603,6 +764,19 @@ function LegalDraftingPageInner() {
     return resolveLegalPageProfile(stored).id;
   });
   const [aiPrompt, setAiPrompt] = useState("");
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  useEffect(() => {
+    if (promptTextareaRef.current) {
+      if (!aiPrompt) {
+        promptTextareaRef.current.style.height = '46px';
+      } else {
+        promptTextareaRef.current.style.height = 'auto';
+        promptTextareaRef.current.style.height = `${Math.min(promptTextareaRef.current.scrollHeight, 200)}px`;
+      }
+    }
+  }, [aiPrompt]);
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
   const [generationElapsed, setGenerationElapsed] = useState(0);
@@ -3873,14 +3047,6 @@ function LegalDraftingPageInner() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
-                        onClick={() => aiContextInputRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-card/40 text-[11px] text-foreground hover:border-primary/40 hover:text-foreground"
-                      >
-                        <Paperclip size={12} />
-                        Attach Context Files
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => setCaseFileImportOpen(true)}
                         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-card/40 text-[11px] text-foreground hover:border-primary/40 hover:text-foreground"
                       >
@@ -3973,9 +3139,14 @@ function LegalDraftingPageInner() {
                   )}
 
                   <div className="relative">
-                    <Textarea
+                    <textarea
+                      ref={promptTextareaRef}
                       value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
+                      onChange={(e) => {
+                        setAiPrompt(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+                      }}
                       onKeyDown={(e) => {
                         if (e.key !== "Enter") return;
                         if (e.shiftKey || e.nativeEvent.isComposing) return;
@@ -3983,11 +3154,20 @@ function LegalDraftingPageInner() {
                         if (isGenerating || !aiPrompt.trim()) return;
                         void generateClause();
                       }}
-                      className="w-full bg-card/50 border border-border rounded-xl p-3 pr-12 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary outline-none resize-none placeholder:text-muted-foreground"
+                      className="w-full bg-card/50 border border-border rounded-xl p-3 pr-20 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary outline-none resize-none placeholder:text-muted-foreground min-h-[46px] max-h-[200px]"
                       placeholder="Describe what to draft, amend, or improve in Pakistani court format..."
-                      rows={2}
+                      rows={1}
+                      style={{ height: '46px', overflowY: 'auto' }}
                       data-testid="textarea-ai-draft-prompt"
                     />
+                    <button
+                      type="button"
+                      onClick={() => aiContextInputRef.current?.click()}
+                      className="absolute bottom-2.5 right-11 size-7 rounded-lg text-muted-foreground hover:bg-card hover:text-foreground flex items-center justify-center transition-colors"
+                      title="Attach Context Files"
+                    >
+                      <Paperclip size={14} />
+                    </button>
                     <button
                       className="absolute bottom-2.5 right-2.5 size-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-sm disabled:opacity-50"
                       onClick={() => generateClause()}

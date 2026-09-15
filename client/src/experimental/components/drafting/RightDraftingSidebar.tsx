@@ -99,6 +99,19 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [aiContextFiles, setAiContextFiles] = useState<File[]>([]);
+  const aiContextInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      if (!inputPrompt) {
+        inputRef.current.style.height = '46px';
+      } else {
+        inputRef.current.style.height = 'auto';
+        inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 200)}px`;
+      }
+    }
+  }, [inputPrompt]);
 
   const voice = useVoiceRecorder();
 
@@ -112,6 +125,45 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
       timestamp: "Just now",
     },
   ]);
+
+  const onAiContextFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const incoming = Array.from(files);
+    const allowed = incoming.filter((file) => {
+      const name = file.name.toLowerCase();
+      return (
+        name.endsWith(".pdf") ||
+        name.endsWith(".doc") ||
+        name.endsWith(".docx") ||
+        name.endsWith(".docm") ||
+        name.endsWith(".dotx") ||
+        name.endsWith(".txt")
+      );
+    });
+    const rejected = incoming.length - allowed.length;
+    if (rejected > 0) {
+      toast({
+        title: "Some files were ignored",
+        description: "Only PDF, DOC/DOCX/DOCM/DOTX, and TXT files are supported.",
+        variant: "destructive",
+      });
+    }
+    setAiContextFiles((prev) => {
+      const combined = [...prev, ...allowed];
+      const limited = combined.slice(0, 5);
+      const dropped = combined.length - limited.length;
+      if (dropped > 0) {
+        toast({
+          title: "Attachment limit reached",
+          description: "You can attach up to 5 context files at a time.",
+          variant: "destructive",
+        });
+      }
+      return limited;
+    });
+    if (aiContextInputRef.current) aiContextInputRef.current.value = "";
+  };
 
   const quickActionChips = [
     {
@@ -163,18 +215,38 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
     setIsGenerating(true);
 
     try {
-      const payload = {
-        prompt: query,
-        draftText: currentDocumentText,
-        documentType: activeDocumentType,
-        jurisdiction: "Pakistan",
-        module: "legal-drafting",
-        stream: false,
-      };
-
       let data;
       try {
-        const res = await apiRequest("POST", "/api/retrieval/clauses/generate", payload);
+        let res;
+        if (aiContextFiles.length > 0) {
+          const formData = new FormData();
+          formData.append("prompt", query);
+          formData.append("draftText", currentDocumentText);
+          formData.append("documentType", activeDocumentType || "");
+          formData.append("jurisdiction", "Pakistan");
+          formData.append("module", "legal-drafting");
+          formData.append("stream", "false");
+          aiContextFiles.forEach(f => formData.append("attachments", f));
+
+          res = await fetch("/api/retrieval/clauses/generate", {
+            method: "POST",
+            body: formData,
+          });
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            throw new AppError(res.status, errBody.message || "Failed to generate draft", res.status === 422 ? errBody : undefined);
+          }
+        } else {
+          const payload = {
+            prompt: query,
+            draftText: currentDocumentText,
+            documentType: activeDocumentType,
+            jurisdiction: "Pakistan",
+            module: "legal-drafting",
+            stream: false,
+          };
+          res = await apiRequest("POST", "/api/retrieval/clauses/generate", payload);
+        }
         data = await res.json();
       } catch (err: any) {
         if (err instanceof AppError) {
@@ -593,13 +665,40 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                     handleSend();
                   }
                 }}
-                rows={2}
+                rows={1}
+                style={{ height: '46px', overflowY: 'auto' }}
                 placeholder="Command AI to draft or amend (e.g. 'Draft stay grounds under Order 39')..."
                 className="w-full p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] resize-none transition-colors"
               />
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.docm,.dotx,.txt"
+                    ref={aiContextInputRef}
+                    className="hidden"
+                    onChange={onAiContextFilesSelected}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => aiContextInputRef.current?.click()}
+                    className={cn(
+                      "p-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors relative",
+                      aiContextFiles.length > 0
+                        ? "bg-blue-50 dark:bg-blue-500/10 border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400"
+                        : "bg-[#F8FAFC] dark:bg-[#0B131E] border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC]"
+                    )}
+                    title="Attach Context Files"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    {aiContextFiles.length > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-blue-600 text-white text-[9px] w-3.5 h-3.5 rounded-full flex items-center justify-center">
+                        {aiContextFiles.length}
+                      </span>
+                    )}
+                  </button>
                   {voice.isSupported && (
                     <button
                       type="button"
