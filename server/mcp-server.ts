@@ -16,7 +16,7 @@ import { isOpenRouterAvailable, chatWithOpenRouter } from "./openrouter";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
-import { judgeCaseLinks, caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
+import { judgeCaseLinks, citationLinks, caseLaw, judgments, lawJournals, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
 import { eq, inArray, sql, and, gte, lte, desc, ilike, count, countDistinct, asc } from "drizzle-orm";
 import { uploadBufferToR2, uploadBufferToR2WithRetry } from "./r2-storage";
 import path from "node:path";
@@ -249,13 +249,259 @@ function normalizeCitation(raw: string): string[] {
   return [...new Set(variants)];
 }
 
+// Journal codes accepted in a Pakistani citation (dots are stripped before matching).
+const CITATION_JOURNALS = "PLD|SCMR|YLR|MLD|CLC|PLJ|NLR|PCRLJ|PCrLJ|PTCL|PTD|PLCCS|PLC|PSC|ALD|KLR|SLS|GBLR|CLD|AIR";
+// Court-seat tokens that may sit between the year and the page number.
+const CITATION_SEATS = "SC|Supreme Court|Lahore|Lah|Karachi|Kar|Sindh|Peshawar|Pesh|Balochistan|Islamabad|Quetta|Multan|Rawalpindi|Bahawalpur|Abbottabad|Faisalabad|Hyderabad|Sukkur";
+
+/**
+ * Pull every citation-shaped token out of a free-text RAG context blob.
+ * Dots are stripped first so "P.Cr.L.J" / "P.L.D" match too.
+ */
+function extractCitations(text: string): string[] {
+  const flat = String(text || "").replace(/\./g, "");
+  const out = new Set<string>();
+  const patterns = [
+    // year-first: 2001 SCMR 1986
+    new RegExp(`\\b(?:19|20)\\d{2}\\s*(?:${CITATION_JOURNALS})\\s*(?:\\([^)]{1,20}\\)\\s*)?\\d{1,5}\\b`, "gi"),
+    // journal-first: PLD 2013 SC 793
+    new RegExp(`\\b(?:${CITATION_JOURNALS})\\s*(?:19|20)\\d{2}\\s*(?:\\([^)]{1,20}\\)\\s*)?(?:${CITATION_SEATS})?\\s*\\d{1,5}\\b`, "gi"),
+  ];
+  for (const re of patterns) {
+    for (const m of flat.matchAll(re)) {
+      const c = m[0].replace(/\s+/g, " ").trim();
+      if (c) out.add(c);
+    }
+  }
+  return [...out];
+}
+
+/**
+ * Confirm each citation actually exists in the `judgments` table.
+ * Exact normalized match only — never LIKE, which binds to the wrong case.
+ * Returns raw citation -> judgment UUID for the ones that are real.
+ */
+async function verifyCitations(raws: string[]): Promise<Map<string, string>> {
+  const found = new Map<string, string>();
+  for (const raw of raws) {
+    const match = await resolveJudgment(raw, { id: judgments.id });
+    if (match) found.set(raw, String(match.id));
+  }
+  return found;
+}
+
+/**
+ * Structured citation resolution.
+ *
+ * `judgments` has a UNIQUE index on (year, journal_id, page) and its
+ * citation_string is uniformly "YEAR JOURNAL PAGE" (e.g. "1968 PLD 281") with
+ * no court-seat token. String normalization was therefore fragile: a citation
+ * written "PLD1968 SC 281" produced only the variant "PLD1968281" and never
+ * matched the stored "1968 PLD 281". Parsing the citation into its three parts
+ * and hitting the unique index is exact, index-backed, and immune to spacing,
+ * punctuation, journal/year order, and seat tokens.
+ */
+const PUBLIC_SITE = (process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "");
+
+function judgmentSourceUrl(judgmentId: string): string {
+  return `${PUBLIC_SITE}/judgments/${judgmentId}`;
+}
+
+/** "PLC(CS)N" -> "PLCCSN". Same shape parseCitation produces. */
+function canonJournalCode(code: string): string {
+  return String(code || "").toUpperCase().replace(/[^A-Z]/g, "");
+}
+
+let journalCodeCache: Map<string, number> | null = null;
+async function getJournalCodes(): Promise<Map<string, number>> {
+  if (journalCodeCache) return journalCodeCache;
+  const rows = await db.select({ id: lawJournals.id, code: lawJournals.code }).from(lawJournals);
+  const map = new Map<string, number>();
+  for (const r of rows) map.set(canonJournalCode(r.code), r.id);
+  journalCodeCache = map;
+  return map;
+}
+
+/**
+ * Split a field that crams several citations into one string,
+ * e.g. "2023 SCMR 1450 & 2023 PLJ 55" or a "Reported As:" header listing
+ * every journal a judgment was reported in, comma separated.
+ */
+function splitCitations(raw: string): string[] {
+  return String(raw || "")
+    // "&" separates citations only between digits ("1450 & 2023 PLJ 55").
+    // Inside a journal's category name it is part of the name and must not
+    // split ("K.L.R. 2001 Labour & Service Cases 52").
+    .split(/(?:\s*[,;]\s*|\s+and\s+|(?<=\d)\s*&\s*)/i)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+/** Parse a citation into (year, journal code, page). Returns null if not parseable. */
+function parseCitation(raw: string, knownJournals: Set<string>): { year: number; journal: string; page: number } | null {
+  let s = String(raw || "").toUpperCase();
+
+  // Canonicalize dotted/spaced journal codes BEFORE punctuation is stripped.
+  s = s.replace(/P\s*\.?\s*CR?\s*\.?\s*L\s*\.?\s*J\s*\.?\s*N(?:OTES?)?/g, " PCRLJN ");
+  s = s.replace(/P\s*\.?\s*CR?\s*\.?\s*L\s*\.?\s*J/g, " PCRLJ ");
+  s = s.replace(/PLC\s*\(?\s*C\.?\s*S\.?\s*\)?\s*N(?:OTES?)?/g, " PLCCSN ");
+  s = s.replace(/PLC\s*\(?\s*C\.?\s*S\.?\s*\)?/g, " PLCCS ");
+  s = s.replace(/Y\s*\.?\s*L\s*\.?\s*R\s*\.?\s*N(?:OTES?)?/g, " YLRN ");
+  s = s.replace(/C\s*\.?\s*L\s*\.?\s*C\s*\.?\s*N(?:OTES?)?/g, " CLCN ");
+  s = s.replace(/\bPLC\s*N(?:OTES?)?\b/g, " PLCN ");
+  s = s.replace(/S\s*\.?\s*C\s*\.?\s*M\s*\.?\s*R\s*\.?/g, " SCMR ");
+  s = s.replace(/P\s*\.?\s*L\s*\.?\s*D\s*\.?/g, " PLD ");
+  s = s.replace(/G\s*\.?\s*B\s*\.?\s*L\s*\.?\s*R\s*\.?/g, " GBLR ");
+
+  // Strip remaining punctuation.
+  s = s.replace(/[.,()\[\]\/-]/g, " ");
+
+  // KEY FIX: split letter/digit boundaries so "PLD1968281" becomes "PLD 1968 281".
+  s = s.replace(/([A-Z])(\d)/g, "$1 $2").replace(/(\d)([A-Z])/g, "$1 $2");
+
+  const rawTokens = s.split(/\s+/).filter(Boolean);
+
+  // Merge runs of single letters so a spaced-out journal code such as
+  // "1990 C L C 1439" collapses to "CLC" and matches law_journals.
+  const tokens: string[] = [];
+  for (const t of rawTokens) {
+    const prev = tokens[tokens.length - 1];
+    if (t.length === 1 && /^[A-Z]$/.test(t) && prev && /^[A-Z]+$/.test(prev) && prev.length <= 5) {
+      tokens[tokens.length - 1] = prev + t;
+    } else {
+      tokens.push(t);
+    }
+  }
+
+  const yearIdx = tokens.findIndex((t) => /^(?:1[89]|20)\d{2}$/.test(t));
+  if (yearIdx === -1) return null;
+
+  const journal = tokens.find((t) => knownJournals.has(t));
+  if (!journal) return null;
+
+  // Page is the last standalone number that is not the year token.
+  let page = -1;
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if (i === yearIdx) continue;
+    if (/^\d{1,5}$/.test(tokens[i])) { page = Number(tokens[i]); break; }
+  }
+  if (page < 0) return null;
+
+  return { year: Number(tokens[yearIdx]), journal, page };
+}
+
+/**
+ * Resolve a citation string to a real `judgments` row.
+ * Structured (year, journal_id, page) lookup first, then the legacy exact
+ * normalized-string match as a fallback for shapes the parser rejects.
+ * Never LIKE — a substring match binds to a different, wrong judgment.
+ */
+async function resolveJudgment<T extends Record<string, any>>(raw: string, selection: T): Promise<any | undefined> {
+  const codes = await getJournalCodes();
+  const known = new Set(codes.keys());
+
+  for (const part of splitCitations(raw)) {
+    const parsed = parseCitation(part, known);
+    if (parsed) {
+      const journalId = codes.get(parsed.journal);
+      if (journalId !== undefined) {
+        const [hit] = await db.select(selection)
+          .from(judgments)
+          .where(and(
+            eq(judgments.year, parsed.year),
+            eq(judgments.journalId, journalId),
+            eq(judgments.page, parsed.page),
+          ))
+          .limit(1);
+        if (hit) return hit;
+      }
+    }
+    for (const variant of normalizeCitation(part)) {
+      const [hit] = await db.select(selection)
+        .from(judgments)
+        .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
+        .limit(1);
+      if (hit) return hit;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Judgment text integrity.
+ *
+ * The original ingest wrote a document's body to every citation that document
+ * mentioned, so about 20% of `judgments` rows hold a body belonging to a
+ * different case, with a plausible title, headnotes and date. No text is
+ * deleted to fix that: script/judgment_text_label.ts records per row whether
+ * the stored body is that row's own, and if not, which citation it belongs to.
+ *
+ * Rows classified before the labelling script has run fall back to an exact
+ * sibling lookup, which is correct but scans, so run the script.
+ */
+async function assessJudgmentText(
+  judgmentId: string,
+  fullText: string | null | undefined,
+  textStatus?: string | null,
+  textTrueCitation?: string | null,
+): Promise<{
+  textIntegrity: "missing" | "mislabeled" | "shared" | "unique";
+  belongsTo?: string;
+  sharedWith?: string[];
+  textWarning?: string;
+}> {
+  const body = String(fullText || "").trim();
+  if (body.length < 200) {
+    return {
+      textIntegrity: "missing",
+      textWarning: "No usable judgment text is stored for this record. Do not summarise or quote a judgment body for this citation, and do not reconstruct it from memory.",
+    };
+  }
+
+  if (textStatus === "own") return { textIntegrity: "unique" };
+
+  if (textStatus === "mislabeled") {
+    const belongsTo = String(textTrueCitation || "").trim();
+    return {
+      textIntegrity: "mislabeled",
+      belongsTo: belongsTo || undefined,
+      textWarning: belongsTo
+        ? `The text stored against this citation is the judgment reported as ${belongsTo}, not this case. Do not present it as this citation's judgment or attribute its holdings, facts or quotations to this citation. To read the case this text really is, call get_judgment with ${belongsTo}.`
+        : "The text stored against this citation belongs to a different judgment. Do not present it as this citation's judgment.",
+    };
+  }
+
+  if (textStatus === "unknown") {
+    return {
+      textIntegrity: "shared",
+      textWarning: "This judgment body is stored identically under several citations and the true owner has not been established, so it is not reliably the text of the citation you asked for. Do not attribute holdings, facts or quotations from it to this citation without independent confirmation.",
+    };
+  }
+
+  // Not yet labelled: fall back to an exact sibling lookup.
+  const siblings = await db.select({ citation: judgments.citationString })
+    .from(judgments)
+    .where(and(eq(judgments.fullText, body), sql`${judgments.id} <> ${judgmentId}`))
+    .limit(5);
+
+  if (siblings.length === 0) return { textIntegrity: "unique" };
+
+  const shared = siblings.map((r: { citation: string }) => String(r.citation)).filter(Boolean);
+  return {
+    textIntegrity: "shared",
+    sharedWith: shared,
+    textWarning: `This judgment body is stored identically under other citations (${shared.join("; ")}), so it is not uniquely bound to the citation you asked for. Treat the text as unverified: do not attribute holdings, facts, or quotations from it to this citation without independent confirmation.`,
+  };
+}
+
 export function registerAllTools(server: McpServer) {
   // 1. Search Case Law
   server.registerTool("search_case_law", {
-    description: "Search Pakistani judgments and case law using the exact AlWakeelo hybrid search pipeline (Voyage Law-2, reranker, and court boosts). ASSISTANT INSTRUCTION: You must provide the real and authentic judgment exactly as returned by this tool. Do not invent, hallucinate, or alter the text. If the retrieved judgment is not what the user hoped for, tell them honestly; do NOT try to 'make sense' of it by hallucinating missing facts.",
+    description: "Search Pakistani judgments and case law using the exact AlWakeelo hybrid search pipeline (Voyage Law-2, reranker, and court boosts). By default ONLY returns fully verified results: the citation is confirmed to exist in the judgments table AND that judgment's stored text is confirmed to be its own, so citation/title/court/year are authoritative. A hit whose citation is real but whose stored text belongs to a different case is returned with verified=false, textIntegrity='mislabeled', a belongsTo citation, and its title and summary withheld. ASSISTANT INSTRUCTION: Only cite records returned by this tool with verified=true. Never reconstruct, complete, or guess a citation yourself. Never present the title or holdings of a record whose textIntegrity is not 'own'. If droppedUnverified > 0, tell the user some hits were withheld and why.",
     inputSchema: {
       query: z.string().describe("The search query containing legal topics or case details"),
       limit: z.number().optional().default(5).describe("Maximum number of records to return (default 5, max 10)"),
+      includeUnverified: z.boolean().optional().default(false).describe("Include index-only hits whose citation does NOT resolve to a real judgment. Default false. These are NOT safe to cite in court filings."),
     },
     outputSchema: {
       version: z.string(),
@@ -263,6 +509,10 @@ export function registerAllTools(server: McpServer) {
       retrieval_version: z.string(),
       query: z.string(),
       latencyMs: z.number(),
+      verifiedOnly: z.boolean(),
+      droppedUnverified: z.number(),
+      duplicatesDropped: z.number(),
+      note: z.string().optional(),
       judgments: z.array(z.object({
         id: z.string(),
         citation: z.string(),
@@ -272,6 +522,12 @@ export function registerAllTools(server: McpServer) {
         snippet: z.string().optional(),
         decisionYear: z.number().optional(),
         sourceTable: z.string().optional(),
+        verified: z.boolean(),
+        textIntegrity: z.string().optional(),
+        belongsTo: z.string().optional(),
+        warning: z.string().optional(),
+        pdfUrl: z.string().optional(),
+        sourceUrl: z.string().optional(),
       })),
     },
     annotations: {
@@ -279,7 +535,7 @@ export function registerAllTools(server: McpServer) {
       openWorldHint: false,
       destructiveHint: false,
     }
-  }, async ({ query, limit }) => {
+  }, async ({ query, limit, includeUnverified }) => {
     const userId = getAuthenticatedUserId();
     const safeLimit = Math.min(10, Math.max(1, limit));
 
@@ -306,45 +562,151 @@ export function registerAllTools(server: McpServer) {
     // bulk citation lookup using exact normalized match (not LIKE %...%
     // which caused partial collisions returning wrong judgments).
     // -------------------------------------------------------------------
-    const needsResolution: Array<{ idx: number; citation: string }> = [];
-    const resolvedIds: Map<number, string> = new Map();
+    // case_law rows are LLM-extracted: their citation strings can be
+    // malformed or entirely invented, and hasCitationTrust() in
+    // legal-retrieval.ts only checks that a citation *looks* like a Pakistani
+    // citation (journal code + year). A result is only trustworthy if its
+    // citation resolves EXACTLY to a row in the `judgments` table, which is
+    // the table that actually holds real full text / PDFs.
+    const groundTruth = {
+      id: judgments.id,
+      citation: judgments.citationString,
+      title: judgments.title,
+      court: judgments.courtNameSnapshot,
+      decisionDate: judgments.decisionDate,
+      pdfUrl: judgments.pdfUrl,
+      textStatus: judgments.textStatus,
+      textTrueCitation: judgments.textTrueCitation,
+      // length only: computed server-side, so the body is never transferred
+      textLen: sql<number>`length(${judgments.fullText})`,
+    };
+    type VerifiedRow = {
+      id: string;
+      citation: string | null;
+      title: string | null;
+      court: string | null;
+      decisionDate: Date | null;
+      pdfUrl: string | null;
+      textStatus: string | null;
+      textTrueCitation: string | null;
+      textLen: number | null;
+    };
+    const verified = new Map<number, VerifiedRow>();
 
+    // (a) Keyword-path rows carry a judgment UUID — confirm the row really
+    //     exists and pull its authoritative citation (do not trust the
+    //     case_law copy of the citation).
+    const uuidByIdx = new Map<number, string>();
     for (let i = 0; i < result.rows.length; i++) {
       const row = result.rows[i] as any;
       if (row.judgmentId && typeof row.judgmentId === "string" && row.judgmentId.includes("-")) {
-        // Already has UUID from keyword path
-        resolvedIds.set(i, row.judgmentId);
-      } else if (row.citation) {
-        needsResolution.push({ idx: i, citation: row.citation });
+        uuidByIdx.set(i, row.judgmentId);
+      }
+    }
+    if (uuidByIdx.size > 0) {
+      const fetched = await db.select(groundTruth)
+        .from(judgments)
+        .where(inArray(judgments.id, [...new Set(uuidByIdx.values())]));
+      const byId = new Map<string, VerifiedRow>(
+        (fetched as any[]).map((r) => [String(r.id), r as VerifiedRow] as const),
+      );
+      for (const [idx, uuid] of uuidByIdx) {
+        const hit = byId.get(uuid);
+        if (hit) verified.set(idx, hit);
       }
     }
 
-    // Bulk resolve remaining citations → judgment UUIDs
-    if (needsResolution.length > 0) {
-      for (const item of needsResolution) {
-        const variants = normalizeCitation(item.citation);
-        let found = false;
-        for (const variant of variants) {
-          // Use exact match on normalized form (= not LIKE) to avoid
-          // "2001SCMR1986" matching "2001SCMR19861"
-          const [match] = await db.select({ id: judgments.id })
-            .from(judgments)
-            .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
-            .limit(1);
-          if (match) {
-            resolvedIds.set(item.idx, match.id);
-            found = true;
-            break;
-          }
-        }
-        // NOTE: no LIKE %citation% fallback on purpose. A substring match
-        // (e.g. "2001SCMR198" matching "2001SCMR1986") silently binds the
-        // result to the WRONG judgment. If exact normalized match fails the
-        // row stays unresolved -> keeps its caseLaw:N id, and get_judgment
-        // returns honest metadata instead of a confidently-wrong full text.
-        void found;
-      }
+    // (b) Everything else: exact normalized citation match only.
+    //     No LIKE %citation% fallback — a substring match (e.g. "2001SCMR198"
+    //     matching "2001SCMR1986") silently binds the result to the WRONG
+    //     judgment. Unresolved rows are treated as unverified, not guessed at.
+    for (let i = 0; i < result.rows.length; i++) {
+      if (verified.has(i)) continue;
+      const citation = (result.rows[i] as any).citation;
+      if (!citation) continue;
+      const match = await resolveJudgment(citation, groundTruth);
+      if (match) verified.set(i, match as VerifiedRow);
     }
+
+    const allRows = result.rows.map((j: any, i: number) => {
+      const v = verified.get(i);
+      if (v) {
+        // The citation resolves to a real judgment, but that is only half the
+        // question. If the judgment's stored body is not its own, then its
+        // title and every summary derived from it describe a DIFFERENT case,
+        // so none of those fields may be presented as this citation's.
+        // A row can also carry no usable body at all - a handful hold only OCR
+        // residue such as repeated "CamScanner". Those were labelled 'own'
+        // because nothing else shares their text, which is true but useless:
+        // there is no judgment to read, so the record is not citable either.
+        const hasBody = (v.textLen ?? 0) >= 200;
+        const ownText = v.textStatus === "own" && hasBody;
+        if (!ownText) {
+          const belongsTo = String(v.textTrueCitation || "").trim();
+          const integrity = !hasBody ? "missing"
+            : v.textStatus === "mislabeled" ? "mislabeled"
+            : "unknown";
+          const warning = integrity === "missing"
+            ? "This citation is real, but no judgment text is stored for it. Its title and summary are withheld. Do not cite it or describe its holdings, and do not reconstruct the judgment from memory."
+            : belongsTo
+              ? `This citation is real, but the text stored under it is the judgment reported as ${belongsTo}. Its title and summary describe that other case and are withheld here. Do not cite this record's holdings.`
+              : "This citation is real, but the text stored under it could not be confirmed to be its own. Its title and summary are withheld. Do not cite this record's holdings.";
+          return {
+            id: v.id,
+            citation: v.citation || String(j.citation || ""),
+            court: v.court || undefined,
+            decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : undefined,
+            sourceTable: "judgments",
+            verified: false,
+            textIntegrity: integrity,
+            belongsTo: integrity === "missing" ? undefined : (belongsTo || undefined),
+            warning,
+            sourceUrl: judgmentSourceUrl(v.id),
+          };
+        }
+        return {
+          // Authoritative values come from the judgments table, NOT from the
+          // LLM-extracted case_law row.
+          id: v.id,
+          citation: v.citation || String(j.citation || ""),
+          court: v.court || j.court || undefined,
+          title: v.title || j.title || undefined,
+          summary: j.summary,
+          snippet: (j.summary || "").slice(0, 500),
+          decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : j.citationYear,
+          sourceTable: "judgments",
+          verified: true,
+          textIntegrity: "own",
+          pdfUrl: v.pdfUrl ?? undefined,
+          sourceUrl: judgmentSourceUrl(v.id),
+        };
+      }
+      return {
+        id: `caseLaw:${j.id}`,
+        citation: String(j.citation || ""),
+        court: j.court,
+        title: j.title,
+        summary: j.summary,
+        snippet: (j.summary || "").slice(0, 500),
+        decisionYear: j.citationYear,
+        sourceTable: "case_law",
+        verified: false,
+      };
+    });
+
+    // Two case_law rows frequently carry the same citation, so the same
+    // judgment can resolve twice. Returning it twice wastes a result slot and
+    // reads to the model as independent corroboration, which it is not.
+    const seenIds = new Set<string>();
+    const dedupedRows = allRows.filter((r) => {
+      if (seenIds.has(r.id)) return false;
+      seenIds.add(r.id);
+      return true;
+    });
+    const duplicatesDropped = allRows.length - dedupedRows.length;
+
+    const keptRows = includeUnverified ? dedupedRows : dedupedRows.filter((r) => r.verified);
+    const droppedUnverified = dedupedRows.length - keptRows.length;
 
     const payload = {
       version: VERSION,
@@ -352,19 +714,13 @@ export function registerAllTools(server: McpServer) {
       retrieval_version: RETRIEVAL_VERSION,
       query,
       latencyMs: latency,
-      judgments: result.rows.map((j, i) => {
-        const uuid = resolvedIds.get(i);
-        return {
-          id: uuid || `caseLaw:${j.id}`,
-          citation: j.citation,
-          court: j.court,
-          title: j.title,
-          summary: j.summary,
-          snippet: (j.summary || "").slice(0, 500),
-          decisionYear: j.citationYear,
-          sourceTable: uuid ? "judgments" : "case_law",
-        };
-      }),
+      verifiedOnly: !includeUnverified,
+      droppedUnverified,
+      duplicatesDropped,
+      note: droppedUnverified > 0
+        ? `${droppedUnverified} hit(s) were withheld: either the citation could not be matched to a real judgment record, or the judgment's stored text is not its own and so its title and summary describe a different case. Do not cite them. Re-run with includeUnverified=true to inspect them as leads only.`
+        : undefined,
+      judgments: keptRows,
     };
 
     return {
@@ -459,7 +815,7 @@ export function registerAllTools(server: McpServer) {
 
   // 3. Get Judgment Detail
   server.registerTool("get_judgment", {
-    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available. ASSISTANT INSTRUCTION: You must provide the real and authentic judgment exactly as returned by this tool. Do not invent, hallucinate, or alter the text. If the retrieved judgment is not what the user hoped for, tell them honestly; do NOT try to 'make sense' of it by hallucinating missing facts.",
+    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available. ASSISTANT INSTRUCTION: Use ONLY the text this tool returns; never supply a judgment body, holding, or quotation from memory. If 'textIntegrity' is 'mislabeled', the stored body is a DIFFERENT case - the one named in 'belongsTo' - so do not present it as this citation's judgment; tell the user and offer to fetch 'belongsTo' instead. If 'textIntegrity' is 'shared', the stored body is not uniquely bound to this citation - say so and do not attribute its contents to the citation. If 'textIntegrity' is 'missing', state that no judgment text is stored. The judgment file is whatever this tool returns and nothing else. Link to a file ONLY via the returned 'pdfUrl' or 'sourceUrl', copied verbatim. If 'pdfUrl' is absent, state that no PDF is stored and offer 'sourceUrl' instead; never construct, guess, or complete a file URL, and never claim a PDF exists. If this tool errors, report that the judgment was not found rather than answering from memory.",
     inputSchema: {
       id: z.string().describe("The judgment UUID, citation string, or caseLaw:N ID from search results"),
     },
@@ -474,6 +830,12 @@ export function registerAllTools(server: McpServer) {
       headnotes: z.string().optional(),
       fullText: z.string().optional(),
       pdfUrl: z.string().optional(),
+      sourceUrl: z.string().optional(),
+      fileNote: z.string().optional(),
+      textIntegrity: z.string().optional(),
+      belongsTo: z.string().optional(),
+      sharedWith: z.array(z.string()).optional(),
+      textWarning: z.string().optional(),
       sourceTable: z.string().optional(),
       dataNote: z.string().optional(),
     },
@@ -509,8 +871,7 @@ export function registerAllTools(server: McpServer) {
       }
 
       // Try one more time to find the matching judgment via citation
-      const variants = normalizeCitation(row.citation);
-      let judgmentRow: { id: string; citation: string; title: string; headnotes: string | null; fullText: string; courtNameSnapshot: string | null; decisionDate: Date | null; pdfUrl: string | null } | undefined;
+      let judgmentRow: { id: string; citation: string; title: string; headnotes: string | null; fullText: string; courtNameSnapshot: string | null; decisionDate: Date | null; pdfUrl: string | null; textStatus: string | null; textTrueCitation: string | null } | undefined;
       const judgmentSelect = {
         id: judgments.id,
         citation: judgments.citationString,
@@ -520,15 +881,11 @@ export function registerAllTools(server: McpServer) {
         courtNameSnapshot: judgments.courtNameSnapshot,
         decisionDate: judgments.decisionDate,
         pdfUrl: judgments.pdfUrl,
+        textStatus: judgments.textStatus,
+        textTrueCitation: judgments.textTrueCitation,
       };
-      // Try exact normalized match first
-      for (const variant of variants) {
-        const [match] = await db.select(judgmentSelect)
-          .from(judgments)
-          .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
-          .limit(1);
-        if (match) { judgmentRow = match; break; }
-      }
+      // Exact structured match only (year + journal + page unique index).
+      judgmentRow = await resolveJudgment(row.citation, judgmentSelect);
       // NO LIKE fallback: search already decided this row had no exact
       // judgment match. Fuzzy-matching here is what returned a wrong
       // judgment's full text on "verify". Fall through to honest metadata.
@@ -536,6 +893,8 @@ export function registerAllTools(server: McpServer) {
       if (judgmentRow) {
         // Found a real judgment — return its full data
         await logToolUsage(userId, "search-judgments", `get_judgment:${judgmentRow.id}`);
+        const textCheck = await assessJudgmentText(
+          judgmentRow.id, judgmentRow.fullText, judgmentRow.textStatus, judgmentRow.textTrueCitation);
         const payload = {
           version: VERSION,
           source: SOURCE,
@@ -549,6 +908,9 @@ export function registerAllTools(server: McpServer) {
           headnotes: judgmentRow.headnotes ?? undefined,
           fullText: judgmentRow.fullText ?? undefined,
           pdfUrl: judgmentRow.pdfUrl ?? undefined,
+          sourceUrl: judgmentSourceUrl(judgmentRow.id),
+          ...textCheck,
+          fileNote: judgmentRow.pdfUrl ? undefined : "No PDF file is stored for this judgment. The authoritative record is the full text returned here; sourceUrl opens the same judgment on AlWakeelo. Do not claim a PDF exists or invent a download link.",
           sourceTable: "judgments" as const,
         };
         return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
@@ -583,18 +945,10 @@ export function registerAllTools(server: McpServer) {
         }
       }
 
-      // Universal citation normalizer — handles every known Pakistani citation format
-      const searchVariants = normalizeCitation(targetId);
-
-      let resolvedRow: { id: string; title: string } | undefined;
-      // Try exact normalized match first
-      for (const variant of searchVariants) {
-        const [row] = await db.select({ id: judgments.id, title: judgments.title })
-          .from(judgments)
-          .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
-          .limit(1);
-        if (row) { resolvedRow = row; break; }
-      }
+      // Exact structured match (year + journal + page unique index),
+      // falling back to exact normalized-string match.
+      const resolvedRow: { id: string; title: string } | undefined =
+        await resolveJudgment(targetId, { id: judgments.id, title: judgments.title });
       // NO LIKE %citation% fallback: a substring match returns an arbitrary
       // different judgment (wrong page/case). If exact normalized match
       // failed, fail loudly rather than hand back the wrong judgment.
@@ -612,6 +966,17 @@ export function registerAllTools(server: McpServer) {
     // Track usage
     await logToolUsage(userId, "search-judgments", `get_judgment:${targetId}`);
 
+    const [provenance] = await db.select({
+      textStatus: judgments.textStatus,
+      textTrueCitation: judgments.textTrueCitation,
+    })
+      .from(judgments)
+      .where(eq(judgments.id, detail.id))
+      .limit(1);
+
+    const textCheck = await assessJudgmentText(
+      detail.id, detail.fullText, provenance?.textStatus, provenance?.textTrueCitation);
+
     const payload = {
       version: VERSION,
       source: SOURCE,
@@ -625,6 +990,9 @@ export function registerAllTools(server: McpServer) {
       headnotes: detail.headnotes ?? undefined,
       fullText: detail.fullText ?? undefined,
       pdfUrl: detail.pdfUrl ?? undefined,
+      sourceUrl: judgmentSourceUrl(detail.id),
+      ...textCheck,
+      fileNote: detail.pdfUrl ? undefined : "No PDF file is stored for this judgment. The authoritative record is the full text returned here; sourceUrl opens the same judgment on AlWakeelo. Do not claim a PDF exists or invent a download link.",
       sourceTable: "judgments" as const,
     };
 
@@ -641,7 +1009,7 @@ export function registerAllTools(server: McpServer) {
 
   // 4. Legal Research (Full Grounded RAG Pipeline)
   server.registerTool("legal_research", {
-    description: "Perform deep, multi-stage legal research across AlWakeelo's full RAG context (intent analysis, Voyage Law-2 embeddings, reranker, citation validation, and parent-child chunk resolution). Returns the exact grounded text context injected into LLM system prompts.",
+    description: "Perform deep, multi-stage legal research across AlWakeelo's full RAG context (intent analysis, Voyage Law-2 embeddings, reranker, citation validation, and parent-child chunk resolution). Returns the grounded text context injected into LLM system prompts, plus a per-citation verification report. ASSISTANT INSTRUCTION: The context is retrieved text and may contain citations that do not exist. Only cite a citation listed in `citations` with verified=true. Never repeat, complete or reconstruct an unverified citation — refer to that material descriptively without a citation, or call search_case_law instead.",
     inputSchema: {
       query: z.string().describe("The legal query, scenario description, or question to research"),
     },
@@ -652,6 +1020,12 @@ export function registerAllTools(server: McpServer) {
       query: z.string(),
       latencyMs: z.number(),
       context: z.string(),
+      citations: z.array(z.object({
+        citation: z.string(),
+        verified: z.boolean(),
+        judgmentId: z.string().optional(),
+      })),
+      unverifiedCitations: z.number(),
     },
     annotations: {
       readOnlyHint: true,
@@ -672,13 +1046,39 @@ export function registerAllTools(server: McpServer) {
     // Track usage metrics (log token count and costs for AI billing)
     await logToolUsage(userId, "legal-research", query, contextString);
 
+    // ---------------------------------------------------------------------
+    // Citation verification.
+    //
+    // gatherKnowledgeContextV2 returns free retrieved text. Citations inside
+    // it come from LLM-extracted case_law records and can be malformed or
+    // invented. Check every citation-shaped token against the judgments
+    // table and tell the assistant, inline and structurally, which ones are
+    // real — otherwise the model cites whatever it reads in the blob.
+    // ---------------------------------------------------------------------
+    const rawCitations = extractCitations(contextString).slice(0, 40);
+    const verifiedMap = await verifyCitations(rawCitations);
+    const citations = rawCitations.map((c) => ({
+      citation: c,
+      verified: verifiedMap.has(c),
+      judgmentId: verifiedMap.get(c),
+    }));
+    const unverified = citations.filter((c) => !c.verified).map((c) => c.citation);
+
+    const banner = citations.length === 0
+      ? "[CITATION VERIFICATION] No citations detected in this context. Do not introduce any citation of your own."
+      : unverified.length === 0
+        ? `[CITATION VERIFICATION] All ${citations.length} citation(s) in this context were matched to real judgment records and are safe to cite.`
+        : `[CITATION VERIFICATION] ${unverified.length} of ${citations.length} citation(s) in this context could NOT be matched to any judgment record and may not exist: ${unverified.join("; ")}. DO NOT cite these. Use the material descriptively without a citation, or verify via search_case_law / get_judgment first.`;
+
     const payload = {
       version: VERSION,
       source: SOURCE,
       retrieval_version: RETRIEVAL_VERSION,
       query,
       latencyMs: latency,
-      context: contextString,
+      context: `${banner}\n\n${contextString}`,
+      citations,
+      unverifiedCitations: unverified.length,
     };
 
     return {
@@ -851,72 +1251,148 @@ export function registerAllTools(server: McpServer) {
 
   // 7. Get Precedent Graph
   server.registerTool("get_precedent_graph", {
-    description: "Fetch the citation network (overruled, relied upon, distinguished) for a specific judgment to analyze precedent health.",
+    description: "Fetch the citation network for a judgment: the cases it cites and the cases that cite it, with treatment (referred_to, relied_upon, distinguished, overruled). Accepts a judgment UUID or a citation string. Each edge is extracted from the text of its SOURCE judgment, so an edge is only as trustworthy as that judgment's text: edges whose source holds text that is not its own are returned with reliable=false and must not be used to argue precedent. ASSISTANT INSTRUCTION: Only rely on edges with reliable=true. Never state that one case cited, relied on, distinguished or overruled another on the strength of a reliable=false edge, and never assert a citation relationship this tool did not return.",
     inputSchema: {
-      judgmentId: z.number().describe("The internal numeric ID of the judgment"),
+      judgment: z.string().describe("The judgment UUID or citation string (e.g. '2013 PLD 793')"),
+      limit: z.number().optional().default(50).describe("Maximum edges per direction (default 50, max 100)"),
     },
     outputSchema: {
       version: z.string(),
       source: z.string(),
+      judgment: z.object({
+        id: z.string(),
+        citation: z.string(),
+        title: z.string().optional(),
+        textIntegrity: z.string().optional(),
+      }),
       nodes: z.array(z.object({
         id: z.string(),
         citation: z.string(),
         title: z.string().nullable().optional(),
         year: z.number().nullable().optional(),
-        court: z.string().nullable().optional()
+        court: z.string().nullable().optional(),
+        textIntegrity: z.string().optional(),
       })),
       edges: z.array(z.object({
         source: z.string(),
         target: z.string(),
         treatment: z.string().nullable().optional(),
+        reliable: z.boolean(),
+        unreliableReason: z.string().optional(),
       })),
+      unreliableEdges: z.number(),
+      note: z.string().optional(),
     },
     annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false }
-  }, async ({ judgmentId }) => {
+  }, async ({ judgment, limit }) => {
     const userId = getAuthenticatedUserId();
+    await enforceQuota(userId, "search-judgments");
+    const safeLimit = Math.min(100, Math.max(1, limit));
 
-    const forwardCitations = await db.execute(sql`
-      SELECT cl.id, cl.source_id, cl.target_id, cl.treatment,
-             j.citation_string, j.title, j.year, j.court_name_snapshot
-      FROM citation_links cl
-      JOIN judgments j ON j.id = cl.target_id
-      WHERE cl.source_id = ${judgmentId}
-      LIMIT 50
-    `);
+    const target = String(judgment).trim();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
 
-    const backwardCitations = await db.execute(sql`
-      SELECT cl.id, cl.source_id, cl.target_id, cl.treatment,
-             j.citation_string, j.title, j.year, j.court_name_snapshot
-      FROM citation_links cl
-      JOIN judgments j ON j.id = cl.source_id
-      WHERE cl.target_id = ${judgmentId}
-      LIMIT 50
-    `);
+    const rootSelect = {
+      id: judgments.id,
+      citation: judgments.citationString,
+      title: judgments.title,
+      textStatus: judgments.textStatus,
+    };
+    const root = isUuid
+      ? (await db.select(rootSelect).from(judgments).where(eq(judgments.id, target)).limit(1))[0]
+      : await resolveJudgment(target, rootSelect);
 
-    const nodesMap = new Map();
-    const edges = [];
-
-    nodesMap.set(String(judgmentId), { id: String(judgmentId), citation: "Target Judgment", title: "Target", year: null, court: null });
-
-    for (const row of forwardCitations.rows) {
-      nodesMap.set(String(row.target_id), { id: String(row.target_id), citation: String(row.citation_string), title: String(row.title), year: Number(row.year), court: String(row.court_name_snapshot) });
-      edges.push({ source: String(judgmentId), target: String(row.target_id), treatment: String(row.treatment || "cited") });
+    if (!root) {
+      throw new McpError(ErrorCode.InvalidRequest, `Judgment not found for '${target}' (no exact citation match).`);
     }
 
-    for (const row of backwardCitations.rows) {
-      nodesMap.set(String(row.source_id), { id: String(row.source_id), citation: String(row.citation_string), title: String(row.title), year: Number(row.year), court: String(row.court_name_snapshot) });
-      edges.push({ source: String(row.source_id), target: String(judgmentId), treatment: String(row.treatment || "cited") });
+    await logToolUsage(userId, "search-judgments", `get_precedent_graph:${root.id}`);
+
+    // An edge records "source cites target", and it was extracted from the
+    // source judgment's stored text. If that text is not the source's own,
+    // the edge really belongs to whichever judgment the text came from, so it
+    // cannot be used to argue what THIS case cited.
+    const edgeRow = {
+      citationType: citationLinks.citationType,
+      otherId: judgments.id,
+      otherCitation: judgments.citationString,
+      otherTitle: judgments.title,
+      otherYear: judgments.year,
+      otherCourt: judgments.courtNameSnapshot,
+      otherStatus: judgments.textStatus,
+    };
+
+    const outgoing = await db.select(edgeRow)
+      .from(citationLinks)
+      .innerJoin(judgments, eq(judgments.id, citationLinks.targetJudgmentId))
+      .where(eq(citationLinks.sourceJudgmentId, root.id))
+      .limit(safeLimit);
+
+    const incoming = await db.select(edgeRow)
+      .from(citationLinks)
+      .innerJoin(judgments, eq(judgments.id, citationLinks.sourceJudgmentId))
+      .where(eq(citationLinks.targetJudgmentId, root.id))
+      .limit(safeLimit);
+
+    const nodes = new Map<string, any>();
+    const edges: Array<{ source: string; target: string; treatment: string; reliable: boolean; unreliableReason?: string }> = [];
+    const addNode = (r: any) => {
+      if (nodes.has(String(r.otherId))) return;
+      nodes.set(String(r.otherId), {
+        id: String(r.otherId),
+        citation: String(r.otherCitation),
+        title: r.otherTitle ?? null,
+        year: r.otherYear ?? null,
+        court: r.otherCourt ?? null,
+        textIntegrity: r.otherStatus ?? undefined,
+      });
+    };
+
+    const rootTextIsOwn = root.textStatus === "own";
+    for (const r of outgoing as any[]) {
+      addNode(r);
+      edges.push({
+        source: String(root.id),
+        target: String(r.otherId),
+        treatment: String(r.citationType || "referred_to"),
+        reliable: rootTextIsOwn,
+        unreliableReason: rootTextIsOwn ? undefined
+          : "This edge was extracted from text that is not this judgment's own, so it records what a different judgment cited.",
+      });
+    }
+    for (const r of incoming as any[]) {
+      addNode(r);
+      const sourceOwn = r.otherStatus === "own";
+      edges.push({
+        source: String(r.otherId),
+        target: String(root.id),
+        treatment: String(r.citationType || "referred_to"),
+        reliable: sourceOwn,
+        unreliableReason: sourceOwn ? undefined
+          : `The citing judgment ${r.otherCitation} holds text that is not its own, so this citation belongs to a different judgment.`,
+      });
     }
 
+    const unreliableEdges = edges.filter((e) => !e.reliable).length;
     const payload = {
       version: VERSION,
       source: SOURCE,
-      nodes: Array.from(nodesMap.values()),
-      edges
+      judgment: {
+        id: String(root.id),
+        citation: String(root.citation),
+        title: root.title ?? undefined,
+        textIntegrity: root.textStatus ?? undefined,
+      },
+      nodes: [...nodes.values()],
+      edges,
+      unreliableEdges,
+      note: unreliableEdges > 0
+        ? `${unreliableEdges} of ${edges.length} edge(s) were extracted from a judgment whose stored text is not its own and are marked reliable=false. Do not use them to argue precedent.`
+        : undefined,
     };
 
     return {
-      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
       structuredContent: payload,
     };
   });

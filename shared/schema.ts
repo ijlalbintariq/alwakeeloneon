@@ -209,6 +209,12 @@ export const judgments = pgTable(
     formattedText: text("formatted_text"),
     formatVersion: varchar("format_version", { length: 10 }).default("v1"),
     pdfUrl: text("pdf_url"),
+    // Whether full_text actually belongs to this row's citation.
+    // 'own' | 'mislabeled' | 'unknown'; null means not yet classified.
+    // See migrations/0009_judgment_text_provenance.sql.
+    textStatus: text("text_status"),
+    // When textStatus is 'mislabeled', the citation the body reports itself under.
+    textTrueCitation: text("text_true_citation"),
     bench: text("bench"),
     isActive: boolean("is_active").default(true).notNull(),
     authorityScore: doublePrecision("authority_score").default(0).notNull(),

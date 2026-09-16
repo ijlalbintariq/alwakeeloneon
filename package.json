@@ -19,7 +19,10 @@
     "reindex:statutes": "npx tsx script/reindex.ts statutes",
     "reindex:admin-knowledge": "npx tsx script/reindex.ts admin-knowledge",
     "test": "DATABASE_URL= PGHOST= node --import tsx --test tests/unit/**/*.test.ts",
-    "test:e2e": "node --import tsx --test tests/e2e/**/*.test.ts"
+    "test:e2e": "node --import tsx --test tests/e2e/**/*.test.ts",
+    "judgments:label:dry": "npx tsx script/judgment_text_label.ts",
+    "judgments:label:apply": "npx tsx script/judgment_text_label.ts --apply",
+    "judgments:label:reset": "npx tsx script/judgment_text_label.ts --reset"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
