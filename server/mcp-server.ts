@@ -17,7 +17,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
 import { judgeCaseLinks, caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
-import { eq, inArray, like, sql, and, gte, lte, desc, ilike, count, countDistinct, asc } from "drizzle-orm";
+import { eq, inArray, sql, and, gte, lte, desc, ilike, count, countDistinct, asc } from "drizzle-orm";
 import { uploadBufferToR2, uploadBufferToR2WithRetry } from "./r2-storage";
 import path from "node:path";
 
@@ -252,7 +252,7 @@ function normalizeCitation(raw: string): string[] {
 export function registerAllTools(server: McpServer) {
   // 1. Search Case Law
   server.registerTool("search_case_law", {
-    description: "Search Pakistani judgments and case law using the exact AlWakeelo hybrid search pipeline (Voyage Law-2, reranker, and court boosts).",
+    description: "Search Pakistani judgments and case law using the exact AlWakeelo hybrid search pipeline (Voyage Law-2, reranker, and court boosts). ASSISTANT INSTRUCTION: You must provide the real and authentic judgment exactly as returned by this tool. Do not invent, hallucinate, or alter the text. If the retrieved judgment is not what the user hoped for, tell them honestly; do NOT try to 'make sense' of it by hallucinating missing facts.",
     inputSchema: {
       query: z.string().describe("The search query containing legal topics or case details"),
       limit: z.number().optional().default(5).describe("Maximum number of records to return (default 5, max 10)"),
@@ -337,22 +337,12 @@ export function registerAllTools(server: McpServer) {
             break;
           }
         }
-        if (!found) {
-          // Try LIKE as last resort (some citations have extra suffixes)
-          for (const variant of variants) {
-            const [match] = await db.select({ id: judgments.id })
-              .from(judgments)
-              .where(like(
-                sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
-                `%${variant}%`,
-              ))
-              .limit(1);
-            if (match) {
-              resolvedIds.set(item.idx, match.id);
-              break;
-            }
-          }
-        }
+        // NOTE: no LIKE %citation% fallback on purpose. A substring match
+        // (e.g. "2001SCMR198" matching "2001SCMR1986") silently binds the
+        // result to the WRONG judgment. If exact normalized match fails the
+        // row stays unresolved -> keeps its caseLaw:N id, and get_judgment
+        // returns honest metadata instead of a confidently-wrong full text.
+        void found;
       }
     }
 
@@ -469,7 +459,7 @@ export function registerAllTools(server: McpServer) {
 
   // 3. Get Judgment Detail
   server.registerTool("get_judgment", {
-    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available.",
+    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available. ASSISTANT INSTRUCTION: You must provide the real and authentic judgment exactly as returned by this tool. Do not invent, hallucinate, or alter the text. If the retrieved judgment is not what the user hoped for, tell them honestly; do NOT try to 'make sense' of it by hallucinating missing facts.",
     inputSchema: {
       id: z.string().describe("The judgment UUID, citation string, or caseLaw:N ID from search results"),
     },
@@ -539,19 +529,9 @@ export function registerAllTools(server: McpServer) {
           .limit(1);
         if (match) { judgmentRow = match; break; }
       }
-      // LIKE fallback only if exact failed
-      if (!judgmentRow) {
-        for (const variant of variants) {
-          const [match] = await db.select(judgmentSelect)
-            .from(judgments)
-            .where(like(
-              sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
-              `%${variant}%`,
-            ))
-            .limit(1);
-          if (match) { judgmentRow = match; break; }
-        }
-      }
+      // NO LIKE fallback: search already decided this row had no exact
+      // judgment match. Fuzzy-matching here is what returned a wrong
+      // judgment's full text on "verify". Fall through to honest metadata.
 
       if (judgmentRow) {
         // Found a real judgment — return its full data
@@ -615,22 +595,11 @@ export function registerAllTools(server: McpServer) {
           .limit(1);
         if (row) { resolvedRow = row; break; }
       }
-      // LIKE fallback only if exact failed
+      // NO LIKE %citation% fallback: a substring match returns an arbitrary
+      // different judgment (wrong page/case). If exact normalized match
+      // failed, fail loudly rather than hand back the wrong judgment.
       if (!resolvedRow) {
-        for (const variant of searchVariants) {
-          const [row] = await db.select({ id: judgments.id, title: judgments.title })
-            .from(judgments)
-            .where(like(
-              sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
-              `%${variant}%`,
-            ))
-            .limit(1);
-          if (row) { resolvedRow = row; break; }
-        }
-      }
-        
-      if (!resolvedRow) {
-        throw new McpError(ErrorCode.InvalidRequest, `Judgment with ID or citation '${targetId}' not found.`);
+        throw new McpError(ErrorCode.InvalidRequest, `Judgment with ID or citation '${targetId}' not found (no exact citation match).`);
       }
       targetId = resolvedRow.id;
     }
