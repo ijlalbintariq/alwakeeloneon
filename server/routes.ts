@@ -23126,6 +23126,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const threeDaysFromNowEnd = new Date();
       threeDaysFromNowEnd.setHours(now.getHours() + 73, 0, 0, 0);
 
+      // Only re-send if the last reminder was sent more than 24 hours ago (or never)
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
       const expiringUsers = await db.select()
         .from(users)
         .where(and(
@@ -23133,19 +23136,38 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
           eq(users.autoRenew, false),
           isNotNull(users.subscriptionEndAt),
           gte(users.subscriptionEndAt, threeDaysFromNowStart),
-          lte(users.subscriptionEndAt, threeDaysFromNowEnd)
+          lte(users.subscriptionEndAt, threeDaysFromNowEnd),
+          // Ignore if we already sent a reminder within the last 24h
+          // Or using SQL syntax for OR:
+          sql`(${users.lastBillingReminderAt} IS NULL OR ${users.lastBillingReminderAt} < ${oneDayAgo})`
         ));
 
       let sentCount = 0;
       for (const user of expiringUsers) {
         if (user.email) {
           try {
+            // ATTEMPT TO CLAIM THIS USER FOR REMINDER
+            // This prevents race conditions if 4 workers run this cron job at the exact same time.
+            const claimResult = await db.update(users)
+              .set({ lastBillingReminderAt: new Date() })
+              .where(and(
+                eq(users.id, user.id),
+                sql`(${users.lastBillingReminderAt} IS NULL OR ${users.lastBillingReminderAt} < ${oneDayAgo})`
+              ))
+              .returning({ id: users.id });
+
+            if (claimResult.length === 0) {
+              // Another worker beat us to it, skip.
+              continue;
+            }
+
             await sendSubscriptionExpiryWarningEmail({
               to: user.email,
               customerName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Valued Customer",
               planKey: user.subscriptionTier,
               expiryDate: user.subscriptionEndAt!,
             });
+            
             sentCount++;
             console.log(`[Subscription Reminder] Sent expiry warning email to ${user.email} (expires: ${user.subscriptionEndAt})`);
           } catch (err: any) {
