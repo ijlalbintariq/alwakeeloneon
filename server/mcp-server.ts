@@ -269,7 +269,9 @@ export function registerAllTools(server: McpServer) {
         court: z.string().optional(),
         title: z.string().optional(),
         summary: z.string().optional(),
+        snippet: z.string().optional(),
         decisionYear: z.number().optional(),
+        sourceTable: z.string().optional(),
       })),
     },
     annotations: {
@@ -296,19 +298,45 @@ export function registerAllTools(server: McpServer) {
     // Track usage metrics
     await logToolUsage(userId, "search-judgments", query);
 
-    // Map case law citations to actual judgments UUIDs in bulk to avoid N+1 query overhead
-    const citations = result.rows.map(j => j.citation).filter(Boolean);
-    const judgmentMap = new Map<string, string>();
-    if (citations.length > 0) {
-      const matchingJudgments = await db.select({
-        id: judgments.id,
-        citation: judgments.citationString
-      })
-      .from(judgments)
-      .where(inArray(judgments.citationString, citations));
-      
-      for (const row of matchingJudgments) {
-        judgmentMap.set(row.citation, row.id);
+    // -------------------------------------------------------------------
+    // Resolve case_law citations → judgments UUIDs using fuzzy normalized
+    // matching. The old exact-match via inArray failed when citation
+    // formats diverged (e.g. "2001 SCMR 1986" vs "2001  SCMR  1986"),
+    // leaking numeric case_law IDs that caused get_judgment to return the
+    // wrong judgment entirely.
+    // -------------------------------------------------------------------
+    const judgmentMap = new Map<string, { id: string; snippet: string }>();
+    for (const row of result.rows) {
+      if (!row.citation) continue;
+      const variants = normalizeCitation(row.citation);
+      let found = false;
+      for (const variant of variants) {
+        const [match] = await db.select({
+          id: judgments.id,
+          citation: judgments.citationString,
+          headnotes: judgments.headnotes,
+        })
+        .from(judgments)
+        .where(like(
+          sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
+          `%${variant}%`,
+        ))
+        .limit(1);
+        if (match) {
+          judgmentMap.set(row.citation, {
+            id: match.id,
+            snippet: (match.headnotes || "").slice(0, 500),
+          });
+          found = true;
+          break;
+        }
+      }
+      // No judgment found — leave unmapped; we'll mark sourceTable below
+      if (!found) {
+        judgmentMap.set(row.citation, {
+          id: `caseLaw:${row.id}`,
+          snippet: (row.summary || "").slice(0, 500),
+        });
       }
     }
 
@@ -318,14 +346,20 @@ export function registerAllTools(server: McpServer) {
       retrieval_version: RETRIEVAL_VERSION,
       query,
       latencyMs: latency,
-      judgments: result.rows.map((j) => ({
-        id: judgmentMap.get(j.citation) || String(j.id),
-        citation: j.citation,
-        court: j.court,
-        title: j.title,
-        summary: j.summary,
-        decisionYear: j.citationYear,
-      })),
+      judgments: result.rows.map((j) => {
+        const resolved = judgmentMap.get(j.citation);
+        const isCaseLawOnly = resolved?.id?.startsWith("caseLaw:");
+        return {
+          id: resolved?.id || `caseLaw:${j.id}`,
+          citation: j.citation,
+          court: j.court,
+          title: j.title,
+          summary: j.summary,
+          snippet: resolved?.snippet || (j.summary || "").slice(0, 500),
+          decisionYear: j.citationYear,
+          sourceTable: isCaseLawOnly ? "case_law" : "judgments",
+        };
+      }),
     };
 
     return {
@@ -420,9 +454,9 @@ export function registerAllTools(server: McpServer) {
 
   // 3. Get Judgment Detail
   server.registerTool("get_judgment", {
-    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID or numeric ID.",
+    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available.",
     inputSchema: {
-      id: z.string().describe("The judgment UUID, numeric ID, or citation"),
+      id: z.string().describe("The judgment UUID, citation string, or caseLaw:N ID from search results"),
     },
     outputSchema: {
       version: z.string(),
@@ -435,6 +469,8 @@ export function registerAllTools(server: McpServer) {
       headnotes: z.string().optional(),
       fullText: z.string().optional(),
       pdfUrl: z.string().optional(),
+      sourceTable: z.string().optional(),
+      dataNote: z.string().optional(),
     },
     annotations: {
       readOnlyHint: true,
@@ -448,12 +484,93 @@ export function registerAllTools(server: McpServer) {
     await enforceQuota(userId, "search-judgments");
 
     let targetId = String(id).trim();
+
+    // -------------------------------------------------------------------
+    // Handle caseLaw: prefix — these come from search results where no
+    // matching judgment UUID was found. Return the case_law row's metadata
+    // honestly instead of fuzzy-matching to a wrong judgment.
+    // -------------------------------------------------------------------
+    if (targetId.startsWith("caseLaw:")) {
+      const caseLawId = Number(targetId.replace("caseLaw:", ""));
+      if (!Number.isInteger(caseLawId) || caseLawId <= 0) {
+        throw new McpError(ErrorCode.InvalidRequest, `Invalid case law ID: ${targetId}`);
+      }
+      const [row] = await db.select()
+        .from(caseLaw)
+        .where(eq(caseLaw.id, caseLawId))
+        .limit(1);
+      if (!row) {
+        throw new McpError(ErrorCode.InvalidRequest, `Case law record not found: ${targetId}`);
+      }
+
+      // Try one more time to find the matching judgment via fuzzy citation
+      const variants = normalizeCitation(row.citation);
+      let judgmentRow: { id: string; citation: string; title: string; headnotes: string | null; fullText: string; courtNameSnapshot: string | null; decisionDate: Date | null; pdfUrl: string | null } | undefined;
+      for (const variant of variants) {
+        const [match] = await db.select({
+          id: judgments.id,
+          citation: judgments.citationString,
+          title: judgments.title,
+          headnotes: judgments.headnotes,
+          fullText: judgments.fullText,
+          courtNameSnapshot: judgments.courtNameSnapshot,
+          decisionDate: judgments.decisionDate,
+          pdfUrl: judgments.pdfUrl,
+        })
+        .from(judgments)
+        .where(like(
+          sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
+          `%${variant}%`,
+        ))
+        .limit(1);
+        if (match) {
+          judgmentRow = match;
+          break;
+        }
+      }
+
+      if (judgmentRow) {
+        // Found a real judgment — return its full data
+        await logToolUsage(userId, "search-judgments", `get_judgment:${judgmentRow.id}`);
+        const payload = {
+          version: VERSION,
+          source: SOURCE,
+          id: judgmentRow.id,
+          citation: judgmentRow.citation,
+          title: judgmentRow.title,
+          courtName: judgmentRow.courtNameSnapshot || row.court || "Pakistani Court",
+          decisionDate: judgmentRow.decisionDate instanceof Date
+            ? judgmentRow.decisionDate.toISOString().split("T")[0]
+            : undefined,
+          headnotes: judgmentRow.headnotes ?? undefined,
+          fullText: judgmentRow.fullText ?? undefined,
+          pdfUrl: judgmentRow.pdfUrl ?? undefined,
+          sourceTable: "judgments" as const,
+        };
+        return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+      }
+
+      // No matching judgment — return case_law metadata honestly
+      await logToolUsage(userId, "search-judgments", `get_judgment:caseLaw:${caseLawId}`);
+      const payload = {
+        version: VERSION,
+        source: SOURCE,
+        id: targetId,
+        citation: row.citation,
+        title: row.title,
+        courtName: row.court || "Pakistani Court",
+        headnotes: row.summary || undefined,
+        sourceTable: "case_law" as const,
+        dataNote: "Full judgment text is not available for this record. The citation, title, court, and summary shown are from the case_law index. Verify citation independently before using in court filings.",
+      };
+      return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+    }
     
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
     if (!isUuid) {
       // If it is a numeric ID from case_law table, resolve it to the citation string first
       if (/^\d+$/.test(targetId)) {
-        const [caseLawRow] = await db.select({ citation: caseLaw.citation })
+        const [caseLawRow] = await db.select({ citation: caseLaw.citation, title: caseLaw.title })
           .from(caseLaw)
           .where(eq(caseLaw.id, Number(targetId)))
           .limit(1);
@@ -465,9 +582,9 @@ export function registerAllTools(server: McpServer) {
       // Universal citation normalizer — handles every known Pakistani citation format
       const searchVariants = normalizeCitation(targetId);
 
-      let resolvedRow: { id: string } | undefined;
+      let resolvedRow: { id: string; title: string } | undefined;
       for (const variant of searchVariants) {
-        const [row] = await db.select({ id: judgments.id })
+        const [row] = await db.select({ id: judgments.id, title: judgments.title })
           .from(judgments)
           .where(like(
             sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
@@ -507,12 +624,13 @@ export function registerAllTools(server: McpServer) {
       headnotes: detail.headnotes ?? undefined,
       fullText: detail.fullText ?? undefined,
       pdfUrl: detail.pdfUrl ?? undefined,
+      sourceTable: "judgments" as const,
     };
 
     return {
       content: [
         {
-          type: "text",
+          type: "text" as const,
           text: JSON.stringify(payload, null, 2),
         }
       ],
