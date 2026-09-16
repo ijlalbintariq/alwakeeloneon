@@ -1,4 +1,5 @@
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
+import { resolveJudgment, assessJudgmentText, judgmentSourceUrl } from "./citation-verify";
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
@@ -23313,31 +23314,82 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       // Update key last used
       db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
 
-      // Map case law citations to actual judgments UUIDs in bulk to avoid N+1 query overhead
-      const citations = result.rows.map(j => j.citation).filter(Boolean);
-      const judgmentMap = new Map<string, string>();
-      if (citations.length > 0) {
-        const matchingJudgments = await db.select({
-          id: judgments.id,
-          citation: judgments.citationString
-        })
-        .from(judgments)
-        .where(inArray(judgments.citationString, citations));
-        
-        for (const row of matchingJudgments) {
-          judgmentMap.set(row.citation, row.id);
+      // Verification, identical to the MCP tool in server/mcp-server.ts.
+      // A case_law row is LLM-extracted: its citation can be malformed or
+      // invented, and even a real citation can sit in front of a judgment whose
+      // stored text belongs to a different case. A record is only citable when
+      // the citation resolves to a judgment AND that judgment's text is its own.
+      const groundTruth = {
+        id: judgments.id,
+        citation: judgments.citationString,
+        title: judgments.title,
+        court: judgments.courtNameSnapshot,
+        decisionDate: judgments.decisionDate,
+        textStatus: judgments.textStatus,
+        textTrueCitation: judgments.textTrueCitation,
+        textLen: sql<number>`length(${judgments.fullText})`,
+      };
+
+      const mapped = [];
+      const seenJudgmentIds = new Set<string>();
+      for (const j of result.rows) {
+        const v: any = j.citation ? await resolveJudgment(String(j.citation), groundTruth) : undefined;
+        if (!v) {
+          mapped.push({
+            id: `caseLaw:${j.id}`,
+            citation: j.citation,
+            court: j.court,
+            title: j.title,
+            summary: j.summary,
+            decisionYear: j.citationYear,
+            verified: false,
+            warning: "This citation could not be matched to any judgment record and may not exist. Do not cite it.",
+          });
+          continue;
         }
+        if (seenJudgmentIds.has(String(v.id))) continue;
+        seenJudgmentIds.add(String(v.id));
+
+        const hasBody = (v.textLen ?? 0) >= 200;
+        if (v.textStatus === "own" && hasBody) {
+          mapped.push({
+            id: v.id,
+            citation: v.citation,
+            court: v.court || j.court,
+            title: v.title || j.title,
+            summary: j.summary,
+            decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : j.citationYear,
+            verified: true,
+            textIntegrity: "own",
+            sourceUrl: judgmentSourceUrl(String(v.id)),
+          });
+          continue;
+        }
+        // Citation is real, but the title and summary describe another case.
+        const belongsTo = String(v.textTrueCitation || "").trim();
+        mapped.push({
+          id: v.id,
+          citation: v.citation,
+          court: v.court || undefined,
+          decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : undefined,
+          verified: false,
+          textIntegrity: !hasBody ? "missing" : v.textStatus === "mislabeled" ? "mislabeled" : "unknown",
+          belongsTo: belongsTo || undefined,
+          warning: !hasBody
+            ? "This citation is real, but no judgment text is stored for it. Its title and summary are withheld. Do not cite it."
+            : belongsTo
+              ? `This citation is real, but the text stored under it is the judgment reported as ${belongsTo}. Its title and summary are withheld. Do not cite this record's holdings.`
+              : "This citation is real, but the text stored under it could not be confirmed to be its own. Its title and summary are withheld.",
+        });
       }
 
+      const includeUnverified = req.body?.includeUnverified === true;
+      const kept = includeUnverified ? mapped : mapped.filter((r) => r.verified);
+
       res.json({
-        judgments: result.rows.map((j) => ({
-          id: judgmentMap.get(j.citation) || String(j.id),
-          citation: j.citation,
-          court: j.court,
-          title: j.title,
-          summary: j.summary,
-          decisionYear: j.citationYear,
-        })),
+        verifiedOnly: !includeUnverified,
+        droppedUnverified: mapped.length - kept.length,
+        judgments: kept,
       });
     } catch (err) {
       console.error("[MCP] Search case law failed:", err);
@@ -23410,16 +23462,14 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
           }
         }
 
-        // Now lookup by citation in judgments table to get the UUID
-        const [resolvedRow] = await db.select({ id: judgments.id })
-          .from(judgments)
-          .where(eq(judgments.citationString, targetId))
-          .limit(1);
-          
+        // Structured resolution against the (year, journal, page) unique index.
+        // Exact string equality missed every spacing and punctuation variant,
+        // e.g. "PLD 1968 SC 281" never matched the stored "1968 PLD 281".
+        const resolvedRow: any = await resolveJudgment(targetId, { id: judgments.id });
         if (!resolvedRow) {
           return res.status(404).json({ error: `Judgment with ID or citation '${targetId}' not found.` });
         }
-        targetId = resolvedRow.id;
+        targetId = String(resolvedRow.id);
       }
 
       const detail = await storage.getJudgmentDetail(targetId);
@@ -23430,6 +23480,19 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       // Update key last used
       db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
 
+      // Around 20% of judgments hold a body that belongs to a different case.
+      // Say so rather than returning it as this citation's judgment.
+      const [provenance] = await db.select({
+        textStatus: judgments.textStatus,
+        textTrueCitation: judgments.textTrueCitation,
+      })
+        .from(judgments)
+        .where(eq(judgments.id, detail.id))
+        .limit(1);
+
+      const textCheck = await assessJudgmentText(
+        detail.id, detail.fullText, provenance?.textStatus, provenance?.textTrueCitation);
+
       res.json({
         id: detail.id,
         citation: detail.citation,
@@ -23439,6 +23502,8 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         headnotes: detail.headnotes,
         fullText: detail.fullText,
         pdfUrl: detail.pdfUrl,
+        sourceUrl: judgmentSourceUrl(detail.id),
+        ...textCheck,
       });
     } catch (err) {
       console.error("[MCP] Get judgment failed:", err);
