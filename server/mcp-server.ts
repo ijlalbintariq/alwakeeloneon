@@ -287,7 +287,6 @@ export function registerAllTools(server: McpServer) {
     await enforceQuota(userId, "search-judgments");
 
     const t0 = Date.now();
-    // Call the exact same retrieval pipeline
     const result = await retrieveLegalCaseLaw({
       userId,
       query,
@@ -295,48 +294,65 @@ export function registerAllTools(server: McpServer) {
     });
     const latency = Date.now() - t0;
 
-    // Track usage metrics
     await logToolUsage(userId, "search-judgments", query);
 
     // -------------------------------------------------------------------
-    // Resolve case_law citations → judgments UUIDs using fuzzy normalized
-    // matching. The old exact-match via inArray failed when citation
-    // formats diverged (e.g. "2001 SCMR 1986" vs "2001  SCMR  1986"),
-    // leaking numeric case_law IDs that caused get_judgment to return the
-    // wrong judgment entirely.
+    // Resolve result rows to judgment UUIDs.
+    //
+    // Keyword-path rows (from storage.searchCaseLaw) already carry the
+    // judgment UUID as `(row as any).judgmentId`.
+    //
+    // RAG-path rows (from case_law table) don't — for those, do a single
+    // bulk citation lookup using exact normalized match (not LIKE %...%
+    // which caused partial collisions returning wrong judgments).
     // -------------------------------------------------------------------
-    const judgmentMap = new Map<string, { id: string; snippet: string }>();
-    for (const row of result.rows) {
-      if (!row.citation) continue;
-      const variants = normalizeCitation(row.citation);
-      let found = false;
-      for (const variant of variants) {
-        const [match] = await db.select({
-          id: judgments.id,
-          citation: judgments.citationString,
-          headnotes: judgments.headnotes,
-        })
-        .from(judgments)
-        .where(like(
-          sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
-          `%${variant}%`,
-        ))
-        .limit(1);
-        if (match) {
-          judgmentMap.set(row.citation, {
-            id: match.id,
-            snippet: (match.headnotes || "").slice(0, 500),
-          });
-          found = true;
-          break;
-        }
+    const needsResolution: Array<{ idx: number; citation: string }> = [];
+    const resolvedIds: Map<number, string> = new Map();
+
+    for (let i = 0; i < result.rows.length; i++) {
+      const row = result.rows[i] as any;
+      if (row.judgmentId && typeof row.judgmentId === "string" && row.judgmentId.includes("-")) {
+        // Already has UUID from keyword path
+        resolvedIds.set(i, row.judgmentId);
+      } else if (row.citation) {
+        needsResolution.push({ idx: i, citation: row.citation });
       }
-      // No judgment found — leave unmapped; we'll mark sourceTable below
-      if (!found) {
-        judgmentMap.set(row.citation, {
-          id: `caseLaw:${row.id}`,
-          snippet: (row.summary || "").slice(0, 500),
-        });
+    }
+
+    // Bulk resolve remaining citations → judgment UUIDs
+    if (needsResolution.length > 0) {
+      for (const item of needsResolution) {
+        const variants = normalizeCitation(item.citation);
+        let found = false;
+        for (const variant of variants) {
+          // Use exact match on normalized form (= not LIKE) to avoid
+          // "2001SCMR1986" matching "2001SCMR19861"
+          const [match] = await db.select({ id: judgments.id })
+            .from(judgments)
+            .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
+            .limit(1);
+          if (match) {
+            resolvedIds.set(item.idx, match.id);
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          // Try LIKE as last resort (some citations have extra suffixes)
+          for (const variant of variants) {
+            const [match] = await db.select({ id: judgments.id })
+              .from(judgments)
+              .where(like(
+                sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
+                `%${variant}%`,
+              ))
+              .limit(1);
+            if (match) {
+              resolvedIds.set(item.idx, match.id);
+              break;
+            }
+          }
+        }
       }
     }
 
@@ -346,18 +362,17 @@ export function registerAllTools(server: McpServer) {
       retrieval_version: RETRIEVAL_VERSION,
       query,
       latencyMs: latency,
-      judgments: result.rows.map((j) => {
-        const resolved = judgmentMap.get(j.citation);
-        const isCaseLawOnly = resolved?.id?.startsWith("caseLaw:");
+      judgments: result.rows.map((j, i) => {
+        const uuid = resolvedIds.get(i);
         return {
-          id: resolved?.id || `caseLaw:${j.id}`,
+          id: uuid || `caseLaw:${j.id}`,
           citation: j.citation,
           court: j.court,
           title: j.title,
           summary: j.summary,
-          snippet: resolved?.snippet || (j.summary || "").slice(0, 500),
+          snippet: (j.summary || "").slice(0, 500),
           decisionYear: j.citationYear,
-          sourceTable: isCaseLawOnly ? "case_law" : "judgments",
+          sourceTable: uuid ? "judgments" : "case_law",
         };
       }),
     };
@@ -503,29 +518,38 @@ export function registerAllTools(server: McpServer) {
         throw new McpError(ErrorCode.InvalidRequest, `Case law record not found: ${targetId}`);
       }
 
-      // Try one more time to find the matching judgment via fuzzy citation
+      // Try one more time to find the matching judgment via citation
       const variants = normalizeCitation(row.citation);
       let judgmentRow: { id: string; citation: string; title: string; headnotes: string | null; fullText: string; courtNameSnapshot: string | null; decisionDate: Date | null; pdfUrl: string | null } | undefined;
+      const judgmentSelect = {
+        id: judgments.id,
+        citation: judgments.citationString,
+        title: judgments.title,
+        headnotes: judgments.headnotes,
+        fullText: judgments.fullText,
+        courtNameSnapshot: judgments.courtNameSnapshot,
+        decisionDate: judgments.decisionDate,
+        pdfUrl: judgments.pdfUrl,
+      };
+      // Try exact normalized match first
       for (const variant of variants) {
-        const [match] = await db.select({
-          id: judgments.id,
-          citation: judgments.citationString,
-          title: judgments.title,
-          headnotes: judgments.headnotes,
-          fullText: judgments.fullText,
-          courtNameSnapshot: judgments.courtNameSnapshot,
-          decisionDate: judgments.decisionDate,
-          pdfUrl: judgments.pdfUrl,
-        })
-        .from(judgments)
-        .where(like(
-          sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
-          `%${variant}%`,
-        ))
-        .limit(1);
-        if (match) {
-          judgmentRow = match;
-          break;
+        const [match] = await db.select(judgmentSelect)
+          .from(judgments)
+          .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
+          .limit(1);
+        if (match) { judgmentRow = match; break; }
+      }
+      // LIKE fallback only if exact failed
+      if (!judgmentRow) {
+        for (const variant of variants) {
+          const [match] = await db.select(judgmentSelect)
+            .from(judgments)
+            .where(like(
+              sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
+              `%${variant}%`,
+            ))
+            .limit(1);
+          if (match) { judgmentRow = match; break; }
         }
       }
 
@@ -583,17 +607,25 @@ export function registerAllTools(server: McpServer) {
       const searchVariants = normalizeCitation(targetId);
 
       let resolvedRow: { id: string; title: string } | undefined;
+      // Try exact normalized match first
       for (const variant of searchVariants) {
         const [row] = await db.select({ id: judgments.id, title: judgments.title })
           .from(judgments)
-          .where(like(
-            sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
-            `%${variant}%`,
-          ))
+          .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
           .limit(1);
-        if (row) {
-          resolvedRow = row;
-          break;
+        if (row) { resolvedRow = row; break; }
+      }
+      // LIKE fallback only if exact failed
+      if (!resolvedRow) {
+        for (const variant of searchVariants) {
+          const [row] = await db.select({ id: judgments.id, title: judgments.title })
+            .from(judgments)
+            .where(like(
+              sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
+              `%${variant}%`,
+            ))
+            .limit(1);
+          if (row) { resolvedRow = row; break; }
         }
       }
         
