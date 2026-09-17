@@ -558,7 +558,12 @@ export interface IStorage {
   getCourtsRef(): Promise<Array<{ id: number; code: string; name: string; level: string }>>;
   searchJudgmentsByCitation(params: { year: number; journalCode?: string; page: number; court?: string }): Promise<CitationSearchResult[]>;
   /** Full-text search the judgments table by keywords. Returns CaseLaw-shaped objects for pipeline compatibility. */
-  searchJudgmentsByKeywords(query: string, limit: number): Promise<CaseLaw[]>;
+  searchJudgmentsByKeywords(
+    query: string,
+    limit: number,
+    court?: string,
+    options?: { fastAutocomplete?: boolean },
+  ): Promise<CaseLaw[]>;
   findJudgmentByCitationString(citation: string, limit: number): Promise<CaseLaw[]>;
   getJudgmentDetail(id: string): Promise<JudgmentDetail | undefined>;
   createJudgment(entry: InsertJudgment): Promise<Judgment>;
@@ -2180,7 +2185,16 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async searchJudgmentsByKeywords(query: string, limit: number = 10, court?: string): Promise<CaseLaw[]> {
+  // `options` was referenced by fetchRows() below but never declared as a parameter,
+  // so every call threw "ReferenceError: options is not defined". Most call sites wrap
+  // this in .catch(() => []), which silently turned the judgments table into a dead
+  // retrieval source across the whole app.
+  async searchJudgmentsByKeywords(
+    query: string,
+    limit: number = 10,
+    court?: string,
+    options: { fastAutocomplete?: boolean } = {},
+  ): Promise<CaseLaw[]> {
     const safeQuery = String(query || "").trim();
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 20));
     

@@ -1,5 +1,6 @@
 import type { ChatCompletionTool } from "openai/resources/chat/completions";
 import { storage } from "../storage";
+import type { CaseLaw } from "@shared/schema";
 import { retrieveForQuery } from "../rag/rag-service";
 
 // ── Tool schema (sent to DeepSeek so it knows when/how to call it) ──────────
@@ -234,8 +235,17 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
     const perQueryLimit = Math.max(5, Math.ceil(safeLimit / expandedQueries.length));
     
     const [caseLawResults, judgmentResults, vectorResultsRaw, ...synonymResults] = await Promise.all([
-      storage.searchCaseLaw(query, safeLimit, { court: court || undefined }),
-      storage.searchJudgmentsByKeywords(query, safeLimit),
+      // Each source must fail independently. One unguarded rejection here took the
+      // whole Promise.all down, so a working case-law result set was discarded and
+      // the tool reported "found: 0" on a corpus that did have the authorities.
+      storage.searchCaseLaw(query, safeLimit, { court: court || undefined }).catch((err): CaseLaw[] => {
+        console.warn("[executeCitationSearch:CaseLaw] search failed:", err?.message || err);
+        return [];
+      }),
+      storage.searchJudgmentsByKeywords(query, safeLimit).catch((err): CaseLaw[] => {
+        console.warn("[executeCitationSearch:Judgments] search failed:", err?.message || err);
+        return [];
+      }),
       retrieveForQuery({
         userId: "global-admin-judgments",
         query,

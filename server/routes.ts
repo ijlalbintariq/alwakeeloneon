@@ -2468,11 +2468,23 @@ async function callLegalDraftingAI(
   systemPrompt: string,
   userText: string,
   maxTokens: number,
-  options?: { timeoutProfile?: TimeoutProfile; temperature?: number; response_format?: any },
+  options?: {
+    timeoutProfile?: TimeoutProfile;
+    temperature?: number;
+    response_format?: any;
+    /** Turns injected before the main instruction, e.g. the retrieved case-law pool. */
+    priorTurns?: Array<{ role: "user" | "assistant"; content: string }>;
+  },
 ): Promise<{ text: string; model: string }> {
   const timeoutConfig = MODEL_TIMEOUT_PROFILES[options?.timeoutProfile || "default"] || MODEL_TIMEOUT_PROFILES.default;
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
-  const messages = buildMessages(systemPrompt, [{ role: "user", parts: [{ text: userText }] }]);
+  const messages = buildMessages(systemPrompt, [
+    ...(options?.priorTurns || []).map((turn) => ({
+      role: turn.role === "assistant" ? "model" : "user",
+      parts: [{ text: turn.content }],
+    })),
+    { role: "user", parts: [{ text: userText }] },
+  ]);
   const startedAt = Date.now();
 
   // Primary: Gemini 3.0 Flash via OpenRouter
@@ -6055,6 +6067,64 @@ export function normalizeDraftingText(content: string): string {
     .trim();
 }
 
+// Word floors from the DOCUMENT LENGTH section of PAKISTANI_JUDICIAL_FORMAT_GUIDANCE.
+const LEGAL_DRAFT_WORD_FLOORS: Record<string, number> = {
+  "sessions-bail-application": 1500,
+  "sessions-pre-arrest-bail": 1500,
+  "high-court-bail-before-arrest": 1500,
+  "high-court-writ-petition": 2000,
+  "civil-suit-plaint": 2500,
+  "recovery-suit": 2500,
+  "high-court-civil-appeal": 2500,
+  "high-court-criminal-appeal": 2500,
+  "sessions-criminal-appeal": 2500,
+};
+
+/**
+ * Advisories are quality shortfalls against the template's own stated bar
+ * (length, 3 authorities, ground depth). They are reported, never blocking:
+ * failing the request on them would push most drafts into the repair loop.
+ */
+export function collectDraftAdvisories(
+  content: string,
+  docType: string,
+  /**
+   * Count of citations the reference resolver actually verified. Preferred over
+   * scanning the prose: journal codes are not uniformly spaced in the corpus
+   * (e.g. "2024SHC826"), so a regex undercounts real authorities.
+   */
+  verifiedCitationCount?: number,
+): string[] {
+  const prose = String(content || "").replace(/<!--\s*INDEX_TABLE_START\s*-->[\s\S]*?<!--\s*INDEX_TABLE_END\s*-->/gi, "");
+  const advisories: string[] = [];
+
+  const floor = LEGAL_DRAFT_WORD_FLOORS[docType];
+  const words = prose.trim().split(/\s+/).filter(Boolean).length;
+  if (floor && words < floor) {
+    advisories.push(`Draft is ${words} words; this filing type expects at least ${floor}.`);
+  }
+
+  const NON_COURT = new Set([
+    "application-to-police", "legal-notice", "affidavit", "power-of-attorney",
+    "authority-letter", "nikah-nama-divorce",
+  ]);
+  if (!NON_COURT.has(docType)) {
+    const cited = typeof verifiedCitationCount === "number"
+      ? verifiedCitationCount
+      : new Set(
+          [...prose.matchAll(/\b(?:19|20)\d{2}\s*(?:PLD|SCMR|YLR|MLD|CLC|CLD|PCRLJ|SHC|LHC)\s*\d+\b|\bPLD\s+(?:19|20)\d{2}\b/gi)].map((m) =>
+            m[0].replace(/\s+/g, "").toUpperCase(),
+          ),
+        ).size;
+    if (cited < 3) {
+      advisories.push(`Only ${cited} case law authority(ies) cited; the drafting standard expects 3.`);
+    }
+  }
+
+  return advisories;
+}
+
+
 export function normalizeCourtReadyDraftingText(content: string): string {
   const PARTY_ROLE_PATTERN =
     /^(PETITIONER|PETITIONERS|RESPONDENT|RESPONDENTS|APPELLANT|APPELLANTS|DEFENDANT|DEFENDANTS|PLAINTIFF|PLAINTIFFS|COMPLAINANT|COMPLAINANTS|ACCUSED)$/i;
@@ -6169,13 +6239,36 @@ export function normalizeCourtReadyDraftingText(content: string): string {
   ]);
   const thatTheRequiredSections = new Set(["BRIEF FACTS", "GROUNDS"]);
 
+  // Words that must never be preceded by the article in "That the ...".
+  // "there" is the common miss: it starts with "the" but takes no article, so
+  // "That there is no apprehension" was being rewritten to "That the there is...".
+  // One list feeds both the pre-check and the post-cleanup so they cannot drift.
+  const NO_ARTICLE_AFTER_THAT =
+    "the|a|an|at|on|in|no|it|he|she|this|these|those|said|such|further|aforesaid|" +
+    "there|therein|thereafter|thereby|therefore|thereupon|they|their|them|" +
+    "both|all|any|each|every|neither|either|nothing|none|per|vide|despite|during|" +
+    "after|before|upon|under|pursuant|owing|due|according|as|if|when|while|since|because";
+  const noArticleAfterThatRe = new RegExp(`^(${NO_ARTICLE_AFTER_THAT})\\b`, "i");
+  const thatTheCleanupRe = new RegExp(`\\bThat the (${NO_ARTICLE_AFTER_THAT})\\b`, "gi");
+
   const ensureThatTheLine = (line: string): string => {
     const raw = line.trim();
     if (!raw) return line;
 
     const markerMatch = raw.match(/^((?:\(?\d+\)?|[A-Za-z]|[ivxlcdmIVXLCDM]+)[.)])\s*(.*)$/);
-    const marker = markerMatch ? markerMatch[1] : "";
+    let marker = markerMatch ? markerMatch[1] : "";
     let body = markerMatch ? markerMatch[2].trim() : raw;
+
+    // A ground often carries its caption on the same line as its text, e.g.
+    // "B. CASE OF FURTHER INQUIRY: That the case against the applicant...".
+    // The caption is a heading, so it keeps its own wording; only the sentence
+    // after the colon takes the leading phrase. Without this the caption itself
+    // was rewritten to "B. That the CASE OF FURTHER INQUIRY: That the case...".
+    const captionMatch = body.match(/^([A-Z][A-Z0-9\s/&()'’.,-]{3,70}:)\s*(\S[\s\S]*)$/);
+    if (captionMatch) {
+      marker = marker ? `${marker} ${captionMatch[1]}` : captionMatch[1];
+      body = captionMatch[2].trim();
+    }
 
     const plainBody = body.replace(/\s{2,}/g, " ").trim();
     const headingLike =
@@ -6203,7 +6296,7 @@ export function normalizeCourtReadyDraftingText(content: string): string {
     else if (/^That\s/i.test(body)) {
       const afterThat = body.replace(/^that\s+/i, "").trim();
       // If next word is an article/preposition that pairs badly with "That the", keep "That" only
-      if (/^(the|a|an|at|on|in|no|it|he|she|this|these|those|said|such|further|aforesaid)\b/i.test(afterThat)) {
+      if (noArticleAfterThatRe.test(afterThat)) {
         body = `That ${afterThat}`;
       } else {
         body = `That the ${afterThat}`;
@@ -6213,9 +6306,11 @@ export function normalizeCourtReadyDraftingText(content: string): string {
     else {
       // Don't blindly prepend "That the" — check what the sentence starts with
       const lower = body.toLowerCase();
-      if (/^(the |a |an |at |on |in |no |it |he |she |this |these |those |said |such |further |aforesaid )/.test(lower)) {
-        // These already have an article/preposition — just add "That"
-        body = `That ${body}`;
+      if (noArticleAfterThatRe.test(lower)) {
+        // These already have an article/preposition — just add "That".
+        // The matched word is always a function word, so drop its sentence-start
+        // capital: "The applicant" became "That The applicant" otherwise.
+        body = `That ${body.charAt(0).toLowerCase()}${body.slice(1)}`;
       } else if (/^(applicant|petitioner|plaintiff|accused|respondent|defendant|complainant|deponent)/i.test(lower)) {
         body = `That the ${body}`;
       } else {
@@ -6225,19 +6320,8 @@ export function normalizeCourtReadyDraftingText(content: string): string {
 
     // Post-cleanup: fix known broken grammar patterns
     body = body
-      .replace(/\bThat the the\b/gi, "That the")
-      .replace(/\bThat the at the\b/gi, "That at the")
-      .replace(/\bThat the no\b/gi, "That no")
-      .replace(/\bThat the it\b/gi, "That it")
-      .replace(/\bThat the he\b/gi, "That he")
-      .replace(/\bThat the she\b/gi, "That she")
-      .replace(/\bThat the this\b/gi, "That this")
-      .replace(/\bThat the these\b/gi, "That these")
-      .replace(/\bThat the those\b/gi, "That those")
-      .replace(/\bThat the further\b/gi, "That further")
-      .replace(/\bThat the aforesaid\b/gi, "That the aforesaid")
-      .replace(/\bThat the on\b/gi, "That on")
-      .replace(/\bThat the in\b/gi, "That in")
+      .replace(thatTheCleanupRe, "That $1")
+      .replace(/\bThat aforesaid\b/g, "That the aforesaid")
       .replace(/\s{2,}/g, " ")
       .trim();
     return marker ? `${marker} ${body}` : body;
@@ -12010,6 +12094,20 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
   });
 
   // 2. Drafting Studio
+  const legalDraftInputSchema = z.object({
+    title: z.string().trim().min(1).max(240),
+    templateType: z.string().trim().max(120).nullish(),
+    content: z.string().min(1).max(500_000),
+    status: z.enum(["draft", "final", "archived"]).optional(),
+    metadata: z
+      .object({
+        textContent: z.string().max(250_000).optional(),
+        pageProfileId: z.string().max(60).optional(),
+        category: z.string().max(120).optional(),
+      })
+      .nullish(),
+  });
+
   app.get("/api/drafts", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -12041,8 +12139,11 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const { title, templateType, content, status, metadata } = req.body;
-      if (!title || !content) return res.status(400).json({ message: "title and content required" });
+      const parsed = legalDraftInputSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid draft payload" });
+      }
+      const { title, templateType, content, status, metadata } = parsed.data;
       const [draft] = await db.insert(legalDrafts).values({
         userId,
         title,
@@ -12064,7 +12165,11 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
     try {
       const draftId = parseInt(req.params.id);
       if (isNaN(draftId)) return res.status(400).json({ message: "Invalid ID" });
-      const { title, templateType, content, status, metadata } = req.body;
+      const parsed = legalDraftInputSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid draft payload" });
+      }
+      const { title, templateType, content, status, metadata } = parsed.data;
       const updates: Record<string, any> = { updatedAt: new Date() };
       if (title !== undefined) updates.title = title;
       if (templateType !== undefined) updates.templateType = templateType;
@@ -13971,7 +14076,7 @@ Mandatory section flow (in this order):
 ${headingOrder}`;
   }
 
-  function validateDraftForSelectedType(content: string, docType: LegalDraftingDocType): { ok: boolean; issues: string[] } {
+  function validateDraftForSelectedType(content: string, docType: LegalDraftingDocType): { ok: boolean; issues: string[]; advisories: string[] } {
     const text = normalizeCourtReadyDraftingText(content || "");
     const headerBlock = text.split("\n").slice(0, 40).join("\n");
     const issues: string[] = [];
@@ -14012,7 +14117,7 @@ ${headingOrder}`;
       }
     }
 
-    return { ok: issues.length === 0, issues };
+    return { ok: issues.length === 0, issues, advisories: collectDraftAdvisories(content, docType) };
   }
 
   async function repairInvalidLegalDraft(
@@ -14152,7 +14257,18 @@ ${content}`;
 
     const indexBlock = `\n\nINDEX OF DOCUMENTS\n\n<!-- INDEX_TABLE_START -->\n<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin:16px 0;"><thead><tr style="background:#1a2332;color:#fff;"><th style="padding:8px 12px;text-align:left;font-weight:bold;">S.No.</th><th style="padding:8px 12px;text-align:left;font-weight:bold;">Description of Documents</th><th style="padding:8px 12px;text-align:center;font-weight:bold;">Annexures</th><th style="padding:8px 12px;text-align:center;font-weight:bold;">Page No.</th></tr></thead><tbody>${tableRows}</tbody></table>\n<!-- INDEX_TABLE_END -->\n\n`;
 
-    // Insert AFTER the cause title heading but BEFORE "RESPECTFULLY SHEWETH"
+    // The index belongs on the COVER page, never on the memo page.
+    // Drafts repeat the court heading to start page 2, so when a second heading
+    // exists the cover page ends just before it — anchoring to RESPECTFULLY
+    // SHEWETH instead put the index on page 2, after the repeated header.
+    const courtHeadingRe = /^[ \t]*IN THE (?:HON(?:'|’)?BLE |HONOURABLE )?(?:COURT OF|[A-Z][A-Z .,()'/-]*?(?:HIGH COURT|SUPREME COURT|SESSIONS|TRIBUNAL|COURT))[^\n]*$/gim;
+    const courtHeadings = [...cleanedText.matchAll(courtHeadingRe)];
+    if (courtHeadings.length >= 2 && typeof courtHeadings[1].index === "number") {
+      const secondHeadingAt = courtHeadings[1].index;
+      return cleanedText.slice(0, secondHeadingAt) + indexBlock.trimEnd() + "\n\n" + cleanedText.slice(secondHeadingAt);
+    }
+
+    // Single-header drafts: fall back to inserting before the body opener.
     // IMPORTANT: Use cleanedText (not draftText) so the AI's broken text/markdown tables are stripped
     const insertionPatterns = [
       /\n(\s*RESPECTFULLY SHEWETH\s*:?\s*\n)/i,
@@ -15773,7 +15889,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             });
             draftedText = streamRefResolution.cleanedText || draftedText;
 
-            let streamValidation = { ok: true, issues: [] as string[] };
+            let streamValidation = { ok: true, issues: [] as string[], advisories: [] as string[] };
             if (selectedDocType && !useCustomDocType) {
               streamValidation = validateDraftForSelectedType(draftedText, selectedDocType);
               if (!streamValidation.ok) {
@@ -15794,6 +15910,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
                   streamValidation = {
                     ok: false,
                     issues: [...streamValidation.issues, 'Automatic structural repair failed.'],
+                    advisories: streamValidation.advisories,
                   };
                 }
               }
@@ -15814,6 +15931,12 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
               return;
             }
 
+            // Recompute against the verified reference list, same as the JSON path.
+            const streamAdvisories = collectDraftAdvisories(
+              draftedText,
+              selectedDocType || '',
+              streamRefResolution.references.caseLaw.length,
+            );
             // Send done event with all metadata
             res.write(`data: ${JSON.stringify({
               done: true,
@@ -15830,7 +15953,9 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
               references: streamRefResolution.references,
               styleMemory: styleMemoryMeta || undefined,
               recommendations: extractedRecs || [],
-              courtReady: true,
+              // Structurally valid is not the same as meeting the drafting standard.
+              courtReady: streamAdvisories.length === 0,
+              advisories: streamAdvisories,
               validation: streamValidation,
               contextCoverage: {
                 receivedChars: rawDraftText.length,
@@ -15842,9 +15967,14 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             return;
           } else {
             // ── Original non-streaming path ──
+            // The retrieved case-law pool must be injected here too. It was only
+            // wired into the streaming branch, so the AI Drafter panel (stream:false)
+            // was told to "cite ONLY judgments provided in the case-law turns above"
+            // while those turns were never sent — hence zero citations.
             const aiResult = await callLegalDraftingAI(sysInstruction, userInput, TOKEN_LIMITS.draft, {
               timeoutProfile: "analysis",
               temperature: 0.25,
+              priorTurns: draftCaseLawTurns,
             });
             await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: safePrompt });
             extractedRecs = extractCaseLawRecommendations(aiResult.text);
@@ -15889,12 +16019,18 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
           return res.status(502).json({ message: "AI draft failed citation integrity checks" });
         }
 
-        let validation = { ok: true, issues: [] as string[] };
+        let validation = { ok: true, issues: [] as string[], advisories: [] as string[] };
         if (selectedDocType && !useCustomDocType) {
           validation = validateDraftForSelectedType(draftedText, selectedDocType);
           if (isLocalizedEdit) {
             const baselineValidation = validateDraftForSelectedType(rawDraftText, selectedDocType);
-            const issueKey = (issue: string) => issue.replace(/^\d+\s+of\s+\d+\s+(legal ground\(s\) are under-developed\.)[\s\S]*$/i, "$1");
+            // Collapse the counts so "1 of 4 legal ground(s) are too brief" and
+            // "2 of 4 legal ground(s) are too brief" compare equal. Matching on the
+            // wording alone drifted from validateDraftForSelectedType (which now says
+            // "too brief", not "under-developed"), so a pre-existing thin-grounds
+            // issue read as newly introduced and every bounded edit was rejected.
+            const issueKey = (issue: string) =>
+              issue.replace(/^\d+\s+of\s+\d+\s+(legal ground\(s\)\s+are\s+)/i, "$1").trim();
             const baselineIssues = new Set(baselineValidation.issues.map(issueKey));
             const introducedIssues = validation.issues.filter((issue) => !baselineIssues.has(issueKey(issue)));
             if (introducedIssues.length > 0) {
@@ -15924,6 +16060,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
               validation = {
                 ok: false,
                 issues: [...validation.issues, "Automatic structural repair failed."],
+                advisories: validation.advisories,
               };
             }
           }
@@ -15940,6 +16077,13 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
         }
 
         draftedText = draftedText.replace(/```references[\s\S]*?```/gi, "").trim();
+        // Recompute against the verified reference list rather than the validator's
+        // regex-only count, and against the final post-processed text.
+        const finalAdvisories = collectDraftAdvisories(
+          draftedText,
+          selectedDocType || "",
+          referenceResolution.references.caseLaw.length,
+        );
         return res.json({
           clause: draftedText,
           sourceId: `legal-${selectedDocType || "custom-input"}`,
@@ -15955,7 +16099,9 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
           references: referenceResolution.references,
           styleMemory: styleMemoryMeta || undefined,
           recommendations: typeof extractedRecs !== "undefined" ? extractedRecs : [],
-          courtReady: validation.ok,
+          // Structurally valid is not the same as meeting the drafting standard.
+          courtReady: validation.ok && finalAdvisories.length === 0,
+          advisories: finalAdvisories,
           validation,
           contextCoverage: {
             receivedChars: rawDraftText.length,
@@ -18438,7 +18584,15 @@ Facts: ${brief.facts}`;
       // 4. Strip references, recommendations, and think blocks
       safeContent = normalizeDraftingText(safeContent);
 
-      res.json({ textContent: safeContent });
+      // 5. Same citation integrity pass the drafting studio applies, so the first
+      //    AI draft cannot ship citations that a later edit would have removed.
+      const briefReferences = await resolveLegalDraftReferences(safeContent, {
+        stripUnverifiedCaseCitations: true,
+        unresolvedCaseCitationPlaceholder: "",
+      });
+      safeContent = normalizeDraftingText(briefReferences.cleanedText || safeContent);
+
+      res.json({ textContent: safeContent, references: briefReferences.references });
     } catch (err) {
       console.error("[AI Drafting] Failed to generate draft:", err);
       res.status(500).json({ message: "Failed to generate draft" });

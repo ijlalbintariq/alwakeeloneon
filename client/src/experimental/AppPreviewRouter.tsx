@@ -104,7 +104,8 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/preview/mcp" component={McpPublicLandingPage} />
         <Route path="/blog" component={PreviewBlog} />
         <Route path="/preview/blog" component={PreviewBlog} />
-        <Route path="/blog/:slug" component={PreviewBlogDetail} />\n        <Route path="/preview/blog/:slug" component={PreviewBlogDetail} />
+        <Route path="/blog/:slug" component={PreviewBlogDetail} />
+        <Route path="/preview/blog/:slug" component={PreviewBlogDetail} />
         <Route path="/privacy" component={PreviewPrivacy} />
         <Route path="/preview/privacy" component={PreviewPrivacy} />
         <Route path="/terms" component={PreviewTerms} />
