@@ -230,6 +230,24 @@ export function parseCitation(raw: string, knownJournals: Set<string>): { year: 
     }
   }
 
+  // The rule above only joins a letter to a letter, so "2021 P SC 1345" keeps
+  // "P" and "SC" apart and the journal PSC is never seen. Join adjacent
+  // alphabetic tokens when, and only when, the join is itself a known journal
+  // code: that cannot invent a journal, it can only recognise a spaced one.
+  for (let i = 0; i < tokens.length - 1; i++) {
+    if (!/^[A-Z]+$/.test(tokens[i])) continue;
+    for (let span = 3; span >= 2; span--) {
+      const parts = tokens.slice(i, i + span);
+      if (parts.length < span) continue;
+      if (!parts.every((t) => /^[A-Z]+$/.test(t))) continue;
+      const joined = parts.join("");
+      if (joined.length <= 8 && knownJournals.has(joined)) {
+        tokens.splice(i, span, joined);
+        break;
+      }
+    }
+  }
+
   const yearIdx = tokens.findIndex((t) => /^(?:1[89]|20)\d{2}$/.test(t));
   if (yearIdx === -1) return null;
 
