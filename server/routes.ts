@@ -23559,7 +23559,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       // from an LLM-extracted index, so a citation in here is not evidence that
       // the judgment exists. Check each one against the judgments table and say
       // so inline, exactly as the MCP legal_research tool does.
-      const rawCitations = extractCitations(rawContext);
+      // Capped exactly as the MCP tool caps it: each unresolvable citation costs
+      // an unindexed scan, so an uncapped list is a request-time hazard.
+      const rawCitations = extractCitations(rawContext).slice(0, 40);
       const verifiedMap = await verifyCitations(rawCitations);
       const citations = rawCitations.map((c) => ({
         citation: c,

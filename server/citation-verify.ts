@@ -271,6 +271,21 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
   const codes = await getJournalCodes();
   const known = new Set(codes.keys());
 
+  // Exact stored citation first. About 4,940 judgments carry a citation_string
+  // that is not a journal citation at all - case numbers such as
+  // "Const. P. 11/2026 (SHC)", or a citation with a seat appended - and those
+  // rows hold a synthetic page number. Parsing their text yields a (year,
+  // journal, page) triple that belongs to a DIFFERENT judgment, so the literal
+  // string has to win before any parsing is attempted.
+  const literal = String(raw || "").trim();
+  if (literal) {
+    const [exact] = await db.select(selection)
+      .from(judgments)
+      .where(eq(judgments.citationString, literal))
+      .limit(1);
+    if (exact) return exact;
+  }
+
   for (const part of splitCitations(raw)) {
     const parsed = parseCitation(part, known);
     if (parsed) {
@@ -286,6 +301,12 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
           .limit(1);
         if (hit) return hit;
       }
+      // The parser already produced year/journal/page. The string fallback
+      // below exists only for shapes the parser rejects, and it is an
+      // unindexed scan of all 234,837 rows (~176 ms each). Running it after a
+      // clean parse just burns a scan to reach the same answer, and
+      // legal_research does this once per citation in a RAG context.
+      continue;
     }
     for (const variant of normalizeCitation(part)) {
       const [hit] = await db.select(selection)
