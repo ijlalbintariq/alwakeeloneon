@@ -18,9 +18,9 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
 import {
   judgmentSourceUrl, resolveJudgment, assessJudgmentText,
-  normalizeCitation, extractCitations, verifyCitations,
+  extractCitations, verifyCitations,
 } from "./citation-verify";
-import { judgeCaseLinks, citationLinks, caseLaw, judgments, lawJournals, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
+import { judgeCaseLinks, citationLinks, caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
 import { eq, inArray, sql, and, gte, lte, desc, ilike, count, countDistinct, asc } from "drizzle-orm";
 import { uploadBufferToR2, uploadBufferToR2WithRetry } from "./r2-storage";
 import path from "node:path";
@@ -479,7 +479,7 @@ export function registerAllTools(server: McpServer) {
 
   // 3. Get Judgment Detail
   server.registerTool("get_judgment", {
-    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available. ASSISTANT INSTRUCTION: Use ONLY the text this tool returns; never supply a judgment body, holding, or quotation from memory. If 'textIntegrity' is 'mislabeled', the stored body is a DIFFERENT case - the one named in 'belongsTo' - so do not present it as this citation's judgment; tell the user and offer to fetch 'belongsTo' instead. If 'textIntegrity' is 'shared', the stored body is not uniquely bound to this citation - say so and do not attribute its contents to the citation. If 'textIntegrity' is 'missing', state that no judgment text is stored. The judgment file is whatever this tool returns and nothing else. Link to a file ONLY via the returned 'pdfUrl' or 'sourceUrl', copied verbatim. If 'pdfUrl' is absent, state that no PDF is stored and offer 'sourceUrl' instead; never construct, guess, or complete a file URL, and never claim a PDF exists. If this tool errors, report that the judgment was not found rather than answering from memory.",
+    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available. ASSISTANT INSTRUCTION: Use ONLY the text this tool returns; never supply a judgment body, holding, or quotation from memory. textIntegrity is one of 'own' (safe), 'mislabeled', 'unknown' or 'missing'. If 'textIntegrity' is 'mislabeled', the stored body is a DIFFERENT case - the one named in 'belongsTo' - so do not present it as this citation's judgment; tell the user and offer to fetch 'belongsTo' instead. If 'textIntegrity' is 'unknown', the stored body is not uniquely bound to this citation - say so and do not attribute its contents to the citation. If 'textIntegrity' is 'missing', state that no judgment text is stored. The judgment file is whatever this tool returns and nothing else. Link to a file ONLY via the returned 'pdfUrl' or 'sourceUrl', copied verbatim. If 'pdfUrl' is absent, state that no PDF is stored and offer 'sourceUrl' instead; never construct, guess, or complete a file URL, and never claim a PDF exists. If this tool errors, report that the judgment was not found rather than answering from memory.",
     inputSchema: {
       id: z.string().describe("The judgment UUID, citation string, or caseLaw:N ID from search results"),
     },
@@ -915,7 +915,7 @@ export function registerAllTools(server: McpServer) {
 
   // 7. Get Precedent Graph
   server.registerTool("get_precedent_graph", {
-    description: "Fetch the citation network for a judgment: the cases it cites and the cases that cite it, with treatment (referred_to, relied_upon, distinguished, overruled). Accepts a judgment UUID or a citation string. Each edge is extracted from the text of its SOURCE judgment, so an edge is only as trustworthy as that judgment's text: edges whose source holds text that is not its own are returned with reliable=false and must not be used to argue precedent. ASSISTANT INSTRUCTION: Only rely on edges with reliable=true. Never state that one case cited, relied on, distinguished or overruled another on the strength of a reliable=false edge, and never assert a citation relationship this tool did not return.",
+    description: "Fetch the citation network for a judgment: the cases it cites and the cases that cite it, with treatment (referred_to, relied_upon, distinguished, overruled). Accepts a judgment UUID or a citation string. Each edge is extracted from the text of its SOURCE judgment, so an edge is only as trustworthy as that judgment's text: edges whose source holds text that is not its own are returned with reliable=false and must not be used to argue precedent. ASSISTANT INSTRUCTION: Only rely on edges with reliable=true. If truncated is true the graph is incomplete - never conclude from it that a judgment was never overruled or distinguished; say the check was partial and offer to raise limit. Never state that one case cited, relied on, distinguished or overruled another on the strength of a reliable=false edge, and never assert a citation relationship this tool did not return.",
     inputSchema: {
       judgment: z.string().describe("The judgment UUID or citation string (e.g. '2013 PLD 793')"),
       limit: z.number().optional().default(50).describe("Maximum edges per direction (default 50, max 100)"),
@@ -945,6 +945,9 @@ export function registerAllTools(server: McpServer) {
         unreliableReason: z.string().optional(),
       })),
       unreliableEdges: z.number(),
+      outgoingTotal: z.number(),
+      incomingTotal: z.number(),
+      truncated: z.boolean(),
       note: z.string().optional(),
     },
     annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false }
@@ -986,17 +989,36 @@ export function registerAllTools(server: McpServer) {
       otherStatus: judgments.textStatus,
     };
 
+    // An unordered LIMIT drops edges in physical heap order. "overruled" is
+    // 184 of 666,683 links and "distinguished" 1,308, so the tail that decides
+    // whether a precedent still stands is exactly the tail an arbitrary cut
+    // discards. Order by consequence, and report the totals so a truncated
+    // graph can never read as a complete one.
+    const byConsequence = sql`case ${citationLinks.citationType}
+      when 'overruled' then 0 when 'distinguished' then 1
+      when 'relied_upon' then 2 else 3 end`;
+
     const outgoing = await db.select(edgeRow)
       .from(citationLinks)
       .innerJoin(judgments, eq(judgments.id, citationLinks.targetJudgmentId))
       .where(eq(citationLinks.sourceJudgmentId, root.id))
+      .orderBy(byConsequence)
       .limit(safeLimit);
 
     const incoming = await db.select(edgeRow)
       .from(citationLinks)
       .innerJoin(judgments, eq(judgments.id, citationLinks.sourceJudgmentId))
       .where(eq(citationLinks.targetJudgmentId, root.id))
+      .orderBy(byConsequence)
       .limit(safeLimit);
+
+    const [outTotal] = await db.select({ n: count() })
+      .from(citationLinks).where(eq(citationLinks.sourceJudgmentId, root.id));
+    const [inTotal] = await db.select({ n: count() })
+      .from(citationLinks).where(eq(citationLinks.targetJudgmentId, root.id));
+    const outgoingTotal = Number(outTotal?.n ?? outgoing.length);
+    const incomingTotal = Number(inTotal?.n ?? incoming.length);
+    const truncated = outgoingTotal > outgoing.length || incomingTotal > incoming.length;
 
     const nodes = new Map<string, any>();
     const edges: Array<{ source: string; target: string; treatment: string; reliable: boolean; unreliableReason?: string }> = [];
@@ -1011,6 +1033,17 @@ export function registerAllTools(server: McpServer) {
         textIntegrity: r.otherStatus ?? undefined,
       });
     };
+
+    // Every edge names the root, so the root must be in nodes or the graph
+    // references an id that does not exist in it.
+    nodes.set(String(root.id), {
+      id: String(root.id),
+      citation: String(root.citation),
+      title: root.title ?? null,
+      year: null,
+      court: null,
+      textIntegrity: root.textStatus ?? undefined,
+    });
 
     const rootTextIsOwn = root.textStatus === "own";
     for (const r of outgoing as any[]) {
@@ -1050,9 +1083,17 @@ export function registerAllTools(server: McpServer) {
       nodes: [...nodes.values()],
       edges,
       unreliableEdges,
-      note: unreliableEdges > 0
-        ? `${unreliableEdges} of ${edges.length} edge(s) were extracted from a judgment whose stored text is not its own and are marked reliable=false. Do not use them to argue precedent.`
-        : undefined,
+      outgoingTotal,
+      incomingTotal,
+      truncated,
+      note: [
+        unreliableEdges > 0
+          ? `${unreliableEdges} of ${edges.length} edge(s) were extracted from a judgment whose stored text is not its own and are marked reliable=false. Do not use them to argue precedent.`
+          : null,
+        truncated
+          ? `Only ${outgoing.length} of ${outgoingTotal} outgoing and ${incoming.length} of ${incomingTotal} incoming citations are shown, ordered so overruled and distinguished appear first. This graph is INCOMPLETE: do not state that this judgment has never been overruled or distinguished on the strength of it. Raise limit to see more.`
+          : null,
+      ].filter(Boolean).join(" ") || undefined,
     };
 
     return {

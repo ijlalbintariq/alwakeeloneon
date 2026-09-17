@@ -1,5 +1,5 @@
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
-import { resolveJudgment, assessJudgmentText, judgmentSourceUrl } from "./citation-verify";
+import { resolveJudgment, assessJudgmentText, judgmentSourceUrl, extractCitations, verifyCitations } from "./citation-verify";
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
@@ -23448,7 +23448,24 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       if (!allowed) return;
 
       let targetId = String(id).trim();
-      
+
+      // REST search emits "caseLaw:<id>" for rows it could not resolve, so this
+      // endpoint has to accept the ids its own sibling hands out. Resolve the
+      // case_law row to its citation and carry on; if it still does not resolve,
+      // return that row's own metadata rather than a bare 404.
+      let caseLawFallbackId: number | null = null;
+      if (targetId.startsWith("caseLaw:")) {
+        const n = Number(targetId.slice("caseLaw:".length));
+        if (!Number.isInteger(n) || n <= 0) {
+          return res.status(400).json({ error: `Invalid case law ID: ${targetId}` });
+        }
+        const [row] = await db.select({ citation: caseLaw.citation })
+          .from(caseLaw).where(eq(caseLaw.id, n)).limit(1);
+        if (!row) return res.status(404).json({ error: `Case law record not found: ${targetId}` });
+        caseLawFallbackId = n;
+        targetId = String(row.citation || "").trim();
+      }
+
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
       if (!isUuid) {
         // If it is a numeric ID from case_law table, resolve it to the citation string first
@@ -23467,6 +23484,21 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         // e.g. "PLD 1968 SC 281" never matched the stored "1968 PLD 281".
         const resolvedRow: any = await resolveJudgment(targetId, { id: judgments.id });
         if (!resolvedRow) {
+          if (caseLawFallbackId !== null) {
+            const [row] = await db.select().from(caseLaw).where(eq(caseLaw.id, caseLawFallbackId)).limit(1);
+            if (row) {
+              return res.json({
+                id: `caseLaw:${caseLawFallbackId}`,
+                citation: row.citation,
+                title: row.title,
+                courtName: row.court || "Pakistani Court",
+                headnotes: row.summary || undefined,
+                sourceTable: "case_law",
+                textIntegrity: "missing",
+                dataNote: "Full judgment text is not available for this record. The citation, title, court and summary shown are from the case_law index and could not be matched to a judgment record. Verify the citation independently before using it in a court filing.",
+              });
+            }
+          }
           return res.status(404).json({ error: `Judgment with ID or citation '${targetId}' not found.` });
         }
         targetId = String(resolvedRow.id);
@@ -23520,15 +23552,36 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const allowed = await checkUsageLimit(userId, "chat", res);
       if (!allowed) return;
 
-      const contextString = await gatherKnowledgeContextV2(query, userId, undefined, { module: req.body.module });
-      await logUsageCost(userId, "chat", "mcp-rag-context", query, contextString, { userQuery: query, skipQualityLog: true });
+      const rawContext = await gatherKnowledgeContextV2(query, userId, undefined, { module: req.body.module });
+      await logUsageCost(userId, "chat", "mcp-rag-context", query, rawContext, { userQuery: query, skipQualityLog: true });
+
+      // The RAG context carries citations as plain prose, and some of them come
+      // from an LLM-extracted index, so a citation in here is not evidence that
+      // the judgment exists. Check each one against the judgments table and say
+      // so inline, exactly as the MCP legal_research tool does.
+      const rawCitations = extractCitations(rawContext);
+      const verifiedMap = await verifyCitations(rawCitations);
+      const citations = rawCitations.map((c) => ({
+        citation: c,
+        verified: verifiedMap.has(c),
+        judgmentId: verifiedMap.get(c),
+      }));
+      const unverified = citations.filter((c) => !c.verified).map((c) => c.citation);
+
+      const banner = rawCitations.length === 0
+        ? "[CITATION VERIFICATION] No citations detected in this context. Do not introduce any citation of your own."
+        : unverified.length === 0
+          ? `[CITATION VERIFICATION] All ${citations.length} citation(s) in this context were matched to real judgment records and are safe to cite.`
+          : `[CITATION VERIFICATION] ${unverified.length} of ${citations.length} citation(s) in this context could NOT be matched to any judgment record and may not exist: ${unverified.join("; ")}. DO NOT cite these. Use the material descriptively without a citation, or verify via search_case_law / get_judgment first.`;
 
       // Update key last used
       db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
 
       res.json({
         query,
-        context: contextString,
+        context: `${banner}\n\n${rawContext}`,
+        citations,
+        unverifiedCitations: unverified.length,
       });
     } catch (err) {
       res.status(500).json({ error: "Legal research failed" });

@@ -233,14 +233,28 @@ export function parseCitation(raw: string, knownJournals: Set<string>): { year: 
   const yearIdx = tokens.findIndex((t) => /^(?:1[89]|20)\d{2}$/.test(t));
   if (yearIdx === -1) return null;
 
-  const journal = tokens.find((t) => knownJournals.has(t));
-  if (!journal) return null;
+  const journalIdx = tokens.findIndex((t) => knownJournals.has(t));
+  if (journalIdx === -1) return null;
+  const journal = tokens[journalIdx];
 
-  // Page is the last standalone number that is not the year token.
+  // The page is the FIRST number after the year/journal pair, not the last
+  // number in the string. Taking the last one made a pin cite resolve to a
+  // different real judgment: "2001 SCMR 1986 at 1988" bound to 2001 SCMR 1988.
+  // Intervening words are skipped so seat tokens ("PLD 2013 SC 793") and
+  // series names ("K.L.R. 2001 Labour & Service Cases 52") still parse.
+  const isNum = (t: string) => /^\d{1,5}$/.test(t);
   let page = -1;
-  for (let i = tokens.length - 1; i >= 0; i--) {
+  for (let i = Math.max(journalIdx, yearIdx) + 1; i < tokens.length; i++) {
     if (i === yearIdx) continue;
-    if (/^\d{1,5}$/.test(tokens[i])) { page = Number(tokens[i]); break; }
+    if (isNum(tokens[i])) { page = Number(tokens[i]); break; }
+  }
+  // Formats that put the page before the year/journal are rare but legal;
+  // fall back to a backward scan only when nothing follows.
+  if (page < 0) {
+    for (let i = Math.max(journalIdx, yearIdx) - 1; i >= 0; i--) {
+      if (i === yearIdx) continue;
+      if (isNum(tokens[i])) { page = Number(tokens[i]); break; }
+    }
   }
   if (page < 0) return null;
 
@@ -302,7 +316,7 @@ export async function assessJudgmentText(
   textStatus?: string | null,
   textTrueCitation?: string | null,
 ): Promise<{
-  textIntegrity: "missing" | "mislabeled" | "shared" | "unique";
+  textIntegrity: "missing" | "mislabeled" | "unknown" | "own";
   belongsTo?: string;
   sharedWith?: string[];
   textWarning?: string;
@@ -315,7 +329,7 @@ export async function assessJudgmentText(
     };
   }
 
-  if (textStatus === "own") return { textIntegrity: "unique" };
+  if (textStatus === "own") return { textIntegrity: "own" };
 
   if (textStatus === "mislabeled") {
     const belongsTo = String(textTrueCitation || "").trim();
@@ -330,7 +344,7 @@ export async function assessJudgmentText(
 
   if (textStatus === "unknown") {
     return {
-      textIntegrity: "shared",
+      textIntegrity: "unknown",
       textWarning: "This judgment body is stored identically under several citations and the true owner has not been established, so it is not reliably the text of the citation you asked for. Do not attribute holdings, facts or quotations from it to this citation without independent confirmation.",
     };
   }
@@ -341,11 +355,11 @@ export async function assessJudgmentText(
     .where(and(eq(judgments.fullText, body), sql`${judgments.id} <> ${judgmentId}`))
     .limit(5);
 
-  if (siblings.length === 0) return { textIntegrity: "unique" };
+  if (siblings.length === 0) return { textIntegrity: "own" };
 
   const shared = siblings.map((r: { citation: string }) => String(r.citation)).filter(Boolean);
   return {
-    textIntegrity: "shared",
+    textIntegrity: "unknown",
     sharedWith: shared,
     textWarning: `This judgment body is stored identically under other citations (${shared.join("; ")}), so it is not uniquely bound to the citation you asked for. Treat the text as unverified: do not attribute holdings, facts, or quotations from it to this citation without independent confirmation.`,
   };
