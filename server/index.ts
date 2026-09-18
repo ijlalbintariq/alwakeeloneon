@@ -352,7 +352,14 @@ app.use((req, res, next) => {
   }
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true });
+    // Render injects RENDER_GIT_COMMIT at build time. Without it there is no way
+    // to tell from outside which commit is actually serving traffic.
+    res.json({
+      ok: true,
+      commit: process.env.RENDER_GIT_COMMIT || null,
+      branch: process.env.RENDER_GIT_BRANCH || null,
+      startedAt: new Date(Date.now() - Math.round(process.uptime() * 1000)).toISOString(),
+    });
   });
 
   app.get("/health/ocr", async (_req, res) => {
