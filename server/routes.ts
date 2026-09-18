@@ -161,12 +161,14 @@ import {
 import { isSearchCrawler } from "./middleware/rate-limiter";
 import { resolveRequestIp } from "./replit_integrations/auth/ip";
 import { escapeHtml, LEGAL_DRAFT_PREVIEW_CSP, sanitizeLegalDraftHtml } from "./legal-drafting-security";
+import { cleanCaseTitle } from "./tools/citation-search-tool";
 import { LEGAL_DRAFT_MAX_INPUT_CHARS, prepareLegalDraftInput } from "./legal-drafting-context";
 import {
   applyLegalDraftEdit,
   buildLegalDraftEditSummary,
   classifyLegalDraftFollowUp,
   findLegalDraftEditTarget,
+  heading as courtHeading,
   resolveExplicitSelectionTarget,
   type LegalDraftEditTarget,
 } from "./legal-drafting-followup";
@@ -6067,17 +6069,29 @@ export function normalizeDraftingText(content: string): string {
     .trim();
 }
 
-// Word floors from the DOCUMENT LENGTH section of PAKISTANI_JUDICIAL_FORMAT_GUIDANCE.
+// Advisory floors, roughly 3 printed court pages for a bail application and up.
+// The DOCUMENT LENGTH figures in PAKISTANI_JUDICIAL_FORMAT_GUIDANCE (1,500-3,000
+// for bail) were an aspiration, not a filing standard — they fired on drafts a
+// practitioner would file as-is. These are set to flag genuinely thin drafts only.
+function countDraftWords(text: string): number {
+  return String(text || "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Lettered grounds actually pleaded ("A. That the ..."), used to explain a short draft. */
+function countLetteredGrounds(text: string): number {
+  return (String(text || "").match(/^[ \t]*[A-Z]\.[ \t]+/gm) || []).length;
+}
+
 const LEGAL_DRAFT_WORD_FLOORS: Record<string, number> = {
-  "sessions-bail-application": 1500,
-  "sessions-pre-arrest-bail": 1500,
-  "high-court-bail-before-arrest": 1500,
-  "high-court-writ-petition": 2000,
-  "civil-suit-plaint": 2500,
-  "recovery-suit": 2500,
-  "high-court-civil-appeal": 2500,
-  "high-court-criminal-appeal": 2500,
-  "sessions-criminal-appeal": 2500,
+  "sessions-bail-application": 1000,
+  "sessions-pre-arrest-bail": 1000,
+  "high-court-bail-before-arrest": 1000,
+  "high-court-writ-petition": 1200,
+  "civil-suit-plaint": 1400,
+  "recovery-suit": 1400,
+  "high-court-civil-appeal": 1400,
+  "high-court-criminal-appeal": 1400,
+  "sessions-criminal-appeal": 1400,
 };
 
 /**
@@ -6124,6 +6138,52 @@ export function collectDraftAdvisories(
   return advisories;
 }
 
+
+/**
+ * Models sometimes emit the whole cover block as one run-on line, e.g.
+ * "IN THE COURT OF THE SESSIONS JUDGE, LAHORECriminal Misc. (Bail) No. ____ of
+ * 2026Asad Mehmood...AccusedVERSUSThe State". The caption is then unusable.
+ * Break it at explicit court-document landmarks only — a generic camel-case
+ * split would mangle legitimate text like "CrPC" or party initials.
+ * Also drops the template's own "=== PAGE 1: ... ===" scaffolding markers,
+ * which the model echoes into the draft.
+ */
+export function splitRunOnCourtCaption(text: string): string {
+  const LANDMARKS = [
+    "VERSUS",
+    "RESPECTFULLY SHEWETH",
+    "BRIEF FACTS",
+    "INDEX OF DOCUMENTS",
+    "APPLICATION FOR",
+    "PETITION UNDER",
+    "Criminal Misc\\.",
+    "Civil Misc\\.",
+    "Criminal Appeal No\\.",
+    "Criminal Revision No\\.",
+    "Writ Petition No\\.",
+    "Civil Suit No\\.",
+    "Suit No\\.",
+  ];
+
+  return String(text || "")
+    // Scaffolding markers from the prompt template.
+    .replace(/^[ \t]*={2,}[^\n]*={2,}[ \t]*$/gm, "")
+    .split("\n")
+    .map((line) => {
+      let out = line;
+      for (const landmark of LANDMARKS) {
+        // Only when the landmark appears mid-line, i.e. glued to preceding text.
+        out = out.replace(new RegExp(`(\\S)(${landmark})`, "g"), "$1\n$2");
+      }
+      // "...of 2026Asad Mehmood" — a year run into the next party name.
+      out = out.replace(/\b((?:19|20)\d{2})(?=[A-Z][a-z])/g, "$1\n");
+      // "LAHORECriminal" — an all-caps run glued to a capitalised word.
+      out = out.replace(/\b([A-Z]{4,})(?=[A-Z][a-z])/g, "$1\n");
+      return out;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n");
+}
 
 export function normalizeCourtReadyDraftingText(content: string): string {
   const PARTY_ROLE_PATTERN =
@@ -6184,13 +6244,15 @@ export function normalizeCourtReadyDraftingText(content: string): string {
     return formatted.join("\n").replace(/\n{3,}/g, "\n\n").trim();
   };
 
-  const base = normalizeDraftingText(content)
-    .replace(/\r\n?/g, "\n")
-    .replace(/\u00a0/g, " ")
-    .replace(/[“”]/g, "\"")
-    .replace(/[‘’]/g, "'")
-    .replace(/[–—]/g, "-")
-    .replace(/\u2026/g, "...");
+  const base = splitRunOnCourtCaption(
+    normalizeDraftingText(content)
+      .replace(/\r\n?/g, "\n")
+      .replace(/\u00a0/g, " ")
+      .replace(/[“”]/g, "\"")
+      .replace(/[‘’]/g, "'")
+      .replace(/[–—]/g, "-")
+      .replace(/\u2026/g, "..."),
+  );
   const lines = base.split("\n").map((line) => {
     let out = line.trimEnd();
     if (/^\s*([-*_]\s*){3,}$/.test(out)) return "";
@@ -6563,6 +6625,18 @@ function splitSectionTokens(raw: string): string[] {
     .filter((part) => part.length > 0);
 }
 
+/**
+ * The cause title of a Pakistani pleading — "SUIT FOR SPECIFIC PERFORMANCE OF
+ * AGREEMENT TO SELL ... UNDER SECTION 12 OF THE SPECIFIC RELIEF ACT, 1877".
+ * It is the one line that states what the case is actually about.
+ */
+const CAUSE_TITLE_PATTERN =
+  /^[ \t]*(?=[^\n]{30,400}$)[^\n]*\b(?:SUIT|APPLICATION|PETITION|APPEAL|REVISION|COMPLAINT|REFERENCE)\b[^\n]*\b(?:FOR|UNDER|AGAINST|SEEKING)\b[^\n]*$/im;
+
+/** Statutory provisions named in a draft, used to build a case-law search query. */
+export const PROVISION_MENTION_PATTERN =
+  /\b(sections?|secs?\.?|articles?|arts?\.?|orders?)\s*([0-9]+[A-Z-]*(?:\([0-9A-Za-z]+\))?)\s*(?:of\s+the\s+)?(Cr\.?\s?P\.?\s?C|P\.?P\.?C|C\.?P\.?C|Q\.?S\.?O|Constitution)?/gi;
+
 function extractStatuteMentions(text: string): DraftStatuteMention[] {
   const mentions: DraftStatuteMention[] = [];
   const seen = new Set<string>();
@@ -6685,7 +6759,9 @@ async function resolveCaseCitationFromKnowledgeBase(candidate: string): Promise<
       id: row.id,
       citation: normalizeSpaces(row.citation),
       court: row.court,
-      title: row.title,
+      // Same corpus artifacts the search tool strips; this path feeds the
+      // reference list the user sees under the draft.
+      title: cleanCaseTitle(row.title) || row.title,
       summary: row.summary,
       hasSource: true,
       sourceType: row.sourceType || null,
@@ -7050,7 +7126,11 @@ async function resolveLegalDraftReferences(
     unresolvedCaseCitations.push(caseCandidates[i]);
   }
   if (caseCandidates.length > 0) {
-    console.log(`[LegalDrafting:CitationResolve] Resolved ${caseCandidates.length} case citations in parallel (verified=${verifiedCaseRefs.length}, unresolved=${unresolvedCaseCitations.length})`);
+    console.log(
+      `[LegalDrafting:CitationResolve] Resolved ${caseCandidates.length} case citations in parallel ` +
+      `(verified=${verifiedCaseRefs.length}, unresolved=${unresolvedCaseCitations.length})` +
+      (unresolvedCaseCitations.length > 0 ? ` unresolved=${JSON.stringify(unresolvedCaseCitations.slice(0, 8))}` : ""),
+    );
   }
 
   if (stripUnverifiedCaseCitations && unresolvedCaseCitations.length > 0) {
@@ -14076,6 +14156,23 @@ Mandatory section flow (in this order):
 ${headingOrder}`;
   }
 
+  // Every shipped template writes these letter-spaced and with a colon
+  // ("P R A Y E R:"), and writ petitions split theirs into INTERIM RELIEF and
+  // MAIN PRAYER. Matching only a bare "PRAYER" failed all 27 templates and
+  // rejected complete drafts with "Missing heading: PRAYER".
+  const FILED_IN_PENDING_SUIT = new Set([
+    "temporary-injunction-application", "civil-misc-application", "execution-application",
+  ]);
+  const HEADING_SHEWETH = courtHeading("MOST RESPECTFULLY SHEWETH", "RESPECTFULLY SHEWETH");
+  // Enumerating variants does not hold: drafts legitimately write "MAIN PRAYER:",
+  // "P R A Y E R:", "PRAYER AND RELIEF SOUGHT:", "MAIN PRAYER AND ANY OTHER
+  // RELIEF:". Match structurally instead — an all-capitals heading line (the
+  // lookahead rejects any line carrying lower-case prose) that names the prayer.
+  const HEADING_PRAYER =
+    /^[ \t]*(?=[^a-z\n]*$)[^\n]{0,60}?\b(?:P[ \t]*R[ \t]*A[ \t]*Y[ \t]*E[ \t]*R|R[ \t]*E[ \t]*L[ \t]*I[ \t]*E[ \t]*F[ \t]+(?:S[ \t]*O[ \t]*U[ \t]*G[ \t]*H[ \t]*T|C[ \t]*L[ \t]*A[ \t]*I[ \t]*M[ \t]*E[ \t]*D))\b[^\n]{0,40}$/m;
+  const HEADING_VERIFICATION = courtHeading("VERIFICATION", "AFFIDAVIT");
+  const HEADING_VERSUS = courtHeading("VERSUS", "IN RE", "VS", "V/S");
+
   function validateDraftForSelectedType(content: string, docType: LegalDraftingDocType): { ok: boolean; issues: string[]; advisories: string[] } {
     const text = normalizeCourtReadyDraftingText(content || "");
     const headerBlock = text.split("\n").slice(0, 40).join("\n");
@@ -14092,10 +14189,16 @@ ${headingOrder}`;
       "authority-letter", "nikah-nama-divorce",
     ]);
     if (!NON_COURT_DOC_TYPES.has(docType)) {
-      if (!/^\s*RESPECTFULLY SHEWETH:\s*$/im.test(text)) issues.push("Missing heading: RESPECTFULLY SHEWETH:");
-      if (!/^\s*PRAYER\s*$/im.test(text)) issues.push("Missing heading: PRAYER");
-      if (!/^\s*VERIFICATION\s*$/im.test(text) && !/^\s*AFFIDAVIT\s*$/im.test(text)) issues.push("Missing heading: VERIFICATION or AFFIDAVIT");
-      if (!/^\s*VERSUS\s*$/im.test(text) && !/^\s*IN RE:\s*$/im.test(text)) {
+      // An execution application opens with the Order XXI Rule 11(2) tabular
+      // statement, not a SHEWETH clause.
+      if (docType !== "execution-application" && !HEADING_SHEWETH.test(text)) {
+        issues.push("Missing heading: RESPECTFULLY SHEWETH:");
+      }
+      if (!HEADING_PRAYER.test(text)) issues.push("Missing heading: PRAYER");
+      if (!HEADING_VERIFICATION.test(text)) issues.push("Missing heading: VERIFICATION or AFFIDAVIT");
+      // Applications filed inside a pending suit carry the suit's own cause
+      // title, so they repeat no VERSUS block of their own.
+      if (!FILED_IN_PENDING_SUIT.has(docType) && !HEADING_VERSUS.test(text)) {
         issues.push("Missing party separator line: VERSUS (or IN RE where appropriate).");
       }
       if (!/(^|\n)\s*1\.\s+/m.test(text)) issues.push("Facts/grounds are not in numbered court format.");
@@ -14270,10 +14373,15 @@ ${content}`;
 
     // Single-header drafts: fall back to inserting before the body opener.
     // IMPORTANT: Use cleanedText (not draftText) so the AI's broken text/markdown tables are stripped
+    // Order matters: anchor on the opener or a section heading first. The numbered
+    // fact is the last resort, because anchoring there drops the index table
+    // between the "BRIEF FACTS" heading and its own first paragraph.
+    // "MOST RESPECTFULLY SHEWETH" is the common form, so the MOST is optional.
     const insertionPatterns = [
-      /\n(\s*RESPECTFULLY SHEWETH\s*:?\s*\n)/i,
+      /\n(\s*(?:MOST\s+)?RESPECTFULLY\s+SHEWETH\s*:?\s*\n)/i,
+      /\n(\s*(?:BRIEF|MATERIAL)\s+FACTS\s*:?\s*\n)/i,
+      /\n(\s*FACTS(?:\s+OF\s+THE\s+CASE)?\s*:?\s*\n)/i,
       /\n(\s*1\.\s+That the)/i,
-      /\n(\s*BRIEF FACTS\s*:?\s*\n)/i,
     ];
 
     for (const pattern of insertionPatterns) {
@@ -15213,6 +15321,13 @@ Rules:
         }
       }
 
+      // A partial failure used to pass silently: one readable file was enough to
+      // clear the guard above, and the dropped ones were never mentioned, so the
+      // draft looked as if it had considered every attachment.
+      const attachmentAdvisories: string[] = failedAttachments.length > 0
+        ? [`${failedAttachments.length} attachment(s) could not be read and were excluded from this draft: ${failedAttachments.join(", ")}.`]
+        : [];
+
       const { rawText: rawDraftText, cleanedText: cleanedDraftText } = prepareLegalDraftInput(draftText);
       if (rawDraftText.length > LEGAL_DRAFT_MAX_INPUT_CHARS) {
         return res.status(413).json({
@@ -15426,11 +15541,45 @@ If they want to change a specific part, return section-edit. If they want a comp
 
         // Build knowledge query using refined prompt and metadata ONLY.
         // Do NOT append baseDraftText or attachments here, as they pollute semantic search with facts/names.
+        // Retrieval used to search the instruction alone. On any follow-up the
+        // instruction is "add case law to the grounds" — no offence, no section,
+        // no forum — so both the pipeline and the tool-search fallback returned
+        // zero authorities and the model fell back on its own memory. The draft
+        // holds the subject matter, so search that too. The prompt stays first so
+        // the token trim only ever eats the excerpt.
+        const draftSubjectExcerpt = baseDraftText.trim().slice(0, 1500);
+        // runToolJudgmentSearchOR truncates its input to 300 characters, and the
+        // first 300 characters of a pleading are the court caption and the party's
+        // address — nothing searchable. Handed that, the tool-calling model decided
+        // no research was needed and issued zero queries. Send the provisions
+        // instead, front-loaded so the truncation cannot reach them.
+        const caseLawSearchSubject = (() => {
+          if (!draftSubjectExcerpt) return safePrompt;
+          const provisions = new Set<string>();
+          for (const m of baseDraftText.matchAll(PROVISION_MENTION_PATTERN)) {
+            const label = /^art/i.test(m[1]) ? "Article" : /^order/i.test(m[1]) ? "Order" : "Section";
+            const act = (m[3] || "").replace(/[.\s]/g, "");
+            provisions.add(`${label} ${m[2]}${act ? ` ${act}` : ""}`);
+            if (provisions.size >= 5) break;
+          }
+          // Provisions alone are not the case. A plaint reduced to "Section 12" made
+          // the search model ask for "Section 12 civil suit" and find nothing, and the
+          // draft then cited bail judgments in a specific-performance suit. The cause
+          // title names the relief, the transaction and the act in one line, so it
+          // goes first and survives the 300-character truncation.
+          const causeTitle = (baseDraftText.match(CAUSE_TITLE_PATTERN)?.[0] || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 180);
+          const parts = [causeTitle, [...provisions].join(", "), safePrompt].filter((x) => x.length > 0);
+          return `Pakistani case law. ${parts.join(". ")}`;
+        })();
         const legalKnowledgeQuery = trimTextToTokenBudget(
           [
             refinedDraftPrompt,
             profile.label,
             jurisdiction || "",
+            draftSubjectExcerpt,
           ]
             .filter((part) => String(part || "").trim().length > 0)
             .join("\n"),
@@ -15464,15 +15613,18 @@ If they want to change a specific part, return section-edit. If they want a comp
         const draftToolSearchCapable = useOpenRouterToolsDraft || isDeepSeekAvailable();
         const draftToolSearchEnabled = draftToolSearchCapable && pipelineCaseLawHits.length === 0;
         let draftToolSearchResult: DraftToolSearchResult = { ...emptyToolResult };
+        // Elapsed is cumulative from the start of the search: a query reporting
+        // found=0 near the deadline timed out, it did not find nothing.
+        const toolSearchStartedAt = Date.now();
         if (draftToolSearchEnabled) {
           console.log("[LegalDrafting:ToolSearch:Fallback] Pipeline returned 0 case law hits — running tool search");
           try {
             draftToolSearchResult = await (useOpenRouterToolsDraft
-              ? runToolJudgmentSearchOR(safePrompt, (q, n) => {
-                  console.log(`[LegalDrafting:ToolSearch:OR] query="${q}" found=${n}`);
+              ? runToolJudgmentSearchOR(caseLawSearchSubject, (q, n) => {
+                  console.log(`[LegalDrafting:ToolSearch:OR] query="${q}" found=${n} at=${Date.now() - toolSearchStartedAt}ms/18000ms`);
                 }, undefined, 18000)
-              : runToolJudgmentSearch(safePrompt, (q, n) => {
-                  console.log(`[LegalDrafting:ToolSearch:DS] query="${q}" found=${n}`);
+              : runToolJudgmentSearch(caseLawSearchSubject, (q, n) => {
+                  console.log(`[LegalDrafting:ToolSearch:DS] query="${q}" found=${n} at=${Date.now() - toolSearchStartedAt}ms/8000ms`);
                 }, undefined, 8000)
             );
           } catch (err: any) {
@@ -15481,8 +15633,15 @@ If they want to change a specific part, return section-edit. If they want a comp
           }
         }
 
-        if (draftToolSearchResult.foundCount > 0) {
-          console.log(`[LegalDrafting:ToolSearch:Done] found=${draftToolSearchResult.foundCount} queries=${JSON.stringify(draftToolSearchResult.queriesUsed)}`);
+        if (draftToolSearchEnabled) {
+          // Logged even on a miss: "found=0 queries=[]" means the tool-calling model
+          // never issued a search, which is a different failure from a search that ran
+          // and matched nothing.
+          console.log(
+            `[LegalDrafting:ToolSearch:Done] found=${draftToolSearchResult.foundCount} ` +
+            `queries=${JSON.stringify(draftToolSearchResult.queriesUsed)} ` +
+            `elapsed=${Date.now() - toolSearchStartedAt}ms inputChars=${caseLawSearchSubject.length}`,
+          );
         }
 
         // Build pipeline case law context string (from caseLawHits)
@@ -15524,6 +15683,12 @@ If they want to change a specific part, return section-edit. If they want a comp
                 },
               ]
             : [];
+
+        console.log(
+          `[LegalDrafting:CaseLawPool] chars=${effectiveDraftCaseContext.length} ` +
+          `source=${draftToolSearchResult.contextString ? "tool-search" : (pipelineCaseLawContext ? "pipeline" : "none")} ` +
+          `injected=${draftCaseLawTurns.length > 0} operation=${followUpOperation}`,
+        );
 
         const typeLockInstruction = selectedDocType
           ? buildStrictTypeLockInstruction(selectedDocType, profile.label)
@@ -15606,6 +15771,7 @@ Response format:
         }
         let draftedText = "";
         extractedRecs = [];
+        let rawModelWords = 0;
         if (isLocalizedEdit && editTarget) {
           const actionInstruction = editTarget.action === "insert-before"
             ? "Return only the new text to insert BEFORE the target. Do not repeat the target text."
@@ -15638,8 +15804,9 @@ Targeted edit mode (strict):
 - Do NOT output raw markdown. Output ONLY the JSON object.
 - Keep Pakistani court drafting language and formatting.
 - Do not invent facts, citations, or statutory sections.
-- Case law citation lock (absolute): use only citations found in the INTERNAL DATABASE REFERENCES block below.
-- If an internal citation is unavailable, omit the citation (no placeholders).
+- Case law citation lock (absolute): use only case-law citations supplied in the retrieved case-law turns above, and only statutory references found in the INTERNAL DATABASE REFERENCES block below.
+- Copy each case citation string EXACTLY as given. Never reformat, abbreviate, or reorder it.
+- If no supplied citation fits, omit the citation entirely (no placeholders, nothing from memory).
 
 IDENTIFIED TARGET (${editTarget.label}):
 ${editTarget.text}
@@ -15666,7 +15833,11 @@ ${legalKnowledgeContextBlock}${styleContext ? `\n\nPersonal Style Memory:\n${sty
             const targetedResult = await callLegalDraftingAI(sysInstruction, targetedInput, Math.min(TOKEN_LIMITS.draft, 3500), {
               timeoutProfile: "analysis",
               temperature: 0.2,
-              response_format: { type: "json_object" }
+              response_format: { type: "json_object" },
+              // Same omission the non-streaming path had: the prompt locks citations
+              // to the retrieved pool, but the pool was never sent on this path, so
+              // "add case law in grounds" either cited nothing or invented it.
+              priorTurns: draftCaseLawTurns,
             });
             await logUsageCost(userId, "draft", targetedResult.model, sysInstruction + targetedInput, targetedResult.text, { userQuery: safePrompt });
             
@@ -15713,6 +15884,13 @@ The user is requesting a COMPLETE FORMAT CHANGE. You MUST:
 - DO NOT preserve the old court heading, cause title, or filing caption
 - Use the correct heading/structure for: ${profile.label}
 ` : "";
+          // The length target lives in the system prompt, which models weight less
+          // than the user turn. Restate it here, next to the per-ground depth rule,
+          // so the two cannot disagree.
+          const wordFloor = selectedDocType ? LEGAL_DRAFT_WORD_FLOORS[selectedDocType] : undefined;
+          const lengthDirective = wordFloor
+            ? `- Target length for this filing type: ${wordFloor.toLocaleString()} to ${(wordFloor * 2).toLocaleString()} words. Write the complete pleading at that depth; do not stop early at a skeleton.`
+            : "- Write the complete pleading at the depth a Pakistani advocate would actually file; do not stop early at a skeleton.";
           const userInput = `User instruction:
 ${safePrompt}
 ${conversionOverride}
@@ -15732,7 +15910,8 @@ Court-ready formatting requirements (default unless user requests a custom forma
 - Use numbered facts (1., 2., 3.) and alphabetic legal grounds (A., B., C.).
 - In BRIEF FACTS and GROUNDS, every line/item must start with "That the" (for example: "1. That the ...", "A. That the ...").
 - Do not add "That the" to heading/sub-heading labels inside sections.
-- In GROUNDS, provide brief explanation for each ground (at least 2 to 4 sentences), not heading-only points.
+- In GROUNDS, each ground must be a developed paragraph of 5 to 10 sentences: state the legal principle, apply it to these facts, and cite a supporting authority where one is available. One or two line grounds are not acceptable.
+${lengthDirective}
 - Do not create a separate heading "LEGAL AUTHORITIES"; place all statutes/case citations inside relevant GROUNDS lines.
 - Court hierarchy rule (strict): use the correct Pakistani forum for selected filing type (e.g., Writ/Article 199 -> High Court; family matters -> Family Court; CPLA -> Supreme Court). Never place writ petitions in Family Court.
 - Court forum mapping (common confusions — follow strictly):
@@ -15779,8 +15958,17 @@ Conversation rules:
 INTERNAL DATABASE REFERENCES (STATUTES & KNOWLEDGE):
 ${legalKnowledgeContextBlock}
 
-Reference skeleton (adapt to facts):
-${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
+Section order reference — STRUCTURE ONLY, NOT A LENGTH GUIDE.
+The "..." below are placeholders marking where content goes. They show which
+sections appear and in what order. They do NOT indicate how many grounds to
+write or how long each should be. Never imitate their brevity.
+${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}
+
+FINAL REQUIREMENT — apply this to the document you are about to write:
+${lengthDirective}
+- Plead 7 to 10 separate lettered grounds (A. through G. or J.). Five is too few for a filing.
+- Write every ground as a developed paragraph of 5 to 10 sentences, not a single line.
+- Produce the complete filing-ready pleading. Do not return an outline or a skeleton.`;
 
           if (wantStream) {
             // ── SSE streaming path ──
@@ -15932,11 +16120,11 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             }
 
             // Recompute against the verified reference list, same as the JSON path.
-            const streamAdvisories = collectDraftAdvisories(
+            const streamAdvisories = attachmentAdvisories.concat(collectDraftAdvisories(
               draftedText,
               selectedDocType || '',
               streamRefResolution.references.caseLaw.length,
-            );
+            ));
             // Send done event with all metadata
             res.write(`data: ${JSON.stringify({
               done: true,
@@ -15979,6 +16167,11 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: safePrompt });
             extractedRecs = extractCaseLawRecommendations(aiResult.text);
             draftedText = normalizeCourtReadyDraftingText(aiResult.text);
+            // A short draft can mean the model wrote little or that post-processing
+            // ate it. Only the raw-vs-final split tells the two apart — and the raw
+            // text carries the fenced ```recommendations block, which is extracted by
+            // design, so counting it made post-processing look like it ate ~500 words.
+            rawModelWords = countDraftWords(String(aiResult.text || "").replace(/```[\s\S]*?```/g, ""));
           }
         }
 
@@ -15993,6 +16186,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
         if (draftedText && isCourtFiling2) {
           draftedText = ensurePetitionerBlock(draftedText);
         }
+
 
         if (!draftedText) {
           return res.status(502).json({ message: "AI returned empty legal draft text" });
@@ -16009,11 +16203,20 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             references: preservedDraftReferences.references,
           };
         } else {
+          const beforeResolveWords = countDraftWords(draftedText);
           referenceResolution = await resolveLegalDraftReferences(draftedText, {
             stripUnverifiedCaseCitations: true,
             unresolvedCaseCitationPlaceholder: "",
           });
           draftedText = referenceResolution.cleanedText;
+          if (beforeResolveWords - countDraftWords(draftedText) > 20) {
+            console.warn(
+              `[LegalDrafting:CitationResolve] stripping unverified citations removed ` +
+              `${beforeResolveWords - countDraftWords(draftedText)} words ` +
+              `(${beforeResolveWords} -> ${countDraftWords(draftedText)}), ` +
+              `removed=${JSON.stringify(referenceResolution.references.removedCaseCitations || [])}`,
+            );
+          }
         }
         if (!draftedText) {
           return res.status(502).json({ message: "AI draft failed citation integrity checks" });
@@ -16079,11 +16282,17 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
         draftedText = draftedText.replace(/```references[\s\S]*?```/gi, "").trim();
         // Recompute against the verified reference list rather than the validator's
         // regex-only count, and against the final post-processed text.
-        const finalAdvisories = collectDraftAdvisories(
+        console.log(
+          `[LegalDrafting:Length] ${rawModelWords > 0 ? `rawModelWords=${rawModelWords} ` : ""}finalWords=${countDraftWords(draftedText)} ` +
+          `grounds=${countLetteredGrounds(draftedText)} ` +
+          `floor=${selectedDocType ? LEGAL_DRAFT_WORD_FLOORS[selectedDocType] ?? "-" : "-"} ` +
+          `operation=${followUpOperation}`,
+        );
+        const finalAdvisories = attachmentAdvisories.concat(collectDraftAdvisories(
           draftedText,
           selectedDocType || "",
           referenceResolution.references.caseLaw.length,
-        );
+        ));
         return res.json({
           clause: draftedText,
           sourceId: `legal-${selectedDocType || "custom-input"}`,
@@ -16092,7 +16301,9 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
           assistantMode: "draft",
           operation: followUpOperation,
           assistantMessage: buildLegalDraftEditSummary(followUpOperation, editTarget?.label),
-          changedTarget: editTarget?.label,
+          // A full rewrite or conversion can still have matched a target while
+          // classifying; reporting it labelled the whole new draft "BRIEF FACTS".
+          changedTarget: isLocalizedEdit ? editTarget?.label : undefined,
           documentType: selectedDocType || "custom-input",
           customDocumentType: useCustomDocType ? customDocType : undefined,
           attachmentsUsed: files?.length || 0,

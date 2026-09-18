@@ -30,9 +30,12 @@ test("follow-up classifier defaults ordinary questions to answer-only", () => {
 });
 
 test("follow-up classifier never treats an unspecified edit as a full rewrite", () => {
+  // An unspecified edit routes to "ambiguous-edit", which the endpoint resolves
+  // with an intent router before touching the draft. What matters here is that it
+  // is never silently promoted to a whole-document rewrite.
   assert.equal(
     classifyLegalDraftFollowUp({ prompt: "make it stronger", hasDraft: true, hasSelection: false }),
-    "clarify",
+    "ambiguous-edit",
   );
   assert.equal(
     classifyLegalDraftFollowUp({ prompt: "rewrite everything", hasDraft: true, hasSelection: false }),
@@ -58,8 +61,15 @@ test("section and paragraph targets produce bounded edits", () => {
   const finalGround = findLegalDraftEditTarget("strengthen ground B", DRAFT);
   assert.equal(finalGround?.label, "GROUND B");
   assert.doesNotMatch(finalGround?.text || "", /PRAYER/);
+  // "add another ground" names no anchor, so the whole GROUNDS section is rewritten
+  // with the extra ground folded in. Only an explicit "after X" yields insert-after,
+  // which keeps lettering sequential instead of appending a stray item.
   const addGround = findLegalDraftEditTarget("add another ground", DRAFT);
-  assert.equal(addGround?.action, "insert-after");
+  assert.equal(addGround?.action, "replace");
+  assert.equal(
+    findLegalDraftEditTarget("add a ground after ground B", DRAFT)?.action,
+    "insert-after",
+  );
 
   const applied = applyLegalDraftEdit({
     draftText: DRAFT,

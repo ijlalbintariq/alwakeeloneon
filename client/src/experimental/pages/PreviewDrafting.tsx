@@ -744,7 +744,7 @@ export const PreviewDrafting: React.FC = () => {
     });
   };
 
-  const handleReplaceDocument = (content: string) => {
+  const handleReplaceDocument = (content: string, documentType?: string) => {
     const formattedHtml = plainTextToTiptapHTML(content);
     if (editorRef.current) {
       editorRef.current.setContent(formattedHtml);
@@ -757,6 +757,9 @@ export const PreviewDrafting: React.FC = () => {
         t.id === activeTabId
           ? {
               ...t,
+              // A conversion changes the filing type. Keeping the old one made the
+              // next edit run against the previous type's checklist and word floor.
+              documentType: documentType || t.documentType,
               htmlContent: formattedHtml,
               textContent: content,
               lastModified: Date.now(),
@@ -954,6 +957,7 @@ export const PreviewDrafting: React.FC = () => {
             onOpenExportModal={() => setIsExportModalOpen(true)}
             activeProfileId={activeProfileId}
             activeDocumentType={activeTab?.documentType}
+            getSelectedText={() => editorRef.current?.getSelectedText() || ""}
             onChangeProfileId={handleProfileChange}
             editorWidthMode={editorWidthMode}
             onChangeWidthMode={setEditorWidthMode}

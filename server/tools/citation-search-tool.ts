@@ -86,6 +86,28 @@ export interface CitationResult {
  *   5. Collapse whitespace
  *   6. Remove spaces between consecutive single uppercase letters (P L D → pld)
  */
+/**
+ * Case titles in the corpus carry scrape artifacts — "... SABIR HUSSAINHonorable",
+ * "... and others Case No" — and some rows lost their opening words entirely
+ * ("Ltd. and others v. Messrs Educational Excellence Ltd."). A draft that copies
+ * one verbatim prints "2024 SCMR 168 (Ltd.", so trim what is repairable and drop
+ * what is not: an empty title makes the model cite the citation alone.
+ * ponytail: presentation guard over bad rows. Fix the ingest if the corpus is
+ * ever re-scraped.
+ */
+export function cleanCaseTitle(title: string | undefined | null): string {
+  let cleaned = String(title || "")
+    .replace(/\s*Honorable\b[\s\S]*$/i, "")
+    .replace(/\s*Case\s+No\.?\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.,;:\-]+$/, "")
+    .trim();
+  // Begins mid-name: the words that would identify the first party are gone.
+  if (/^(?:and\b|v\.?\s|vs\.?\s|through\b|others\b|another\b|Ltd\b|\(|[a-z])/.test(cleaned)) return "";
+  return cleaned.length >= 6 ? cleaned : "";
+}
+
 export function normalizeCitationKey(citation: string | undefined | null): string {
   if (!citation) return "";
   return citation
@@ -407,7 +429,7 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
         id: (r as any).judgmentId || r.id,
         citation: r.citation,
         court: r.court,
-        title: r.title,
+        title: cleanCaseTitle(r.title),
         summary: (r.summary || "").slice(0, 1500),
       })),
     });

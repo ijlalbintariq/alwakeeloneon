@@ -36,7 +36,6 @@ export const DraftingExportModal: React.FC<DraftingExportModalProps> = ({
   const { toast } = useToast();
   const [selectedFormat, setSelectedFormat] = useState<"pdf" | "docx" | "print" | "text">("pdf");
   const [watermark, setWatermark] = useState<string>("none");
-  const [includeLineNumbers, setIncludeLineNumbers] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -50,7 +49,8 @@ export const DraftingExportModal: React.FC<DraftingExportModalProps> = ({
           title: documentTitle || "Legal_Pleading",
           html: documentHtml,
           pageProfileId: pageProfileId,
-          isDraft: watermark === "DRAFT",
+          isDraft: watermark !== "none",
+          watermarkText: watermark,
         });
         toast({
           title: "PDF Export Complete",

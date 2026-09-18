@@ -19,11 +19,19 @@ export type LegalDraftEditTarget = {
 };
 
 const FULL_REWRITE_PATTERN =
-  /\b(full|complete|entire|whole)\s+(rewrite|redraft|regenerate|draft|version)\b|\bfrom\s+scratch\b|\bstart\s+over\b|\brewrite\s+(?:the\s+)?(everything|entire|whole)\b|\bregenerate\s+(?:the\s+)?(everything|entire|whole)\b|\bfresh\s+draft\b/i;
+  /\b(full|complete|entire|whole)\s+(rewrite|redraft|regenerate|draft|version)\b|\bfrom\s+scratch\b|\bstart\s+over\b|\b(?:rewrite|redraft|regenerate|redo)\s+(?:the\s+)?(everything|entire|whole)\b|\bfresh\s+draft\b/i;
+// FULL_REWRITE_PATTERN also matches intensity-only phrasing ("a complete rewrite
+// of the grounds"), which is still a section edit. This is the narrower set that
+// names the DOCUMENT as the scope, and it is what outranks the section guard below.
+const WHOLE_DOCUMENT_SCOPE_PATTERN =
+  /\b(?:whole|entire|complete|full)\s+(?:draft|document|pleading|petition|application|filing|plaint|suit|thing)\b|\bfrom\s+scratch\b|\bstart\s+over\b|\brewrite\s+(?:it\s+)?(?:everything|all)\b|\bregenerate\s+everything\b/i;
 const CONVERSION_PATTERN =
   /\b(convert|transform|turn|rewrite|redraft)\s+(?:this|it|the\s+draft|the\s+entire\s+document)?\s*(?:into|to|as)\s+(?:a|an)?\s*(?:civil|criminal|constitutional|writ|bail|appeal|revision|petition|plaint|suit|application|affidavit|notice|power\s+of\s+attorney|written\s+statement)\b|\bmake\s+(?:this|it|the\s+draft)\s+into\s+(?:a|an)?\s*(?:petition|plaint|suit|application|affidavit|notice|appeal|revision|written\s+statement)\b/i;
+// "fill", "complete" and friends were missing, so a plain instruction like
+// "fill in the facts: <full particulars>" matched no mutation verb and fell
+// through to a clarification prompt.
 const MUTATION_PATTERN =
-  /\b(add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|c[io]{1,2}r{1,2}ect|reword|rephrase|restructure|move|make|undo|revert)\b/i;
+  /\b(add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|c[io]{1,2}r{1,2}ect|reword|rephrase|restructure|move|make|undo|revert|fill|complete|populate|enter|set|substitute|swap|tighten|trim|extend|lengthen|shorten|merge|split|renumber|reorder)\b/i;
 const EXPLICIT_DRAFT_ACTION_PATTERN =
   /\b(?:task\s*:?\s*)?(?:draft|prepare|write|generate|create)\s+(?:a|an|the|this|new|fresh|court|constitutional|writ|bail|plaint|suit|petition|application|pleading|affidavit|notice|agreement|contract)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:draft|prepare|write|generate|create)\b|^(?:please\s+)?(?:draft|prepare|write|generate|create)\b/i;
 const EXPLICIT_NEW_FILING_PATTERN =
@@ -31,8 +39,31 @@ const EXPLICIT_NEW_FILING_PATTERN =
 const ANSWER_PATTERN =
   /\b(review|explain|analyse|analyze|check|identify|tell|compare|opinion|advice|why|what|which|whether|maintainable|valid|correct|c[io]{1,2}r{1,2}ect|wrong|risk|issue|problem|contradict)\b|\?\s*$/i;
 const DIRECT_QUESTION_PATTERN = /^(?:is|are|was|were|do|does|did|can|could|would|should|will|what|why|which|whether|how)\b/i;
+// Keep this verb set in step with MUTATION_PATTERN above.
 const EXPLICIT_MUTATION_COMMAND_PATTERN =
-  /^(?:please\s+)?(?:add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|reword|rephrase|restructure|move|make|undo|revert)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|reword|rephrase|restructure|move|make|undo|revert)\b/i;
+  /^(?:please\s+)?(?:add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|reword|rephrase|restructure|move|make|undo|revert|fill|complete|populate|enter|set|substitute|swap|tighten|trim|extend|lengthen|merge|split|renumber|reorder)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|reword|rephrase|restructure|move|make|undo|revert|fill|complete|populate|enter|set|substitute|swap|tighten|trim|extend|lengthen|merge|split|renumber|reorder)\b/i;
+
+/**
+ * Court drafts routinely letter-space their headings — "G R O U N D S:",
+ * "P R A Y E R:". A literal /GROUNDS/ never matches those, so section targeting
+ * dead-ended on drafts produced from the app's own templates. These builders
+ * tolerate the gaps. Offsets stay valid because the source text is never changed.
+ *
+ * "GROUNDS" -> /G[ \t]*R[ \t]*O[ \t]*U[ \t]*N[ \t]*D[ \t]*S/ */
+const sp = (word: string) => word.split("").join("[ \\t]*");
+
+/** Build a heading matcher from plain alternatives, e.g. ["BRIEF FACTS", "FACTS"]. */
+/**
+ * Builds a court-heading matcher that tolerates what Pakistani pleadings actually
+ * write: letter-spaced capitals ("P R A Y E R"), a trailing colon, and qualifier
+ * prefixes ("MOST RESPECTFULLY SHEWETH", "MAIN PRAYER").
+ */
+export function heading(...alternatives: string[]): RegExp {
+  const body = alternatives
+    .map((alt) => alt.trim().split(/\s+/).map(sp).join("\\s+"))
+    .join("|");
+  return new RegExp(`^\\s*(?:${body})\\s*:?[ \\t]*$`, "im");
+}
 
 const SECTION_PATTERNS: Array<{
   label: string;
@@ -42,52 +73,68 @@ const SECTION_PATTERNS: Array<{
   {
     label: "PRELIMINARY OBJECTIONS",
     prompt: /\bpreliminary\s+objections?\b/i,
-    heading: /^\s*PRELIMINARY\s+OBJECTIONS?\s*:?[ \t]*$/im,
+    heading: heading("PRELIMINARY OBJECTIONS", "PRELIMINARY OBJECTION"),
   },
   {
     label: "CAUSE OF ACTION",
     prompt: /\bcause\s+of\s+action\b/i,
-    heading: /^\s*CAUSE\s+OF\s+ACTION\s*:?[ \t]*$/im,
+    heading: heading("CAUSE OF ACTION"),
   },
   {
     label: "JURISDICTION",
     prompt: /\bjurisdiction(?:al)?\b/i,
-    heading: /^\s*JURISDICTION(?:\s+AND\s+VALUATION)?\s*:?[ \t]*$/im,
+    heading: heading("JURISDICTION AND VALUATION", "JURISDICTION"),
   },
   {
     label: "BRIEF FACTS",
     prompt: /\b(?:brief\s+facts|material\s+facts|facts(?:\s+of\s+the\s+case)?)\b/i,
-    heading: /^\s*(?:BRIEF\s+FACTS|MATERIAL\s+FACTS|FACTS(?:\s+OF\s+THE\s+CASE)?)\s*:?[ \t]*$/im,
+    heading: heading("BRIEF FACTS", "MATERIAL FACTS", "FACTS OF THE CASE", "FACTS"),
   },
   {
     label: "GROUNDS",
     prompt: /\bgrounds?\b/i,
-    heading: /^\s*GROUNDS?(?:\s+OF\s+(?:APPEAL|PETITION|APPLICATION|REVISION))?\s*:?[ \t]*$/im,
+    heading: heading(
+      "GROUNDS OF APPEAL", "GROUNDS OF PETITION", "GROUNDS OF APPLICATION",
+      "GROUNDS OF REVISION", "GROUNDS", "GROUND",
+    ),
   },
   {
     label: "PRAYER",
     prompt: /\b(?:prayer|relief\s+sought|reliefs?)\b/i,
-    heading: /^\s*(?:PRAYER|RELIEF\s+SOUGHT)\s*:?[ \t]*$/im,
+    heading: heading("PRAYER", "RELIEF SOUGHT"),
   },
   {
     label: "VERIFICATION",
     prompt: /\bverification\b/i,
-    heading: /^\s*VERIFICATION\s*:?[ \t]*$/im,
+    heading: heading("VERIFICATION"),
   },
   {
     label: "AFFIDAVIT",
     prompt: /\baffidavit\b/i,
-    heading: /^\s*AFFIDAVIT\s*:?[ \t]*$/im,
+    heading: heading("AFFIDAVIT"),
   },
   {
     label: "ANNEXURES",
     prompt: /\b(?:annexures?|index\s+of\s+documents)\b/i,
-    heading: /^\s*(?:ANNEXURES?|INDEX\s+OF\s+DOCUMENTS)\s*:?[ \t]*$/im,
+    heading: heading("ANNEXURES", "ANNEXURE", "INDEX OF DOCUMENTS"),
   },
 ];
 
-const ANY_MAJOR_HEADING =
-  /^\s*(?:PRELIMINARY\s+OBJECTIONS?|CAUSE\s+OF\s+ACTION|JURISDICTION(?:\s+AND\s+VALUATION)?|BRIEF\s+FACTS|MATERIAL\s+FACTS|FACTS(?:\s+OF\s+THE\s+CASE)?|GROUNDS?(?:\s+OF\s+(?:APPEAL|PETITION|APPLICATION|REVISION))?|PRAYER|RELIEF\s+SOUGHT|VERIFICATION|AFFIDAVIT|ANNEXURES?|INDEX\s+OF\s+DOCUMENTS|INTERIM\s+RELIEF|APPLICANT|RESPONDENT|DEFENDANT|PLAINTIFF|PETITIONER|DEPONENT|ACCUSED)\s*:?[ \t]*$/gim;
+const MAJOR_HEADINGS = [
+  "PRELIMINARY OBJECTIONS", "PRELIMINARY OBJECTION", "CAUSE OF ACTION",
+  "JURISDICTION AND VALUATION", "JURISDICTION", "BRIEF FACTS", "MATERIAL FACTS",
+  "FACTS OF THE CASE", "FACTS", "GROUNDS OF APPEAL", "GROUNDS OF PETITION",
+  "GROUNDS OF APPLICATION", "GROUNDS OF REVISION", "GROUNDS", "GROUND",
+  "PRAYER", "RELIEF SOUGHT", "VERIFICATION", "AFFIDAVIT", "ANNEXURES",
+  "ANNEXURE", "INDEX OF DOCUMENTS", "INTERIM RELIEF", "APPLICANT",
+  "RESPONDENT", "DEFENDANT", "PLAINTIFF", "PETITIONER", "DEPONENT", "ACCUSED",
+];
+// Section end boundary. Must tolerate the same letter-spacing as the start
+// matcher, otherwise a GROUNDS edit runs past "P R A Y E R:" and swallows it.
+const ANY_MAJOR_HEADING = new RegExp(
+  `^\\s*(?:${MAJOR_HEADINGS.map((h) => h.split(/\s+/).map(sp).join("\\s+")).join("|")})\\s*:?[ \\t]*$`,
+  "gim",
+);
 
 function resolveAction(prompt: string): LegalDraftEditAction {
   if (/\b(delete|remove|omit)\b/i.test(prompt)) return "delete";
@@ -122,7 +169,14 @@ export function classifyLegalDraftFollowUp(input: {
   // This prevents chip prompts like "Draft post-arrest bail grounds" from rewriting the
   // entire document when the user only wants to add/edit the grounds section.
   const SECTION_KEYWORD_PATTERN = /\b(?:grounds?|facts?|prayer|reliefs?|objections?|verification|affidavit|jurisdiction|cause\s+of\s+action|preliminary)\b/i;
-  if (input.hasDraft && (FULL_REWRITE_PATTERN.test(prompt) || isNewFiling) && SECTION_KEYWORD_PATTERN.test(prompt)) {
+  // ...but "rewrite the whole draft, keeping the same facts" names the document as
+  // the scope, and the incidental "facts" used to demote it to a BRIEF FACTS edit.
+  if (
+    input.hasDraft &&
+    (FULL_REWRITE_PATTERN.test(prompt) || isNewFiling) &&
+    SECTION_KEYWORD_PATTERN.test(prompt) &&
+    !WHOLE_DOCUMENT_SCOPE_PATTERN.test(prompt)
+  ) {
     return "section-edit";
   }
 
@@ -214,6 +268,29 @@ export function findLegalDraftEditTarget(
   if (numbered || /\b(?:paragraph|para)\s*(?:no\.?\s*)?\d{1,3}\b/i.test(prompt)) return numbered;
   const lettered = findLetteredGroundTarget(source, prompt);
   if (lettered || /\bground\s+[A-Z]\b/i.test(prompt)) return lettered;
+
+  // "add case law according to the facts of this plaint" asks for authorities, and
+  // "facts" describes what they must match, not the section to edit. Matching FACTS
+  // first put the citations in BRIEF FACTS and left GROUNDS — where authorities
+  // belong — untouched.
+  const wantsAuthorities = /\b(?:case\s*law|citations?|precedents?|judgments?|authorities|rulings?)\b/i.test(prompt);
+  // "to" is deliberately absent: "according to the facts" describes what the
+  // authorities must match, not the section to edit. "in the facts" does name it.
+  const namesSectionExplicitly =
+    /\b(?:in|into|inside|within)\s+(?:the\s+)?(?:brief\s+)?(?:facts?|prayer|reliefs?|verification|affidavit|objections?)\b/i.test(prompt);
+  if (wantsAuthorities && !namesSectionExplicitly && source) {
+    const groundsSection = SECTION_PATTERNS.find((section) => section.label === "GROUNDS");
+    const groundsMatch = groundsSection && source.match(groundsSection.heading);
+    const groundsRange = groundsMatch && findRangeForMatch(source, groundsMatch);
+    if (groundsSection && groundsRange) {
+      return {
+        label: groundsSection.label,
+        ...groundsRange,
+        text: source.slice(groundsRange.start, groundsRange.end).trimEnd(),
+        action: resolveAction(prompt),
+      };
+    }
+  }
 
   for (const section of SECTION_PATTERNS) {
     if (!section.prompt.test(prompt)) continue;

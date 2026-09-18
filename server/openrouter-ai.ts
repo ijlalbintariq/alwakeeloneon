@@ -200,7 +200,13 @@ export async function runToolJudgmentSearchOR(
   // executeCitationSearch() does ILIKE queries that can take 8-12s on a cold
   // DB connection. Without a guard the Promise.all hangs and blows past the
   // outer ENRICHMENT_BUDGET_MS, causing the AI to receive zero case law context.
-  const DB_SEARCH_TIMEOUT_MS = 18000;
+  // Measured against the live corpus: five concurrent searches finish in 6.5-17.2s
+  // each (sequentially the same five take 116s, so concurrency is the fast path and
+  // must not be throttled). At 18s the slowest legitimate query was being killed and
+  // reported as found=0, which left the draft with a fraction of the authorities.
+  // ponytail: a timeout, not a fix for the query cost — index the judgments table if
+  // this ever needs to drop back under 18s.
+  const DB_SEARCH_TIMEOUT_MS = 30000;
   const allResults: Array<{ id?: string; citation: string; court: string; title: string; summary: string }> = [];
   const queriesUsed: string[] = [];
 
@@ -253,7 +259,9 @@ export async function runToolJudgmentSearchOR(
 
   const lines = unique.map(
     (r) =>
-      `- CITATION: ${r.citation} | COURT: ${r.court} | TITLE: ${r.title}` +
+      // An unusable title is dropped upstream and comes through empty. Printing
+      // "TITLE:" with nothing after it invited the model to invent a case name.
+      `- CITATION: ${r.citation} | COURT: ${r.court}${r.title ? ` | TITLE: ${r.title}` : ""}` +
       // V4-flash supports 1M token context — give the answer model 3× more
       // legal substance per case (1200 chars) so it can write specific
       // analysis instead of guessing/hallucinating from short snippets.

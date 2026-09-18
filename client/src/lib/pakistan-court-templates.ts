@@ -35,6 +35,8 @@ WRIT PETITION UNDER ARTICLE 199 OF THE CONSTITUTION OF THE ISLAMIC REPUBLIC OF P
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Petitioner is a law-abiding, tax-paying citizen of the Islamic Republic of Pakistan, is entitled to the full protection of law, and has an inalienable constitutional right to be treated in accordance with law as enshrined in Article 4 and Article 25 of the Constitution of the Islamic Republic of Pakistan, 1973.
 
 2. That the Petitioner is the absolute, lawful, and undisputed recorded owner in physical, peaceful possession of Commercial Property bearing Plot No. [___], Block [___], measuring [___] Kanals / Marlas, situated at [Scheme / Mouza / Road], Lahore (hereinafter referred to as the "Subject Property"), having purchased the same vide registered Sale Deed No. [___], registered with Sub-Registrar [___], Lahore on [Date], followed by regular mutation of title and issuance of Fard Malkiat in favour of the Petitioner. (Copy of Title Documents and Mutation are annexed herewith as Annexures 'A' & 'B').
@@ -122,6 +124,8 @@ APPLICATION UNDER SECTION 497(1) & (2) OF THE CODE OF CRIMINAL PROCEDURE, 1898 F
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Applicant was arrested by the local police of Police Station [Defence-A], Lahore on [Date of Arrest] in connection with the above-captioned FIR and was sent to judicial lock-up upon completion of physical remand on [Date], and has been languishing behind bars in Central Jail, Kot Lakhpat, Lahore ever since. (Copy of FIR No. [___] is annexed herewith as Annexure 'A').
 
 2. That the earlier bail application filed by the Applicant was dismissed by the Learned Judicial Magistrate / Additional Sessions Judge, Lahore vide Impugned Order dated [___] in a cursory, non-speaking manner without appreciating the statutory provisions of Section 497 Cr.P.C. and settled binding principles of the Honourable Supreme Court. (Copy of Impugned Bail Dismissal Order is annexed as Annexure 'B').
@@ -192,6 +196,8 @@ VERSUS
 PETITION UNDER SECTION 498 OF THE CODE OF CRIMINAL PROCEDURE, 1898 FOR THE GRANT OF AD-INTERIM PRE-ARREST BAIL AND CONFIRMATION THEREOF TO THE PETITIONER IN CASE FIR NO. [112/2026] DATED [28.02.2026], REGISTERED UNDER SECTIONS 489-F / 420 / 406 / 506 PPC AT POLICE STATION [GULBERG], LAHORE.
 
 MOST RESPECTFULLY SHEWETH:
+
+BRIEF FACTS:
 
 1. That the Petitioner is a reputable, respected businessman, managing director of a registered commercial firm, and a permanent law-abiding citizen of Lahore, possessing impeccable repute in the commercial sector.
 
@@ -266,6 +272,8 @@ SUIT FOR DECLARATION, CANCELLATION OF FORGED AND FRAUDULENT REGISTERED GENERAL P
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Plaintiff is the sole, absolute, lawful, and bona fide recorded owner in physical proprietary possession of the immovable property comprising land measuring [16 Kanals], situated at Khasra No. [124/1], Khatooni No. [89], Khewat No. [45], Mouza [Mian Mir], Tehsil Cantt, District Lahore (hereinafter referred to as the "Suit Property"), having inherited the same through regular legacy and sanctioned Mutation of Inheritance No. [567] dated [15.03.2010], duly attested by the revenue officer. (Copy of Fard Malkiat and Register Haqdaran Zameen is annexed herewith as Annexure 'A').
 
 2. That the Plaintiff has remained in continuous, peaceful, undisturbed, and open physical possession of the Suit Property since the date of inheritance, constructing a boundary wall, tubewell room, and cultivating the agricultural acreage without any hindrance or dispute from any quarter.
@@ -329,6 +337,8 @@ APPLICATION UNDER ORDER XXXIX RULES 1 & 2 READ WITH SECTION 151 OF THE CODE OF C
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Applicant/Plaintiff has instituted the accompanying Plaint for Declaration, Cancellation of Instruments, and Permanent Injunction, the contents whereof may kindly be treated as an integral part and parcel of this application to avoid unnecessary prolixity and repetition.
 
 2. That the Applicant has an unimpeachable, strong PRIMA FACIE ARGUABLE CASE with an overwhelming probability of ultimate success, inasmuch as the Applicant is the recorded owner of the Suit Property through undisputed inheritance mutation, whereas the Defendants rely upon a patently forged Power of Attorney fabricated while the Applicant was physically abroad.
@@ -336,6 +346,12 @@ MOST RESPECTFULLY SHEWETH:
 3. That the BALANCE OF CONVENIENCE lies entirely and heavily in favour of the Applicant and against the Respondents, as the Applicant is in settled physical possession of the Suit Property. Conversely, the Respondents have no lawful title and will suffer no legal prejudice if they are restrained from dealing with the disputed property during the pendency of the suit.
 
 4. That if an ad-interim temporary injunction is not granted, the Applicant will suffer IRREPARABLE LOSS, GRAVE INJURY, AND SEVERE COMPLICATIONS which cannot be measured or compensated in terms of monetary compensation. If the Respondents succeed in alienating the property to innocent third-party purchasers or changing its physical character, it will create multiple layers of litigation, defeating the very ends of justice.
+
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
 
 P R A Y E R:
 
@@ -346,7 +362,12 @@ It is, therefore, most respectfully prayed that this application may graciously 
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 6. CIVIL MISCELLANEOUS APPLICATION (SEC. 151 CPC)
 export const PAK_CIVIL_MISC_151_TEMPLATE = `IN THE COURT OF THE LEARNED SENIOR CIVIL JUDGE, LAHORE
@@ -367,6 +388,8 @@ APPLICATION UNDER SECTION 151 OF THE CODE OF CIVIL PROCEDURE, 1908 FOR INVOCATIO
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the captioned Civil Suit is pending adjudication before this Honourable Court and is presently fixed for [Hearing Date / Stage of Proceedings].
 
 2. That an urgent, unexpected, and grave emergency has arisen in the matter, necessitating the immediate intervention of this Court under its inherent powers to prevent irreparable mischief.
@@ -374,6 +397,12 @@ MOST RESPECTFULLY SHEWETH:
 3. That the Respondent, with the deliberate object of frustrating the subject matter of the lis, has commenced unauthorized construction / demolition / interference on the site in active defiance of the proceedings before this Court.
 
 4. That no specific provision under the Code of Civil Procedure expressly covers this urgent contingency, and it is a settled canon of procedural jurisprudence that procedural codes are handmaidens of justice designed to advance substantial justice rather than impede it. Under Section 151 CPC, this Court possesses limitless inherent jurisdiction to pass any order necessary to preserve the status quo and prevent abuse of process.
+
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
 
 P R A Y E R:
 
@@ -384,7 +413,12 @@ It is most respectfully prayed that this Honourable Court may graciously be plea
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 7. EXECUTION APPLICATION (ORDER XXI RULE 11 CPC)
 export const PAK_EXECUTION_ORDER21_TEMPLATE = `IN THE COURT OF THE LEARNED SENIOR CIVIL JUDGE (EXECUTING COURT), LAHORE
@@ -459,6 +493,8 @@ APPLICATION UNDER SECTIONS 22-A & 22-B OF THE CODE OF CRIMINAL PROCEDURE, 1898 R
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Applicant is a peaceful, law-abiding citizen running a commercial enterprise in Lahore.
 
 2. That on [01.08.2026] at about 03:30 PM, Proposed Accused No. 4 along with four unidentified armed accomplices broke into the office of the Applicant, forcibly ransacked the office drawers, snatched cash amounting to PKR 850,000/-, and threatened the Applicant with dire consequences at gunpoint.
@@ -469,6 +505,12 @@ MOST RESPECTFULLY SHEWETH:
 
 5. That under Section 154 Cr.P.C., once information disclosing the commission of a cognizable offence is laid before an officer in-charge of a police station, the police have NO DISCRETION to refuse or conduct preliminary inquiries, and registration of an FIR is an absolute, mandatory statutory duty.
 
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
+
 P R A Y E R:
 
 It is, therefore, most respectfully prayed that this application be accepted, and Respondent No. 3 (SHO) be directed to record the statement of the Applicant under Section 154 Cr.P.C. and register a criminal case (FIR) under the relevant provisions of PPC forthwith.
@@ -478,7 +520,12 @@ It is, therefore, most respectfully prayed that this application be accepted, an
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 9. SUMMARY SUIT FOR RECOVERY (ORDER XXXVII CPC)
 export const PAK_SUIT_ORDER37_SUMMARY_TEMPLATE = `IN THE COURT OF THE LEARNED DISTRICT JUDGE, LAHORE
@@ -497,6 +544,8 @@ Proprietor of [Business Name], Resident of [Address], Lahore.. DEFENDANT
 SUMMARY SUIT UNDER ORDER XXXVII RULES 1 & 2 OF THE CODE OF CIVIL PROCEDURE, 1908 FOR THE RECOVERY OF PKR [2,500,000/-] ALONG WITH STATUTORY MARK-UP AT THE PRESCRIBED COMMERCIAL RATE AND COSTS OF THE SUIT BASED ON DISHONOURED CHEQUE BEARING NO. [98765432] DATED [01.08.2026].
 
 MOST RESPECTFULLY SHEWETH:
+
+BRIEF FACTS:
 
 1. That the Plaintiff is a registered commercial vendor carrying on business of [commercial supply], and the Defendant is a commercial distributor who purchased goods against invoices.
 
@@ -546,6 +595,8 @@ CRIMINAL APPEAL UNDER SECTION 408 OF THE CODE OF CRIMINAL PROCEDURE, 1898 AGAINS
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Appellant was tried by the learned Judicial Magistrate Section 30, Lahore in the above-captioned criminal case, and vide Impugned Judgment dated [10.08.2026], the learned trial court convicted and sentenced the Appellant. (Certified copy of Impugned Judgment is annexed herewith as Annexure 'A').
 
 2. That the Appellant being aggrieved by the impugned conviction and sentence prefers this Criminal Appeal on the following amongst other:
@@ -575,7 +626,12 @@ IN THE INTERIM, it is prayed that under Section 426 Cr.P.C., the sentence of the
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 11. SESSIONS CRIMINAL REVISION (SEC. 435 / 439-A Cr.P.C.)
 export const PAK_SESSIONS_CRIM_REVISION_TEMPLATE = `IN THE COURT OF THE LEARNED SESSIONS JUDGE, LAHORE
@@ -594,11 +650,19 @@ CRIMINAL REVISION UNDER SECTIONS 435 & 439-A OF THE CODE OF CRIMINAL PROCEDURE, 
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Petitioner is the Complainant / Accused in Criminal Case No. [___] pending before the learned Magistrate.
 
 2. That the learned court below vide the Impugned Order dated [___] dismissed the Petitioner's application without appreciating that the evidence sought to be produced was essential for the just decision of the case under Section 540 Cr.P.C.
 
 3. That the Impugned Order suffers from patent illegality, procedural perversity, and jurisdictional error causing grave failure of justice.
+
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
 
 P R A Y E R:
 
@@ -609,7 +673,12 @@ It is respectfully prayed that this Criminal Revision be allowed, the Impugned O
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 12. HIGH COURT REGULAR FIRST APPEAL (R.F.A. SEC. 96 & ORDER XLI CPC)
 export const PAK_HIGH_COURT_APPEAL_RFA_TEMPLATE = `IN THE HONOURABLE LAHORE HIGH COURT, LAHORE
@@ -630,6 +699,8 @@ VERSUS
 REGULAR FIRST APPEAL UNDER SECTION 96 READ WITH ORDER XLI RULE 1 OF THE CODE OF CIVIL PROCEDURE, 1908 AGAINST THE IMPUGNED JUDGMENT AND DECREE DATED [15.06.2026] PASSED BY THE LEARNED ADDITIONAL DISTRICT JUDGE, LAHORE IN CIVIL SUIT NO. [45/2023], WHEREBY THE SUIT OF THE RESPONDENT WAS DECREED IN THE SUM OF PKR [18,500,000/-].
 
 MOST RESPECTFULLY SHEWETH:
+
+BRIEF FACTS:
 
 1. That Respondent No. 1 filed a civil suit for recovery against the Appellant before the learned trial court, which was contested by the Appellant by filing a comprehensive written statement raising preliminary legal objections as well as factual defenses.
 
@@ -659,7 +730,12 @@ IN THE INTERIM, it is prayed that under Order XLI Rule 5 CPC, the execution of t
 
                                                         [ADVOCATE NAME]
                                                         Advocate Supreme Court / High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 13. HIGH COURT CRIMINAL APPEAL (SEC. 410 Cr.P.C.)
 export const PAK_HIGH_COURT_CRIM_APPEAL_TEMPLATE = `IN THE HONOURABLE LAHORE HIGH COURT, LAHORE
@@ -679,6 +755,8 @@ VERSUS
 CRIMINAL APPEAL UNDER SECTION 410 OF THE CODE OF CRIMINAL PROCEDURE, 1898 AGAINST THE IMPUGNED JUDGMENT OF CONVICTION AND SENTENCE DATED [______] PASSED BY THE LEARNED SESSIONS JUDGE / ADDITIONAL SESSIONS JUDGE, [______] IN SESSIONS CASE NO. [______] (FIR NO. [______] DATED [______] U/S 302/324/148/149 PPC), WHEREBY THE APPELLANT WAS SENTENCED TO IMPRISONMENT FOR LIFE.
 
 MOST RESPECTFULLY SHEWETH:
+
+BRIEF FACTS:
 
 1. That the Appellant was tried along with co-accused on the charge of murder under Section 302 PPC and vide Impugned Judgment dated [___], the learned trial court convicted and sentenced the Appellant to undergo imprisonment for life with compensation of PKR 500,000/- under Section 544-A Cr.P.C.
 
@@ -701,7 +779,12 @@ It is prayed that this Appeal be allowed, the Impugned Judgment set aside, and t
 
                                                         [ADVOCATE NAME]
                                                         Advocate Supreme Court / High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 14. HIGH COURT CRIMINAL REVISION (SEC. 435 / 439 Cr.P.C.)
 export const PAK_HIGH_COURT_CRIM_REVISION_TEMPLATE = `IN THE HONOURABLE LAHORE HIGH COURT, LAHORE
@@ -720,9 +803,17 @@ CRIMINAL REVISION PETITION UNDER SECTIONS 435 & 439 OF THE CODE OF CRIMINAL PROC
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Petitioner is aggrieved by the Impugned Order dated [___] passed by the learned Sessions Judge in Criminal Revision / Misc. No. [___], whereby the lawful application filed by the Petitioner was illegally dismissed without judicial application of mind.
 
 2. That the revisional jurisdiction of this High Court under Section 439 Cr.P.C. is supervisory in nature, designed to examine the correctness, legality, and propriety of any finding, sentence, or order recorded by any inferior criminal court.
+
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
 
 P R A Y E R:
 
@@ -733,7 +824,12 @@ It is prayed that this Criminal Revision be allowed, the Impugned Order set asid
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 15. SUPREME COURT CIVIL PETITION FOR LEAVE TO APPEAL (C.P.L.A. ART. 185(3))
 export const PAK_SUPREME_CPLA_TEMPLATE = `IN THE SUPREME COURT OF PAKISTAN
@@ -799,7 +895,12 @@ c. IN THE INTERIM, SUSPEND the operation of the Impugned Judgment and restrain t
                                                         [NAME OF SENIOR ASC]
                                                         Senior Advocate Supreme Court (ASC)
                                                         Islamabad / Lahore
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 16. SUPREME COURT CRIMINAL PETITION FOR LEAVE TO APPEAL (ART. 185(3))
 export const PAK_SUPREME_CRIM_PETITION_TEMPLATE = `IN THE SUPREME COURT OF PAKISTAN
@@ -819,16 +920,29 @@ CRIMINAL PETITION UNDER ARTICLE 185(3) OF THE CONSTITUTION OF THE ISLAMIC REPUBL
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Petitioner seeks Leave to Appeal against the High Court judgment upholding capital conviction / life imprisonment.
 
 2. That substantial questions of criminal jurisprudence arise, including reliance on tainted ocular testimony, discarded recoveries, and violation of the cardinal principle of benefit of doubt.
+
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
 
 P R A Y E R:
 
 Leave to appeal may graciously be granted, and the execution of sentence suspended in the interim.
 
                                                         ADVOCATE-ON-RECORD / ASC
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 17. FAMILY SUIT: KHULA, DOWER, DOWRY & MAINTENANCE
 export const PAK_FAMILY_SUIT_KHULA_TEMPLATE = `IN THE COURT OF THE LEARNED JUDGE FAMILY COURT AT LAHORE
@@ -852,6 +966,8 @@ SUIT UNDER SECTION 5 READ WITH SCHEDULE OF THE WEST PAKISTAN FAMILY COURTS ACT, 
 (iv) RECOVERY OF PAST MAINTENANCE FOR THE PLAINTIFF AND PAST/FUTURE MONTHLY MAINTENANCE FOR MINOR CHILD [NAME] (AGED 3 YEARS) AT THE RATE OF PKR 50,000/- PER MONTH WITH 10% ANNUAL ACCELERATION.
 
 MOST RESPECTFULLY SHEWETH:
+
+BRIEF FACTS:
 
 1. That the Nikah of the Plaintiff was solemnized with the Defendant on [12.11.2021] at Lahore according to Muslim rites and ceremonies against fixed prompt dower of [10 Tolas Gold] (Column 13 & 14 of Nikahnama). Out of the lawful wedlock, one minor child namely [Child Name] (aged 3 years) was born on [Date], who is presently living under the affectionate maternal care and custody of the Plaintiff. (Copy of Nikahnama and Child's NADRA Birth Certificate are annexed as Annexures 'A' & 'B').
 
@@ -910,6 +1026,8 @@ PETITION UNDER SECTION 25 READ WITH SECTION 12 OF THE GUARDIANS AND WARDS ACT, 1
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the Petitioner is the real, natural mother of minor child '[Hamza]' born on [Date], who was forcibly snatched by the Respondent on [Date] during a family dispute.
 
 2. That the minor is of tender age (5 years) and requires maternal warmth, affection, and nurturing. Under Islamic personal law, the right of Hizanat belongs primarily to the mother.
@@ -917,6 +1035,12 @@ MOST RESPECTFULLY SHEWETH:
 3. That the paramount, supreme consideration under Section 25 of the Guardians and Wards Act, 1890 is the "WELFARE OF THE MINOR", which encompasses moral, educational, emotional, and physical well-being.
 
 4. That the Respondent has contracted a second marriage, lives in an unsuitable environment, and remains busy in business travel, leaving the minor at the mercy of step-relations. Conversely, the Petitioner is an educated lady living with an affluent, supportive family with ideal educational facilities.
+
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
 
 P R A Y E R:
 
@@ -927,7 +1051,12 @@ It is prayed that permanent custody of the minor be awarded to the Petitioner mo
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 19. QUASHMENT OF FIR (SEC. 561-A Cr.P.C.)
 export const PAK_QUASHMENT_561A_TEMPLATE = `IN THE HONOURABLE LAHORE HIGH COURT, LAHORE
@@ -947,11 +1076,19 @@ PETITION UNDER SECTION 561-A OF THE CODE OF CRIMINAL PROCEDURE, 1898 FOR QUASHME
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the impugned FIR was registered with blatant mala fides to convert a purely civil contract into a criminal offence.
 
 2. That taking the allegations in the FIR at their face value, no criminal offence under Section 420 or 406 PPC is made out, as essential elements of fraudulent deception at inception are absent.
 
 3. That under Section 561-A Cr.P.C., this Honourable Court has inherent jurisdiction to quash proceedings to prevent abuse of the process of any court and to secure the ends of justice.
+
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
 
 P R A Y E R:
 
@@ -962,7 +1099,12 @@ The Impugned FIR and all subsequent criminal proceedings be quashed.
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 20. HABEAS CORPUS PETITION (SEC. 491 Cr.P.C.)
 export const PAK_HABEAS_CORPUS_491_TEMPLATE = `IN THE HONOURABLE LAHORE HIGH COURT, LAHORE
@@ -982,9 +1124,17 @@ PETITION UNDER SECTION 491 OF THE CODE OF CRIMINAL PROCEDURE, 1898 FOR THE RECOV
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That on [Date] at [Time], Respondent No. 1 along with police officials raided the house of the Petitioner and took away the Detenu [Name] without any warrant or FIR.
 
 2. That the Detenu is being kept in illegal confinement in a torture cell at Police Station [___] without being produced before any Magistrate, violating Article 9 & 10(2) of the Constitution.
+
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
 
 P R A Y E R:
 
@@ -995,7 +1145,12 @@ A Court Bailiff be deputed immediately to raid the premises, recover the Detenu,
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 21. CIVIL REVISION (SEC. 115 CPC)
 export const PAK_CIVIL_REVISION_115_TEMPLATE = `IN THE HONOURABLE LAHORE HIGH COURT, LAHORE
@@ -1013,7 +1168,15 @@ CIVIL REVISION UNDER SECTION 115 OF THE CODE OF CIVIL PROCEDURE, 1908 AGAINST TH
 
 MOST RESPECTFULLY SHEWETH:
 
+BRIEF FACTS:
+
 1. That the courts below have exercised jurisdiction not vested in them by law, failed to exercise jurisdiction so vested, and acted in the exercise of their jurisdiction illegally and with material irregularity.
+
+GROUNDS:
+
+A. That [state the first ground of law relied upon, with the statutory provision and its application to the facts above].
+
+B. That [state the next ground].
 
 P R A Y E R:
 
@@ -1024,7 +1187,12 @@ The Impugned Judgment and Decree be set aside and the suit of the Petitioner be 
 
                                                         [ADVOCATE NAME]
                                                         Advocate High Court
-`;
+
+VERIFICATION:
+
+Verified on oath at [City] on this [____] day of [__________] 20[__] that the contents of the above are true and correct to the best of my knowledge and belief, and that nothing material has been concealed therefrom.
+
+                                                        DEPONENT`;
 
 // 22. STANDARD HIGH COURT & DISTRICT BAR VAKALATNAMA
 export const PAK_VAKALATNAMA_TEMPLATE = `IN THE HONOURABLE LAHORE HIGH COURT, LAHORE /

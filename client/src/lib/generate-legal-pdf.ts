@@ -42,8 +42,10 @@ export type LegalPDFOptions = {
   caseNumber?: string;
   /** Parties, e.g. "Petitioner vs State" */
   parties?: string;
-  /** Show a DRAFT watermark */
+  /** Show a diagonal watermark */
   isDraft?: boolean;
+  /** Watermark text; defaults to "DRAFT" */
+  watermarkText?: string;
   /** Paper size and court margin profile */
   pageProfileId?: LegalPageProfileId;
 };
@@ -263,6 +265,7 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
     caseNumber,
     parties,
     isDraft,
+    watermarkText,
     pageProfileId = DEFAULT_LEGAL_PAGE_PROFILE_ID,
   } = options;
   const pageProfile = resolveLegalPageProfile(pageProfileId);
@@ -308,7 +311,8 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
     doc.setTextColor(0, 0, 0);
   }
 
-  // ── DRAFT watermark ───────────────────────────────────────────────────
+  // ── Diagonal watermark ────────────────────────────────────────────────
+  const watermarkLabel = (watermarkText || "DRAFT").trim().toUpperCase();
   function addDraftWatermark() {
     if (!isDraft) return;
     doc.setFont("times", "bold");
@@ -322,7 +326,7 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
     }
 
     // Rotate and center the text
-    doc.text("DRAFT", PAGE_WIDTH / 2, PAGE_HEIGHT / 2, {
+    doc.text(watermarkLabel, PAGE_WIDTH / 2, PAGE_HEIGHT / 2, {
       align: "center",
       angle: 45,
     });

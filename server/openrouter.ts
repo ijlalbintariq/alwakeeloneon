@@ -57,6 +57,10 @@ export async function chatWithOpenRouter(options: OpenRouterChatOptions): Promis
 
   const choice = response.choices[0];
   const content = choice?.message?.content || "No response generated.";
+  // A silently truncated completion looks identical to a short one downstream.
+  if (choice?.finish_reason === "length") {
+    console.warn(`[OpenRouter] output truncated at max_tokens=${options.maxTokens || 8192} (model=${model})`);
+  }
 
   return {
     content,

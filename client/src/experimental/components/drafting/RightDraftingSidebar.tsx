@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   Sparkles,
   Bot,
@@ -49,13 +49,19 @@ interface RightDraftingSidebarProps {
   onToggle: () => void;
   currentDocumentText: string;
   onInsertClause: (clauseText: string, title?: string) => void;
-  onReplaceDocument: (content: string) => void;
+  /** `documentType` is the type the server resolved for this draft. A conversion
+   *  ("turn this into a writ petition") changes it, and the tab must adopt it or
+   *  the next edit is drafted against the old filing type's checklist. */
+  onReplaceDocument: (content: string, documentType?: string) => void;
   onLoadTemplate: (template: DraftingTemplate) => void;
   onInsertTemplateAtCursor: (template: DraftingTemplate) => void;
   onOpenFeeModal: () => void;
   onOpenExportModal: () => void;
   activeProfileId: LegalPageProfileId;
   activeDocumentType?: string;
+  /** Current editor selection. Sending it turns the request into a bounded edit
+   *  of that passage instead of a whole-document rewrite. */
+  getSelectedText?: () => string;
   onChangeProfileId: (id: LegalPageProfileId) => void;
   editorWidthMode: "wide" | "full" | "court";
   onChangeWidthMode: (mode: "wide" | "full" | "court") => void;
@@ -71,6 +77,8 @@ interface ChatMessage {
   clauseTitle?: string;
   /** True when `insertableClause` is the whole patched draft, not a standalone snippet. */
   isWholeDocument?: boolean;
+  /** Filing type the server resolved for this draft (conversions change it). */
+  documentType?: string;
   timestamp: string;
   recommendations?: any[];
 }
@@ -87,6 +95,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   onOpenExportModal,
   activeProfileId,
   activeDocumentType,
+  getSelectedText,
   onChangeProfileId,
   editorWidthMode,
   onChangeWidthMode,
@@ -103,6 +112,17 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [aiContextFiles, setAiContextFiles] = useState<File[]>([]);
   const aiContextInputRef = useRef<HTMLInputElement>(null);
+  // Poll the editor selection so the badge reflects what is highlighted right now.
+  const [selectionPreview, setSelectionPreview] = useState("");
+  useEffect(() => {
+    if (!getSelectedText) return;
+    const id = window.setInterval(() => {
+      const sel = getSelectedText().trim().replace(/\s+/g, " ");
+      setSelectionPreview(sel ? (sel.length > 90 ? `${sel.slice(0, 90)}…` : sel) : "");
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [getSelectedText]);
+
   const [riskScanStatus, setRiskScanStatus] = useState<"idle" | "scanning" | "done" | "error">("idle");
   const [riskScanResults, setRiskScanResults] = useState<
     Array<{ id: string; title: string; detail: string; severity: string; prompt: string }>
@@ -119,7 +139,11 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
     }
   }, [inputPrompt]);
 
-  const voice = useVoiceRecorder();
+  const appendVoiceTranscription = useCallback((text: string) => {
+    setInputPrompt((prev) => (prev ? `${prev} ${text}` : text));
+  }, []);
+  // Without this the 2-minute auto-stop transcribed the audio and discarded it.
+  const voice = useVoiceRecorder({ onAutoTranscription: appendVoiceTranscription });
 
   // Chat message history
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -220,6 +244,9 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
     if (!textOverride) setInputPrompt("");
     setIsGenerating(true);
 
+    // Read the selection now — clicking into the chat box clears it in the editor.
+    const selectedSnippet = (getSelectedText?.() || "").trim();
+
     try {
       let data;
       try {
@@ -249,6 +276,10 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
           formData.append("module", "legal-drafting");
           formData.append("stream", "false");
           formData.append("conversationHistory", JSON.stringify(conversationHistory));
+          if (selectedSnippet) {
+            formData.append("selectedSnippet", selectedSnippet);
+            formData.append("forceTargetedEdit", "true");
+          }
           aiContextFiles.forEach(f => formData.append("attachments", f));
 
           res = await fetch("/api/retrieval/clauses/generate", {
@@ -270,6 +301,9 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
             module: "legal-drafting",
             stream: false,
             conversationHistory,
+            ...(selectedSnippet
+              ? { selectedSnippet, forceTargetedEdit: true }
+              : {}),
           };
           res = await apiRequest("POST", "/api/retrieval/clauses/generate", payload);
         }
@@ -294,6 +328,11 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
         }
       }
       
+      // The server already extracted these into the prompt context. Holding on to
+      // them re-uploaded and re-OCR'd every file on every later message, and with
+      // the 5-file cap that permanently blocked attaching anything else.
+      setAiContextFiles([]);
+
       const recommendations = data.recommendations || [];
 
       // A refused edit returns the original draft, so there is nothing to apply.
@@ -304,6 +343,25 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
           text: data.message || "The requested edit was not applied. The draft is unchanged.",
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           recommendations,
+        }]);
+        return;
+      }
+
+      // The server answers an unclear instruction with { clarification: true, message }
+      // and no clause. Falling through printed the generic "Here is the court-ready
+      // legal draft..." line with nothing under it — a dead end for the user.
+      if (data.clarification === true) {
+        const suggestions: Array<{ key?: string; label?: string }> = Array.isArray(data.suggestedTypes)
+          ? data.suggestedTypes
+          : [];
+        const suffix = suggestions.length
+          ? `\n\nDid you mean:\n${suggestions.map((s) => `• ${s.label || s.key}`).join("\n")}`
+          : "";
+        setMessages((prev) => [...prev, {
+          id: `ai-clarify-${Date.now()}`,
+          role: "assistant",
+          text: `${data.message || "Could you say which part of the draft to change?"}${suffix}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         }]);
         return;
       }
@@ -356,6 +414,10 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
         insertableClause: generatedClause || undefined,
         clauseTitle,
         isWholeDocument,
+        documentType:
+          typeof data.documentType === "string" && data.documentType !== "custom-input"
+            ? data.documentType
+            : undefined,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         recommendations,
       };
@@ -391,9 +453,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
     if (voice.isRecording) {
       try {
         const text = await voice.stopAndTranscribe();
-        if (text) {
-          setInputPrompt((prev) => (prev ? `${prev} ${text}` : text));
-        }
+        if (text) appendVoiceTranscription(text);
       } catch (err) {
         toast({
           title: "Voice transcription error",
@@ -554,7 +614,8 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                 key={idx}
                 type="button"
                 onClick={() => handleSend(chip.prompt)}
-                className="px-2 py-1 rounded-md text-[10px] font-semibold bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-[#105B38] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-emerald-200 dark:border-emerald-500/20 text-[#334155] dark:text-[#CBD5E1] transition-colors whitespace-nowrap shrink-0"
+                disabled={isGenerating}
+                className="px-2 py-1 rounded-md text-[10px] font-semibold bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50 dark:bg-emerald-500/10 hover:text-[#105B38] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-emerald-200 dark:border-emerald-500/20 text-[#334155] dark:text-[#CBD5E1] transition-colors whitespace-nowrap shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 + {chip.label}
               </button>
@@ -636,7 +697,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
 
                           <button
                             type="button"
-                            onClick={() => onReplaceDocument(msg.insertableClause!)}
+                            onClick={() => onReplaceDocument(msg.insertableClause!, msg.documentType)}
                             className={cn(
                               "inline-flex items-center gap-1 rounded-md text-[10px] font-bold transition-colors",
                               msg.isWholeDocument
@@ -742,6 +803,15 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
           {/* Bottom Chat Input */}
           <div className="p-3 bg-white dark:bg-[#131E2E] border-t border-[#E2E8F0] dark:border-[#1E2D44] shrink-0">
             <div className="relative flex flex-col gap-1.5">
+              {selectionPreview && (
+                <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[10px] text-[#105B38]">
+                  <Scale className="w-3 h-3 mt-0.5 shrink-0" />
+                  <span>
+                    <strong>Editing selected text.</strong> Your command applies to
+                    this passage only: &ldquo;{selectionPreview}&rdquo;
+                  </span>
+                </div>
+              )}
               <textarea
                 ref={inputRef}
                 aria-label="AI Command Input"
@@ -758,6 +828,27 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                 placeholder="Command AI to draft or amend (e.g. 'Draft stay grounds under Order 39')..."
                 className="w-full p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] focus:bg-white dark:bg-[#131E2E] resize-none transition-colors"
               />
+
+              {aiContextFiles.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {aiContextFiles.map((f, idx) => (
+                    <span
+                      key={`${f.name}-${idx}`}
+                      className="inline-flex items-center gap-1 max-w-full px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-[10px] font-semibold text-blue-700 dark:text-blue-400"
+                    >
+                      <span className="truncate max-w-[140px]" title={f.name}>{f.name}</span>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${f.name}`}
+                        onClick={() => setAiContextFiles((prev) => prev.filter((_, i) => i !== idx))}
+                        className="shrink-0 hover:text-blue-900 dark:hover:text-blue-200"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
@@ -791,7 +882,9 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                     <button
                       type="button"
                       onClick={handleVoiceTranscription}
+                      disabled={voice.isTranscribing}
                       className={cn(
+                        voice.isTranscribing && "opacity-50 cursor-not-allowed",
                         "p-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors",
                         voice.isRecording
                           ? "bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-400 animate-pulse"
@@ -940,7 +1033,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
               {riskScanStatus === "done" &&
                 riskScanResults.map((r, idx) => (
                   <div
-                    key={r.id || `risk-${idx}`}
+                    key={`${r.id || "risk"}-${idx}`}
                     className={cn(
                       "text-left p-2 rounded border mb-2 text-[11px]",
                       r.severity === "danger"
@@ -953,7 +1046,8 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                     {r.detail}
                     <button
                       type="button"
-                      className="mt-1 block font-bold underline"
+                      disabled={isGenerating}
+                      className="mt-1 block font-bold underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
                       onClick={() => {
                         setActiveTab("ai_chat");
                         handleSend(r.prompt);
