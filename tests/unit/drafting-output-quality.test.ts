@@ -78,3 +78,28 @@ test("advisory citation count trusts the verified list over prose scanning", () 
     ["Only 1 case law authority(ies) cited; the drafting standard expects 3."],
   );
 });
+
+/**
+ * The word floor describes a complete filing. Applying it to a bounded edit told
+ * the user their 600-word working draft was short every time they touched the
+ * grounds — something the edit never claimed to fix. Fresh drafts, which the floor
+ * does describe, measured 1,103-1,848 words against a 1,000 floor.
+ */
+test("a bounded edit is not judged against the whole-filing word floor", async () => {
+  const { collectDraftAdvisories } = await import("../../server/routes");
+  const shortDraft = "BRIEF FACTS:\n\n1. That the applicant was arrested.\n\nGROUNDS:\n\nA. That bail is a rule.";
+
+  const onEdit = collectDraftAdvisories(shortDraft, "sessions-bail-application", 3, { boundedEdit: true });
+  assert.equal(
+    onEdit.some((a) => /expects at least/.test(a)),
+    false,
+    "a section edit was told the user's own draft is too short",
+  );
+
+  const onFreshDraft = collectDraftAdvisories(shortDraft, "sessions-bail-application", 3);
+  assert.equal(
+    onFreshDraft.some((a) => /expects at least/.test(a)),
+    true,
+    "a fresh draft below the floor should still be flagged",
+  );
+});

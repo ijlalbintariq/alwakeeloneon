@@ -96,7 +96,12 @@ export interface CitationResult {
  * ever re-scraped.
  */
 export function cleanCaseTitle(title: string | undefined | null): string {
-  let cleaned = String(title || "")
+  const raw = String(title || "").trim();
+  // Rows with no real title carry a generated stand-in. Treating one as the record
+  // made the drafter replace a plausible party name with "Case reported at 2008
+  // PCRLJ 1360".
+  if (/^(?:case\s+(?:reported\s+at|cited\s+as)|judgment|order|result)\b/i.test(raw)) return "";
+  let cleaned = raw
     .replace(/\s*Honorable\b[\s\S]*$/i, "")
     .replace(/\s*Case\s+No\.?\s*$/i, "")
     .replace(/\s+/g, " ")
@@ -106,6 +111,29 @@ export function cleanCaseTitle(title: string | undefined | null): string {
   // Begins mid-name: the words that would identify the first party are gone.
   if (/^(?:and\b|v\.?\s|vs\.?\s|through\b|others\b|another\b|Ltd\b|\(|[a-z])/.test(cleaned)) return "";
   return cleaned.length >= 6 ? cleaned : "";
+}
+
+/**
+ * 132,407 of 224,442 case_law rows carry no court. The citation itself usually
+ * names the forum — SCMR is the Supreme Court reporter, LHC/SHC/IHC name their
+ * seat — so derive it at read time rather than migrating the corpus. Returns ""
+ * when the citation does not settle it; a wrong court is worse than none.
+ */
+export function inferCourtFromCitation(citation: string | undefined | null): string {
+  const c = String(citation || "").toUpperCase().replace(/[.\s]+/g, " ");
+  if (/\bSCMR\b/.test(c)) return "Supreme Court of Pakistan";
+  if (/\bFSC\b|FEDERAL SHARIAT/.test(c)) return "Federal Shariat Court";
+  const SEATS: Array<[RegExp, string]> = [
+    [/\bLHC\b|\bLAHORE\b/, "Lahore High Court"],
+    [/\bSHC\b|\bKARACHI\b|\bSINDH\b/, "Sindh High Court"],
+    [/\bIHC\b|\bISLAMABAD\b/, "Islamabad High Court"],
+    [/\bPHC\b|\bPESHAWAR\b/, "Peshawar High Court"],
+    [/\bBHC\b|\bQUETTA\b|\bBALOCHISTAN\b/, "Balochistan High Court"],
+  ];
+  // "PLD 2023 Supreme Court 617" names its own forum; "PLD 2018 Lahore 806" the seat.
+  if (/\bSUPREME COURT\b|\bSC\b/.test(c)) return "Supreme Court of Pakistan";
+  for (const [re, name] of SEATS) if (re.test(c)) return name;
+  return "";
 }
 
 export function normalizeCitationKey(citation: string | undefined | null): string {
@@ -438,7 +466,7 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
       results: merged.map((r) => ({
         id: (r as any).judgmentId || r.id,
         citation: r.citation,
-        court: r.court,
+        court: String(r.court || "").trim() || inferCourtFromCitation(r.citation),
         title: cleanCaseTitle(r.title),
         summary: (r.summary || "").slice(0, 1500),
       })),

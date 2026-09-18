@@ -127,3 +127,45 @@ test("a party name matching the record survives in either form", () => {
     assert.equal(fix(input, cited).out, input);
   }
 });
+
+/**
+ * A court can also be named in the prose rather than beside the citation:
+ * "2009 SCMR 324, where the Honourable Supreme Court of Pakistan held that ...".
+ * Only a court bound to the citation by a reporting verb is corrected — a
+ * pleading's own narrative about the courts below must survive untouched.
+ */
+test("a court named in prose beside the citation is corrected", () => {
+  const { out, log } = fix(
+    "Reliance is placed on 2017 SCMR 956, where the Honourable Sindh High Court held that the recovery...",
+    [{ written: "2017 SCMR 956", court: SUPREME }],
+  );
+  assert.match(out, /Honourable Supreme Court of Pakistan held/);
+  assert.doesNotMatch(out, /Sindh High Court/);
+  assert.equal(log.length, 1);
+});
+
+test("an abbreviated but compatible court name is left alone", () => {
+  // "Supreme Court" and "Supreme Court of Pakistan" are the same forum.
+  const input = "2009 SCMR 324, where the Honourable Supreme Court held that the accused...";
+  const { out, log } = fix(input, [{ written: "2009 SCMR 324", court: SUPREME }]);
+  assert.equal(out, input);
+  assert.deepEqual(log, []);
+});
+
+test("the pleading's own narrative about the courts below is untouched", () => {
+  // No reporting verb ties these to the authority; they are facts of the case.
+  for (const input of [
+    "3. That the learned Lahore High Court dismissed the applicant's earlier petition on 18.02.2021.",
+    "2021 SCMR 822 was filed after the Lahore High Court refused bail to the petitioner.",
+  ]) {
+    const { out } = fix(input, [{ written: "2021 SCMR 822", court: SUPREME }]);
+    assert.equal(out, input, "rewrote the pleading's own narrative");
+  }
+});
+
+test("a court far from the citation is not captured", () => {
+  const input =
+    "2021 SCMR 822 sets out the principle. Separately, and on entirely different facts spanning " +
+    "several unrelated matters of record, the Sindh High Court held that limitation applies.";
+  assert.equal(fix(input, [{ written: "2021 SCMR 822", court: SUPREME }]).out, input);
+});

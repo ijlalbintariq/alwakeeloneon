@@ -161,7 +161,7 @@ import {
 import { isSearchCrawler } from "./middleware/rate-limiter";
 import { resolveRequestIp } from "./replit_integrations/auth/ip";
 import { escapeHtml, LEGAL_DRAFT_PREVIEW_CSP, sanitizeLegalDraftHtml } from "./legal-drafting-security";
-import { cleanCaseTitle } from "./tools/citation-search-tool";
+import { cleanCaseTitle, inferCourtFromCitation } from "./tools/citation-search-tool";
 import { LEGAL_DRAFT_MAX_INPUT_CHARS, prepareLegalDraftInput } from "./legal-drafting-context";
 import {
   applyLegalDraftEdit,
@@ -6108,13 +6108,20 @@ export function collectDraftAdvisories(
    * (e.g. "2024SHC826"), so a regex undercounts real authorities.
    */
   verifiedCitationCount?: number,
+  /**
+   * A bounded edit changes one section. Measuring the user's whole document
+   * against a full-filing floor told them their 600-word working draft was short
+   * every time they touched the grounds, which is not what they asked for and not
+   * something the edit could fix.
+   */
+  options?: { boundedEdit?: boolean },
 ): string[] {
   const prose = String(content || "").replace(/<!--\s*INDEX_TABLE_START\s*-->[\s\S]*?<!--\s*INDEX_TABLE_END\s*-->/gi, "");
   const advisories: string[] = [];
 
   const floor = LEGAL_DRAFT_WORD_FLOORS[docType];
   const words = prose.trim().split(/\s+/).filter(Boolean).length;
-  if (floor && words < floor) {
+  if (floor && words < floor && !options?.boundedEdit) {
     advisories.push(`Draft is ${words} words; this filing type expects at least ${floor}.`);
   }
 
@@ -6558,6 +6565,34 @@ function extractCitationVariants(value: string): string[] {
  * ponytail: rewrites the parenthetical or `titled "..."` next to the citation; a
  * court or case name mentioned further off in the sentence is left alone.
  */
+const COURT_NAME_PATTERN =
+  /(?:Supreme Court(?: of Pakistan)?|Federal Shariat Court|(?:Lahore|Sindh|Islamabad|Peshawar|Balochistan) High Court|High Court(?: of [A-Z][a-z]+)?|Sessions Court|Appellate Tribunal|[A-Z][a-z]+ Tribunal)/;
+
+/** "Supreme Court" and "Supreme Court of Pakistan" are the same forum; "Sindh High Court" is not. */
+function courtFamily(name: string): string {
+  const c = String(name || "").toLowerCase();
+  if (c.includes("supreme court")) return "supreme";
+  if (c.includes("federal shariat")) return "shariat";
+  if (c.includes("high court")) {
+    const seat = c.match(/\b(lahore|sindh|islamabad|peshawar|balochistan)\b/);
+    return seat ? `high:${seat[1]}` : "high";
+  }
+  if (c.includes("session")) return "sessions";
+  if (c.includes("tribunal")) return "tribunal";
+  return "";
+}
+
+/** Two court names disagree only when both resolve to a family and the families differ. */
+function courtsDisagree(written: string, record: string): boolean {
+  const a = courtFamily(written);
+  const b = courtFamily(record);
+  if (!a || !b) return false;
+  if (a === b) return false;
+  // An unseated "high" is compatible with any seated High Court.
+  if (a.startsWith("high") && b.startsWith("high") && (a === "high" || b === "high")) return false;
+  return true;
+}
+
 export function applyCitationRecordCorrections(
   text: string,
   cited: { written: string; court: string; title: string },
@@ -6593,6 +6628,25 @@ export function applyCitationRecordCorrections(
       return title ? `${lead}titled "${title}"` : lead.trimEnd();
     },
   );
+
+  // A court can also be named in the prose: "2009 SCMR 324, where the Honourable
+  // Supreme Court of Pakistan held that ...". Only a court bound to the citation by
+  // a reporting verb is touched — a pleading's own narrative ("the learned Lahore
+  // High Court dismissed the earlier petition") states a fact about the case, not
+  // the forum of the authority, and must be left exactly as written.
+  if (court) {
+    const honorifics = "(?:Hon(?:'|\u2019)?ble\\s+|Honou?rable\\s+|learned\\s+|apex\\s+|august\\s+)*";
+    const reporting = "(?:held|observed|ordained|ruled|laid\\s+down|declared|opined|reiterated|clarified)";
+    const prosePattern = new RegExp(
+      `(${escaped}[^.\\n]{0,60}?\\b(?:the\\s+)?${honorifics})(${COURT_NAME_PATTERN.source})(\\s+${reporting}\\b)`,
+      "gi",
+    );
+    out = out.replace(prosePattern, (whole, lead, namedCourt, tail) => {
+      if (!courtsDisagree(namedCourt, court)) return whole;
+      courtFixes.push(`${written} (prose): "${namedCourt}" -> "${court}"`);
+      return `${lead}${court}${tail}`;
+    });
+  }
 
   return { text: out, courtFixes, titleFixes };
 }
@@ -6816,7 +6870,9 @@ async function resolveCaseCitationFromKnowledgeBase(candidate: string): Promise<
     return {
       id: row.id,
       citation: normalizeSpaces(row.citation),
-      court: row.court,
+      // 59% of the corpus has no court. The citation usually names the forum, and
+      // the drafter needs one to check what the model wrote against.
+      court: String(row.court || "").trim() || inferCourtFromCitation(row.citation),
       // Same corpus artifacts the search tool strips; this path feeds the
       // reference list the user sees under the draft. No fallback to the raw
       // value: a row whose title survived as "ed to by the learned" is better
@@ -16247,6 +16303,7 @@ ${lengthDirective}
               draftedText,
               selectedDocType || '',
               streamRefResolution.references.caseLaw.length,
+              { boundedEdit: isLocalizedEdit },
             ));
             // Send done event with all metadata
             res.write(`data: ${JSON.stringify({
@@ -16321,8 +16378,36 @@ ${lengthDirective}
         };
         if (isLocalizedEdit) {
           const preservedDraftReferences = await resolveLegalDraftReferences(draftedText);
+          // A bounded edit must not strip citations out of the parts of the draft
+          // the user did not ask to touch, and it must not re-normalise their
+          // formatting — hence draftedText rather than cleanedText. The record
+          // corrections are neither: they only replace a court or a party name
+          // beside a citation with what the record says, so apply those directly
+          // or a bounded edit ships "2025 SCMR 72 (Sindh High Court)" for a
+          // Supreme Court authority.
+          let correctedDraft = draftedText;
+          const boundedCourtFixes: string[] = [];
+          const boundedTitleFixes: string[] = [];
+          for (const ref of preservedDraftReferences.references.caseLaw) {
+            const applied = applyCitationRecordCorrections(correctedDraft, {
+              written: ref.citation,
+              court: ref.court || "",
+              title: ref.title || "",
+            });
+            correctedDraft = applied.text;
+            boundedCourtFixes.push(...applied.courtFixes);
+            boundedTitleFixes.push(...applied.titleFixes);
+          }
+          if (boundedCourtFixes.length > 0 || boundedTitleFixes.length > 0) {
+            console.log(
+              `[LegalDrafting:CitationResolve] bounded edit corrections ` +
+              `courtFixed=${JSON.stringify(boundedCourtFixes.slice(0, 5))} ` +
+              `titleFixed=${JSON.stringify(boundedTitleFixes.slice(0, 5))}`,
+            );
+          }
+          draftedText = correctedDraft;
           referenceResolution = {
-            cleanedText: draftedText,
+            cleanedText: correctedDraft,
             references: preservedDraftReferences.references,
           };
         } else {
@@ -16417,6 +16502,7 @@ ${lengthDirective}
           draftedText,
           selectedDocType || "",
           referenceResolution.references.caseLaw.length,
+          { boundedEdit: isLocalizedEdit },
         ));
         return res.json({
           clause: draftedText,
