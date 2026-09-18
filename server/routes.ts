@@ -6548,7 +6548,56 @@ function extractCitationVariants(value: string): string[] {
     .filter((item) => item.length > 0);
 }
 
-function caseCitationMatches(candidateCitation: string, rowCitation: string): boolean {
+/**
+ * A verified citation says nothing about the prose around it. Live drafts came
+ * back with "2017 SCMR 956 (Sindh High Court)" — SCMR is the Supreme Court
+ * reporter — and with party names for judgments whose titles the corpus lost, so
+ * the model supplied them from memory. Correct both against the record, and where
+ * there is no record, say nothing rather than name parties a judgment may never
+ * have had.
+ * ponytail: rewrites the parenthetical or `titled "..."` next to the citation; a
+ * court or case name mentioned further off in the sentence is left alone.
+ */
+export function applyCitationRecordCorrections(
+  text: string,
+  cited: { written: string; court: string; title: string },
+): { text: string; courtFixes: string[]; titleFixes: string[] } {
+  const { written, court, title } = cited;
+  const courtFixes: string[] = [];
+  const titleFixes: string[] = [];
+  const same = (a: string, b: string) =>
+    a.replace(/\s+/g, " ").trim().toLowerCase() === b.replace(/\s+/g, " ").trim().toLowerCase();
+  const escaped = escapeRegExp(written);
+  let out = String(text || "");
+
+  out = out.replace(new RegExp(`(${escaped}\\s*)\\(([^)]{3,120})\\)`, "gi"), (whole, lead, inner) => {
+    const namesParties = /\b(?:vs?\.?|versus)\b/i.test(inner);
+    if (!namesParties && /\b(?:court|tribunal|bench)\b/i.test(inner)) {
+      if (!court || same(inner, court)) return whole;
+      courtFixes.push(`${written}: "${inner}" -> "${court}"`);
+      return `${lead}(${court})`;
+    }
+    if (namesParties) {
+      if (title && same(inner, title)) return whole;
+      titleFixes.push(`${written}: "${inner}" -> ${title ? `"${title}"` : "(removed)"}`);
+      return title ? `${lead}(${title})` : lead.trimEnd();
+    }
+    return whole;
+  });
+
+  out = out.replace(
+    new RegExp(`(${escaped}\\s*)titled\\s*["'\u201c\u2018]([^"'\u201d\u2019]{3,120})["'\u201d\u2019]`, "gi"),
+    (whole, lead, inner) => {
+      if (title && same(inner, title)) return whole;
+      titleFixes.push(`${written}: "${inner}" -> ${title ? `"${title}"` : "(removed)"}`);
+      return title ? `${lead}titled "${title}"` : lead.trimEnd();
+    },
+  );
+
+  return { text: out, courtFixes, titleFixes };
+}
+
+export function caseCitationMatches(candidateCitation: string, rowCitation: string): boolean {
   const normalizedCandidate = normalizeCitationForMatch(candidateCitation);
   if (!normalizedCandidate) return false;
   const candidateParts = parseCaseLawCitationQuery(candidateCitation);
@@ -6760,8 +6809,10 @@ async function resolveCaseCitationFromKnowledgeBase(candidate: string): Promise<
       citation: normalizeSpaces(row.citation),
       court: row.court,
       // Same corpus artifacts the search tool strips; this path feeds the
-      // reference list the user sees under the draft.
-      title: cleanCaseTitle(row.title) || row.title,
+      // reference list the user sees under the draft. No fallback to the raw
+      // value: a row whose title survived as "ed to by the learned" is better
+      // shown with no title than with that.
+      title: cleanCaseTitle(row.title),
       summary: row.summary,
       hasSource: true,
       sourceType: row.sourceType || null,
@@ -7094,6 +7145,14 @@ async function resolveLegalDraftReferences(
   options?: {
     stripUnverifiedCaseCitations?: boolean;
     unresolvedCaseCitationPlaceholder?: string;
+    /**
+     * Citations actually retrieved for this draft. Existing in the database only
+     * proves a citation is real, not that it has anything to do with the case: a
+     * remembered bail authority passed verification inside a specific-performance
+     * plaint. When this list is supplied, a citation outside it is treated as
+     * unverified and stripped like any other.
+     */
+    allowedCaseCitations?: string[];
   },
 ): Promise<DraftReferenceResolutionResult> {
   const payload = createEmptyLegalDraftReferencePayload();
@@ -7108,6 +7167,16 @@ async function resolveLegalDraftReferences(
   const verifiedCaseRefs: LegalDraftCaseReference[] = [];
   const seenCaseIds = new Set<number>();
   const unresolvedCaseCitations: string[] = [];
+  const allowedCaseCitations = options?.allowedCaseCitations || [];
+  const offPoolCitations: string[] = [];
+  const citedAs: Array<{ written: string; court: string; title: string }> = [];
+  const correctedCourts: string[] = [];
+  const correctedTitles: string[] = [];
+  // `undefined` disables the check (callers that do not retrieve a pool); an empty
+  // array means retrieval ran and found nothing, so nothing may be cited.
+  const enforcePool = Array.isArray(options?.allowedCaseCitations);
+  const isInRetrievedPool = (citation: string): boolean =>
+    !enforcePool || allowedCaseCitations.some((allowed) => caseCitationMatches(citation, allowed));
   // Parallelize case citation resolution for speed (was sequential)
   const caseResolutions = await Promise.all(
     caseCandidates.map((citation) =>
@@ -7116,20 +7185,43 @@ async function resolveLegalDraftReferences(
   );
   for (let i = 0; i < caseCandidates.length; i++) {
     const resolved = caseResolutions[i];
+    if (resolved && !isInRetrievedPool(caseCandidates[i]) && !isInRetrievedPool(resolved.citation)) {
+      // Real judgment, wrong case. The model wrote it from memory.
+      offPoolCitations.push(caseCandidates[i]);
+      unresolvedCaseCitations.push(caseCandidates[i]);
+      continue;
+    }
     if (resolved) {
       if (!seenCaseIds.has(resolved.id)) {
         seenCaseIds.add(resolved.id);
         verifiedCaseRefs.push(resolved);
       }
+      citedAs.push({ written: caseCandidates[i], court: resolved.court || "", title: resolved.title || "" });
       continue;
     }
     unresolvedCaseCitations.push(caseCandidates[i]);
+  }
+
+  // The pool gives COURT for every judgment, but nothing stops the model writing
+  // its own: a Supreme Court authority came back in a bail application as
+  // "2017 SCMR 956 (Sindh High Court)". Misattributing the forum changes the
+  // precedential weight of the authority, so correct it against the record.
+  // ponytail: rewrites the parenthetical beside the citation as written; a court
+  // named further away in the sentence is left alone.
+  for (const { written, court, title } of citedAs) {
+    const corrected = applyCitationRecordCorrections(cleanedText, { written, court, title });
+    cleanedText = corrected.text;
+    correctedCourts.push(...corrected.courtFixes);
+    correctedTitles.push(...corrected.titleFixes);
   }
   if (caseCandidates.length > 0) {
     console.log(
       `[LegalDrafting:CitationResolve] Resolved ${caseCandidates.length} case citations in parallel ` +
       `(verified=${verifiedCaseRefs.length}, unresolved=${unresolvedCaseCitations.length})` +
-      (unresolvedCaseCitations.length > 0 ? ` unresolved=${JSON.stringify(unresolvedCaseCitations.slice(0, 8))}` : ""),
+      (unresolvedCaseCitations.length > 0 ? ` unresolved=${JSON.stringify(unresolvedCaseCitations.slice(0, 8))}` : "") +
+      (offPoolCitations.length > 0 ? ` offPool=${JSON.stringify(offPoolCitations.slice(0, 8))}` : "") +
+      (correctedCourts.length > 0 ? ` courtFixed=${JSON.stringify(correctedCourts.slice(0, 5))}` : "") +
+      (correctedTitles.length > 0 ? ` titleFixed=${JSON.stringify(correctedTitles.slice(0, 5))}` : ""),
     );
   }
 
@@ -15684,6 +15776,16 @@ If they want to change a specific part, return section-edit. If they want a comp
               ]
             : [];
 
+        // What the model was actually shown. A citation outside this list is one it
+        // remembered, not one it was given, however real the judgment turns out to be.
+        // The knowledge block is included because the pipeline can carry judgments in
+        // its prose that never appear as structured caseLawHits.
+        const retrievedCitations = [
+          ...draftToolSearchResult.verifiedCitations,
+          ...pipelineCaseLawHits.map((h) => h.citation),
+          ...extractCaseCitationCandidates(legalKnowledgeContext || ""),
+        ].filter((c) => String(c || "").trim().length > 0);
+
         console.log(
           `[LegalDrafting:CaseLawPool] chars=${effectiveDraftCaseContext.length} ` +
           `source=${draftToolSearchResult.contextString ? "tool-search" : (pipelineCaseLawContext ? "pipeline" : "none")} ` +
@@ -15857,6 +15959,7 @@ ${legalKnowledgeContextBlock}${styleContext ? `\n\nPersonal Style Memory:\n${sty
             const replacementReferences = await resolveLegalDraftReferences(replacementText, {
               stripUnverifiedCaseCitations: true,
               unresolvedCaseCitationPlaceholder: "",
+              allowedCaseCitations: retrievedCitations,
             });
             replacementText = normalizeDraftingText(replacementReferences.cleanedText || replacementText);
           }
@@ -16074,6 +16177,7 @@ ${lengthDirective}
             let streamRefResolution = await resolveLegalDraftReferences(draftedText, {
               stripUnverifiedCaseCitations: true,
               unresolvedCaseCitationPlaceholder: '',
+              allowedCaseCitations: retrievedCitations,
             });
             draftedText = streamRefResolution.cleanedText || draftedText;
 
@@ -16090,6 +16194,7 @@ ${lengthDirective}
                   streamRefResolution = await resolveLegalDraftReferences(draftedText, {
                     stripUnverifiedCaseCitations: true,
                     unresolvedCaseCitationPlaceholder: '',
+                    allowedCaseCitations: retrievedCitations,
                   });
                   draftedText = streamRefResolution.cleanedText || draftedText;
                   streamValidation = validateDraftForSelectedType(draftedText, selectedDocType);
@@ -16207,6 +16312,7 @@ ${lengthDirective}
           referenceResolution = await resolveLegalDraftReferences(draftedText, {
             stripUnverifiedCaseCitations: true,
             unresolvedCaseCitationPlaceholder: "",
+            allowedCaseCitations: retrievedCitations,
           });
           draftedText = referenceResolution.cleanedText;
           if (beforeResolveWords - countDraftWords(draftedText) > 20) {
@@ -16255,6 +16361,7 @@ ${lengthDirective}
               referenceResolution = await resolveLegalDraftReferences(draftedText, {
                 stripUnverifiedCaseCitations: true,
                 unresolvedCaseCitationPlaceholder: "",
+                allowedCaseCitations: retrievedCitations,
               });
               draftedText = referenceResolution.cleanedText || draftedText;
               validation = validateDraftForSelectedType(draftedText, selectedDocType);
