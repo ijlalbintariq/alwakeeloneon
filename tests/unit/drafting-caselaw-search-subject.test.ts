@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PROVISION_MENTION_PATTERN } from "../../server/routes";
+import { CAUSE_TITLE_PATTERN, PROVISION_MENTION_PATTERN } from "../../server/routes";
 
 const DRAFT = `IN THE COURT OF THE LEARNED SESSIONS JUDGE, LAHORE
 
@@ -25,16 +25,25 @@ B. That Article 199 of the Constitution is attracted.`;
  * model judged that no research was needed and issued zero queries, so every
  * follow-up drafted with an empty case-law pool.
  */
-function searchSubject(draft: string, prompt: string, label: string): string {
+/** Mirrors draftSubjectDigest + caseLawSearchSubject in server/routes.ts. */
+function searchSubject(draft: string, prompt: string, _label: string): string {
+  // The cause title lives in the header. Scanning the whole draft let a numbered
+  // fact ("5. That the plaintiff filed an application under Section 12 for ...")
+  // match ahead of it and become the search subject.
+  const headerBlock = draft.split("\n").slice(0, 25).join("\n");
+  const causeTitle = (headerBlock.match(CAUSE_TITLE_PATTERN)?.[0] || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
   const provisions = new Set<string>();
   for (const m of draft.matchAll(PROVISION_MENTION_PATTERN)) {
     const kind = /^art/i.test(m[1]) ? "Article" : /^order/i.test(m[1]) ? "Order" : "Section";
     const act = (m[3] || "").replace(/[.\s]/g, "");
     provisions.add(`${kind} ${m[2]}${act ? ` ${act}` : ""}`);
-    if (provisions.size >= 6) break;
+    if (provisions.size >= 5) break;
   }
-  const cited = provisions.size > 0 ? `: ${[...provisions].join(", ")}` : "";
-  return `Pakistani case law for a ${label}${cited}. ${prompt}`;
+  const digest = [causeTitle, [...provisions].join(", ")].filter((x) => x.length > 0).join(". ");
+  return digest ? `Pakistani case law. ${digest}. ${prompt}` : prompt;
 }
 
 test("the searchable provisions survive the 300-character truncation", () => {
@@ -62,13 +71,53 @@ test("Articles and Orders keep their own labels", () => {
   assert.match(subject, /Article 199 Constitution/);
 });
 
-test("a draft naming no provisions still yields a usable subject", () => {
+test("a draft with nothing to distil falls back to the instruction alone", () => {
   const subject = searchSubject("A plain letter with no statutory references.", "draft grounds", "Legal Notice");
-  assert.equal(subject, "Pakistani case law for a Legal Notice. draft grounds");
+  assert.equal(subject, "draft grounds");
+});
+
+test("a cause title alone is enough of a subject", () => {
+  const subject = searchSubject(
+    "IN THE HONOURABLE LAHORE HIGH COURT\n\nCONSTITUTIONAL PETITION UNDER ARTICLE 199 OF THE CONSTITUTION AGAINST AN ARBITRARY EXECUTIVE ORDER.",
+    "add grounds",
+    "Writ Petition",
+  );
+  assert.match(subject, /^Pakistani case law\. CONSTITUTIONAL PETITION UNDER ARTICLE 199/);
+  assert.match(subject, /add grounds$/);
 });
 
 test("the shared pattern is not left with a stale lastIndex between drafts", () => {
   const a = searchSubject(DRAFT, "x", "Bail");
   const b = searchSubject(DRAFT, "x", "Bail");
   assert.equal(a, b, "matchAll left lastIndex advanced on the shared regex");
+});
+
+test("the cause title wins over a numbered fact that mentions an application", () => {
+  const draft = [
+    "IN THE COURT OF THE LEARNED CIVIL JUDGE, LAHORE",
+    "",
+    "SUIT FOR SPECIFIC PERFORMANCE OF AGREEMENT TO SELL UNDER SECTION 12 OF THE SPECIFIC RELIEF ACT, 1877.",
+    "",
+    "BRIEF FACTS:",
+    "",
+    "5. That the plaintiff filed an application under Section 22-A Cr.P.C. for registration of an FIR.",
+  ].join("\n");
+  const subject = searchSubject(draft, "add case law", "Civil Suit (Plaint)");
+  assert.match(subject, /SPECIFIC PERFORMANCE OF AGREEMENT TO SELL/);
+  assert.doesNotMatch(subject, /registration of an FIR/);
+});
+
+test("party names and addresses never reach the search subject", () => {
+  const draft = [
+    "IN THE COURT OF THE LEARNED CIVIL JUDGE, LAHORE",
+    "",
+    "Bilal Ahmad son of Nazir Ahmad, CNIC 35201-9876543-2, resident of House No. 45, Johar Town, Lahore",
+    "                                                            ...PLAINTIFF",
+    "",
+    "SUIT FOR SPECIFIC PERFORMANCE OF AGREEMENT TO SELL UNDER SECTION 12 OF THE SPECIFIC RELIEF ACT, 1877.",
+  ].join("\n");
+  const subject = searchSubject(draft, "add case law", "Civil Suit (Plaint)");
+  for (const leak of ["Bilal Ahmad", "35201-9876543-2", "Johar Town", "House No. 45"]) {
+    assert.ok(!subject.includes(leak), `"${leak}" leaked into the retrieval query`);
+  }
 });

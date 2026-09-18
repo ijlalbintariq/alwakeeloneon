@@ -257,7 +257,29 @@ export async function runToolJudgmentSearchOR(
     return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
   }
 
-  const lines = unique.map(
+  // Each sub-query ranks its own results, but the pool is concatenated in the order
+  // the searches happened to return, so the head of a 90-judgment block belonged to
+  // whichever sub-query finished first rather than to the case being drafted — and
+  // models weight what they read first. Re-rank the whole pool against the subject.
+  const subjectTokens = String(userQuery || "")
+    .toLowerCase()
+    .split(/\s+/)
+    .map((t) => t.replace(/[^a-z0-9]/g, ""))
+    .filter((t) => t.length >= 4);
+  const subjectOverlap = (r: (typeof unique)[number]): number => {
+    if (subjectTokens.length === 0) return 0;
+    const hay = `${r.title || ""} ${r.summary || ""}`.toLowerCase();
+    let hits = 0;
+    for (const t of subjectTokens) if (hay.includes(t)) hits++;
+    return hits / subjectTokens.length;
+  };
+  const ranked = unique
+    .map((r, i) => ({ r, i, score: subjectOverlap(r) }))
+    // Ties keep their original order, which is each sub-query's own ranking.
+    .sort((a, b) => b.score - a.score || a.i - b.i)
+    .map((x) => x.r);
+
+  const lines = ranked.map(
     (r) =>
       // An unusable title is dropped upstream and comes through empty. Printing
       // "TITLE:" with nothing after it invited the model to invent a case name.
@@ -275,5 +297,5 @@ export async function runToolJudgmentSearchOR(
     ...lines,
   ].join("\n");
 
-  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation), verifiedTitles: unique.map(u => ({ title: u.title, citation: u.citation })), verifiedHits: unique.map(u => ({ id: u.id, citation: u.citation, title: u.title, court: u.court, summary: u.summary })) };
+  return { contextString, foundCount: ranked.length, queriesUsed, verifiedCitations: ranked.map(u => u.citation), verifiedTitles: ranked.map(u => ({ title: u.title, citation: u.citation })), verifiedHits: ranked.map(u => ({ id: u.id, citation: u.citation, title: u.title, court: u.court, summary: u.summary })) };
 }

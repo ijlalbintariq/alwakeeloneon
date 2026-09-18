@@ -382,7 +382,17 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
       // Only penalize when there's a HARD signal: PCRLJ citation in a civil query,
       // or murder/bail keywords in a property dispute.
       const HARD_CRIMINAL_SIGNALS = ["murder", "qatl", "bail", "fir", "conviction", "acquittal", "prisoner", "penal", "prosecution", "accused"];
-      const HARD_CIVIL_SIGNALS = ["mortgage", "tenant", "landlord", "eviction", "easement", "partition", "conveyance"];
+      // The original list held only property-dispute words, so the commonest civil
+      // filings of all — specific performance, injunction, declaration — matched
+      // nothing, the query counted as neither civil nor criminal, and the penalty
+      // never fired. A specific-performance suit ranked bail judgments on plain
+      // word overlap.
+      const HARD_CIVIL_SIGNALS = [
+        "mortgage", "tenant", "landlord", "eviction", "easement", "partition", "conveyance",
+        "specific performance", "agreement to sell", "sale deed", "injunction", "declaration",
+        "decree", "plaint", "specific relief", "possession", "pre-emption", "preemption",
+        "rescission", "cancellation of", "damages", "recovery suit",
+      ];
 
       const queryLower = query.toLowerCase();
       const queryCivil = HARD_CIVIL_SIGNALS.some(d => queryLower.includes(d)) || queryLower.includes("property") || queryLower.includes("tpa");

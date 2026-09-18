@@ -21,6 +21,7 @@
  *     [Pipeline:3:Build]    ...
  */
 
+import { createHash } from "crypto";
 import { classifyQueryIntent, analyzeQueryExplicitness } from "./intent-classifier";
 import { runRetrieval } from "./retrieval-engine";
 import { buildContext } from "./context-builder";
@@ -35,6 +36,7 @@ import type { QueryIntent } from "./intent-classifier";
 interface CachedPipelineResult {
   contextString: string;
   caseLawHits: CaseLawHit[];
+  maxRelevanceScore: number;
 }
 type TimedEntry<T> = { value: T; expiresAt: number };
 const contextCache = new Map<string, TimedEntry<CachedPipelineResult>>();
@@ -226,8 +228,18 @@ function buildFocusedRetrievalQueries(rawQuery: string, intent: QueryIntent): st
 
 const OUTER_DEADLINE_MS = Number(process.env.KNOWLEDGE_OUTER_DEADLINE_MS || 30000);
 
+/**
+ * Truncating at 280 characters was enough for chat, where the question is the
+ * whole query. A drafting query spends its first ~190 characters on the
+ * instruction, the filing label, the jurisdiction and the court heading, so two
+ * unrelated matters of the same type produced the same key and the second one was
+ * served the first one's case law. The digest keeps keys readable and short while
+ * a hash of the whole query keeps them distinct.
+ */
 function normKey(q: string): string {
-  return q.toLowerCase().replace(/\s+/g, " ").trim().slice(0, 280);
+  const normalized = q.toLowerCase().replace(/\s+/g, " ").trim();
+  const digest = createHash("sha1").update(normalized).digest("hex").slice(0, 16);
+  return `${normalized.slice(0, 200)}#${digest}`;
 }
 
 export interface CaseLawHit {
@@ -267,7 +279,9 @@ export async function runKnowledgePipeline(
       topics: [],
       durationMs: 0,
       caseLawHits: cached.caseLawHits,
-      maxRelevanceScore: cached.caseLawHits.length > 0 ? 100 : 0, // cached = previously validated
+      // Carry the score the hits actually scored. Reporting a flat 100 made every
+      // cache hit clear any downstream relevance gate, however weak the hits were.
+      maxRelevanceScore: cached.maxRelevanceScore,
     };
   }
 
@@ -370,13 +384,13 @@ export async function runKnowledgePipeline(
       summary: hit.row.summary
     }));
 
-    if (ctx.contextString.length > 0) {
-      cacheSet(key, { contextString: ctx.contextString, caseLawHits });
-    }
-
     const maxRelevanceScore = retrieval.caseLaw.length > 0
       ? Math.max(...retrieval.caseLaw.map(h => h.relevanceScore))
       : 0;
+
+    if (ctx.contextString.length > 0) {
+      cacheSet(key, { contextString: ctx.contextString, caseLawHits, maxRelevanceScore });
+    }
 
     return {
       contextString: ctx.contextString,

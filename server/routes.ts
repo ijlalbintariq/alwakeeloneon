@@ -6597,6 +6597,15 @@ export function applyCitationRecordCorrections(
   return { text: out, courtFixes, titleFixes };
 }
 
+/**
+ * Below this pipeline relevance score the retrieved judgments are treated as too
+ * weak to draft from, and the tool search runs instead. The drafting endpoint used
+ * to gate only on `hits.length === 0`, so a single score-3 hit suppressed the tool
+ * search, became the entire pool, and — with the prompt demanding three citations
+ * from that pool — pushed the draft onto a barely related authority.
+ */
+export const TOOL_SEARCH_QUALITY_THRESHOLD = 40;
+
 export function caseCitationMatches(candidateCitation: string, rowCitation: string): boolean {
   const normalizedCandidate = normalizeCitationForMatch(candidateCitation);
   if (!normalizedCandidate) return false;
@@ -6679,7 +6688,7 @@ function splitSectionTokens(raw: string): string[] {
  * AGREEMENT TO SELL ... UNDER SECTION 12 OF THE SPECIFIC RELIEF ACT, 1877".
  * It is the one line that states what the case is actually about.
  */
-const CAUSE_TITLE_PATTERN =
+export const CAUSE_TITLE_PATTERN =
   /^[ \t]*(?=[^\n]{30,400}$)[^\n]*\b(?:SUIT|APPLICATION|PETITION|APPEAL|REVISION|COMPLAINT|REFERENCE)\b[^\n]*\b(?:FOR|UNDER|AGAINST|SEEKING)\b[^\n]*$/im;
 
 /** Statutory provisions named in a draft, used to build a case-law search query. */
@@ -15639,14 +15648,22 @@ If they want to change a specific part, return section-edit. If they want a comp
         // zero authorities and the model fell back on its own memory. The draft
         // holds the subject matter, so search that too. The prompt stays first so
         // the token trim only ever eats the excerpt.
-        const draftSubjectExcerpt = baseDraftText.trim().slice(0, 1500);
-        // runToolJudgmentSearchOR truncates its input to 300 characters, and the
-        // first 300 characters of a pleading are the court caption and the party's
-        // address — nothing searchable. Handed that, the tool-calling model decided
-        // no research was needed and issued zero queries. Send the provisions
-        // instead, front-loaded so the truncation cannot reach them.
-        const caseLawSearchSubject = (() => {
-          if (!draftSubjectExcerpt) return safePrompt;
+        // What this filing is actually about, distilled: the cause title names the
+        // relief, the transaction and the act in one line, and the provisions name
+        // the law. Both searches use this instead of raw pleading text — the tool
+        // search truncates its input to 300 characters (a pleading's first 300 are
+        // the court heading and the party's address), and the semantic pipeline is
+        // dragged off-topic by party names, CNICs and street addresses.
+        const draftSubjectDigest = (() => {
+          if (!baseDraftText.trim()) return "";
+          // The cause title lives in the header. Scanning the whole draft let a
+          // numbered fact ("5. That the plaintiff filed an application under
+          // Section 12 for ...") match ahead of it.
+          const headerBlock = baseDraftText.split("\n").slice(0, 25).join("\n");
+          const causeTitle = (headerBlock.match(CAUSE_TITLE_PATTERN)?.[0] || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 180);
           const provisions = new Set<string>();
           for (const m of baseDraftText.matchAll(PROVISION_MENTION_PATTERN)) {
             const label = /^art/i.test(m[1]) ? "Article" : /^order/i.test(m[1]) ? "Order" : "Section";
@@ -15654,24 +15671,19 @@ If they want to change a specific part, return section-edit. If they want a comp
             provisions.add(`${label} ${m[2]}${act ? ` ${act}` : ""}`);
             if (provisions.size >= 5) break;
           }
-          // Provisions alone are not the case. A plaint reduced to "Section 12" made
-          // the search model ask for "Section 12 civil suit" and find nothing, and the
-          // draft then cited bail judgments in a specific-performance suit. The cause
-          // title names the relief, the transaction and the act in one line, so it
-          // goes first and survives the 300-character truncation.
-          const causeTitle = (baseDraftText.match(CAUSE_TITLE_PATTERN)?.[0] || "")
-            .replace(/\s+/g, " ")
-            .trim()
-            .slice(0, 180);
-          const parts = [causeTitle, [...provisions].join(", "), safePrompt].filter((x) => x.length > 0);
-          return `Pakistani case law. ${parts.join(". ")}`;
+          return [causeTitle, [...provisions].join(", ")].filter((x) => x.length > 0).join(". ");
         })();
+
+        const caseLawSearchSubject = draftSubjectDigest
+          ? `Pakistani case law. ${draftSubjectDigest}. ${safePrompt}`
+          : safePrompt;
+
         const legalKnowledgeQuery = trimTextToTokenBudget(
           [
             refinedDraftPrompt,
             profile.label,
             jurisdiction || "",
-            draftSubjectExcerpt,
+            draftSubjectDigest,
           ]
             .filter((part) => String(part || "").trim().length > 0)
             .join("\n"),
@@ -15703,13 +15715,19 @@ If they want to change a specific part, return section-edit. If they want a comp
         // This saves 1 AI API call + 3-5 redundant DB calls for ~90% of queries.
         const useOpenRouterToolsDraft = isOpenRouterAvailable();
         const draftToolSearchCapable = useOpenRouterToolsDraft || isDeepSeekAvailable();
-        const draftToolSearchEnabled = draftToolSearchCapable && pipelineCaseLawHits.length === 0;
+        const pipelineMaxScore = knowledgePipelineResult.maxRelevanceScore ?? 0;
+        const draftToolSearchEnabled = draftToolSearchCapable && (
+          pipelineCaseLawHits.length === 0 || pipelineMaxScore < TOOL_SEARCH_QUALITY_THRESHOLD
+        );
         let draftToolSearchResult: DraftToolSearchResult = { ...emptyToolResult };
         // Elapsed is cumulative from the start of the search: a query reporting
         // found=0 near the deadline timed out, it did not find nothing.
         const toolSearchStartedAt = Date.now();
         if (draftToolSearchEnabled) {
-          console.log("[LegalDrafting:ToolSearch:Fallback] Pipeline returned 0 case law hits — running tool search");
+          console.log(
+            `[LegalDrafting:ToolSearch:Fallback] pipelineHits=${pipelineCaseLawHits.length} ` +
+            `maxScore=${pipelineMaxScore} (<${TOOL_SEARCH_QUALITY_THRESHOLD}) — running tool search`,
+          );
           try {
             draftToolSearchResult = await (useOpenRouterToolsDraft
               ? runToolJudgmentSearchOR(caseLawSearchSubject, (q, n) => {
@@ -17378,7 +17396,6 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       // Phase 2: Tool search ONLY if pipeline returned 0 cases OR low quality cases
       // Budget is capped at 20s for the fallback tool search.
       const TOOL_SEARCH_FALLBACK_MS = 20_000;
-      const TOOL_SEARCH_QUALITY_THRESHOLD = 40;
       const pipelineMaxScore = knowledgeResult.maxRelevanceScore ?? 100;
       const toolSearchEnabled = toolSearchCapable && (
         pipelineCaseLawHits.length === 0 ||
