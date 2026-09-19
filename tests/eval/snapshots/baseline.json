@@ -1,0 +1,1042 @@
+{
+  "ts": "2026-09-19T20:31:06.442Z",
+  "rate": 0.98,
+  "results": [
+    {
+      "id": "ppc-302-formal",
+      "area": "criminal",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 33797,
+      "topTopics": [
+        "murder",
+        "lis-pendens",
+        "res-judicata"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9152
+    },
+    {
+      "id": "ppc-302-natural",
+      "area": "criminal",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 58921,
+      "topTopics": [
+        "murder",
+        "honor-killing",
+        "cybercrime"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9969
+    },
+    {
+      "id": "crpc-497-formal",
+      "area": "bail",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 36767,
+      "topTopics": [
+        "bail",
+        "public-nuisance",
+        "lis-pendens"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 10041
+    },
+    {
+      "id": "crpc-497-natural",
+      "area": "bail",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 101290,
+      "topTopics": [
+        "industrial-disputes-nirc"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 13071
+    },
+    {
+      "id": "cnsa-bail",
+      "area": "narcotics",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 53121,
+      "topTopics": [
+        "bail",
+        "narcotics"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8551
+    },
+    {
+      "id": "cheque-489f",
+      "area": "criminal",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 43867,
+      "topTopics": [
+        "cheque",
+        "lis-pendens",
+        "res-judicata"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 7838
+    },
+    {
+      "id": "cheque-natural",
+      "area": "criminal",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 47269,
+      "topTopics": [
+        "cheque"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 7825
+    },
+    {
+      "id": "pre-arrest-bail",
+      "area": "bail",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 34962,
+      "topTopics": [
+        "bail",
+        "public-nuisance",
+        "lis-pendens"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 7717
+    },
+    {
+      "id": "khula",
+      "area": "family",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 49516,
+      "topTopics": [
+        "family",
+        "partnership",
+        "anti-money-laundering"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8535
+    },
+    {
+      "id": "khula-natural",
+      "area": "family",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 61435,
+      "topTopics": [
+        "family",
+        "inheritance-disputes",
+        "supreme-court-appeal"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8516
+    },
+    {
+      "id": "maintenance",
+      "area": "family",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 54520,
+      "topTopics": [
+        "family",
+        "widow-inheritance",
+        "joint-family-property"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 7801
+    },
+    {
+      "id": "maintenance-natural",
+      "area": "family",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 83781,
+      "topTopics": [
+        "family",
+        "execution-decree",
+        "anti-money-laundering"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8404
+    },
+    {
+      "id": "child-custody",
+      "area": "family",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 58337,
+      "topTopics": [
+        "family",
+        "guardian-ad-litem",
+        "anti-money-laundering"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8897
+    },
+    {
+      "id": "custody-natural",
+      "area": "family",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 86503,
+      "topTopics": [
+        "will-wasiyat",
+        "child-juvenile",
+        "contempt-of-court"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8329
+    },
+    {
+      "id": "dowry-recovery",
+      "area": "family",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 68914,
+      "topTopics": [
+        "dowry-recovery-jahez"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8478
+    },
+    {
+      "id": "specific-performance",
+      "area": "civil",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 71741,
+      "topTopics": [
+        "contract",
+        "specific-relief",
+        "partition-suit"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9151
+    },
+    {
+      "id": "specific-performance-natural",
+      "area": "civil",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 93489,
+      "topTopics": [
+        "sale-of-goods",
+        "property",
+        "civil-servants"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9008
+    },
+    {
+      "id": "illegal-dispossession",
+      "area": "property",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 51398,
+      "topTopics": [
+        "illegal-dispossession-act",
+        "suit-possession",
+        "property"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 6938
+    },
+    {
+      "id": "dispossession-natural",
+      "area": "property",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 65094,
+      "topTopics": [
+        "property",
+        "will-wasiyat",
+        "land-acquisition"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8469
+    },
+    {
+      "id": "rent-eviction",
+      "area": "property",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 59357,
+      "topTopics": [
+        "rent-tenancy",
+        "tort-negligence",
+        "anti-money-laundering"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8090
+    },
+    {
+      "id": "rent-natural",
+      "area": "property",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 90822,
+      "topTopics": [
+        "rent-tenancy",
+        "theft-burglary",
+        "cantonment-property-rent"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8388
+    },
+    {
+      "id": "inheritance",
+      "area": "property",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 54647,
+      "topTopics": [
+        "property",
+        "joint-family-property",
+        "partition-suit"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8490
+    },
+    {
+      "id": "inheritance-natural",
+      "area": "property",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 101496,
+      "topTopics": [
+        "property",
+        "faraid",
+        "daughter-inheritance"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8577
+    },
+    {
+      "id": "writ-petition",
+      "area": "constitutional",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 66391,
+      "topTopics": [
+        "constitutional",
+        "habeas-corpus",
+        "civil-court-procedure"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8962
+    },
+    {
+      "id": "fundamental-rights",
+      "area": "constitutional",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 51714,
+      "topTopics": [
+        "constitutional",
+        "attachment-before-judgment",
+        "public-interest-litigation"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 13562
+    },
+    {
+      "id": "habeas-corpus",
+      "area": "constitutional",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 96600,
+      "topTopics": [
+        "fir",
+        "investigation-police",
+        "transfer-cases"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8683
+    },
+    {
+      "id": "service-dismissal",
+      "area": "service",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 49977,
+      "topTopics": [
+        "service-tribunal",
+        "customs-excise",
+        "civil-servants"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 13341
+    },
+    {
+      "id": "peca-harassment",
+      "area": "cyber",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 87981,
+      "topTopics": [
+        "cybercrime",
+        "accounting-suit",
+        "corruption"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 13874
+    },
+    {
+      "id": "peca-formal",
+      "area": "cyber",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 48458,
+      "topTopics": [
+        "lis-pendens",
+        "res-judicata",
+        "anti-money-laundering"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 13545
+    },
+    {
+      "id": "defamation",
+      "area": "civil",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 50215,
+      "topTopics": [
+        "damages-compensation",
+        "defamation",
+        "tort-negligence"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9002
+    },
+    {
+      "id": "limitation-suit",
+      "area": "civil",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 47000,
+      "topTopics": [
+        "limitation",
+        "banking",
+        "debt-recovery"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8575
+    },
+    {
+      "id": "limitation-natural",
+      "area": "civil",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 50515,
+      "topTopics": [
+        "execution-decree",
+        "anti-money-laundering",
+        "foreign-exchange-regulation"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 13197
+    },
+    {
+      "id": "cpc-injunction",
+      "area": "civil",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 38184,
+      "topTopics": [
+        "temporary-injunction-stay",
+        "specific-relief",
+        "partition-suit"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 13917
+    },
+    {
+      "id": "injunction-natural",
+      "area": "civil",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 47269,
+      "topTopics": [
+        "property",
+        "military",
+        "contempt-of-court"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9442
+    },
+    {
+      "id": "theft-ppc-379",
+      "area": "criminal",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 37710,
+      "topTopics": [
+        "theft-burglary",
+        "lis-pendens",
+        "res-judicata"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8342
+    },
+    {
+      "id": "robbery-392",
+      "area": "criminal",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 34153,
+      "topTopics": [
+        "robbery",
+        "lis-pendens",
+        "res-judicata"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 7004
+    },
+    {
+      "id": "criminal-breach-406",
+      "area": "criminal",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 38737,
+      "topTopics": [
+        "contract",
+        "waqf-trust",
+        "criminal-appeal-revision"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8914
+    },
+    {
+      "id": "fraud-420",
+      "area": "criminal",
+      "phrasing": "natural",
+      "pass": false,
+      "statuteOk": false,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 91522,
+      "topTopics": [
+        "immigration",
+        "execution-decree",
+        "anti-money-laundering"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 7957
+    },
+    {
+      "id": "quashing-fir",
+      "area": "criminal",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 72624,
+      "topTopics": [
+        "fir",
+        "perjury-false-evidence"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9152
+    },
+    {
+      "id": "qatl-i-amd",
+      "area": "criminal",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 69670,
+      "topTopics": [
+        "murder"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8100
+    },
+    {
+      "id": "narcotics-quantity",
+      "area": "narcotics",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 36648,
+      "topTopics": [
+        "narcotics",
+        "lis-pendens",
+        "res-judicata"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 7356
+    },
+    {
+      "id": "arms-act",
+      "area": "criminal",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 58994,
+      "topTopics": [
+        "arms-weapons"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 12375
+    },
+    {
+      "id": "company-winding-up",
+      "area": "corporate",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 53381,
+      "topTopics": [
+        "company-corporate",
+        "anti-money-laundering",
+        "foreign-exchange-regulation"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 15160
+    },
+    {
+      "id": "labour-termination",
+      "area": "labour",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 100502,
+      "topTopics": [
+        "labor"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9494
+    },
+    {
+      "id": "tax-appeal",
+      "area": "tax",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 89731,
+      "topTopics": [
+        "tax",
+        "civil-appeal",
+        "attachment-before-judgment"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8434
+    },
+    {
+      "id": "banking-recovery",
+      "area": "banking",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 82456,
+      "topTopics": [
+        "banking",
+        "debt-recovery",
+        "banking-court-recovery"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8474
+    },
+    {
+      "id": "consumer",
+      "area": "consumer",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 57419,
+      "topTopics": [
+        "cybercrime",
+        "contract",
+        "theft-burglary"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9435
+    },
+    {
+      "id": "succession-certificate",
+      "area": "property",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 53489,
+      "topTopics": [
+        "succession-probate",
+        "succession-certificate",
+        "property"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8485
+    },
+    {
+      "id": "nab-reference",
+      "area": "criminal",
+      "phrasing": "formal",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 47910,
+      "topTopics": [
+        "corruption",
+        "bail",
+        "anti-money-laundering"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 9147
+    },
+    {
+      "id": "cheque-vs-civil",
+      "area": "criminal",
+      "phrasing": "natural",
+      "pass": true,
+      "statuteOk": true,
+      "caseLawOk": true,
+      "topicsOk": true,
+      "caseLawCount": 10,
+      "statuteCount": 68023,
+      "topTopics": [
+        "cheque",
+        "criminal-appeal-revision",
+        "declaratory-suit"
+      ],
+      "topStatutes": [
+        "# Issue",
+        "# Rule"
+      ],
+      "ms": 8581
+    }
+  ]
+}

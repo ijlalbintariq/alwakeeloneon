@@ -22,7 +22,10 @@
     "test:e2e": "node --import tsx --test tests/e2e/**/*.test.ts",
     "judgments:label:dry": "npx tsx script/judgment_text_label.ts",
     "judgments:label:apply": "npx tsx script/judgment_text_label.ts --apply",
-    "judgments:label:reset": "npx tsx script/judgment_text_label.ts --reset"
+    "judgments:label:reset": "npx tsx script/judgment_text_label.ts --reset",
+    "eval:rag": "npx tsx tests/eval/rag-eval.ts",
+    "eval:rag:natural": "npx tsx tests/eval/rag-eval.ts --natural",
+    "retrieval:misses": "npx tsx scripts/retrieval-misses.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",

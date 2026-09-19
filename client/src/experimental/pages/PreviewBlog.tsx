@@ -4,6 +4,7 @@ import { useDocumentHead } from "@/hooks/use-document-head";
 import { useQuery } from "@tanstack/react-query";
 import { Search, BookOpen, Clock, ChevronRight } from "lucide-react";
 import { PublicPreviewShell } from "@/experimental/components/public/PublicPreviewShell";
+import { BLOG_ARTICLES } from "@shared/blog-data";
 
 export default function PreviewBlog() {
   useDocumentHead({
@@ -88,9 +89,14 @@ export default function PreviewBlog() {
               <p className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Try adjusting your search terms or category filter.</p>
             </div>
           ) : (
+            // wouter's Link renders the <a> itself; a nested <a> here produced
+            // "validateDOMNesting: <a> cannot appear as a descendant of <a>".
             filteredArticles.map((article) => (
-              <Link key={article.slug} href={`/preview/blog/${article.slug}`}>
-                <a className="group bg-white dark:bg-[#131E2E] rounded-3xl border border-[#E2E8F0] dark:border-[#1E2D44] overflow-hidden hover:border-[#A3D4BC] dark:hover:border-[#10B981]/40 hover:shadow-lg transition-all flex flex-col h-full">
+              <Link
+                key={article.slug}
+                href={`/preview/blog/${article.slug}`}
+                className="group bg-white dark:bg-[#131E2E] rounded-3xl border border-[#E2E8F0] dark:border-[#1E2D44] overflow-hidden hover:border-[#A3D4BC] dark:hover:border-[#10B981]/40 hover:shadow-lg transition-all flex flex-col h-full"
+              >
                   <div className="px-6 pt-6">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#105B38]/10 dark:bg-[#10B981]/15 border border-[#105B38]/20 dark:border-[#10B981]/30 rounded-full text-[11px] text-[#105B38] dark:text-[#10B981] font-bold uppercase tracking-wider">
                       <BookOpen className="w-3 h-3" />
@@ -99,7 +105,7 @@ export default function PreviewBlog() {
                   </div>
                   <div className="p-6 flex flex-col flex-1 space-y-4">
                     <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
-                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {article.readTime} min read</span>
+                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {String(article.readTime).replace(/\D+/g, "") || "5"} min read</span>
                     </div>
                     <h3 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] dark:group-hover:text-[#10B981] transition-colors leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                       {article.title}
@@ -119,7 +125,6 @@ export default function PreviewBlog() {
                       </span>
                     </div>
                   </div>
-                </a>
               </Link>
             ))
           )}

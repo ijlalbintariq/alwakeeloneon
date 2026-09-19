@@ -190,6 +190,12 @@ async function embedTextsVoyage(texts: string[], dim: number = DEFAULT_DIM, inpu
       .sort((a, b) => a.index - b.index)
       .map((item) => fitToDimension(item.embedding, dim));
   } catch (err: any) {
+    // Indexing must never fall back to hashing: a hashed vector written into the
+    // same column is permanent noise that no later run detects or repairs.
+    // Queries may still degrade, since a bad query result is thrown away.
+    if (inputType === "document") {
+      throw new Error(`Voyage bulk embed failed while indexing: ${err?.message || err}`);
+    }
     console.warn(`[RAG] Voyage bulk embed failed (${err?.message || err}) — falling back to hashing`);
     return texts.map((t) => embedTextHashing(t, dim));
   }
@@ -331,10 +337,16 @@ export async function embedTextLocal(text: string, dim: number = DEFAULT_DIM): P
   return embedTextHashing(text, dim);
 }
 
-export async function embedTextsLocal(texts: string[], dim: number = DEFAULT_DIM): Promise<number[][]> {
-  // Voyage AI — legal-specific embedding model
+export async function embedTextsLocal(
+  texts: string[],
+  dim: number = DEFAULT_DIM,
+  inputType: "query" | "document" = "query",
+): Promise<number[][]> {
+  // Voyage AI — legal-specific embedding model.
+  // Indexing must pass "document": the bulk migration stored document-type vectors,
+  // so embedding chunks as "query" puts them in a different part of the space.
   if (EMBEDDING_PROVIDER === "voyage") {
-    return embedTextsVoyage(texts, dim, "query");
+    return embedTextsVoyage(texts, dim, inputType);
   }
   // OpenAI/OpenRouter — same model as stored judgment vectors
   if (EMBEDDING_PROVIDER === "openai") {

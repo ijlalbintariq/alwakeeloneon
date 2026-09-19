@@ -163,7 +163,7 @@ export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads" | "broadcast" | "output-quality" | "blogs">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads" | "broadcast" | "output-quality" | "blogs" | "retrieval-misses">("stats");
 
   const isSuperAdmin = user?.email?.toLowerCase() === "ijlalbintariq420@gmail.com" || !!user?.isAdmin;
   const isAuthorizedAdmin = isSuperAdmin || !!user?.isAdmin;
@@ -199,10 +199,10 @@ export default function AdminPanelPage() {
           { id: "audit" as const, label: "Audit Logs", icon: Shield },
           { id: "knowledge" as const, label: "Knowledge Vault", icon: Database },
           { id: "blogs" as const, label: "Blog CMS", icon: FileText },
-          { id: "blogs" as const, label: "Blog CMS", icon: FileText },
           { id: "client-leads" as const, label: "Client Leads", icon: FileText },
           { id: "case-law" as const, label: "Case Law", icon: Scale },
           { id: "statute-docs" as const, label: "Statute Library", icon: FileText },
+          { id: "retrieval-misses" as const, label: "Retrieval Misses", icon: Search },
           ...(isSuperAdmin ? [
             { id: "output-quality" as const, label: "Output Quality", icon: Search },
             { id: "broadcast" as const, label: "Broadcast", icon: Mail },
@@ -226,11 +226,11 @@ export default function AdminPanelPage() {
       {activeTab === "audit" && <AuditLogsSection />}
       {activeTab === "knowledge" && <KnowledgeSection />}
       {activeTab === "blogs" && <BlogCMSSection />}
-      {activeTab === "blogs" && <BlogCMSSection />}
       {activeTab === "client-leads" && <ClientLeadsSection />}
       {activeTab === "case-law" && <CaseLawSection />}
       {activeTab === "statute-docs" && <StatuteDocumentsSection />}
       {activeTab === "broadcast" && isSuperAdmin && <BroadcastEmailSection />}
+      {activeTab === "retrieval-misses" && <RetrievalMissesSection />}
       {activeTab === "output-quality" && isSuperAdmin && <OutputQualitySection />}
     </div>
     </div>
@@ -2151,6 +2151,209 @@ function OutputQualitySection() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+interface RetrievalMissRow {
+  ts: string;
+  reasons: string[];
+  query: string;
+  module: string;
+  intentType: string;
+  tier: string | null;
+  topics: string[];
+  topTopicScore: number;
+  statuteRef: string | null;
+  caseLawFetched: number;
+  statutesFetched: number;
+  adminDocsFetched: number;
+  contextChars: number;
+  durationMs: number;
+}
+
+interface RetrievalMissReport {
+  available: boolean;
+  path: string;
+  total: number;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  byReason: Array<{ reason: string; count: number }>;
+  unrecognised: number;
+  candidateTerms: Array<{ term: string; count: number }>;
+  topQueries: Array<{ query: string; count: number }>;
+  recent: RetrievalMissRow[];
+}
+
+const MISS_REASON_LABEL: Record<string, string> = {
+  "no-topics": "Dictionary recognised nothing",
+  "low-topic-score": "Weak topic match",
+  "no-case-law": "No judgments found",
+  "no-statutes": "No statutes found",
+  "empty-context": "Nothing reached the AI",
+};
+
+function RetrievalMissesSection() {
+  const { data, isLoading, refetch, isFetching } = useQuery<RetrievalMissReport>({
+    queryKey: ["/api/admin/retrieval-misses"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/admin/retrieval-misses?recent=40");
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-[#105B38]" size={24} />
+      </div>
+    );
+  }
+
+  const empty = !data?.available || (data?.total ?? 0) === 0;
+
+  return (
+    <div className="space-y-4" data-testid="retrieval-misses-section">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Search size={16} className="text-[#105B38]" />
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400">
+          Retrieval Misses ({data?.total ?? 0})
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="rounded-xl text-[10px] uppercase tracking-widest font-black"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          data-testid="button-refresh-misses"
+        >
+          {isFetching ? <Loader2 className="animate-spin" size={12} /> : "Refresh"}
+        </Button>
+      </div>
+
+      <p className="text-xs text-gray-600 dark:text-gray-400 max-w-3xl">
+        Questions where the search came up short — the topic dictionary matched nothing, or
+        no judgments or statutes were found. These are the words the dictionary is missing.
+        Add the terms below to <code className="text-[11px]">LEGAL_TOPICS</code>, then re-run{" "}
+        <code className="text-[11px]">npm run eval:rag</code> to confirm it helped.
+      </p>
+
+      {empty ? (
+        <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
+          <CardContent className="py-12 text-center space-y-2">
+            <p className="text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]">
+              No misses recorded yet
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              This fills as people use the app. Nothing to act on until real traffic arrives.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
+              <CardContent className="p-5 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">
+                  Why they missed
+                </span>
+                {data!.byReason.map((r) => (
+                  <div key={r.reason} className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-[#0F172A] dark:text-[#F8FAFC]">
+                      {MISS_REASON_LABEL[r.reason] || r.reason}
+                    </span>
+                    <span className="text-sm font-black text-[#105B38]">{r.count}</span>
+                  </div>
+                ))}
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-500/20 text-[10px] text-gray-500">
+                  {data!.firstSeen?.slice(0, 10)} to {data!.lastSeen?.slice(0, 10)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2 bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
+              <CardContent className="p-5 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">
+                  Words to add to the dictionary
+                </span>
+                {data!.candidateTerms.length === 0 ? (
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Not enough unrecognised queries yet ({data!.unrecognised} so far). A word must
+                    appear in at least two of them before it shows here.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {data!.candidateTerms.map((t) => (
+                      <span
+                        key={t.term}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#105B38]/10 border border-[#105B38]/20 text-[11px] font-semibold text-[#105B38]"
+                      >
+                        {t.term}
+                        <span className="text-[10px] opacity-70">{t.count}x</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {data!.topQueries.length > 0 && (
+            <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
+              <CardContent className="p-5 space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">
+                  Most repeated unrecognised questions
+                </span>
+                {data!.topQueries.map((q) => (
+                  <div key={q.query} className="flex items-start gap-3 text-xs">
+                    <span className="font-black text-[#105B38] shrink-0">{q.count}x</span>
+                    <span className="text-[#0F172A] dark:text-[#F8FAFC] break-words">{q.query}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="bg-white dark:bg-[#131E2E] border-slate-200 dark:border-slate-500/20 rounded-[2rem]">
+            <CardContent className="p-5 space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">
+                Recent misses
+              </span>
+              <div className="space-y-3">
+                {data!.recent.map((m, i) => (
+                  <div
+                    key={`${m.ts}-${i}`}
+                    className="p-3 rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-slate-200 dark:border-slate-500/20 space-y-1.5"
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {m.reasons.map((r) => (
+                        <span
+                          key={r}
+                          className="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400"
+                        >
+                          {MISS_REASON_LABEL[r] || r}
+                        </span>
+                      ))}
+                      <span className="text-[10px] text-gray-500 ml-auto">
+                        {new Date(m.ts).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#0F172A] dark:text-[#F8FAFC] break-words">{m.query}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-500">
+                      <span>topics: {m.topics.length ? m.topics.join(", ") : "none"}</span>
+                      <span>score: {m.topTopicScore}</span>
+                      <span>judgments: {m.caseLawFetched}</span>
+                      <span>statutes: {m.statutesFetched}</span>
+                      <span>{m.durationMs}ms</span>
+                      {m.statuteRef && <span>section: {m.statuteRef}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

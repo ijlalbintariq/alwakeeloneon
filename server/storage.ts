@@ -41,6 +41,9 @@ import {
   benchSessions, benchMessages,
   type BenchSession, type InsertBenchSession,
   type BenchMessage, type InsertBenchMessage,
+  blogPosts,
+  type BlogPost,
+  type InsertBlogPost,
 } from "@shared/schema";
 import { users, passwordResetTokens, emailVerificationTokens, type User } from "@shared/models/auth";
 import { eq, desc, asc, or, ilike, sql, and, lt, gte, lte, ne, count, inArray, isNotNull } from "drizzle-orm";
@@ -1519,6 +1522,33 @@ export class DatabaseStorage implements IStorage {
       .filter((token) => (token.length >= 2 || /^\d+$/.test(token)) && !STOP_WORDS.has(token))
       .slice(0, 10);
 
+    // Fast path: a section number ("302", "489-f") identifies far fewer rows than
+    // words like "section", which alone matches ~42% of the table. Filter on the
+    // number first; only widen to the full OR when that finds nothing.
+    const sectionTokens = tokens.filter((token) => /^\d{1,4}(?:-?[a-z]{1,3})?$/.test(token));
+    if (sectionTokens.length > 0) {
+      const wordTokens = tokens.filter((token) => !sectionTokens.includes(token));
+      const narrow = await db.select()
+        .from(statutes)
+        .where(or(...sectionTokens.map((token) => or(
+          sql`lower(${statutes.section}) = ${token}`,
+          ilike(statutes.section, `%${token}%`),
+        ))))
+        .orderBy(
+          sql`(${sql.join(
+            [
+              ...sectionTokens.map((token) => sql`(CASE WHEN lower(${statutes.section}) = ${token} THEN 25 ELSE 0 END)`),
+              ...wordTokens.map((token) => sql`(CASE WHEN ${statutes.shortTitle} ILIKE ${`%${token}%`} THEN 6 ELSE 0 END)`),
+              ...wordTokens.map((token) => sql`(CASE WHEN ${statutes.description} ILIKE ${`%${token}%`} THEN 2 ELSE 0 END)`),
+            ],
+            sql` + `,
+          )}) DESC`,
+          asc(statutes.id),
+        )
+        .limit(limit);
+      if (narrow.length > 0) return narrow;
+    }
+
     if (tokens.length === 0) {
       // Fallback if all words are stop words or too short
       const pattern = `%${safeQuery}%`;
@@ -1548,25 +1578,27 @@ export class DatabaseStorage implements IStorage {
       );
     });
 
-    // Require at least one token match (OR), then fetch extra and rank by match count
-    const fetchLimit = Math.min(limit * 5, 200);
-    const rows = await db.select()
+    // Rank inside SQL, then LIMIT. Ranking in JS after an unordered LIMIT meant
+    // Postgres returned an arbitrary slice of the ~37k rows the OR filter matches,
+    // so the relevant section was almost never in the sample (a murder query
+    // returned university acts). ORDER BY must run before the LIMIT.
+    const scoreParts = tokens.flatMap((token) => {
+      const pattern = `%${token}%`;
+      return [
+        sql`(CASE WHEN lower(${statutes.section}) = ${token} THEN 25 ELSE 0 END)`,
+        sql`(CASE WHEN ${statutes.section} ILIKE ${pattern} THEN 6 ELSE 0 END)`,
+        sql`(CASE WHEN ${statutes.shortTitle} ILIKE ${pattern} THEN 4 ELSE 0 END)`,
+        sql`(CASE WHEN ${statutes.description} ILIKE ${pattern} THEN 2 ELSE 0 END)`,
+        sql`(CASE WHEN ${statutes.punishment} ILIKE ${pattern} THEN 1 ELSE 0 END)`,
+      ];
+    });
+    const scoreExpr = sql.join(scoreParts, sql` + `);
+
+    return await db.select()
       .from(statutes)
       .where(or(...conditions))
-      .limit(fetchLimit);
-
-    // Rank by number of matching tokens — statutes matching more tokens are more relevant
-    const ranked = rows.map((row: Statute) => {
-      const combined = `${row.shortTitle} ${row.section} ${row.description} ${row.punishment}`.toLowerCase();
-      let matchCount = 0;
-      for (const token of tokens) {
-        if (combined.includes(token)) matchCount++;
-      }
-      return { row, matchCount };
-    });
-
-    ranked.sort((a: { matchCount: number }, b: { matchCount: number }) => b.matchCount - a.matchCount);
-    return ranked.slice(0, limit).map((r: { row: Statute }) => r.row);
+      .orderBy(sql`(${scoreExpr}) DESC`, asc(statutes.id))
+      .limit(limit);
   }
 
   async getStatutesByTitle(shortTitle: string, limit: number = 20): Promise<Statute[]> {
@@ -3609,19 +3641,35 @@ export class DatabaseStorage implements IStorage {
       }
     };
 
-    const totalUsers = await safeCount(users, "users");
-    const totalThreads = await safeCount(threads, "threads");
-    const totalMessages = await safeCount(messages, "messages");
-    const totalDocuments = await safeCount(documents, "documents");
-    const totalGithubKnowledge = await safeGithubCount();
-    const totalAdminKnowledge = await safeCount(adminKnowledge, "admin_knowledge");
-    const totalCaseLaw = await safeCount(caseLaw, "case_law");
-    const totalStatuteDocuments = await safeCount(statuteDocuments, "statute_documents");
-    const totalCitationJudgments = await safeCount(judgments, "judgments");
-    const totalCacheEntries = await safeCount(queryCache, "query_cache");
-    const [usageCount] = await db.select({ total: count() })
-      .from(usageTracking)
-      .where(gte(usageTracking.createdAt, startOfMonth));
+    // These counts do not depend on each other. Run them together.
+    // Sequentially they cost one Neon round trip each — 11 of them, ~2.8s total,
+    // which the public landing page paid on every visit via /api/public/platform-metrics.
+    const [
+      totalUsers,
+      totalThreads,
+      totalMessages,
+      totalDocuments,
+      totalGithubKnowledge,
+      totalAdminKnowledge,
+      totalCaseLaw,
+      totalStatuteDocuments,
+      totalCitationJudgments,
+      totalCacheEntries,
+      usageRows,
+    ] = await Promise.all([
+      safeCount(users, "users"),
+      safeCount(threads, "threads"),
+      safeCount(messages, "messages"),
+      safeCount(documents, "documents"),
+      safeGithubCount(),
+      safeCount(adminKnowledge, "admin_knowledge"),
+      safeCount(caseLaw, "case_law"),
+      safeCount(statuteDocuments, "statute_documents"),
+      safeCount(judgments, "judgments"),
+      safeCount(queryCache, "query_cache"),
+      db.select({ total: count() }).from(usageTracking).where(gte(usageTracking.createdAt, startOfMonth)),
+    ]);
+    const usageCount = usageRows?.[0];
 
     const totalKnowledge =
       totalGithubKnowledge +

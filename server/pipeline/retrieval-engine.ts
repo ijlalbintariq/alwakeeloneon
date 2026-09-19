@@ -17,7 +17,7 @@
 import { storage } from "../storage";
 import { similaritySearch } from "../rag/vector-store";
 import { embedTextLocal } from "../rag/embedding-local";
-import { retrieveForQuery, getCachedQueryEmbedding, GLOBAL_STATUTE_RAG_USER_ID, GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID } from "../rag/rag-service";
+import { retrieveForQuery, getCachedQueryEmbedding, GLOBAL_STATUTE_RAG_USER_ID, GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID, GLOBAL_CASELAW_RAG_USER_ID, GLOBAL_JUDGMENTS_RAG_USER_ID } from "../rag/rag-service";
 import type { CaseLaw } from "../../shared/schema";
 import type { QueryIntent, LegalTopic } from "./intent-classifier";
 import { normalizeCitationKey } from "../tools/citation-search-tool";
@@ -503,6 +503,10 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
     (userId && focusedQueries && focusedQueries.length > 0)
       ? (async () => {
           const perQueryTopK = Math.ceil((limit * 3) / focusedQueries.length);
+          // Only the tenants this path actually reads. The loop below keeps
+          // "admin-case-law" and "judgment" matches and throws the rest away, so
+          // searching statutes and knowledge per sub-query was pure cost — and it
+          // multiplied by the number of sub-queries.
           const subResults = await Promise.all(
             focusedQueries.map(fq =>
               retrieveForQuery({
@@ -510,6 +514,8 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
                 query: fq,
                 expandedQueryText: fq, // focused query IS the expanded query
                 topK: perQueryTopK,
+                globalUserIds: [GLOBAL_CASELAW_RAG_USER_ID, GLOBAL_JUDGMENTS_RAG_USER_ID],
+                skipUserScope: true,
               }).catch(() => ({ matches: [] as any[] }))
             ),
           );
@@ -671,6 +677,101 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
   let topCandidates = scored.slice(0, Math.max(30, limit));
 
   // ── Apply Voyage Reranker if active ──
+  // ── Semantic safety net ────────────────────────────────────────────────────
+  // Everything above this point is lexical: keyword search, full text, and the
+  // hand-written topic dictionary. When the user's wording is not in that
+  // dictionary, all of it comes back thin or empty.
+  //
+  // The judgment vector index does not care about wording — it matches meaning.
+  // It was already built and paid for, but nothing on the chat path used it,
+  // because retrieveForQuery searches every tenant and is too slow for the
+  // budget. Hitting the judgments index directly measures ~0.8s.
+  //
+  // This only ADDS candidates. It never displaces a lexical hit, and every
+  // result still has to survive the same scoring and citation checks.
+  if (!isCitationLookup && topCandidates.length < Math.max(5, Math.floor(limit / 2))) {
+    const before = topCandidates.length;
+    try {
+      const vectorMatches = await withTimeout(
+        (async () => {
+          const queryEmbedding = await getCachedQueryEmbedding(intent.normalized);
+          if (!queryEmbedding) return [];
+          return await similaritySearch({
+            userId: "global-admin-judgments",
+            queryEmbedding,
+            queryText: intent.normalized,
+            topK: Math.max(limit * 2, 20),
+            vectorWeight: 1,
+            keywordWeight: 0, // pure semantics — the lexical side already ran
+          });
+        })().catch((err: any) => {
+          console.warn(`[RAG:CaseLaw] semantic fallback failed: ${err?.message || err}`);
+          return [] as any[];
+        }),
+        CASELAW_TIMEOUT_MS,
+        [] as any[],
+      );
+
+      const seenCitations = new Set(
+        topCandidates.map((c) => normalizeCitationKey(String(c.row.citation || ""))),
+      );
+
+      for (const m of vectorMatches) {
+        if (topCandidates.length >= Math.max(30, limit)) break;
+        const meta = (m.metadata || {}) as any;
+        const citation = String(meta.citationString || "");
+        const judgmentId = String(meta.judgmentId || "");
+        if (!citation || !judgmentId) continue;
+
+        const citKey = normalizeCitationKey(citation);
+        if (!citKey || seenCitations.has(citKey)) continue;
+        seenCitations.add(citKey);
+
+        const yearMatch = citation.match(/\b(19|20)\d{2}\b/);
+        // Semantic hits enter below lexical ones. Cosine similarity maps to a
+        // deliberately modest band so a strong keyword match still outranks them.
+        const semanticScore = Math.round(Math.min(55, Math.max(20, (m.score || 0) * 70)));
+
+        const row = {
+            id: Math.abs(parseInt(judgmentId.replace(/-/g, "").slice(0, 8), 16)) || 0,
+            judgmentId,
+            citation,
+            citationYear: yearMatch ? parseInt(yearMatch[0], 10) : null,
+            citationReport: null,
+            citationPage: null,
+            citationRole: "primary" as const,
+            court: String(meta.court || ""),
+            title: String(meta.title || m.title || ""),
+            summary: (m.chunkText || "").slice(0, 600),
+            keywords: [] as string[],
+            sourceDocId: null,
+            sourceType: "judgment",
+            sourceFilename: null,
+            documentClassification: null,
+            fallbackExtraction: false,
+            statuteReferences: [] as string[],
+          } as unknown as CaseLaw;
+
+        // Lexical candidates pass through hasTrustedCitation before scoring.
+        // These join the list after that filter, so apply it here too — a junk
+        // citationString in chunk metadata would otherwise reach the model.
+        if (!hasTrustedCitation(row)) continue;
+
+        topCandidates.push({ row, relevanceScore: semanticScore });
+      }
+
+      if (topCandidates.length > before) {
+        console.log(
+          `[RAG:CaseLaw] semantic fallback added ${topCandidates.length - before} judgments ` +
+          `(lexical found ${before})`,
+        );
+        topCandidates.sort((a, b) => b.relevanceScore - a.relevanceScore);
+      }
+    } catch (err: any) {
+      console.warn(`[RAG:CaseLaw] semantic fallback error: ${err?.message || err}`);
+    }
+  }
+
   if (!isCitationLookup && topCandidates.length > 0 && process.env.RAG_EMBEDDING_PROVIDER?.toLowerCase() === "voyage") {
     try {
       const { rerankVoyage } = await import("../rag/embedding-local");

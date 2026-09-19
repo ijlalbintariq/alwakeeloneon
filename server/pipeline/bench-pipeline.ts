@@ -37,6 +37,7 @@ import {
 import { callWithFallback, DEFAULT_STANDARD_CHAIN, DEFAULT_TURBO_CHAIN, type ChatMessage } from "../ai-router";
 import { getClient, getOpenRouterToolModelName, isOpenRouterAvailable } from "../openrouter-ai";
 import { similaritySearch } from "../rag/vector-store";
+import { getCachedQueryEmbedding } from "../rag/rag-service";
 import { eq, asc } from "drizzle-orm";
 
 // ============================================================================
@@ -1347,14 +1348,23 @@ export async function retrieveHostileCaseLaw(
   // ── Step 2: Gate 2 (Vector Search Candidates + Verification) ─────────────
   if (candidates.length < safeLimit && dbAvailable) {
     try {
-      const vectorMatches = await similaritySearch({
-        userId: "global-admin-judgments",
-        queryEmbedding: new Array(384).fill(0),
-        queryText: safeQuery,
-        topK: safeLimit * 2,
-        vectorWeight: 0.5,
-        keywordWeight: 0.5,
-      }).catch(() => []);
+      // A zero vector of 384 numbers was passed here. The column holds 1024, so
+      // every call failed with "different halfvec dimensions 1024 and 384" and the
+      // .catch turned that into an empty list — this search never returned anything.
+      const queryEmbedding = await getCachedQueryEmbedding(safeQuery).catch(() => null);
+      const vectorMatches = queryEmbedding
+        ? await similaritySearch({
+            userId: "global-admin-judgments",
+            queryEmbedding,
+            queryText: safeQuery,
+            topK: safeLimit * 2,
+            vectorWeight: 0.5,
+            keywordWeight: 0.5,
+          }).catch((err) => {
+            console.warn("[BenchPipeline:Gate2] vector search failed:", err?.message || err);
+            return [];
+          })
+        : [];
 
       const rawCitations: string[] = [];
       const rawJudgmentIds: string[] = [];

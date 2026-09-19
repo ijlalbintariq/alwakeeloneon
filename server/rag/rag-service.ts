@@ -44,9 +44,11 @@ export const GLOBAL_CASELAW_RAG_USER_ID = "global-admin-case-law";
 export const GLOBAL_STATUTE_RAG_USER_ID = "global-admin-statute";
 export const GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID = "global-admin-knowledge";
 export const GLOBAL_JUDGMENTS_RAG_USER_ID = "global-admin-judgments";
+export const GLOBAL_STATUTE_SECTIONS_RAG_USER_ID = "global-admin-statute-sections";
 export const GLOBAL_ADMIN_RAG_USER_IDS = [
   GLOBAL_CASELAW_RAG_USER_ID,
   GLOBAL_STATUTE_RAG_USER_ID,
+  GLOBAL_STATUTE_SECTIONS_RAG_USER_ID,
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
   GLOBAL_JUDGMENTS_RAG_USER_ID,
 ] as const;
@@ -149,8 +151,12 @@ async function indexChunksInDb(
   for (let start = 0; start < childEntriesWithText.length; start += INDEX_BATCH_SIZE) {
     const batch = childEntriesWithText.slice(start, start + INDEX_BATCH_SIZE);
     
-    // Generate embeddings for children
-    const embeddings = await embedTextsLocal(batch.map((item) => item.chunk.text));
+    // Generate embeddings for children — "document", to match the stored corpus
+    const embeddings = await embedTextsLocal(
+      batch.map((item) => item.chunk.text),
+      undefined,
+      "document",
+    );
     
     const dbEntries = batch.map((item, idx) => ({
       ragDocumentId,
@@ -695,6 +701,15 @@ export async function retrieveForQuery(args: {
   metadataFilters?: Record<string, string>;
   topK?: number;
   expandedQueryText?: string;
+  /**
+   * Restrict the global tenants searched. Omitted means all of them.
+   * A focused case-law sub-query only needs judgments and admin case law;
+   * searching statutes and knowledge too triples the cost for results the
+   * caller discards. Fan-out is per sub-query, so this compounds fast.
+   */
+  globalUserIds?: readonly string[];
+  /** Skip the user's own document index. Focused sub-queries do not need it. */
+  skipUserScope?: boolean;
 }): Promise<RAGRetrievalResult> {
   await ensureRagSchema();
 
@@ -715,20 +730,25 @@ export async function retrieveForQuery(args: {
   const isGlobalAdminUser = GLOBAL_ADMIN_RAG_USER_IDS.includes(args.userId as any);
   const includeGlobalAdminSources = !isGlobalAdminUser && (!args.documentIds || args.documentIds.length === 0);
 
+  // Caller may narrow the tenants; default is all of them.
+  const requestedGlobalIds = args.globalUserIds?.length
+    ? GLOBAL_ADMIN_RAG_USER_IDS.filter((id) => args.globalUserIds!.includes(id))
+    : [...GLOBAL_ADMIN_RAG_USER_IDS];
+
   // Check which global admin sources actually have documents to bypass empty tenants
   const activeGlobalUserIds: string[] = [];
   if (includeGlobalAdminSources) {
     try {
       const activeRes = await pool.query(
         "SELECT DISTINCT user_id FROM rag_documents WHERE status = 'indexed' AND user_id = ANY($1::text[])",
-        [[...GLOBAL_ADMIN_RAG_USER_IDS]]
+        [requestedGlobalIds]
       );
       for (const row of activeRes.rows as any[]) {
         activeGlobalUserIds.push(row.user_id);
       }
     } catch (err: any) {
       console.warn(`[RAG] Failed to retrieve active global sources: ${err.message}`);
-      activeGlobalUserIds.push(...GLOBAL_ADMIN_RAG_USER_IDS);
+      activeGlobalUserIds.push(...requestedGlobalIds);
     }
   }
 
@@ -743,19 +763,29 @@ export async function retrieveForQuery(args: {
       keywordWeight,
     }),
   );
-  const [userMatches, ...globalMatchGroups] = await Promise.all([
-    similaritySearch({
-      userId: args.userId,
-      queryEmbedding,
-      queryText: keywordQueryText,
-      sourceDocumentIds: args.documentIds,
-      metadataFilters: args.metadataFilters,
-      topK: candidateTopK,
-      vectorWeight,
-      keywordWeight,
-    }),
-    ...globalSearches,
-  ]);
+  const userSearch = args.skipUserScope
+    ? Promise.resolve([] as RagMatch[])
+    : similaritySearch({
+        userId: args.userId,
+        queryEmbedding,
+        queryText: keywordQueryText,
+        sourceDocumentIds: args.documentIds,
+        metadataFilters: args.metadataFilters,
+        topK: candidateTopK,
+        vectorWeight,
+        keywordWeight,
+      });
+  // allSettled, not all. Searches now reject on their own timeout, and with
+  // Promise.all one slow tenant threw away every other tenant's results —
+  // the opposite of "a slow source never blocks the pipeline".
+  const settled = await Promise.allSettled([userSearch, ...globalSearches]);
+  const groups = settled.map((outcome, idx) => {
+    if (outcome.status === "fulfilled") return outcome.value;
+    const scope = idx === 0 ? args.userId : activeGlobalUserIds[idx - 1];
+    console.warn(`[RAG] search failed for "${scope}": ${outcome.reason?.message || outcome.reason}`);
+    return [] as RagMatch[];
+  });
+  const [userMatches, ...globalMatchGroups] = groups;
   const globalMatches = globalMatchGroups.flat();
   // Do NOT truncate here — diversity splitting needs the full pool from all scopes.
   // If we slice to candidateTopK first, high-scoring statutes crowd out all judgments.

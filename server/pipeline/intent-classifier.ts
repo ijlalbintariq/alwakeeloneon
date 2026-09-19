@@ -3600,20 +3600,56 @@ function norm(s: string): string {
 // Main classifier
 // ---------------------------------------------------------------------------
 
+/** The modules the retrieval pipeline actually branches on. */
+export type PipelineModule = "chat" | "legal-drafting" | "contract-drafting" | "case-search";
+
+/**
+ * Fourteen call sites pass `context.module`, and several forward a raw string
+ * from the request body. The same module also travels under two names:
+ * /api/ai/chat sends ModuleType "draft", /api/ai/drafting/generate sends
+ * "legal-drafting". Branching on raw strings meant one spelling matched and the
+ * other silently fell through to the defaults — drafting behaved differently
+ * depending on which screen the request came from.
+ *
+ * Everything unrecognised maps to "chat", which is the default behaviour.
+ */
+export function normalizePipelineModule(raw?: string | null): PipelineModule {
+  switch (String(raw || "").trim().toLowerCase()) {
+    case "legal-drafting":
+    case "legal_drafting":
+    case "drafting":
+    case "draft":
+      return "legal-drafting";
+    case "contract-drafting":
+    case "contract_drafting":
+      return "contract-drafting";
+    case "case-search":
+    case "case_search":
+      return "case-search";
+    default:
+      return "chat";
+  }
+}
+
 export function classifyQueryIntent(rawQuery: string, context?: { module?: string }): QueryIntent {
   const raw = rawQuery.trim();
-  
+  const moduleKey = normalizePipelineModule(context?.module);
+
   // Define defaults and context overrides
   let needsCase = true;
   let needsStats = true;
   let needsAdmin = true;
 
-  if (context?.module === "case-search") {
+  if (moduleKey === "case-search") {
     needsStats = false;
     needsAdmin = false;
-  } else if (context?.module === "contract-drafting" || context?.module === "legal-drafting") {
-    needsCase = false; // contract/legal drafting focus on statutes/templates, not precedents
+  } else if (moduleKey === "contract-drafting") {
+    // A contract is built from statutes and templates, not from precedent.
+    needsCase = false;
   }
+  // legal-drafting keeps needsCase = true. Court documents — bail applications,
+  // petitions, appeals, written statements — are argued from precedent, so
+  // suppressing case law there stripped judgments out of every draft.
 
   // Truncate very long queries (e.g. pasted petitions) to first ~600 chars
   // for topic detection and DB search. 600 covers 95%+ of real lawyer questions
@@ -3640,22 +3676,11 @@ export function classifyQueryIntent(rawQuery: string, context?: { module?: strin
   }
 
   // --- Statute section reference? (e.g. "PPC 392", "Article 25 Constitution") ---
+  // Do NOT return here. Returning early threw away topic detection, so
+  // "murder under section 302 PPC" scored zero topics while plain "murder"
+  // matched the Murder topic. Topics drive case-law scoring and the statute
+  // topic map, so they are needed most on exactly these queries.
   const statuteRef = detectStatuteRef(raw);
-  if (statuteRef) {
-    const expandedStat = `${statuteRef.fullName} section ${statuteRef.sectionOrArticle} ${normalized}`;
-    return {
-      raw,
-      normalized,
-      type: "general-legal",  // Not "statute" — users asking about a section also want case law on it
-      topics: [],
-      expandedQuery: expandedStat,
-      expandedTerms: expandedStat.split(/\s+/),
-      needsCaseLaw: needsCase,
-      needsStatutes: needsStats,
-      needsAdminDocs: needsAdmin,
-      statuteRef,
-    };
-  }
 
   // --- Score each topic ---
   type ScoredTopic = { topic: LegalTopic; score: number };
@@ -3694,8 +3719,10 @@ export function classifyQueryIntent(rawQuery: string, context?: { module?: strin
   const topTopicScore = scored.length > 0 ? scored[0].score : 0;
   let topTopics = scored.slice(0, 3).map((s) => s.topic);
 
-  // If in contract or legal drafting context, force contract and property topics
-  if (context?.module === "contract-drafting" || context?.module === "legal-drafting") {
+  // Contract drafting only. Forcing these onto legal-drafting pushed "contract"
+  // and "property" ahead of the real topic — a bail application scored Bail third
+  // behind two topics the query never mentioned.
+  if (moduleKey === "contract-drafting") {
     const contractTopic = LEGAL_TOPICS.find((t) => t.id === "contract");
     const propertyTopic = LEGAL_TOPICS.find((t) => t.id === "property");
     if (contractTopic && !topTopics.some((t) => t.id === "contract")) {
@@ -3736,6 +3763,24 @@ export function classifyQueryIntent(rawQuery: string, context?: { module?: strin
     type = "statute";
   } else {
     type = "general-legal"; // retrieve both
+  }
+
+  if (statuteRef) {
+    // A named section still gets the old expansion and type, but keeps its topics.
+    const expandedStat = `${statuteRef.fullName} section ${statuteRef.sectionOrArticle} ${normalized}`;
+    return {
+      raw,
+      normalized,
+      type: "general-legal",  // Not "statute" — users asking about a section also want case law on it
+      topics: topTopics,
+      topTopicScore,
+      expandedQuery: expandedStat,
+      expandedTerms: expandedStat.split(/\s+/),
+      needsCaseLaw: needsCase,
+      needsStatutes: needsStats,
+      needsAdminDocs: needsAdmin,
+      statuteRef,
+    };
   }
 
   return {

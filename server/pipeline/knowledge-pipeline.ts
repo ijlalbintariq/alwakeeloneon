@@ -22,11 +22,12 @@
  */
 
 import { createHash } from "crypto";
-import { classifyQueryIntent, analyzeQueryExplicitness } from "./intent-classifier";
+import { classifyQueryIntent, analyzeQueryExplicitness, normalizePipelineModule } from "./intent-classifier";
 import { runRetrieval } from "./retrieval-engine";
 import { buildContext } from "./context-builder";
 import { rewriteFollowUpQuery, type ConversationTurn } from "./query-rewriter";
 import { generateSemanticRetrievalQueries, extractDeterministicFacts } from "./llm-query-extractor";
+import { recordRetrievalMiss } from "./retrieval-miss-log";
 import type { QueryIntent } from "./intent-classifier";
 
 // ---------------------------------------------------------------------------
@@ -269,7 +270,9 @@ export async function runKnowledgePipeline(
   context?: { module?: string },
 ): Promise<PipelineRunResult> {
   const t0 = Date.now();
-  const key = `${userId || "anon"}::${context?.module || "none"}::${normKey(rawQuery)}`;
+  // Key on the normalized module, so "draft" and "legal-drafting" share one entry
+  // instead of caching the same answer twice under two spellings.
+  const key = `${userId || "anon"}::${normalizePipelineModule(context?.module)}::${normKey(rawQuery)}`;
   const cached = cacheGet(key);
   if (cached !== undefined && cached.contextString.length > 0) {
     return {
@@ -308,8 +311,36 @@ export async function runKnowledgePipeline(
     // Vector Stream 1: ALWAYS include original rewritten query as grounding anchor (prevents HyDE drift)
     focusedQueries.push(queryForRetrieval);
 
-    if (tier === "tier2_narrative" && USE_LLM_QUERY_EXTRACTOR) {
-      console.log(`[Pipeline:2:LLM-Agent] Invoking Structured Legal Research Agent...`);
+    // Runs for long narratives, and for queries the topic dictionary did not
+    // recognise — those get no synonym expansion at all otherwise.
+    //
+    // Measured on tests/eval/rag-eval.ts, after the fan-out fix:
+    //   threshold 12 (default)  49/50, median 8.6s   — fires on 0 of the 50 cases
+    //   forced on every query   47/50, median 13.2s  — 37 extra LLM calls
+    //
+    // So it is a safety net, not a speed-up. At the default it costs nothing on
+    // ordinary queries; forced on it adds ~54% latency and wins nothing. Do not
+    // raise PIPELINE_LLM_EXPAND_MIN_SCORE without re-running the eval.
+    // Set it to 0 to disable the low-score trigger entirely.
+    //
+    // Note for anyone reading git history: an earlier comment here blamed this
+    // trigger for a 44/50 run. That was wrong — the run logged 0 dictionary-miss
+    // fires, so this path never executed. The real cause was connection-pool
+    // contention, since fixed in vector-store.ts and db.ts.
+    const LOW_TOPIC_SCORE = Number(process.env.PIPELINE_LLM_EXPAND_MIN_SCORE ?? 12);
+    const dictionaryMissed =
+      LOW_TOPIC_SCORE > 0 &&
+      ((intent.topics?.length || 0) === 0 || (intent.topTopicScore || 0) < LOW_TOPIC_SCORE);
+    // A named section is already a precise anchor; no need to pay for a rewrite.
+    const needsLlmExpansion =
+      (tier === "tier2_narrative" || dictionaryMissed) && !intent.statuteRef;
+
+    if (needsLlmExpansion && USE_LLM_QUERY_EXTRACTOR) {
+      console.log(
+        `[Pipeline:2:LLM-Agent] Invoking Structured Legal Research Agent ` +
+        `(reason=${tier === "tier2_narrative" ? "narrative" : "dictionary-miss"} ` +
+        `topScore=${intent.topTopicScore || 0})`,
+      );
       const research = await generateSemanticRetrievalQueries(queryForRetrieval);
       const deterministic = extractDeterministicFacts(queryForRetrieval);
 
@@ -391,6 +422,18 @@ export async function runKnowledgePipeline(
     if (ctx.contextString.length > 0) {
       cacheSet(key, { contextString: ctx.contextString, caseLawHits, maxRelevanceScore });
     }
+
+    // Record the runs where the topic dictionary or retrieval came up short, so
+    // the dictionary can be grown from real queries instead of guesses.
+    recordRetrievalMiss({
+      intent,
+      module: normalizePipelineModule(context?.module),
+      caseLawFetched: retrieval.diagnostics.caseLawFetched,
+      statutesFetched: retrieval.diagnostics.statutesFetched,
+      adminDocsFetched: retrieval.diagnostics.adminDocsFetched,
+      contextChars: ctx.contextString.length,
+      durationMs: Date.now() - t0,
+    });
 
     return {
       contextString: ctx.contextString,

@@ -4,16 +4,30 @@ import { useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { ArrowLeft, Clock, Calendar, ChevronRight } from "lucide-react";
 import { PublicPreviewShell } from "@/experimental/components/public/PublicPreviewShell";
+import { BLOG_ARTICLES, type BlogArticle } from "@shared/blog-data";
 
 export default function PreviewBlogDetail() {
   const [, navigate] = useLocation();
   const [, params] = useRoute("/preview/blog/:slug");
   const slug = params?.slug;
 
-  const { data: article, isLoading } = useQuery({
+  const { data: remoteArticle, isLoading } = useQuery<BlogArticle>({
     queryKey: [`/api/blogs/${slug}`],
-    enabled: !!slug
+    enabled: !!slug,
+    retry: false,
   });
+
+  // /api/blogs reads a blog_posts table that does not exist yet, so it always
+  // fails. Fall back to the bundled articles, which is what the non-preview
+  // blog page uses, instead of showing "Article Not Found".
+  const article = remoteArticle ?? BLOG_ARTICLES.find((a) => a.slug === slug);
+
+  // The API row calls the date createdAt; the bundled articles call it publishedAt.
+  const publishedDate = article
+    ? (article as BlogArticle & { createdAt?: string }).publishedAt ??
+      (article as BlogArticle & { createdAt?: string }).createdAt ??
+      null
+    : null;
 
   useDocumentHead({
     title: article ? `${article.title} | Al Wakeelo Legal Guides` : "Legal Guide | Al Wakeelo",
@@ -69,9 +83,9 @@ export default function PreviewBlogDetail() {
             <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
               <span className="text-[#105B38]">{article.category}</span>
               <span className="w-1 h-1 rounded-full bg-[#CBD5E1] dark:bg-[#475569]"></span>
-              <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {new Date(article.publishedAt).toLocaleDateString()}</span>
+              <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {publishedDate ? new Date(publishedDate).toLocaleDateString() : ""}</span>
               <span className="w-1 h-1 rounded-full bg-[#CBD5E1] dark:bg-[#475569]"></span>
-              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {article.readTime} min read</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {String(article.readTime).replace(/\D+/g, "") || "5"} min read</span>
             </div>
             
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#0F172A] dark:text-[#F8FAFC] leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>

@@ -1,4 +1,4 @@
-import { pool, dbAvailable } from "../db";
+import { pool, dbAvailable, RAG_HNSW_EF_SEARCH } from "../db";
 
 export type RagChunkInsert = {
   ragDocumentId: number;
@@ -35,6 +35,108 @@ function assertDb() {
 function vectorLiteral(values: number[]): string {
   const safe = values.map((n) => (Number.isFinite(n) ? n : 0));
   return `[${safe.join(",")}]`;
+}
+
+// Words carried by every legal question. They make an AND-query match nothing.
+const TS_STOP_WORDS = new Set([
+  "what", "is", "the", "a", "an", "of", "for", "to", "in", "on", "and", "or", "under", "are", "was",
+  "were", "be", "been", "being", "how", "when", "where", "which", "who", "whom", "that", "this",
+  "these", "those", "with", "by", "at", "as", "it", "its", "their", "his", "her", "do", "does", "did",
+  "can", "could", "may", "might", "shall", "should", "will", "would", "from", "any", "all", "about",
+  "please", "tell", "me", "my", "we", "our", "you", "your", "there", "if", "than", "then", "so",
+]);
+
+/**
+ * Build a Postgres tsquery from a natural-language question.
+ * Returns "" when nothing useful remains — callers skip the keyword branch then.
+ */
+export function buildTsQuery(queryText: string): string {
+  const tokens = String(queryText || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .map((token) => token.replace(/^-+|-+$/g, "").trim())
+    .filter((token) => token.length >= 2 && !TS_STOP_WORDS.has(token));
+
+  // Dedupe first, then cap — capping first wastes slots on repeated words.
+  const unique = Array.from(new Set(tokens)).slice(0, 12);
+  if (unique.length === 0) return "";
+  return unique.map((token) => `'${token}'`).join(" & ");
+}
+
+// ─── Search concurrency + cancellation ───────────────────────────────────────
+// One chat turn fans out several vector searches: one per global tenant, times
+// one per focused sub-query. Unbounded, that alone can occupy the whole pool and
+// queue every other request behind it.
+//
+// Two rules keep it contained:
+//   1. At most SEARCH_CONCURRENCY searches run at once. The rest wait in JS,
+//      holding no connection, instead of queueing inside the pool.
+//   2. A search that overruns SEARCH_TIMEOUT_MS has its connection destroyed
+//      rather than returned. Releasing normally would hand back a connection
+//      still busy with the abandoned query; destroying it frees the slot at
+//      once, and statement_timeout stops the server-side work.
+
+const SEARCH_CONCURRENCY = Math.max(1, Number(process.env.RAG_SEARCH_CONCURRENCY || 4));
+const SEARCH_TIMEOUT_MS = Math.max(1_000, Number(process.env.RAG_SEARCH_TIMEOUT_MS || 12_000));
+
+let active = 0;
+const waiting: Array<() => void> = [];
+
+async function acquireSlot(): Promise<void> {
+  if (active < SEARCH_CONCURRENCY) {
+    active += 1;
+    return;
+  }
+  // The slot is handed over by releaseSlot, which keeps the count unchanged.
+  // Incrementing here as well would double-count, and the gap between the
+  // decrement and the waiter resuming would let a fresh caller slip past the
+  // limit — the cap would be exceeded exactly under the load it exists for.
+  await new Promise<void>((resolve) => waiting.push(resolve));
+}
+
+function releaseSlot(): void {
+  const next = waiting.shift();
+  if (next) {
+    next(); // pass the slot straight to the waiter; `active` stays as it is
+    return;
+  }
+  active -= 1;
+}
+
+async function runSearchQuery(sql: string, params: any[]): Promise<any> {
+  await acquireSlot();
+  let client: any;
+  let timedOut = false;
+  try {
+    client = await pool.connect();
+    await client.query(`SET hnsw.ef_search = ${RAG_HNSW_EF_SEARCH}`);
+
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        reject(new Error(`RAG search exceeded ${SEARCH_TIMEOUT_MS}ms`));
+      }, SEARCH_TIMEOUT_MS);
+    });
+
+    try {
+      return await Promise.race([client.query(sql, params), timeout]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  } finally {
+    if (client) {
+      // `true` destroys the client instead of returning a busy one to the pool.
+      try { client.release(timedOut ? true : undefined); } catch { /* already gone */ }
+    }
+    releaseSlot();
+  }
+}
+
+/** Exposed for diagnostics: how many searches are running or queued right now. */
+export function getSearchPressure(): { active: number; queued: number; limit: number } {
+  return { active, queued: waiting.length, limit: SEARCH_CONCURRENCY };
 }
 
 let schemaEnsured = false;
@@ -74,7 +176,7 @@ export async function ensureRagSchema(): Promise<void> {
       token_count INTEGER NOT NULL,
       chunk_text TEXT NOT NULL,
       metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-      embedding VECTOR(384) NULL,
+      embedding HALFVEC(${Number(process.env.RAG_EMBEDDING_DIM || 1024)}) NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (rag_document_id, chunk_index)
     )
@@ -261,10 +363,16 @@ export async function similaritySearch(args: {
     ? " AND c.source_document_id = ANY($8::int[])"
     : "";
 
+  // plainto_tsquery('simple', ...) ANDs every word of the raw question, including
+  // "what", "is" and "the", because the 'simple' config strips nothing. A normal
+  // question therefore matched almost no chunks. Build the tsquery from content
+  // words only, each quoted so hyphenated sections like 489-F stay one lexeme.
+  const tsQueryText = buildTsQuery(args.queryText);
+
   const params: any[] = [
     args.userId,
     vectorLiteral(args.queryEmbedding),
-    args.queryText,
+    tsQueryText,
     args.topK,
     candidateLimit,
     vectorWeight,
@@ -290,6 +398,7 @@ export async function similaritySearch(args: {
   const GLOBAL_ADMIN_RAG_USER_IDS = [
     "global-admin-case-law",
     "global-admin-statute",
+    "global-admin-statute-sections",
     "global-admin-knowledge",
     "global-admin-judgments"
   ];
@@ -299,7 +408,7 @@ export async function similaritySearch(args: {
   // When keywordWeight is 0, skip the expensive keyword_hits CTE entirely.
   // This avoids a sequential full-text scan on large tables (e.g. 165K statute chunks)
   // and uses only the HNSW vector index (<10ms).
-  const skipKeywords = keywordWeight === 0;
+  const skipKeywords = keywordWeight === 0 || tsQueryText === "";
 
   const sql = skipKeywords ? `
     WITH vector_hits AS (
@@ -405,10 +514,10 @@ export async function similaritySearch(args: {
           c.metadata,
           c.parent_chunk_id,
           GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score,
-          COALESCE(ts_rank_cd(to_tsvector('simple', c.chunk_text), plainto_tsquery('simple', $3)), 0) AS keyword_score
+          COALESCE(ts_rank_cd(to_tsvector('simple', c.chunk_text), to_tsquery('simple', $3)), 0) AS keyword_score
         FROM rag_chunks c
         WHERE ${userIdClause}${sourceFilter}${filterSql}
-          AND to_tsvector('simple', c.chunk_text) @@ plainto_tsquery('simple', $3)
+          AND to_tsvector('simple', c.chunk_text) @@ to_tsquery('simple', $3)
         ORDER BY keyword_score DESC
         LIMIT $5
       ) r
@@ -437,7 +546,9 @@ export async function similaritySearch(args: {
     LIMIT $4
   `;
 
-  const result = await pool.query(sql, params);
+  // Check the connection out so the ef_search SET is guaranteed to land before
+  // the search runs on that same connection.
+  const result = await runSearchQuery(sql, params);
   return result.rows.map((row: any) => ({
     id: Number(row.id),
     ragDocumentId: Number(row.rag_document_id),

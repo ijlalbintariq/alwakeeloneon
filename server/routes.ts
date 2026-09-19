@@ -8590,16 +8590,42 @@ app.post("/api/admin/blogs/generate", async (req, res) => {
     return res.status(403).json({ message: "Your account is suspended. Please contact support." });
   });
 
+  // Landing page hits this on every visit and shows a single headline number.
+  // getSystemStats() counts eleven tables, so an uncached call sat on the critical
+  // path for ~2.8s. A marketing counter does not need to be second-accurate.
+  let platformMetricsCache: { legalDocuments: number; updatedAt: string; expiresAt: number } | null = null;
+  const PLATFORM_METRICS_TTL_MS = 5 * 60_000;
+
   app.get("/api/public/platform-metrics", async (_req, res) => {
     try {
+      res.set("Cache-Control", "public, max-age=300");
+
+      if (platformMetricsCache && platformMetricsCache.expiresAt > Date.now()) {
+        return res.json({
+          legalDocuments: platformMetricsCache.legalDocuments,
+          updatedAt: platformMetricsCache.updatedAt,
+        });
+      }
+
       const stats = await storage.getSystemStats();
-      res.set("Cache-Control", "public, max-age=15");
-      return res.json({
+      platformMetricsCache = {
         legalDocuments: Number(stats.totalKnowledge || 0),
         updatedAt: new Date().toISOString(),
+        expiresAt: Date.now() + PLATFORM_METRICS_TTL_MS,
+      };
+      return res.json({
+        legalDocuments: platformMetricsCache.legalDocuments,
+        updatedAt: platformMetricsCache.updatedAt,
       });
     } catch (err) {
       console.error("Error fetching public platform metrics:", err);
+      // Serve the last good value rather than breaking the landing page.
+      if (platformMetricsCache) {
+        return res.json({
+          legalDocuments: platformMetricsCache.legalDocuments,
+          updatedAt: platformMetricsCache.updatedAt,
+        });
+      }
       return res.status(500).json({ message: "Failed to fetch platform metrics." });
     }
   });
@@ -10801,6 +10827,20 @@ app.post("/api/admin/blogs/generate", async (req, res) => {
       }
       console.error("Error starting global case-law RAG reindex:", err);
       return res.status(500).json({ message: "Failed to start case-law reindex job" });
+    }
+  });
+
+  // Retrieval misses: the queries where the topic dictionary or retrieval came
+  // up short. This is the list that tells you which words the dictionary lacks.
+  app.get("/api/admin/retrieval-misses", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const { analyzeMissLog } = await import("./pipeline/retrieval-miss-log");
+      const recentLimit = Math.min(200, Math.max(1, Number(req.query.recent) || 25));
+      return res.json({ ok: true, ...analyzeMissLog({ recentLimit }) });
+    } catch (err: any) {
+      console.error("Error reading retrieval miss log:", err);
+      return res.status(500).json({ message: err?.message || "Failed to read retrieval miss log" });
     }
   });
 

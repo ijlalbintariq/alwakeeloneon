@@ -81,9 +81,13 @@ test("similaritySearch: SQL construction and query branch selection", async () =
   let lastSql = "";
   let lastParams: any[] = [];
 
-  // Setup database query mock on the pool
+  // similaritySearch checks a client out of the pool so it can raise
+  // hnsw.ef_search on the same connection before running the search.
+  // Mock both the pool and the checked-out client; ignore the SET statement.
   const originalQuery = pool.query;
-  pool.query = async (sql: string, params?: any[]) => {
+  const originalConnect = pool.connect;
+  const runQuery = async (sql: string, params?: any[]) => {
+    if (/^\s*SET\s/i.test(sql)) return { rows: [] };
     lastSql = sql;
     lastParams = params || [];
     return {
@@ -104,6 +108,8 @@ test("similaritySearch: SQL construction and query branch selection", async () =
       ]
     };
   };
+  pool.query = runQuery;
+  pool.connect = async () => ({ query: runQuery, release: () => {} });
 
   try {
     // 1. Check vector-only search (keywordWeight = 0)
@@ -143,6 +149,7 @@ test("similaritySearch: SQL construction and query branch selection", async () =
     assert.equal(resultsHybrid.length, 1);
   } finally {
     pool.query = originalQuery;
+    pool.connect = originalConnect;
   }
 });
 
