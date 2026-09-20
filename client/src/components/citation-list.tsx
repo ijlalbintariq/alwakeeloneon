@@ -22,6 +22,8 @@ import type { CitationSuggestionItem } from "./citation-suggestion";
 export interface CitationListProps {
   items: CitationSuggestionItem[];
   command: (item: CitationSuggestionItem) => void;
+  /** Raw suggestion query, e.g. "cite murder". Supplied by Tiptap's Suggestion plugin. */
+  query?: string;
 }
 
 export interface CitationListHandle {
@@ -29,10 +31,25 @@ export interface CitationListHandle {
 }
 
 function CitationListInner(
-  { items, command }: CitationListProps,
+  { items, command, query = "" }: CitationListProps,
   ref: Ref<CitationListHandle>,
 ) {
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // Only "/cite ..." searches judgments. Any other slash word — "/murder" — is
+  // ordinary typing, and the extension returns nothing for it.
+  const isCiteQuery = query.toLowerCase().startsWith("cite");
+
+  // An empty result reads the same whether the search is still running or has
+  // come back with nothing, so the popup used to spin forever. The search
+  // debounces at 150-350ms; past that, empty means empty.
+  const [searchSettled, setSearchSettled] = useState(false);
+  useEffect(() => {
+    if (items.length > 0) return;
+    setSearchSettled(false);
+    const timer = setTimeout(() => setSearchSettled(true), 900);
+    return () => clearTimeout(timer);
+  }, [query, items.length]);
 
   // Reset selection when items change
   useEffect(() => {
@@ -66,13 +83,32 @@ function CitationListInner(
   }));
 
   if (items.length === 0) {
+    // Not a citation search at all — show nothing rather than a popup that hangs.
+    if (!isCiteQuery) return null;
+
+    if (!searchSettled) {
+      return (
+        <div className="citation-suggestion-popup">
+          <div className="flex items-center gap-2 px-3 py-4 text-muted-foreground text-xs">
+            <Loader2 size={14} className="animate-spin text-primary" />
+            <span>Searching judgments...</span>
+          </div>
+        </div>
+      );
+    }
+
+    const searchTerm = query.slice(4).trim();
     return (
       <div className="citation-suggestion-popup">
-        <div className="flex items-center gap-2 px-3 py-4 text-muted-foreground text-xs">
-          <Loader2 size={14} className="animate-spin text-primary" />
-          <span>
-            Type after <code className="bg-card/60 px-1 py-0.5 rounded text-[10px] font-mono">/cite</code> to search, or wait for auto-suggestions...
-          </span>
+        <div className="px-3 py-3 text-muted-foreground text-xs">
+          {searchTerm.length >= 3 ? (
+            <>No judgment found for <span className="font-semibold text-foreground">{searchTerm}</span>.</>
+          ) : (
+            <>
+              Type a search term after <code className="bg-card/60 px-1 py-0.5 rounded text-[10px] font-mono">/cite</code>, for example{" "}
+              <code className="bg-card/60 px-1 py-0.5 rounded text-[10px] font-mono">/cite further inquiry</code>.
+            </>
+          )}
         </div>
       </div>
     );

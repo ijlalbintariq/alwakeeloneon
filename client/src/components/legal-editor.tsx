@@ -525,6 +525,12 @@ function LegalEditorInner(
             let component: ReactRenderer<CitationListHandle> | null = null;
             let popup: TippyInstance[] | null = null;
 
+            // "/" triggers the plugin on any slash word, but only "/cite ..."
+            // searches judgments. Without this, typing "/murder" opened an empty
+            // popup that sat there spinning.
+            const isCiteQuery = (props: any) =>
+              String(props?.query || "").toLowerCase().startsWith("cite");
+
             return {
               onStart: (props: any) => {
                 component = new ReactRenderer(CitationList, {
@@ -532,7 +538,7 @@ function LegalEditorInner(
                   editor: props.editor,
                 });
 
-                if (!props.clientRect) return;
+                if (!props.clientRect || !isCiteQuery(props)) return;
 
                 popup = tippy("body", {
                   getReferenceClientRect: props.clientRect,
@@ -547,11 +553,28 @@ function LegalEditorInner(
               },
               onUpdate: (props: any) => {
                 component?.updateProps(props);
-                if (popup?.[0] && props.clientRect) {
-                  popup[0].setProps({
-                    getReferenceClientRect: props.clientRect,
-                  });
+                if (!popup?.[0]) {
+                  // "/cite" typed one character at a time: the popup did not exist
+                  // on the first keystroke, so create it once the query qualifies.
+                  if (component && props.clientRect && isCiteQuery(props)) {
+                    popup = tippy("body", {
+                      getReferenceClientRect: props.clientRect,
+                      appendTo: () => document.body,
+                      content: component.element,
+                      showOnCreate: true,
+                      interactive: true,
+                      trigger: "manual",
+                      placement: "bottom-start",
+                      maxWidth: 380,
+                    });
+                  }
+                  return;
                 }
+                if (props.clientRect) {
+                  popup[0].setProps({ getReferenceClientRect: props.clientRect });
+                }
+                if (isCiteQuery(props)) popup[0].show();
+                else popup[0].hide();
               },
               onKeyDown: (props: any) => {
                 if (props.event.key === "Escape") {
@@ -562,7 +585,9 @@ function LegalEditorInner(
               },
               onExit: () => {
                 popup?.[0]?.destroy();
+                popup = null;
                 component?.destroy();
+                component = null;
               },
             };
           },

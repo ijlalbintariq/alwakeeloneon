@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Sparkles,
   Bot,
@@ -52,9 +52,25 @@ export const DraftingLaunchpad: React.FC<DraftingLaunchpadProps> = ({
   // AI Brief Form State
   const [draftType, setDraftType] = useState<"pleading" | "contract">("pleading");
   const [forum, setForum] = useState("Lahore High Court, Lahore");
+  // A district court is only identified once its station is named: a Sessions
+  // Judge sits at Lahore, Sialkot, Sukkur and so on. Listing every court against
+  // every district would run to hundreds of entries, so the station is typed and
+  // appended to whichever forum is selected.
+  const [station, setStation] = useState("");
   const [matterTitle, setMatterTitle] = useState("");
   const [reliefType, setReliefType] = useState("Writ Petition (Article 199)");
   const [facts, setFacts] = useState("");
+  // The box is two rows tall and does not scroll (resize-none), so a factual
+  // matrix longer than two lines was typed into a window the author could not
+  // read back. Grow with the content, capped so the Initialize button stays in
+  // view. Mirrors the composer in RightDraftingSidebar.
+  const factsRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = factsRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+  }, [facts, draftType]);
   const [isInitializingAi, setIsInitializingAi] = useState(false);
 
   // Switch presets when changing draft type
@@ -122,6 +138,13 @@ export const DraftingLaunchpad: React.FC<DraftingLaunchpadProps> = ({
     });
   }, [activeCategory, searchQuery]);
 
+  // "Court of the Sessions Judge" + "Sialkot" -> "Court of the Sessions Judge, Sialkot".
+  // A forum that already names its seat (every High Court entry) is left alone.
+  const forumWithStation =
+    draftType === "pleading" && station.trim() && !forum.includes(",")
+      ? `${forum}, ${station.trim()}`
+      : forum;
+
   const handleLaunchAiBrief = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!matterTitle.trim() && !facts.trim()) return;
@@ -130,7 +153,7 @@ export const DraftingLaunchpad: React.FC<DraftingLaunchpadProps> = ({
     try {
       await onStartWithAiBrief({
         draftType,
-        forum,
+        forum: forumWithStation,
         matterTitle: matterTitle || reliefType,
         reliefType,
         facts,
@@ -250,15 +273,71 @@ export const DraftingLaunchpad: React.FC<DraftingLaunchpadProps> = ({
                     onChange={(e) => setForum(e.target.value)}
                     className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                   >
-                    <option value="Lahore High Court, Lahore">Lahore High Court, Lahore</option>
-                    <option value="Sindh High Court, Karachi">Sindh High Court, Karachi</option>
-                    <option value="Islamabad High Court, Islamabad">Islamabad High Court, Islamabad</option>
-                    <option value="Peshawar High Court, Peshawar">Peshawar High Court, Peshawar</option>
-                    <option value="High Court of Balochistan, Quetta">High Court of Balochistan, Quetta</option>
-                    <option value="Supreme Court of Pakistan">Supreme Court of Pakistan</option>
-                    <option value="Court of Senior Civil Judge, Lahore">Court of Senior Civil Judge (Civil)</option>
-                    <option value="Court of Judge Family Court">Family Court</option>
-                    <option value="Court of Sessions Judge / Criminal">Sessions / Magistrate Court</option>
+                    {/* The value is sent to the drafting model as the forum, so each
+                        one carries the court's formal name, not a short label. */}
+                    <optgroup label="Superior Courts">
+                      <option value="Supreme Court of Pakistan">Supreme Court of Pakistan</option>
+                      <option value="Federal Shariat Court">Federal Shariat Court</option>
+                    </optgroup>
+                    <optgroup label="High Courts">
+                      <option value="Lahore High Court, Lahore">Lahore High Court, Lahore</option>
+                      <option value="Lahore High Court, Rawalpindi Bench">Lahore High Court, Rawalpindi Bench</option>
+                      <option value="Lahore High Court, Multan Bench">Lahore High Court, Multan Bench</option>
+                      <option value="Lahore High Court, Bahawalpur Bench">Lahore High Court, Bahawalpur Bench</option>
+                      <option value="Sindh High Court, Karachi">Sindh High Court, Karachi</option>
+                      <option value="Sindh High Court, Hyderabad Circuit">Sindh High Court, Hyderabad Circuit</option>
+                      <option value="Sindh High Court, Sukkur Circuit">Sindh High Court, Sukkur Circuit</option>
+                      <option value="Sindh High Court, Larkana Circuit">Sindh High Court, Larkana Circuit</option>
+                      <option value="Islamabad High Court, Islamabad">Islamabad High Court, Islamabad</option>
+                      <option value="Peshawar High Court, Peshawar">Peshawar High Court, Peshawar</option>
+                      <option value="Peshawar High Court, Abbottabad Bench">Peshawar High Court, Abbottabad Bench</option>
+                      <option value="Peshawar High Court, Bannu Bench">Peshawar High Court, Bannu Bench</option>
+                      <option value="Peshawar High Court, D.I. Khan Bench">Peshawar High Court, D.I. Khan Bench</option>
+                      <option value="Peshawar High Court, Mingora Bench (Swat)">Peshawar High Court, Mingora Bench (Swat)</option>
+                      <option value="High Court of Balochistan, Quetta">High Court of Balochistan, Quetta</option>
+                      <option value="High Court of Balochistan, Sibi Bench">High Court of Balochistan, Sibi Bench</option>
+                      <option value="High Court of Balochistan, Turbat Bench">High Court of Balochistan, Turbat Bench</option>
+                    </optgroup>
+                    <optgroup label="District Judiciary">
+                      <option value="Court of the Sessions Judge">Court of the Sessions Judge</option>
+                      <option value="Court of the Additional Sessions Judge">Court of the Additional Sessions Judge</option>
+                      <option value="Court of the Judicial Magistrate">Court of the Judicial Magistrate</option>
+                      <option value="Court of the Senior Civil Judge">Court of the Senior Civil Judge</option>
+                      <option value="Court of the Civil Judge">Court of the Civil Judge</option>
+                      <option value="Court of the Judge Family Court">Court of the Judge Family Court</option>
+                      <option value="Court of the Guardian Judge">Court of the Guardian Judge</option>
+                      <option value="Court of the Rent Controller">Court of the Rent Controller</option>
+                      <option value="Court of the Justice of Peace (Ex-Officio)">Justice of Peace (Sections 22-A / 22-B Cr.P.C.)</option>
+                    </optgroup>
+                    <optgroup label="Special Courts">
+                      <option value="Anti-Terrorism Court">Anti-Terrorism Court</option>
+                      <option value="Accountability Court">Accountability Court (NAB)</option>
+                      <option value="Court of the Special Judge (Control of Narcotic Substances)">Special Judge (Control of Narcotic Substances)</option>
+                      <option value="Banking Court">Banking Court</option>
+                      <option value="Court of the Special Judge (Customs, Taxation and Anti-Smuggling)">Special Judge (Customs, Taxation &amp; Anti-Smuggling)</option>
+                      <option value="Special Court (Offences in Banks)">Special Court (Offences in Banks)</option>
+                      <option value="Juvenile Court">Juvenile Court</option>
+                      <option value="Drug Court">Drug Court</option>
+                      <option value="Consumer Court">Consumer Court</option>
+                      <option value="Anti-Corruption Court">Anti-Corruption Court</option>
+                    </optgroup>
+                    <optgroup label="Tribunals &amp; Authorities">
+                      <option value="Federal Service Tribunal">Federal Service Tribunal</option>
+                      <option value="Punjab Service Tribunal">Punjab Service Tribunal</option>
+                      <option value="Sindh Service Tribunal">Sindh Service Tribunal</option>
+                      <option value="Khyber Pakhtunkhwa Service Tribunal">Khyber Pakhtunkhwa Service Tribunal</option>
+                      <option value="National Industrial Relations Commission">National Industrial Relations Commission (NIRC)</option>
+                      <option value="Labour Court">Labour Court</option>
+                      <option value="Labour Appellate Tribunal">Labour Appellate Tribunal</option>
+                      <option value="Appellate Tribunal Inland Revenue">Appellate Tribunal Inland Revenue (ATIR)</option>
+                      <option value="Customs Appellate Tribunal">Customs Appellate Tribunal</option>
+                      <option value="Board of Revenue">Board of Revenue</option>
+                      <option value="Environmental Protection Tribunal">Environmental Protection Tribunal</option>
+                      <option value="Intellectual Property Tribunal">Intellectual Property Tribunal</option>
+                      <option value="Insurance Tribunal">Insurance Tribunal</option>
+                      <option value="Election Tribunal">Election Tribunal</option>
+                      <option value="Federal Ombudsman (Wafaqi Mohtasib)">Federal Ombudsman (Wafaqi Mohtasib)</option>
+                    </optgroup>
                   </select>
                 ) : (
                   <input
@@ -266,6 +345,15 @@ export const DraftingLaunchpad: React.FC<DraftingLaunchpadProps> = ({
                     onChange={(e) => setForum(e.target.value)}
                     className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                     placeholder="e.g. Laws of Pakistan"
+                  />
+                )}
+                {draftType === "pleading" && !forum.includes(",") && (
+                  <input
+                    value={station}
+                    onChange={(e) => setStation(e.target.value)}
+                    placeholder="District / station, e.g. Sialkot"
+                    aria-label="District or station for the selected court"
+                    className="mt-2 w-full h-9 px-3 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-medium text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38]"
                   />
                 )}
               </div>
@@ -307,10 +395,11 @@ export const DraftingLaunchpad: React.FC<DraftingLaunchpadProps> = ({
               </label>
               <textarea
                 placeholder={draftType === "pleading" ? "Describe the timeline of events, impugned orders, and core grievances...\n(e.g., The respondent issued a show-cause notice on 15th August without providing a hearing...)" : "Describe payment terms, obligations, IP rights, confidentiality...\n(e.g., Party A will pay 500k PKR upon delivery. All IP belongs to Party A.)"}
+                ref={factsRef}
                 value={facts}
                 onChange={(e) => setFacts(e.target.value)}
                 rows={2}
-                className="w-full p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] resize-none"
+                className="w-full p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38] resize-none overflow-y-auto"
               />
             </div>
 
