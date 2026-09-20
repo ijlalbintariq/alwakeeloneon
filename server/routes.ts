@@ -2641,7 +2641,7 @@ function getModeOutputCap(tierRaw: string | undefined | null, mode: "standard" |
   return Math.max(0, Number(cap) || 0);
 }
 
-const FREE_TIER_CHAT_BUCKET_FEATURES = ["chat", "search-judgments", "search-statutes", "summarize", "brief", "chat-apex"] as const;
+const FREE_TIER_CHAT_BUCKET_FEATURES = ["chat", "search-judgments", "search-statutes", "summarize", "brief", "chat-apex", "transcribe"] as const;
 
 function resolveFreeTierLimit(featureRaw: string): {
   limitKey: "chat" | "draft" | "contract-drafting";
@@ -7700,12 +7700,28 @@ export async function checkUsageLimit(userId: string, feature: string, res: any)
       return false;
     }
 
-    const isAdmin = await storage.isUserAdmin(userId);
+    // The admin check is an escape hatch, not an entitlement: if it cannot be read
+    // the user is treated as an ordinary one and still has to pass the quota below.
+    const isAdmin = await storage.isUserAdmin(userId).catch((err) => {
+      console.error("[Usage] Admin lookup failed, treating as non-admin:", err);
+      return false;
+    });
     if (isAdmin) {
       return true;
     }
 
-    const tier = normalizeTier(await storage.getUserTier(userId));
+    // Tier decides which quota applies, so without it there is no check to run.
+    let tier: string;
+    try {
+      tier = normalizeTier(await storage.getUserTier(userId));
+    } catch (err) {
+      console.error("[Usage] Tier lookup failed, denying:", err);
+      res.status(503).json({
+        message: "Could not verify your subscription just now. Please try again in a moment.",
+        action: "retry",
+      });
+      return false;
+    }
     const isFreeTier = tier === "free";
     const limits = getTierPlan(tier);
 
@@ -7713,8 +7729,19 @@ export async function checkUsageLimit(userId: string, feature: string, res: any)
       const freeTierLimit = resolveFreeTierLimit(feature);
       // Free tier: lifetime limit (does NOT reset monthly)
       let usedTotal = 0;
-      for (const usageFeature of freeTierLimit.features) {
-        usedTotal += await storage.getTotalUsageCountByFeature(userId, usageFeature);
+      try {
+        for (const usageFeature of freeTierLimit.features) {
+          usedTotal += await storage.getTotalUsageCountByFeature(userId, usageFeature);
+        }
+      } catch (err) {
+        // A free allowance is one or ten lifetime requests. Waving it through on a
+        // read failure hands out unmetered AI spend, so the free tier fails closed.
+        console.error("[Usage] Free-tier usage count failed, denying:", err);
+        res.status(503).json({
+          message: "Could not verify your remaining free usage just now. Please try again in a moment.",
+          action: "retry",
+        });
+        return false;
       }
       if (usedTotal >= freeTierLimit.monthlyLimit) {
         res.status(429).json({
@@ -7730,7 +7757,16 @@ export async function checkUsageLimit(userId: string, feature: string, res: any)
       return true;
     }
 
-    const usedThisMonth = await storage.getMonthlyUsageCount(userId);
+    // A paying subscriber keeps working through a database wobble: the cost of
+    // letting a few extra requests through is far below the cost of breaking the
+    // product for someone who has already paid for it.
+    let usedThisMonth: number;
+    try {
+      usedThisMonth = await storage.getMonthlyUsageCount(userId);
+    } catch (err) {
+      console.error(`[Usage] Monthly usage count failed for paid tier "${tier}", allowing:`, err);
+      return true;
+    }
 
     if (usedThisMonth >= limits.monthlyQueries) {
       const limitMessage = `Your ${limits.label} package limit has ended for this cycle (${limits.monthlyQueries}). Please re-subscribe/renew your package to continue using the app.`;
@@ -7746,8 +7782,16 @@ export async function checkUsageLimit(userId: string, feature: string, res: any)
 
     return true;
   } catch (err) {
-    console.error("[Usage] Error checking usage:", err);
-    return true;
+    // Every expected failure is handled above with an explicit decision. Reaching
+    // here means something unforeseen broke, and the safe answer is to stop rather
+    // than hand out unmetered AI spend. This used to `return true`, so a single
+    // silent fault in any of the lookups disabled the free-tier limit entirely.
+    console.error("[Usage] Unexpected error checking usage, denying:", err);
+    res.status(503).json({
+      message: "Could not verify your usage allowance just now. Please try again in a moment.",
+      action: "retry",
+    });
+    return false;
   }
 }
 
@@ -12669,6 +12713,11 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
         return res.status(503).json({ message: "AI summary service is not configured" });
       }
 
+      // Everything above returns a cached summary and spends nothing, so the quota
+      // is only charged from here, where the model is actually called.
+      const summaryAllowed = await checkUsageLimit(userId, "summarize", res);
+      if (!summaryAllowed) return;
+
       // Build the prompt from headnotes + first 3000 chars of full text
       const headnotes = row.headnotes || "";
       const fullTextHead = row.full_text_head || "";
@@ -12722,6 +12771,9 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         // Non-fatal — summary was generated, just couldn't cache it
         console.warn("Failed to cache AI summary:", cacheErr);
       }
+
+      // Charged only on a real generation; cache hits returned long before this.
+      await storage.logUsage(userId, "summarize").catch(() => {});
 
       return res.json(summaryJson);
     } catch (err: any) {
@@ -16927,6 +16979,9 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         return res.status(400).json({ message: transcribeMalwareCheck.reason || "Malware detected in audio file." });
       }
 
+      const transcribeAllowed = await checkUsageLimit(userId, "transcribe", res);
+      if (!transcribeAllowed) return;
+
       const requestedModeRaw = String(req.body?.mode || "standard").trim().toLowerCase();
       const requestedMode: "standard" | "turbo" | ApexModel =
         requestedModeRaw === "turbo"
@@ -17006,6 +17061,9 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         audioBytes: stableFile.size,
         durationMs: Date.now() - startedAt,
       });
+
+      // The gate reads this table, so without the write the allowance never moves.
+      await storage.logUsage(userId, "transcribe").catch(() => {});
 
       res.json({
         transcription: transcription.trim(),
@@ -18988,14 +19046,51 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const { brief } = req.body;
       if (!brief) return res.status(400).json({ message: "Brief is required" });
 
+      const allowed = await checkUsageLimit(userId, brief.draftType === "contract" ? "contract-drafting" : "draft", res);
+      if (!allowed) return;
+
+      const isContract = brief.draftType === "contract";
       const legalKnowledgeQuery = `${brief.reliefType} ${brief.facts}`;
-      const knowledgeContext = await gatherKnowledgeContextV2(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
+      const knowledgePipeline = await gatherKnowledgeWithHits(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
         console.warn("[Drafting:RAG] Knowledge pipeline unavailable:", err?.message || err);
-        return "";
+        return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[], maxRelevanceScore: 0 };
       });
+      const knowledgeContext = knowledgePipeline.contextString;
+
+      // This endpoint used to gather statutes only and never ask for authorities,
+      // so the launchpad's first draft came back with no case law at all: the
+      // pipeline returns zero judgments for most drafting queries, nothing in the
+      // prompt asked the model to cite, and the integrity pass below then stripped
+      // anything it produced from memory. Same retrieval the drafting studio uses.
+      let briefCaseLawContext = knowledgePipeline.caseLawHits.length > 0
+        ? knowledgePipeline.caseLawHits
+            .map((h) => `[${h.citation}] ${h.title} (${h.court})\nSummary: ${(h.summary || "").slice(0, 400)}`)
+            .join("\n\n")
+        : "";
+      let briefRetrievedCitations = knowledgePipeline.caseLawHits.map((h) => h.citation);
+
+      const needsToolSearch =
+        !isContract &&
+        (knowledgePipeline.caseLawHits.length === 0 ||
+          (knowledgePipeline.maxRelevanceScore ?? 0) < TOOL_SEARCH_QUALITY_THRESHOLD);
+      if (needsToolSearch && (isOpenRouterAvailable() || isDeepSeekAvailable())) {
+        // The search model truncates its input, so lead with what names the case.
+        const subject = `Pakistani case law. ${brief.reliefType || ""}. ${String(brief.facts || "").slice(0, 220)}`.trim();
+        try {
+          const toolResult = await (isOpenRouterAvailable()
+            ? runToolJudgmentSearchOR(subject, (q, n) => console.log(`[Drafting:Brief:ToolSearch] query="${q}" found=${n}`), undefined, 18000)
+            : runToolJudgmentSearch(subject, (q, n) => console.log(`[Drafting:Brief:ToolSearch] query="${q}" found=${n}`), undefined, 8000));
+          if (toolResult.foundCount > 0) {
+            briefCaseLawContext = toolResult.contextString;
+            briefRetrievedCitations = toolResult.verifiedCitations;
+          }
+        } catch (err: any) {
+          console.warn("[Drafting:Brief:ToolSearch] failed:", err?.message || err);
+        }
+      }
+      console.log(`[Drafting:Brief] caseLawChars=${briefCaseLawContext.length} citations=${briefRetrievedCitations.length} contract=${isContract}`);
 
       const baseSystemPrompt = getLegalSystemPrompt();
-      const isContract = brief.draftType === "contract";
 
       let systemPrompt = `${baseSystemPrompt}
 You are an expert Pakistani legal drafter and High Court advocate.
@@ -19006,6 +19101,12 @@ ${isContract
   : `Use proper Pakistani legal formatting (e.g., "IN THE LAHORE HIGH COURT", "Respectfully Sheweth", "PRAYER").`
 }
 Fill in placeholder names with brackets like [Party Name] where information is missing.
+${briefCaseLawContext ? `
+CASE LAW CITATION MANDATE (STRICT):
+- Cite at least 3 of the judgments supplied in the conversation turns above, inside the GROUNDS section.
+- For each, give the exact citation string as provided, then one or two sentences applying it to these facts.
+- Use ONLY those citations. Never invent, guess or reformat a citation string.` : !isContract ? `
+- No verified case law was retrieved for this brief. Say in the GROUNDS section that authorities should be added by the practitioner, and cite nothing from memory.` : ""}
 
 ${knowledgeContext}`;
 
@@ -19024,9 +19125,28 @@ Facts: ${brief.facts}`;
 
       const { callWithFallback, DEFAULT_STANDARD_CHAIN } = await import("./ai-router");
 
+      // Framed as turns the user supplied: models weight conversation content far
+      // above system text, which is what makes the citations actually get used.
+      const caseLawTurns = briefCaseLawContext
+        ? [
+            {
+              role: "user" as const,
+              content:
+                `Before drafting, use these Pakistani case-law records retrieved from our internal database for this matter:\n\n` +
+                `${briefCaseLawContext}\n\n` +
+                `Cite at least 3 of them in the GROUNDS section, using their exact citation strings.`,
+            },
+            {
+              role: "assistant" as const,
+              content: "Understood. I will cite the relevant judgments from that list, using their exact citations.",
+            },
+          ]
+        : [];
+
       const result = await callWithFallback(DEFAULT_STANDARD_CHAIN, {
         messages: [
           { role: "system", content: systemPrompt },
+          ...caseLawTurns,
           { role: "user", content: userPrompt }
         ],
         maxTokens: 3500,
@@ -19050,8 +19170,11 @@ Facts: ${brief.facts}`;
       const briefReferences = await resolveLegalDraftReferences(safeContent, {
         stripUnverifiedCaseCitations: true,
         unresolvedCaseCitationPlaceholder: "",
+        allowedCaseCitations: briefRetrievedCitations,
       });
       safeContent = normalizeDraftingText(briefReferences.cleanedText || safeContent);
+
+      await storage.logUsage(userId, isContract ? "contract-drafting" : "draft").catch(() => {});
 
       res.json({ textContent: safeContent, references: briefReferences.references });
     } catch (err) {
