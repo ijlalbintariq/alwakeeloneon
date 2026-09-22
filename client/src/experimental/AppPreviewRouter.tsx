@@ -82,6 +82,15 @@ function ProtectedRoute({ path, component: Component }: { path: string, componen
   return <Route path={path} component={Component} />;
 }
 
+// Public judgment permalink (sitemap, IndexNow, ChatGPT/Google links).
+// Signed-in users get the full workspace view; visitors get the public preview.
+function JudgmentPermalink({ params }: { params: { id: string } }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <FallbackLoader />;
+  if (user) return <Redirect to={`/preview/judgments/${params.id}`} />;
+  return <PreviewPublicJudgment />;
+}
+
 export const AppPreviewRouter: React.FC = () => {
   return (
     <Suspense fallback={<FallbackLoader />}>
@@ -186,6 +195,7 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/workspace/bench-simulator" component={BenchSimulator} />
         <Route path="/preview/judgments" component={PreviewJudgments} />
         <Route path="/preview/judgments/:id" component={PreviewJudgments} />
+        <Route path="/judgment/:id" component={JudgmentPermalink} />
         <Route path="/preview/p/:id" component={PreviewPublicJudgment} />
         <Route path="/preview/public/judgments/:id" component={PreviewPublicJudgment} />
         <Route path="/cases">

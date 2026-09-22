@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useLocation, useRoute } from 'wouter';
+import { useLocation, useParams } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,7 +25,8 @@ interface PublicJudgmentData {
 }
 
 export default function PreviewPublicJudgment() {
-  const [match, params] = useRoute('/preview/p/:id');
+  // Mounted on /judgment/:id, /preview/p/:id and /preview/public/judgments/:id
+  const params = useParams<{ id: string }>();
   const [data, setData] = useState<PublicJudgmentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export default function PreviewPublicJudgment() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!match || !params?.id) return;
+    if (!params?.id) return;
 
     const fetchJudgment = async () => {
       setLoading(true);
@@ -64,7 +65,7 @@ export default function PreviewPublicJudgment() {
     return () => {
       document.title = 'AL WAKEELO AI Legal Platform';
     };
-  }, [match, params?.id]);
+  }, [params?.id]);
 
   
   const formattedParagraphs = useMemo(() => {
