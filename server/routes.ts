@@ -17910,29 +17910,14 @@ The user has attached the following documents for your reference. Analyze them c
           pipelineCaseLawHits.slice(0, 10).map(h => `- CITATION: ${h.citation} | COURT: ${h.court || 'Pakistani Court'} | TITLE: ${h.title || ''} — ${(h.summary || '').slice(0, 300)}`).join("\n");
       }
 
-      // Each block reaches the model exactly once. The judgments and statutes
-      // blocks are injected below as a user turn (better adherence than the
-      // system prompt), so they are cut from the system-prompt copy. When tool
-      // search supplied the pool, the weaker pipeline list is dropped so the
-      // model is not handed two lists under two contradictory mandates.
-      const stripContextSection = (text: string, heading: string): string => {
-        const at = text.indexOf(heading);
-        if (at === -1) return text;
-        const next = text.indexOf("\n=== ", at + heading.length);
-        return (text.slice(0, at) + (next === -1 ? "" : text.slice(next + 1))).trim();
-      };
-      let pipelineContext = knowledgeContext ? knowledgeContext.replace(/\[SYSTEM NOTE: No relevant case law found[\s\S]*?\]/g, "").trim() : knowledgeContext;
+      const pipelineContext = knowledgeContext ? knowledgeContext.replace(/\[SYSTEM NOTE: No relevant case law found[\s\S]*?\]/g, "").trim() : knowledgeContext;
       const statutesBlock = pipelineContext?.includes("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===")
         ? pipelineContext.split("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===")[1]?.split("\n=== ")[0]?.trim() || ""
         : "";
-      if (pipelineContext) {
-        if (pipelineCaseLawContext || toolSearchResult.foundCount > 0) {
-          pipelineContext = stripContextSection(pipelineContext, "=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===");
-        }
-        if (statutesBlock) {
-          pipelineContext = stripContextSection(pipelineContext, "=== VERIFIED STATUTES FROM INTERNAL DATABASE ===");
-        }
-      }
+      // The judgments and statutes blocks stay in the system prompt as well as
+      // the injected turns: the system rules (J1/J2, STATUTE RULE) point at "the
+      // VERIFIED JUDGMENTS section below", and without it the model concluded
+      // there were no verified cases and cited none. Tested 2026-09-23.
       const boundedKnowledgeContext = trimTextToTokenBudget(pipelineContext, knowledgeTokensBudget);
 
       // Citation hints come from the hit objects, never from parsing the
@@ -17947,7 +17932,7 @@ The user has attached the following documents for your reference. Analyze them c
           ? `\n\nMANDATORY FORMAL CITATION RULE (NON-NEGOTIABLE):\n` +
             `- Whenever referencing a judicial precedent in prose, headings, or bullets, you MUST write the exact formal citation string enclosed in bold brackets, e.g. **[CITATION FROM THE LIST]**. Never mention a case vaguely without its bracketed formal citation.\n` +
             `- Cite ONLY judgments from the AI-SEARCHED JUDGMENTS list above that are DIRECTLY relevant to the user's legal question.\n` +
-            `- Cite up to 5 cases from the list that are directly relevant, with full detail for each (Facts, Issue, Held, Relevance). There is no minimum: citing one strong case beats padding with weak ones.\n` +
+            `- You MUST cite at least 3 relevant cases (up to 5) with full detail for each (Facts, Issue, Held, Relevance). Never cite irrelevant or mixed-domain cases just to reach the minimum.\n` +
             `- If NONE of the cases in the list are relevant to the specific legal topic, do NOT cite any of them.\n` +
             `- Include the FORMAL CITATION string verbatim in your response, copied EXACTLY as listed. You may include case titles or party names naturally.\n` +
             `- Do NOT cite any case that is not in the list above — those citations will be removed.\n` +
@@ -17971,14 +17956,14 @@ The user has attached the following documents for your reference. Analyze them c
             `- **Held:** The court's ruling and reasoning (ratio decidendi).\n` +
             `- **Relevance:** Why this case directly applies to the user's situation.\n` +
             `\n` +
-            `- Cite at most 5 cases using this format. If fewer relevant cases exist in the pool, cite only those.\n` +
+            `- You MUST cite at least 3 cases (up to 5) using this format. If fewer than 3 relevant cases exist in the pool, cite all available and state that additional cases were not found.\n` +
             `- NEVER cite a case with just "the court held that X" — always use the structured format above.\n` +
             `- Present all cases under a "## Leading Case Law" section in your response.`
           : pipelineCitationLines.length > 0
             ? `\n\nMANDATORY FORMAL CITATION RULE (NON-NEGOTIABLE):\n` +
               `- Whenever referencing a judicial precedent anywhere in your response, you MUST write the exact formal citation string enclosed in bold brackets, e.g. **[CITATION FROM THE LIST]**. Never mention a case vaguely without its bracketed formal citation.\n` +
               `- The knowledge pipeline retrieved verified Pakistani judgments for this query (listed in the VERIFIED JUDGMENTS section above).\n` +
-              `- Cite up to 5 of those judgments that are directly relevant, using their EXACT formal citation strings. There is no minimum; if none fits the question, cite none.\n` +
+              `- You MUST cite at least 3 of those judgments (up to 5) using their EXACT formal citation strings. Never cite an off-topic judgment just to reach the minimum.\n` +
               `- Always use the citation format: **[CITATION]**. You may include case titles or party names naturally.\n` +
               `- Do NOT invent or guess citations — only cite what appears in the VERIFIED JUDGMENTS context.\n` +
               `- Each cited judgment must appear in your prose AND in the final references block.\n` +
