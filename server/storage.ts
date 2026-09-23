@@ -5645,6 +5645,37 @@ export async function getJudgmentTextStatuses(ids: string[]): Promise<Map<string
   return out;
 }
 
+/**
+ * For a mislabeled judgment, the id of the judgment its body really belongs to
+ * (text_true_citation), when that judgment is in the table and owns its text.
+ * text_true_citation can list parallel citations ("2023 SHC 303, 2024 PCRLJ 693").
+ */
+export async function findTextOwnerJudgment(trueCitation: string | null | undefined): Promise<{ id: string; citation: string } | null> {
+  for (const part of String(trueCitation || "").split(/\s*[,;&]\s*/).map((p) => p.trim()).filter(Boolean)) {
+    const exact = await db
+      .select({ id: judgments.id, citation: judgments.citationString })
+      .from(judgments)
+      .where(and(eq(judgments.citationString, part), eq(judgments.textStatus, "own")))
+      .limit(1);
+    if (exact[0]) return exact[0];
+    const parsed = parseCaseLawCitationParts(part);
+    if (!parsed || !parsed.page) continue;
+    const rows = await db
+      .select({ id: judgments.id, citation: judgments.citationString })
+      .from(judgments)
+      .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
+      .where(and(
+        eq(judgments.year, parsed.year),
+        eq(sql`lower(${lawJournals.code})`, parsed.report.toLowerCase()),
+        eq(judgments.page, parsed.page),
+        eq(judgments.textStatus, "own"),
+      ))
+      .limit(1);
+    if (rows[0]) return rows[0];
+  }
+  return null;
+}
+
 export async function applyJudgmentTextIntegrity<T extends Record<string, any>>(rows: T[]): Promise<T[]> {
   if (!rows.length) return rows;
   let statuses: Awaited<ReturnType<typeof getJudgmentTextStatuses>>;

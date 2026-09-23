@@ -17,9 +17,10 @@
  */
 
 import type { Request, Response } from "express";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and } from "drizzle-orm";
 import { db } from "./db";
 import { judgments, statuteDocuments } from "@shared/schema";
+import { getTextProvenance } from "./storage";
 
 const PAGE_SIZE = 10_000;
 const COUNT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -44,12 +45,19 @@ async function cachedCount(key: string, loader: () => Promise<number>): Promise<
   return value;
 }
 
+// Pages whose stored text belongs to another case are noindex; listing them in
+// the sitemap would only invite crawlers to them.
+const SITEMAP_JUDGMENT_FILTER = and(
+  eq(judgments.isActive, true),
+  sql`${judgments.textStatus} IS DISTINCT FROM 'mislabeled'`,
+);
+
 async function countActiveJudgments(): Promise<number> {
   return cachedCount("judgments", async () => {
     const [row] = await db
       .select({ count: sqlCountStar() })
       .from(judgments)
-      .where(eq(judgments.isActive, true));
+      .where(SITEMAP_JUDGMENT_FILTER);
     return Number(row?.count || 0);
   });
 }
@@ -232,7 +240,7 @@ export async function handleSitemapJudgments(req: Request, res: Response): Promi
     const rows = await db
       .select({ id: judgments.id, updatedAt: judgments.updatedAt })
       .from(judgments)
-      .where(eq(judgments.isActive, true))
+      .where(SITEMAP_JUDGMENT_FILTER)
       .orderBy(desc(judgments.decisionDate))
       .limit(PAGE_SIZE)
       .offset(offset);
@@ -257,16 +265,17 @@ export async function handleSitemapJudgments(req: Request, res: Response): Promi
   }
 }
 
-export function handleSitemapJudgmentsPriority(req: Request, res: Response): void {
+export async function handleSitemapJudgmentsPriority(req: Request, res: Response): Promise<void> {
   try {
     const origin = siteOrigin(req);
     const today = new Date().toISOString().slice(0, 10);
     // 988 verified performing judgments from Search Console Performance report
     const priorityJudgments: Array<{ id: string; clicks: number; impressions: number }> = require("../shared/priority-judgments.json");
 
-    const blocks = priorityJudgments.map((row) =>
-      urlBlock(`${origin}/judgment/${row.id}`, today, "weekly", "1.0"),
-    );
+    const provenance = await getTextProvenance(priorityJudgments.map((r) => r.id)).catch(() => new Map());
+    const blocks = priorityJudgments
+      .filter((row) => provenance.get(row.id) !== "mislabeled")
+      .map((row) => urlBlock(`${origin}/judgment/${row.id}`, today, "weekly", "1.0"));
     const body =
       `<?xml version="1.0" encoding="UTF-8"?>\n` +
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -281,16 +290,17 @@ export function handleSitemapJudgmentsPriority(req: Request, res: Response): voi
   }
 }
 
-export function handleSitemapJudgmentsTier2(req: Request, res: Response): void {
+export async function handleSitemapJudgmentsTier2(req: Request, res: Response): Promise<void> {
   try {
     const origin = siteOrigin(req);
     const today = new Date().toISOString().slice(0, 10);
     // 10,000 verified high-value Supreme Court & High Court cases (2023-2026)
     const tier2Judgments: Array<{ id: string; date?: string }> = require("../shared/tier2-judgments.json");
 
-    const blocks = tier2Judgments.map((row) =>
-      urlBlock(`${origin}/judgment/${row.id}`, row.date || today, "monthly", "0.8"),
-    );
+    const provenance = await getTextProvenance(tier2Judgments.map((r) => r.id)).catch(() => new Map());
+    const blocks = tier2Judgments
+      .filter((row) => provenance.get(row.id) !== "mislabeled")
+      .map((row) => urlBlock(`${origin}/judgment/${row.id}`, row.date || today, "monthly", "0.8"));
     const body =
       `<?xml version="1.0" encoding="UTF-8"?>\n` +
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +

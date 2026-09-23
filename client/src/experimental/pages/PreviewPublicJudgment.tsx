@@ -22,6 +22,8 @@ interface PublicJudgmentData {
   isPreview: boolean;
   isTruncated: boolean;
   citations: { made: any[], received: any[] };
+  textIntegrity?: "own" | "mislabeled" | "unknown" | string;
+  textBelongsTo?: { citation: string | null; id: string | null } | null;
 }
 
 export default function PreviewPublicJudgment() {
@@ -252,6 +254,27 @@ export default function PreviewPublicJudgment() {
                       <div className="text-slate-700 dark:text-slate-400 leading-relaxed text-sm p-5 bg-[#FBFBFA] border-l-4 border-[#105B38] whitespace-pre-wrap rounded-r-lg">
                         {data.headnotes}
                       </div>
+                    </div>
+                  )}
+
+                  {/* The text stored under this citation belongs to another case;
+                      the server withholds it and names the real owner. */}
+                  {data?.textIntegrity === "mislabeled" && (
+                    <div className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                      <p className="font-semibold mb-1">Judgment text unavailable for {data.citation}</p>
+                      <p>
+                        The text in our database under this citation belongs to a different judgment
+                        {data.textBelongsTo?.citation ? <> (<strong>{data.textBelongsTo.citation}</strong>)</> : null}, so it is not shown here.
+                      </p>
+                      {data.textBelongsTo?.id && (
+                        <Button
+                          onClick={() => setLocation(`/judgment/${data.textBelongsTo!.id}`)}
+                          className="mt-3 bg-[#105B38] hover:bg-[#0D4B2E] text-white"
+                          size="sm"
+                        >
+                          Read {data.textBelongsTo.citation || "that judgment"}
+                        </Button>
+                      )}
                     </div>
                   )}
 

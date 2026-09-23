@@ -4,6 +4,7 @@ import path from "path";
 import { injectSeoMeta, type SeoMeta } from "./seo-meta";
 import { db } from "./db";
 import { judgments, statuteDocuments } from "@shared/schema";
+import { findTextOwnerJudgment } from "./storage";
 import { eq } from "drizzle-orm";
 import { BLOG_ARTICLES } from "../shared/blog-data";
 
@@ -117,6 +118,8 @@ export function serveStatic(app: Express) {
           respondent: judgments.respondent,
           headnotes: judgments.headnotes,
           fullText: judgments.fullText,
+          textStatus: judgments.textStatus,
+          textTrueCitation: judgments.textTrueCitation,
         })
         .from(judgments)
         .where(eq(judgments.id, id))
@@ -143,7 +146,12 @@ export function serveStatic(app: Express) {
         const petitioner = row.petitioner ? String(row.petitioner).trim() : "";
         const respondent = row.respondent ? String(row.respondent).trim() : "";
         const headnotes = row.headnotes ? String(row.headnotes).trim() : "";
-        const rawFullText = row.fullText ? String(row.fullText).trim() : "";
+        // A mislabeled row's body is another case's judgment. Don't publish it
+        // under this citation, and keep the page out of search indexes so search
+        // engines and AI assistants stop recommending it. The owner stays indexed.
+        const isMislabeled = row.textStatus === "mislabeled";
+        const owner = isMislabeled ? await findTextOwnerJudgment(row.textTrueCitation).catch(() => null) : null;
+        const rawFullText = !isMislabeled && row.fullText ? String(row.fullText).trim() : "";
         const courtSlug = courtName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
         const pageTitle = citation
@@ -204,7 +212,7 @@ export function serveStatic(app: Express) {
         const meta: SeoMeta = {
           title: pageTitle,
           description: pageDescription,
-          index: true,
+          index: !isMislabeled,
           schemaMarkup,
         };
 
@@ -222,7 +230,9 @@ export function serveStatic(app: Express) {
               .filter(Boolean)
               .map(p => `<p style="margin-bottom:14px;line-height:1.75;font-size:15px;color:#1e293b;">${esc(p)}</p>`)
               .join("\n")
-          : "<p>Judgment text available in database.</p>";
+          : isMislabeled
+            ? `<p style="padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#7c2d12;">The judgment text held under ${esc(citation || "this citation")} belongs to a different case${row.textTrueCitation ? ` (${esc(String(row.textTrueCitation))})` : ""}, so it is not shown here.${owner ? ` <a href="/judgment/${owner.id}" style="color:#b45309;font-weight:600;">Read ${esc(owner.citation || "that judgment")}</a>.` : ""}</p>`
+            : "<p>Judgment text available in database.</p>";
 
         const partiesLine = petitioner && respondent
           ? `<p style="font-size:14px;color:#475569;margin-bottom:12px;"><strong>Petitioner:</strong> ${esc(petitioner)} <span style="margin:0 8px;">VS</span> <strong>Respondent:</strong> ${esc(respondent)}</p>`

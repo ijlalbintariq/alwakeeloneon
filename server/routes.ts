@@ -2,7 +2,7 @@ import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTem
 import { resolveJudgment, assessJudgmentText, judgmentSourceUrl, extractCitations, verifyCitations } from "./citation-verify";
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
-import { storage } from "./storage";
+import { storage, findTextOwnerJudgment } from "./storage";
 import { isMetadataOnlySummary, extractSubstantiveSummary } from "./storage";
 import { api } from "@shared/routes";
 import { legalDraftWorkspaceStateSchema } from "@shared/legal-drafting";
@@ -12915,7 +12915,18 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const judgment = await storage.getJudgmentDetail(id);
       if (!judgment) return res.status(404).json({ message: "Judgment not found" });
 
-      const sourceText = judgment.formattedText || judgment.fullText || "";
+      // A 'mislabeled' row holds another case's judgment. Serving that text under
+      // this citation is exactly what sent ChatGPT users to a Lahore High Court
+      // order labelled "2025 SCMR 969". Withhold it and point to the real owner.
+      const [provenance] = await db
+        .select({ textStatus: judgments.textStatus, textTrueCitation: judgments.textTrueCitation })
+        .from(judgments)
+        .where(eq(judgments.id, id))
+        .limit(1);
+      const isMislabeled = provenance?.textStatus === "mislabeled";
+      const owner = isMislabeled ? await findTextOwnerJudgment(provenance?.textTrueCitation).catch(() => null) : null;
+
+      const sourceText = isMislabeled ? "" : (judgment.formattedText || judgment.fullText || "");
       const { preview, truncated, totalWords } = trimWords(sourceText, PUBLIC_JUDGMENT_PREVIEW_WORDS);
 
       // Cache at the edge so repeat crawls don't hit DB.
@@ -12935,6 +12946,10 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         isPreview: true,
         isTruncated: truncated,
         citations: judgment.citations || { made: [], received: [] },
+        textIntegrity: provenance?.textStatus || "unknown",
+        textBelongsTo: isMislabeled
+          ? { citation: provenance?.textTrueCitation || null, id: owner?.id || null }
+          : null,
       });
     } catch (err) {
       console.error("Error fetching public judgment preview:", err);

@@ -127,8 +127,27 @@ type Member = {
   journalId: number;
   page: number;
   citation: string;
+  journalCode: string;
   header: string | null;
+  head: string;
 };
+
+// Neutral citations of the High Courts, and the reporter that prints only
+// Supreme Court judgments. A High Court body cannot belong to an SCMR citation,
+// and a Supreme Court body cannot belong to a High Court neutral citation.
+const HIGH_COURT_NEUTRAL = new Set(["LHC", "SHC", "IHC", "PHC", "BHC", "GBCC", "AJKHC"]);
+const SUPREME_COURT_ONLY = new Set(["SCMR"]);
+
+/** Which court the judgment body itself says it comes from, read from its opening. */
+function bodyCourt(head: string): "HC" | "SC" | null {
+  const h = String(head || "").toUpperCase();
+  const hc = h.search(/HIGH\s+COURT|CHIEF\s+COURT/);
+  const sc = h.search(/SUPREME\s+COURT/);
+  if (hc === -1 && sc === -1) return null;
+  if (sc === -1) return "HC";
+  if (hc === -1) return "SC";
+  return hc < sc ? "HC" : "SC";
+}
 
 async function requireColumns(c: Client) {
   const r = await c.query(`
@@ -182,17 +201,24 @@ async function main() {
       select md5(full_text) h from judgments
       where full_text is not null and length(full_text) > 500
       group by 1
-      having count(*) > 1 and max(year) - min(year) > 0)
+      having count(*) > 1)
     select md5(j.full_text) as h, j.id, j.year, j.journal_id, j.page, j.citation_string,
-           substring(j.full_text from 'Reported As:[^\n]{0,160}') as header
+           upper(l.code) as journal_code,
+           substring(j.full_text from 'Reported As:[^\n]{0,160}') as header,
+           left(j.full_text, 800) as head
     from judgments j
-    join shared on md5(j.full_text) = shared.h`);
+    join shared on md5(j.full_text) = shared.h
+    left join law_journals l on l.id = j.journal_id`);
+  // Groups used to require members from different years. Same-year duplicates
+  // were never examined, so every member stayed 'own': "2025 SCMR 969" served a
+  // Lahore High Court order that is really "2025 LHC 7088". 801 groups.
 
   const groups = new Map<string, Member[]>();
   for (const r of rows.rows as any[]) {
     const m: Member = {
       id: r.id, year: r.year, journalId: r.journal_id, page: r.page,
-      citation: r.citation_string, header: r.header,
+      citation: r.citation_string, journalCode: String(r.journal_code || ""),
+      header: r.header, head: String(r.head || ""),
     };
     const list = groups.get(r.h);
     if (list) list.push(m); else groups.set(r.h, [m]);
@@ -202,7 +228,7 @@ async function main() {
   const mislabeled: Array<{ id: string; trueCitation: string }> = [];
   const unknown: string[] = [];
   const plan: string[] = ["group,status,citation,true_citation,owner_in_db"];
-  let resolvedGroups = 0, ownerElsewhere = 0, ownerOutside = 0, unreadableGroups = 0, noHeaderGroups = 0;
+  let resolvedGroups = 0, ownerElsewhere = 0, ownerOutside = 0, unreadableGroups = 0, noHeaderGroups = 0, courtResolvedGroups = 0;
 
   let groupNo = 0;
   for (const [, members] of groups) {
@@ -210,6 +236,29 @@ async function main() {
     const header = members.find((m) => m.header)?.header;
 
     if (!header) {
+      // No "Reported As:" line. The body still names its court, which rules out
+      // members whose reporter cannot carry that court's judgments. Members that
+      // are consistent with it keep 'own' (a neutral citation and a reporter
+      // citation of one judgment are both correct); the rest are mislabeled.
+      const court = bodyCourt(members[0].head);
+      const impossible = (m: Member) =>
+        (court === "HC" && SUPREME_COURT_ONLY.has(m.journalCode)) ||
+        (court === "SC" && HIGH_COURT_NEUTRAL.has(m.journalCode));
+      const consistent = members.filter((m) => !impossible(m));
+      if (court && consistent.length > 0 && consistent.length < members.length) {
+        courtResolvedGroups++;
+        const owner = consistent.map((m) => m.citation).join(", ");
+        for (const m of members) {
+          if (impossible(m)) {
+            mislabeled.push({ id: m.id, trueCitation: owner });
+            plan.push(`${groupNo},mislabeled,"${m.citation}","${owner}",yes`);
+          } else {
+            owns.push(m.id);
+            plan.push(`${groupNo},own,"${m.citation}",,yes`);
+          }
+        }
+        continue;
+      }
       noHeaderGroups++;
       for (const m of members) {
         unknown.push(m.id);
@@ -270,7 +319,8 @@ async function main() {
   console.log(`  header names a judgment held elsewhere   : ${ownerElsewhere}`);
   console.log(`  header names a judgment not in the table : ${ownerOutside}`);
   console.log(`  header unreadable                        : ${unreadableGroups}`);
-  console.log(`  no header present                        : ${noHeaderGroups}`);
+  console.log(`  no header, resolved by court             : ${courtResolvedGroups}`);
+  console.log(`  no header, unresolved                    : ${noHeaderGroups}`);
   console.log("");
   console.log(`rows labelled 'own'        : ${owns.length + uniqueRows}  (${uniqueRows} never shared + ${owns.length} confirmed owners)`);
   console.log(`rows labelled 'mislabeled' : ${mislabeled.length}  (text kept, true citation recorded)`);
