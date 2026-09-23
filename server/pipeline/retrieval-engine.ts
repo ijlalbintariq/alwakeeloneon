@@ -17,7 +17,8 @@
 import { storage } from "../storage";
 import { similaritySearch } from "../rag/vector-store";
 import { embedTextLocal } from "../rag/embedding-local";
-import { retrieveForQuery, getCachedQueryEmbedding, GLOBAL_STATUTE_RAG_USER_ID, GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID, GLOBAL_CASELAW_RAG_USER_ID, GLOBAL_JUDGMENTS_RAG_USER_ID } from "../rag/rag-service";
+import { isVoyageProvider } from "../rag/embedding-local";
+import { retrieveForQuery, getCachedQueryEmbedding, dropMislabeledJudgmentChunks, GLOBAL_STATUTE_RAG_USER_ID, GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID, GLOBAL_CASELAW_RAG_USER_ID, GLOBAL_JUDGMENTS_RAG_USER_ID } from "../rag/rag-service";
 import type { CaseLaw } from "../../shared/schema";
 import type { QueryIntent, LegalTopic } from "./intent-classifier";
 import { normalizeCitationKey } from "../tools/citation-search-tool";
@@ -175,6 +176,14 @@ function extractCaseType(caseNumber: string): string {
   const match = c.match(/\b(c\.?a\.?|civil\s+appeal|criminal\s+appeal|civil\s+petition|criminal\s+petition|writ\s+petition|review\s+petition|r\.?p\.?a\.?)/i);
   if (match) return match[0].trim();
   return "Case Number";
+}
+
+// The excerpt shown to the model for a vector hit. chunkText is the 700-word
+// parent paragraph; its first 600 chars often miss the passage that matched.
+// matchedText is the embedded child chunk that actually scored.
+function vectorHitExcerpt(match: { chunkText?: string; matchedText?: string }): string {
+  const text = String(match.matchedText || match.chunkText || "").replace(/\s+/g, " ").trim();
+  return text.slice(0, 600);
 }
 
 function hasTrustedCitation(row: CaseLaw): boolean {
@@ -470,7 +479,8 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
                 citationRole: "primary" as const,
                 court: courtStr,
                 title: titleStr,
-                summary: match.chunkText?.slice(0, 600) || "",
+                summary: vectorHitExcerpt(match),
+                textIntegrity: (match.metadata as any)?.textIntegrity || "unverified",
                 keywords: [] as string[],
                 sourceDocId: null,
                 sourceType: "judgment",
@@ -557,7 +567,8 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
                 citationRole: "primary" as const,
                 court: String((match.metadata || {}).court || ""),
                 title: String((match.metadata || {}).title || match.title || ""),
-                summary: match.chunkText?.slice(0, 600) || "",
+                summary: vectorHitExcerpt(match),
+                textIntegrity: (match.metadata as any)?.textIntegrity || "unverified",
                 keywords: [] as string[],
                 sourceDocId: null,
                 sourceType: "judgment",
@@ -696,14 +707,14 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
         (async () => {
           const queryEmbedding = await getCachedQueryEmbedding(intent.normalized);
           if (!queryEmbedding) return [];
-          return await similaritySearch({
+          return await dropMislabeledJudgmentChunks(await similaritySearch({
             userId: "global-admin-judgments",
             queryEmbedding,
             queryText: intent.normalized,
             topK: Math.max(limit * 2, 20),
             vectorWeight: 1,
             keywordWeight: 0, // pure semantics — the lexical side already ran
-          });
+          }));
         })().catch((err: any) => {
           console.warn(`[RAG:CaseLaw] semantic fallback failed: ${err?.message || err}`);
           return [] as any[];
@@ -742,7 +753,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
             citationRole: "primary" as const,
             court: String(meta.court || ""),
             title: String(meta.title || m.title || ""),
-            summary: (m.chunkText || "").slice(0, 600),
+            summary: vectorHitExcerpt(m),
             keywords: [] as string[],
             sourceDocId: null,
             sourceType: "judgment",
@@ -750,6 +761,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
             documentClassification: null,
             fallbackExtraction: false,
             statuteReferences: [] as string[],
+            textIntegrity: meta.textIntegrity || "unverified",
           } as unknown as CaseLaw;
 
         // Lexical candidates pass through hasTrustedCitation before scoring.
@@ -772,7 +784,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
     }
   }
 
-  if (!isCitationLookup && topCandidates.length > 0 && process.env.RAG_EMBEDDING_PROVIDER?.toLowerCase() === "voyage") {
+  if (!isCitationLookup && topCandidates.length > 0 && isVoyageProvider()) {
     try {
       const { rerankVoyage } = await import("../rag/embedding-local");
       const docsToRerank = topCandidates.map(
@@ -786,6 +798,14 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
       const rerankScores = new Map<number, number>();
       for (const item of rerankResult) {
         rerankScores.set(item.index, item.score);
+      }
+
+      // A failed or timed-out rerank returns []. Blending that as 0 capped
+      // every score at 30, under the tool-search gate of 40, so each Voyage
+      // hiccup forced the 20s fallback. Keep the lexical/RRF order instead.
+      if (rerankScores.size === 0) {
+        console.warn("[RAG:CaseLaw] Voyage rerank returned nothing — keeping pre-rerank scores");
+        return topCandidates.slice(0, limit);
       }
 
       for (let idx = 0; idx < topCandidates.length; idx++) {
@@ -815,6 +835,20 @@ function cleanSection(secStr: string): string {
     .trim();
 }
 
+// The display title for a statute row found via a statuteRef. The ref's full
+// name is shown only when the row really belongs to that Act; otherwise the
+// row's own title. Printing the ref name over an unrelated row is how PPC
+// section text came out labelled "Industrial Statistics Act 1942".
+function titleForRef(rowTitle: unknown, refFullName: string): string | undefined {
+  const words = (v: string) => new Set(v.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 3));
+  if (/amend/i.test(String(rowTitle || "")) && !/amend/i.test(refFullName)) return undefined;
+  const row = words(String(rowTitle || ""));
+  const ref = [...words(refFullName)];
+  if (ref.length === 0) return undefined;
+  const shared = ref.filter((w) => row.has(w)).length;
+  return shared / ref.length >= 0.5 ? refFullName : undefined;
+}
+
 async function fetchStatutes(intent: QueryIntent, limit: number): Promise<RetrievedStatute[]> {
   // Direct section lookup when user explicitly typed e.g. "PPC 392" or "Article 25 Constitution"
   if (intent.statuteRef) {
@@ -827,14 +861,14 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
         STATUTE_TIMEOUT_MS,
         undefined,
       );
-      console.log("directMatch:", !!directMatch); if (directMatch) {
+      if (directMatch) {
         return [{
           shortTitle: String(directMatch.shortTitle || ""),
           section: String(directMatch.section || ""),
           description: String(directMatch.description || ""),
           punishment: String(directMatch.punishment || ""),
           relevanceScore: 100,
-          statuteDocumentTitle: fullName,
+          statuteDocumentTitle: titleForRef(directMatch.shortTitle, fullName),
         }];
       }
     } catch (err) {
@@ -850,17 +884,22 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     const cleanUserSection = cleanSection(sectionOrArticle);
     const matched = directRows.filter((r: any) => {
       const dbSecClean = cleanSection(String(r.section || ""));
-      return dbSecClean === cleanUserSection || dbSecClean.startsWith(cleanUserSection) || dbSecClean.includes(cleanUserSection);
+      return dbSecClean === cleanUserSection || new RegExp(`^${cleanUserSection}[a-z]$`).test(dbSecClean);
     });
 
     if (matched.length > 0) {
+      // Exact section first, then the principal Act before amendment Acts.
+      const rank = (r: any) =>
+        (cleanSection(String(r.section || "")) === cleanUserSection ? 0 : 2) +
+        (/amend/i.test(String(r.shortTitle || "")) ? 1 : 0);
+      matched.sort((a: any, b: any) => rank(a) - rank(b) || String(a.shortTitle || "").length - String(b.shortTitle || "").length);
       return matched.slice(0, limit).map((s: any) => ({
         shortTitle: String(s.shortTitle || ""),
         section: String(s.section || ""),
         description: String(s.description || ""),
         punishment: String(s.punishment || ""),
         relevanceScore: 100,
-        statuteDocumentTitle: fullName,
+        statuteDocumentTitle: titleForRef(s.shortTitle, fullName),
       } as RetrievedStatute));
     }
     const fallback = directRows.slice(0, limit).map((s: any) => ({
@@ -869,7 +908,7 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
       description: String(s.description || ""),
       punishment: String(s.punishment || ""),
       relevanceScore: 80,
-      statuteDocumentTitle: fullName,
+      statuteDocumentTitle: titleForRef(s.shortTitle, fullName),
     } as RetrievedStatute));
     if (fallback.length > 0) return fallback;
   }
@@ -1128,7 +1167,7 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
   const topCandidates = candidates.slice(0, 15);
 
   // 5. Apply Voyage Reranker if active
-  if (topCandidates.length > 0 && process.env.RAG_EMBEDDING_PROVIDER?.toLowerCase() === "voyage") {
+  if (topCandidates.length > 0 && isVoyageProvider()) {
     try {
       const { rerankVoyage } = await import("../rag/embedding-local");
       const docsToRerank = topCandidates.map(
@@ -1145,6 +1184,10 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
         rerankScores.set(item.index, item.score);
       }
 
+      if (rerankScores.size === 0) {
+        console.warn("[RAG:Statutes] Voyage rerank returned nothing — keeping fused scores");
+        return topCandidates.slice(0, limit);
+      }
       for (let idx = 0; idx < topCandidates.length; idx++) {
         const rerankScore = rerankScores.get(idx) ?? 0;
         topCandidates[idx].relevanceScore = Math.round(

@@ -24,14 +24,17 @@ export default function OauthConsentPage() {
   const state = params.get("state") || "";
   const responseType = params.get("response_type") || "code";
 
-  // Detect app name from redirect_uri or client_id
+  const codeChallenge = params.get("code_challenge") || "";
+  const codeChallengeMethod = params.get("code_challenge_method") || "";
+
+  // Name the app by exact callback host. A substring match let
+  // "https://evil.example/chatgpt" present itself as ChatGPT.
+  const redirectHost = (() => {
+    try { return redirectUri ? new URL(redirectUri).hostname.toLowerCase() : ""; } catch { return ""; }
+  })();
   const appName = (() => {
-    const uri = redirectUri?.toLowerCase() || "";
-    if (uri.includes("claude.ai") || uri.includes("anthropic")) return "Claude";
-    if (uri.includes("openai.com") || uri.includes("chatgpt")) return "ChatGPT";
-    if (uri.includes("cursor")) return "Cursor";
-    if (uri.includes("windsurf") || uri.includes("codeium")) return "Windsurf";
-    if (uri.includes("copilot") || uri.includes("github")) return "GitHub Copilot";
+    if (["claude.ai", "claude.com", "www.claude.ai", "www.claude.com"].includes(redirectHost)) return "Claude";
+    if (["chatgpt.com", "chat.openai.com", "platform.openai.com"].includes(redirectHost)) return "ChatGPT";
     if (clientId.startsWith("alw_")) return "MCP Client";
     return "External App";
   })();
@@ -53,6 +56,8 @@ export default function OauthConsentPage() {
         redirect_uri: redirectUri,
         state,
         response_type: responseType,
+        code_challenge: codeChallenge || undefined,
+        code_challenge_method: codeChallengeMethod || undefined,
       });
       const data = await res.json();
       if (data.redirectUrl) {
@@ -70,12 +75,9 @@ export default function OauthConsentPage() {
     }
   };
 
+  // Cancelling never bounces the user to an unvalidated redirect_uri.
   const handleCancel = () => {
-    if (redirectUri) {
-      window.location.href = `${redirectUri}?error=access_denied&state=${state}`;
-    } else {
-      navigate("/dashboard");
-    }
+    navigate("/dashboard");
   };
 
   return (
@@ -90,6 +92,7 @@ export default function OauthConsentPage() {
           </CardTitle>
           <CardDescription className="text-xs">
             A request has been made to connect your account to {appName}.
+            {redirectHost && <> You will be returned to <strong>{redirectHost}</strong>.</>}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs text-muted-foreground leading-relaxed">

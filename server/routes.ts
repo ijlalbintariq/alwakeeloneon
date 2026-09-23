@@ -38,6 +38,7 @@ import {
   type CaseLaw,
   apiKeys,
   usageTracking,
+  searchHistory,
 } from "@shared/schema";
 import { and, gte, count, desc, eq, ilike, lt, sql, like, or, inArray, countDistinct, isNotNull, asc } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
@@ -2457,10 +2458,9 @@ CRITICAL CITATION RULES:
 - Never cite cases from your training data that are not in the section below
 - Do NOT hallucinate or invent citations
 - Copy citations verbatim from the database section below
-- Include the citation (e.g. **[2024 SCMR 142]**) and case title naturally in your response.
+- Include the citation, copied exactly from the section below, and the case title naturally in your response.
 
-Format all citations as: **[CITATION]** — brief explanation
-Example: **[PLD 2020 SC 456]** (State vs John) — Supreme Court held that bail cancellation requires proof of supervening circumstances...
+Format all citations as: **[CITATION]** — brief explanation of what that judgment's text in the section below actually says.
 `;
 
 // Removed: callStandardAIWithTools function (tool-calling disabled)
@@ -2938,9 +2938,16 @@ function ensureAlWakeeloReferencesBlock(content: string): string {
 
 const REFERENCES_BLOCK_REGEX = /```references\s*([\s\S]*?)```|(?:^|\n)\s*references\s*(\{[\s\S]*?\})\s*$/i;
 
-function isDirectModePrompt(text: string): boolean {
+// Direct mode drops retrieval and every citation guardrail, so it must never
+// fire on a legal question. "just give me 3 cases on bail" used to match \bjust\b
+// and went to the model with nothing to cite from and nothing checking it.
+const DIRECT_MODE_LEGAL_INTENT_RE =
+  /\b(case|cases|case law|precedent|precedents|judgments?|citations?|cite|authority|authorities|section|sections|article|articles|act|ordinance|statute|statutes|law|laws|court|bail|fir|appeal|petition|writ|ppc|crpc|cpc|qso|scmr|pld|plj|mld|ylr|clc|pcrlj|nlr|punishment|offen[cs]e|held|ratio|draft)\b/;
+
+export function isDirectModePrompt(text: string): boolean {
   const normalized = (text || "").trim().toLowerCase();
   if (!normalized || normalized.length > 120) return false;
+  if (DIRECT_MODE_LEGAL_INTENT_RE.test(normalized) || /\d{4}\s+[a-z]/.test(normalized)) return false;
   const directPatterns = [
     /^reply with\b/,
     /^respond with\b/,
@@ -3581,12 +3588,11 @@ export async function verifyReferencesBlock(
           };
         }
 
-        // Fallback to AI-provided data if not found in DB
-        return {
-          citation: sanitizeReferenceText(citation, 140),
-          court: sanitizeReferenceText(court || "Pakistani Courts", 120),
-          description: sanitizeReferenceText(description, 320),
-        };
+        // Not in the retrieved pool and not in the database: the model made it
+        // up. It used to be kept "as AI-provided data", which put fabricated
+        // citations into the clickable references card.
+        console.warn(`[CitationScrubber] Dropped unverifiable reference: "${citation}"`);
+        return null;
       }
 
       // Strict mode + empty pool: full DB verification + linked primary source
@@ -3637,84 +3643,90 @@ export async function enforceProseCitationIntegrity(
   content: string,
   trustedCitations?: Iterable<string>,
 ): Promise<string> {
-  // Build normalised set of trusted citations from the tool search pool
+  const spaced = (v: string) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
   const trustedKeys = new Set<string>();
+  const trustedNorm = new Set<string>();
   if (trustedCitations) {
     for (const c of trustedCitations) {
-      const key = String(c || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (key) trustedKeys.add(key);
+      const key = spaced(String(c || ""));
+      // Only real citation strings count: a year and a trailing page number.
+      if (key && /\b(19|20)\d{2}\b/.test(key) && /\d\s*$/.test(key)) trustedKeys.add(key);
+      const norm = normalizeCitationForMatch(String(c || ""));
+      if (norm) trustedNorm.add(norm);
     }
   }
+  // Exact match after normalisation, or the model's string wraps a trusted
+  // citation at word boundaries ("PLD 2020 SC 456 (Lahore)"). The old two-way
+  // substring test also trusted "2024 SCMR 14" because "2024 SCMR 1419" was in
+  // the pool, and the reverse.
+  const isTrusted = (citation: string): boolean => {
+    const norm = normalizeCitationForMatch(citation);
+    if (norm && trustedNorm.has(norm)) return true;
+    const key = ` ${spaced(citation)} `;
+    for (const tk of trustedKeys) {
+      if (tk.split(" ").length >= 3 && key.includes(` ${tk} `)) return true;
+    }
+    return false;
+  };
+  const poolActive = trustedKeys.size > 0;
+  const lookupCache = new Map<string, string | null>();
+  const verifyInDb = async (citation: string): Promise<string | null> => {
+    const k = normalizeCitationForMatch(citation);
+    if (lookupCache.has(k)) return lookupCache.get(k)!;
+    const row = await resolveCaseCitationFromInternalDb(citation, {
+      requirePrimary: false,
+      requireLinkedSource: false,
+    }).catch(() => null);
+    const canonical = row && isCaseLawRowCitationTrusted(row) ? String(row.citation) : null;
+    lookupCache.set(k, canonical);
+    return canonical;
+  };
 
-  // Separate references block from prose — don't touch the block (already verified)
+  // Separate references block from prose — don't touch the block (verified separately)
   const refsMatch = content.match(/(```references[\s\S]*?```)/);
   const refsBlock = refsMatch ? refsMatch[0] : "";
   let proseBody = refsMatch ? content.replace(refsMatch[0], "<<<REFS_PLACEHOLDER>>>") : content;
 
-  // Match **[CITATION]** patterns in prose — the standard citation format
-  // Matches: **[PLD 2020 Supreme Court 456]**, **[2024 SCMR 1419]**, etc.
+  // Pass 1: **[CITATION]**, the format the model is told to use.
   const citationPattern = /\*\*\[([^\]]{5,140})\]\*\*/g;
   const matches: Array<{ fullMatch: string; citationInner: string }> = [];
   let m: RegExpExecArray | null;
   while ((m = citationPattern.exec(proseBody)) !== null) {
     matches.push({ fullMatch: m[0], citationInner: m[1] });
   }
-
-  // Process matches sequentially using database checks if they're not in the trusted search pool
+  const STATUTE_KEYWORDS = /\b(act|ordinance|order|code|rules?|laws?|constitution|schedule|regulation|amendment)\b/i;
   for (const { fullMatch, citationInner } of matches) {
-    // Skip statute/act references — these are NOT judgment citations.
-    const STATUTE_KEYWORDS = /\b(act|ordinance|order|code|rules?|laws?|constitution|schedule|regulation|amendment)\b/i;
     if (STATUTE_KEYWORDS.test(citationInner)) continue;
-
-    const key = citationInner
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    // Check if this citation is in the trusted pool
-    if (trustedKeys.has(key)) continue; // verified — keep it
-
-    // Check partial matches (formatting variants)
-    let isTrusted = false;
-    for (const tk of trustedKeys) {
-      if (tk.includes(key) || key.includes(tk)) {
-        isTrusted = true;
-        break;
-      }
-    }
-    if (isTrusted) continue; // close enough — keep it
-
-    // If a trusted citations pool is active, do NOT fall back to database check.
-    // Scrub the citation immediately to prevent citing cases outside the active search results.
-    if (trustedKeys.size > 0) {
+    if (isTrusted(citationInner)) continue;
+    if (poolActive) {
       console.warn(`[CitationScrubber] Stripped citation because it is not in the active trusted pool: "${citationInner}"`);
       proseBody = proseBody.replace(fullMatch, "");
       continue;
     }
-
-    // NOT in trusted pool — perform db lookup to check if it's a real citation in our DB
-    const dbMatched = await resolveCaseCitationFromInternalDb(citationInner, {
-      requirePrimary: false,
-      requireLinkedSource: false,
-    }).catch(() => null);
-
-    if (dbMatched && isCaseLawRowCitationTrusted(dbMatched)) {
-      // It exists in our database! Keep it, and update its formatting to matches DB canonical value
-      proseBody = proseBody.replace(fullMatch, `**[${dbMatched.citation}]**`);
+    const canonical = await verifyInDb(citationInner);
+    if (canonical) {
+      proseBody = proseBody.replace(fullMatch, `**[${canonical}]**`);
       continue;
     }
-
-    // Truly fake/hallucinated citation. Remove cleanly.
     console.warn(`[CitationScrubber] Stripped hallucinated citation: "${citationInner}"`);
     proseBody = proseBody.replace(fullMatch, "");
   }
 
-  // Restore references block
+  // Pass 2: citations written as plain text ("as held in 2019 SCMR 12, ...").
+  // Pass 1 never saw these, so any reporter citation outside **[...]** reached
+  // the user unchecked. Bold citations that survived pass 1 are masked first.
+  const masked = proseBody.replace(/\*\*\[[^\]]{5,140}\]\*\*/g, " ");
+  const plain = extractCaseCitationCandidates(masked).slice(0, 25);
+  for (const candidate of plain) {
+    if (isTrusted(candidate)) continue;
+    const canonical = poolActive ? null : await verifyInDb(candidate);
+    if (canonical) continue;
+    console.warn(`[CitationScrubber] Removed unverified plain-text citation: "${candidate}"`);
+    // Candidates come back whitespace-normalised; match the original spacing.
+    const flexible = candidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+    proseBody = proseBody.replace(new RegExp(flexible, "g"), "[unverified citation removed]");
+  }
+
   if (refsBlock) {
     proseBody = proseBody.replace("<<<REFS_PLACEHOLDER>>>", refsBlock);
   }
@@ -7544,7 +7556,7 @@ CONFIDENCE & UNCERTAINTY:
 ━━━ CITATION INTEGRITY (NON-NEGOTIABLE) ━━━
 
 MANDATORY FORMAL CITATION RULE:
-Whenever referencing a judicial precedent anywhere in your response (prose, headings, or bullets), you MUST write the exact formal citation string enclosed in bold brackets, e.g., **[2024 SCMR 142]** or **[PLD 2020 SC 456]**. Never refer to a judgment vaguely (e.g. "a Supreme Court ruling held...") or using party names alone without the formal bracketed citation string attached.
+Whenever referencing a judicial precedent anywhere in your response (prose, headings, or bullets), you MUST write the exact formal citation string enclosed in bold brackets, e.g. **[CITATION FROM THE VERIFIED LIST]**. Never refer to a judgment vaguely (e.g. "a Supreme Court ruling held...") or using party names alone without the formal bracketed citation string attached.
 
 CASE LAW RULES:
 1. ONLY cite cases from the "VERIFIED JUDGMENTS" section below. NEVER from training memory.
@@ -7553,9 +7565,9 @@ CASE LAW RULES:
 4. Copy citations VERBATIM. Never abbreviate, retype, use placeholders [I]/[II]/[III], or invent variations.
 5. Every cited case MUST be topically relevant. Criminal case in property dispute = automatic disqualification.
 6. NEVER fabricate, synthesize, or estimate citations. Zero citations > one fake citation. Always.
-7. Format each case heading ONLY as: #### **[EXACT CITATION]** (e.g. #### **[2024 SCMR 142]**), then four bullet sub-points: **Facts:** (one sentence), **Issue:** (the legal question), **Held:** (decision + reasoning), **Relevance:** (why it helps/warns the user). Never list a citation as a one-liner.
+7. Format each case heading ONLY as: #### **[EXACT CITATION]**, then four bullet sub-points: **Facts:** (one sentence), **Issue:** (the legal question), **Held:** (decision + reasoning), **Relevance:** (why it helps/warns the user). Never list a citation as a one-liner.
 8. Frontend verifies every citation. A fabricated citation produces a broken card and destroys credibility.
-9. Include the formal citation string (e.g. **[2024 SCMR 142]**) verbatim in your text whenever mentioning a case. You may include party names naturally alongside the citation.
+9. Include the formal citation string, copied from the verified list, verbatim in your text whenever mentioning a case. You may include party names naturally alongside the citation.
 10. Only cite the primary judgments listed in the VERIFIED JUDGMENTS section. Never cite or mention secondary "cited judgments" or other citations that are mentioned inside the EXCERPTS or headnotes of the primary judgments. Doing so will corrupt the citation integrity checker.
 
 
@@ -8384,7 +8396,7 @@ app.post("/api/admin/blogs/generate", async (req, res) => {
     version: "2.0.0",
     url: "https://www.alwakeelo.com/api/mcp",
     transport: "streamable-http",
-    toolsCount: 15,
+    toolsCount: 19,
     website: "https://www.alwakeelo.com",
     oauth: OAUTH_METADATA,
   };
@@ -8569,6 +8581,33 @@ app.post("/api/admin/blogs/generate", async (req, res) => {
   // Dynamic Client Registration (RFC 7591) — required by Claude Desktop MCP
   // Claude auto-calls this to register itself as an OAuth client before starting the auth flow.
   const registeredClients = new Map<string, { clientId: string; clientSecret: string; name: string; redirectUris: string[]; createdAt: number }>();
+
+  // An authorization code is only ever sent to a known client callback. Without
+  // this check anyone could craft an authorize link whose redirect_uri is their
+  // own server and walk away with a 10-year key to the victim's account.
+  // DCR registrations live in memory and vanish on deploy, so the connector
+  // hosts we support are trusted by hostname as well.
+  const OAUTH_TRUSTED_REDIRECT_HOSTS = new Set(
+    [
+      "claude.ai", "claude.com", "www.claude.ai", "www.claude.com",
+      "chatgpt.com", "chat.openai.com", "platform.openai.com",
+      "smithery.ai", "www.smithery.ai",
+      "www.alwakeelo.com", "alwakeelo.com",
+      ...String(process.env.OAUTH_ALLOWED_REDIRECT_HOSTS || "").split(","),
+    ].map((h) => h.trim().toLowerCase()).filter(Boolean),
+  );
+  const isAllowedOAuthRedirect = (redirectUri: unknown, clientId?: unknown): boolean => {
+    if (typeof redirectUri !== "string" || !redirectUri) return false;
+    let parsed: URL;
+    try { parsed = new URL(redirectUri); } catch { return false; }
+    if (parsed.hash) return false;
+    const client = typeof clientId === "string" ? registeredClients.get(clientId) : undefined;
+    if (client?.redirectUris.includes(redirectUri)) return true;
+    const host = parsed.hostname.toLowerCase();
+    // Native / desktop MCP clients (Claude Desktop, Cursor, MCP Inspector) use a loopback callback.
+    if ((host === "localhost" || host === "127.0.0.1" || host === "[::1]") && parsed.protocol === "http:") return true;
+    return parsed.protocol === "https:" && OAUTH_TRUSTED_REDIRECT_HOSTS.has(host);
+  };
 
   app.post("/api/oauth/register", (req, res) => {
     try {
@@ -11447,6 +11486,34 @@ RAG POLICY (STRICT):
     }
   });
 
+  // The History page calls both of these; neither had a handler, so deleting
+  // history silently did nothing.
+  app.delete(api.searchHistory.delete.path, async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid id" });
+    try {
+      await db.delete(searchHistory).where(and(eq(searchHistory.id, id), eq(searchHistory.userId, userId)));
+      res.sendStatus(204);
+    } catch (err) {
+      console.error("Error deleting search history entry:", err);
+      res.status(500).json({ message: "Failed to delete search history entry" });
+    }
+  });
+
+  app.delete(api.searchHistory.clear.path, async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      await db.delete(searchHistory).where(eq(searchHistory.userId, userId));
+      res.sendStatus(204);
+    } catch (err) {
+      console.error("Error clearing search history:", err);
+      res.status(500).json({ message: "Failed to clear search history" });
+    }
+  });
+
   app.get(api.statutes.search.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -12542,26 +12609,6 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
   });
 
   // 4. Public Intake Chat
-  app.post("/api/public-chat/submit-case", async (req, res) => {
-    try {
-      const payload = req.body;
-      const [newLead] = await db.insert(caseLeads).values({
-        name: payload.name || "Unknown",
-        email: payload.email || "no-email@example.com",
-        phone: payload.phone || "0000000000",
-        caseType: payload.caseType || "General Inquiry",
-        caseDescription: payload.description || payload.message || "No description provided",
-        ipAddress: req.ip || "127.0.0.1",
-        consentToContact: true,
-        city: payload.city || "Unknown",
-      }).returning();
-      res.json({ success: true, lead: newLead });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Failed to submit case lead" });
-    }
-  });
-
   app.get("/api/journals", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -17083,6 +17130,21 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
   app.post(api.ai.chat.path, guardedUploadQueue, upload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
+    // One line per chat turn with time-to-first-token and total time, so P50/P95
+    // can be read straight from the logs instead of stitching stage logs by hand.
+    const chatRid = crypto.randomUUID().slice(0, 8);
+    const chatT0 = Date.now();
+    let chatFirstTextMs: number | null = null;
+    const chatOrigWrite = res.write.bind(res) as (...a: any[]) => boolean;
+    (res as any).write = (chunk: any, ...rest: any[]) => {
+      if (chatFirstTextMs === null && typeof chunk === "string" && chunk.startsWith('data: {"text"')) {
+        chatFirstTextMs = Date.now() - chatT0;
+      }
+      return chatOrigWrite(chunk, ...rest);
+    };
+    res.on("close", () => {
+      console.log(`[ChatTiming] rid=${chatRid} status=${res.statusCode} firstTokenMs=${chatFirstTextMs ?? "-"} totalMs=${Date.now() - chatT0}`);
+    });
     const releaseInteractiveChatRequest = beginInteractiveChatRequest();
     try {
       let body = req.body;
@@ -17495,9 +17557,14 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         }
       };
 
-      // --- Query Refinement: rewrite casual query into structured legal prompt ---
-      // Runs in parallel with enrichment — finishes in ~1-2s, well within the 20s budget.
-      const refineNeeded = !directMode && !!lastUserMessage && moduleType === "al-wakeelo";
+      // --- Query Refinement (off by default) ---
+      // The refiner is told to "expand vague references ... with statute names",
+      // and its output used to REPLACE the user's message sent to the answer
+      // model, so section numbers from model memory arrived as if the user had
+      // typed them, outside every "verified statutes only" rule. Retrieval
+      // already has its own follow-up rewriter. CHAT_QUERY_REFINER=1 restores
+      // the call for the UI status event only; the user turn is never replaced.
+      const refineNeeded = process.env.CHAT_QUERY_REFINER === "1" && !directMode && !!lastUserMessage && moduleType === "al-wakeelo";
       const refinePromise = refineNeeded
         ? refineUserQuery(lastUserMessage!.content, priorTurns, 3000).catch((err) => {
             console.warn("[QueryRefine] Failed:", err?.message || err);
@@ -17587,14 +17654,17 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       );
       let toolSearchResult: ToolSearchResult = { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
       if (toolSearchEnabled) {
+        // Search what retrieval searched: a follow-up like "is it bailable?"
+        // means nothing to the tool model without the pipeline's rewrite.
+        const toolSearchQuery = knowledgeResult.retrievalQuery || lastUserMessage!.content;
         console.log(`[ToolSearch:Fallback] Triggered (Hits: ${pipelineCaseLawHits.length}, MaxScore: ${pipelineMaxScore}) — running multi-angle tool search`);
         if (sseHeadersFlushed) {
           try { res.write(`data: ${JSON.stringify({ searching: true, query: "fallback search...", found: 0, elapsedMs: 0 })}\n\n`); } catch {}
         }
         const toolSearchRace = await raceToDeadline<ToolSearchResult>(
           (useOpenRouterTools
-            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 18000)
-            : runToolJudgmentSearch(lastUserMessage!.content, toolStatusCallback)
+            ? runToolJudgmentSearchOR(toolSearchQuery, toolStatusCallback, undefined, 18000)
+            : runToolJudgmentSearch(toolSearchQuery, toolStatusCallback)
           ).catch((err) => {
             console.warn("[ToolSearch] Failed:", err?.message || err);
             return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
@@ -17607,16 +17677,6 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       }
 
       if (refineResult.wasRefined) {
-        // Replace the last user message in geminiContents with the refined version.
-        // Original query is preserved for display/caching/search-history — only the
-        // AI sees the refined version.
-        const lastGeminiUserIdx = geminiContents.map(c => c.role).lastIndexOf("user");
-        if (lastGeminiUserIdx >= 0) {
-          geminiContents[lastGeminiUserIdx] = {
-            role: "user",
-            parts: [{ text: refineResult.refined }],
-          };
-        }
         console.log(`[QueryRefine:Done] refined in ${refineResult.elapsedMs}ms`);
         // Emit SSE event so frontend knows query was refined
         if (sseHeadersFlushed) {
@@ -17835,42 +17895,46 @@ The user has attached the following documents for your reference. Analyze them c
           pipelineCaseLawHits.slice(0, 10).map(h => `- CITATION: ${h.citation} | COURT: ${h.court || 'Pakistani Court'} | TITLE: ${h.title || ''} — ${(h.summary || '').slice(0, 300)}`).join("\n");
       }
 
-      const pipelineContext = knowledgeContext ? knowledgeContext.replace(/\[SYSTEM NOTE: No relevant case law found[\s\S]*?\]/g, "").trim() : knowledgeContext;
-      const boundedKnowledgeContext = trimTextToTokenBudget(pipelineContext, knowledgeTokensBudget);
-
-      // Extract citation lines from pipeline context or pipelineCaseLawHits
-      const pipelineCitationLines: string[] = [];
-      if (toolSearchResult.foundCount === 0) {
-        if (knowledgeContext) {
-          let jStart = knowledgeContext.indexOf("VERIFIED JUDGMENTS");
-          if (jStart === -1) {
-            jStart = knowledgeContext.indexOf("INTERNAL KNOWLEDGE VAULT: CASE LAW");
-          }
-          if (jStart !== -1) {
-            const jSection = knowledgeContext.slice(jStart, jStart + 8000);
-            for (const line of jSection.split("\n")) {
-              const m = line.match(/(?:citation[:\s]+|\[(?:JUDGMENT|CASE)\]\s+)([^|\n\:\(]{4,80})/i);
-              if (m && m[1].trim()) pipelineCitationLines.push(m[1].trim());
-            }
-          }
+      // Each block reaches the model exactly once. The judgments and statutes
+      // blocks are injected below as a user turn (better adherence than the
+      // system prompt), so they are cut from the system-prompt copy. When tool
+      // search supplied the pool, the weaker pipeline list is dropped so the
+      // model is not handed two lists under two contradictory mandates.
+      const stripContextSection = (text: string, heading: string): string => {
+        const at = text.indexOf(heading);
+        if (at === -1) return text;
+        const next = text.indexOf("\n=== ", at + heading.length);
+        return (text.slice(0, at) + (next === -1 ? "" : text.slice(next + 1))).trim();
+      };
+      let pipelineContext = knowledgeContext ? knowledgeContext.replace(/\[SYSTEM NOTE: No relevant case law found[\s\S]*?\]/g, "").trim() : knowledgeContext;
+      const statutesBlock = pipelineContext?.includes("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===")
+        ? pipelineContext.split("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===")[1]?.split("\n=== ")[0]?.trim() || ""
+        : "";
+      if (pipelineContext) {
+        if (pipelineCaseLawContext || toolSearchResult.foundCount > 0) {
+          pipelineContext = stripContextSection(pipelineContext, "=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===");
         }
-        // Fallback citations directly from hits array if parsing missed them
-        if (pipelineCitationLines.length === 0 && pipelineCaseLawHits.length > 0) {
-          for (const h of pipelineCaseLawHits) {
-            if (h.citation) pipelineCitationLines.push(h.citation.trim());
-          }
+        if (statutesBlock) {
+          pipelineContext = stripContextSection(pipelineContext, "=== VERIFIED STATUTES FROM INTERNAL DATABASE ===");
         }
       }
+      const boundedKnowledgeContext = trimTextToTokenBudget(pipelineContext, knowledgeTokensBudget);
+
+      // Citation hints come from the hit objects, never from parsing the
+      // context text: that parser anchored on the instruction preamble and fed
+      // strings like "string EXACTLY. Format" into the trusted-citation list.
+      const pipelineCitationLines: string[] = toolSearchResult.foundCount === 0
+        ? [...new Set(pipelineCaseLawHits.map((h) => String(h.citation || "").trim()).filter(Boolean))]
+        : [];
 
       const toolMandateBlock =
         toolSearchResult.foundCount > 0
           ? `\n\nMANDATORY FORMAL CITATION RULE (NON-NEGOTIABLE):\n` +
-            `- Whenever referencing a judicial precedent in prose, headings, or bullets, you MUST write the exact formal citation string enclosed in bold brackets, e.g., "**[2024 SCMR 1419]**" or "**[PLD 2020 SC 456]**". Never mention a case vaguely without its bracketed formal citation.\n` +
+            `- Whenever referencing a judicial precedent in prose, headings, or bullets, you MUST write the exact formal citation string enclosed in bold brackets, e.g. **[CITATION FROM THE LIST]**. Never mention a case vaguely without its bracketed formal citation.\n` +
             `- Cite ONLY judgments from the AI-SEARCHED JUDGMENTS list above that are DIRECTLY relevant to the user's legal question.\n` +
-            `- You MUST cite at least 3 relevant cases (up to 5) with full detail for each (Facts, Issue, Held, Relevance). Never cite irrelevant or mixed-domain cases just to reach the minimum.\n` +
+            `- Cite up to 5 cases from the list that are directly relevant, with full detail for each (Facts, Issue, Held, Relevance). There is no minimum: citing one strong case beats padding with weak ones.\n` +
             `- If NONE of the cases in the list are relevant to the specific legal topic, do NOT cite any of them.\n` +
-            `- Include the FORMAL CITATION string (e.g. "**[2024 SCMR 1419]**") verbatim in your response. You may include case titles or party names naturally.\n` +
-            `  Copy each citation EXACTLY as listed (e.g. "2024 SCMR 1419", "PLD 2020 SC 456", "2019 PCRLJ 1683").\n` +
+            `- Include the FORMAL CITATION string verbatim in your response, copied EXACTLY as listed. You may include case titles or party names naturally.\n` +
             `- Do NOT cite any case that is not in the list above — those citations will be removed.\n` +
             `- Do NOT cite from memory or training data, even on familiar topics like Section 302 PPC or cheque dishonour.\n` +
             `- Each cited judgment must appear in your prose AND in the final references block.\n` +
@@ -17892,15 +17956,15 @@ The user has attached the following documents for your reference. Analyze them c
             `- **Held:** The court's ruling and reasoning (ratio decidendi).\n` +
             `- **Relevance:** Why this case directly applies to the user's situation.\n` +
             `\n` +
-            `- You MUST cite at least 3 cases (up to 5) using this format. If fewer than 3 relevant cases exist in the pool, cite all available and state that additional cases were not found.\n` +
+            `- Cite at most 5 cases using this format. If fewer relevant cases exist in the pool, cite only those.\n` +
             `- NEVER cite a case with just "the court held that X" — always use the structured format above.\n` +
             `- Present all cases under a "## Leading Case Law" section in your response.`
           : pipelineCitationLines.length > 0
             ? `\n\nMANDATORY FORMAL CITATION RULE (NON-NEGOTIABLE):\n` +
-              `- Whenever referencing a judicial precedent anywhere in your response, you MUST write the exact formal citation string enclosed in bold brackets, e.g. **[2021 MLD 456]** or **[PLD 2019 SC 1]**. Never mention a case vaguely without its bracketed formal citation.\n` +
+              `- Whenever referencing a judicial precedent anywhere in your response, you MUST write the exact formal citation string enclosed in bold brackets, e.g. **[CITATION FROM THE LIST]**. Never mention a case vaguely without its bracketed formal citation.\n` +
               `- The knowledge pipeline retrieved verified Pakistani judgments for this query (listed in the VERIFIED JUDGMENTS section above).\n` +
-              `- You MUST cite at least 3 of those judgments (up to 5) using their EXACT formal citation strings.\n` +
-              `- Always use the citation format: **[CITATION]** e.g. **[2021 MLD 456]** or **[PLD 2019 SC 1]**. You may include case titles or party names naturally.\n` +
+              `- Cite up to 5 of those judgments that are directly relevant, using their EXACT formal citation strings. There is no minimum; if none fits the question, cite none.\n` +
+              `- Always use the citation format: **[CITATION]**. You may include case titles or party names naturally.\n` +
               `- Do NOT invent or guess citations — only cite what appears in the VERIFIED JUDGMENTS context.\n` +
               `- Each cited judgment must appear in your prose AND in the final references block.\n` +
               `- Use this EXACT format for EVERY case:\n` +
@@ -17949,22 +18013,22 @@ The user has attached the following documents for your reference. Analyze them c
       // R5: Statute mandate injection — inject verified statutes as fake user/assistant
       // turns, matching the case law pool pattern for improved adherence.
       const statuteInjectionTurns: Array<{ role: "user" | "assistant"; content: string }> =
-        boundedKnowledgeContext.includes("VERIFIED STATUTES FROM INTERNAL DATABASE")
+        statutesBlock
           ? [
               {
                 role: "user" as const,
                 content:
                   `Before answering, please note these verified Pakistani statute provisions from our internal database:\n\n` +
-                  `${boundedKnowledgeContext.split("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===")[1]?.split("===")[0]?.trim() || ""}\n\n` +
+                  `${statutesBlock}\n\n` +
                   `STATUTE MANDATE:\n` +
                   `- Reference statutes from the verified list above whenever they apply to the user's query.\n` +
                   `- Use the EXACT section numbers shown for listed statutes.\n` +
-                  `- If the user's question concerns a specific legal domain (e.g., Rented Premises Act, Illegal Dispossession Act, PPC, CrPC, Family Laws) not fully covered in the excerpt above, analyze and cite the applicable Pakistani statutory provisions directly. Never claim a technical error or communication lapse.`,
+                  `- If the question needs a provision that is not in the list above, name the statute only and write "refer to the relevant provision of [Statute Name]". Never cite a section number from memory. Never claim a technical error or communication lapse.`,
               },
               {
                 role: "assistant" as const,
                 content:
-                  `Understood. I will analyze the user's legal question, reference the verified statutes above, and cite the relevant statutory provisions directly.`,
+                  `Understood. I will cite only the section numbers listed above and name any other statute without a section number.`,
               },
             ]
           : [];
@@ -17989,7 +18053,13 @@ The user has attached the following documents for your reference. Analyze them c
       if (selectedRoute === "apex" && selectedApexModel) routingPath.push(`apexModel:${selectedApexModel}`);
       if (directMode) routingPath.push("direct-mode:true");
 
-      const cacheRaw = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
+      // Keyed on the user and the recent conversation as well as the last
+      // message. On the last message alone, "is it bailable?" returned whatever
+      // answer any user had cached for those words in any thread, for 7 days.
+      const historyTag = priorTurns.length
+        ? hashQuery("ai-chat-history", JSON.stringify(priorTurns.slice(-6))).slice(0, 16)
+        : "none";
+      const cacheRaw = `${userId}::${historyTag}::${lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages)}`;
       const latestUserPromptText = lastUserMessage?.content || "";
       const styleCacheTag = styleContext ? hashQuery("style-context", styleContext).slice(0, 12) : "none";
       const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${routeLabel}::direct=${directMode ? "1" : "0"}::style=${styleCacheTag}`;
@@ -23937,6 +24007,21 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
   // ── MCP Server Session Registry ─────────────────────────────────────────────
   // Map to hold active transport sessions to support race-free parallel connection handling
   const mcpSessions = new Map<string, StreamableHTTPServerTransport>();
+  // Each session belongs to the user whose key opened it, and expires when idle.
+  // Without this the map grew forever, and any valid key could drive another
+  // user's session by sending its Mcp-Session-Id.
+  const mcpSessionMeta = new Map<string, { userId: string; lastSeen: number }>();
+  const MCP_SESSION_IDLE_MS = 60 * 60 * 1000;
+  setInterval(() => {
+    const cutoff = Date.now() - MCP_SESSION_IDLE_MS;
+    for (const [id, meta] of mcpSessionMeta) {
+      if (meta.lastSeen >= cutoff) continue;
+      const t = mcpSessions.get(id);
+      mcpSessions.delete(id);
+      mcpSessionMeta.delete(id);
+      t?.close().catch(() => {});
+    }
+  }, 10 * 60 * 1000).unref();
 
   // ── API Key Management Endpoints ──────────────────────────────────────────
   app.post("/api/settings/keys", async (req, res) => {
@@ -24145,17 +24230,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const allowed = await checkUsageLimit(userId, "search-statutes", res);
       if (!allowed) return;
 
-      const dummyIntent = {
-        raw: query,
-        normalized: query.toLowerCase(),
-        type: "statute" as const,
-        topics: [] as any[],
-        expandedQuery: query,
-        expandedTerms: query.split(/\s+/),
-        needsCaseLaw: false,
-        needsStatutes: true,
-        needsAdminDocs: false,
-      };
+      // Real intent classification, so "PPC 302" takes the exact section lookup
+      // (statuteRef) and topic-mapped Acts instead of only the generic search.
+      const dummyIntent = { ...classifyQueryIntent(query), needsCaseLaw: false, needsStatutes: true, needsAdminDocs: false };
       const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
       await storage.logUsage(userId, "search-statutes").catch(() => {});
 
@@ -24508,9 +24585,14 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       if (sessionId) {
         // Look up existing transport for this session
         const existingTransport = mcpSessions.get(String(sessionId));
-        if (!existingTransport) {
+        const meta = mcpSessionMeta.get(String(sessionId));
+        if (!existingTransport || !meta) {
           return res.status(404).json({ error: "Session not found or expired" });
         }
+        if (meta.userId !== apiKeyRecord.userId) {
+          return res.status(404).json({ error: "Session not found or expired" });
+        }
+        meta.lastSeen = Date.now();
         transport = existingTransport;
       } else {
         // Check if this is an initialization request
@@ -24533,14 +24615,17 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
         // Save session in registry
         mcpSessions.set(newSessionId, transport);
+        mcpSessionMeta.set(newSessionId, { userId: apiKeyRecord.userId, lastSeen: Date.now() });
 
         // Remove from registry on close/error
         transport.onclose = () => {
           mcpSessions.delete(newSessionId);
+          mcpSessionMeta.delete(newSessionId);
         };
         transport.onerror = (err) => {
           console.error(`[MCP Session ${newSessionId}] Error:`, err);
           mcpSessions.delete(newSessionId);
+          mcpSessionMeta.delete(newSessionId);
         };
       }
 
@@ -24787,12 +24872,25 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
 
   // ── OAuth 2.0 Endpoints for ChatGPT App Directory ─────────────────────────
-  const oauthCodes = new Map<string, { userId: string; redirectUri: string; expiresAt: number }>();
+  const oauthCodes = new Map<string, {
+    userId: string;
+    redirectUri: string;
+    clientId: string | null;
+    codeChallenge: string | null;
+    expiresAt: number;
+  }>();
 
   // 1. Authorize Entry Point (Redirects to React consent screen or Login)
   app.get("/api/oauth/authorize", (req, res) => {
     const userId = getUserId(req);
     const searchParams = new URLSearchParams(req.query as any);
+    if (!isAllowedOAuthRedirect(searchParams.get("redirect_uri"), searchParams.get("client_id"))) {
+      return res.status(400).json({ error: "invalid_request", error_description: "redirect_uri is not registered for this client" });
+    }
+    const method = searchParams.get("code_challenge_method");
+    if (searchParams.get("code_challenge") && method && method !== "S256") {
+      return res.status(400).json({ error: "invalid_request", error_description: "Only S256 code_challenge_method is supported" });
+    }
 
     if (!userId) {
       // Not logged in: redirect to login page preserving OAuth parameters
@@ -24808,9 +24906,15 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const { redirect_uri, state } = req.body;
+    const { redirect_uri, state, client_id, code_challenge, code_challenge_method } = req.body;
     if (!redirect_uri) {
       return res.status(400).json({ error: "Missing redirect_uri parameter" });
+    }
+    if (!isAllowedOAuthRedirect(redirect_uri, client_id)) {
+      return res.status(400).json({ error: "redirect_uri is not registered for this client" });
+    }
+    if (code_challenge && code_challenge_method && code_challenge_method !== "S256") {
+      return res.status(400).json({ error: "Only S256 code_challenge_method is supported" });
     }
 
     try {
@@ -24819,11 +24923,15 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       oauthCodes.set(code, {
         userId,
         redirectUri: redirect_uri,
+        clientId: typeof client_id === "string" && client_id && client_id !== "unknown" ? client_id : null,
+        codeChallenge: typeof code_challenge === "string" && code_challenge ? code_challenge : null,
         expiresAt: Date.now() + 5 * 60 * 1000,
       });
 
-      const redirectUrl = `${redirect_uri}?code=${code}&state=${encodeURIComponent(state || "")}`;
-      res.json({ redirectUrl });
+      const target = new URL(redirect_uri);
+      target.searchParams.set("code", code);
+      if (state) target.searchParams.set("state", String(state));
+      res.json({ redirectUrl: target.toString() });
     } catch (err) {
       res.status(500).json({ error: "Failed to generate authorization code" });
     }
@@ -24831,7 +24939,10 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
   // 3. Token Exchange Endpoint (POST /api/oauth/token)
   app.post("/api/oauth/token", async (req, res) => {
-    const { grant_type, code, redirect_uri } = req.body;
+    const { grant_type, code, redirect_uri, code_verifier } = req.body;
+    const basicAuth = String(req.headers.authorization || "").match(/^Basic\s+(.+)$/i);
+    const clientId = req.body.client_id
+      || (basicAuth ? Buffer.from(basicAuth[1], "base64").toString("utf8").split(":")[0] : undefined);
 
     if (grant_type !== "authorization_code") {
       return res.status(400).json({ error: "unsupported_grant_type" });
@@ -24851,6 +24962,22 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
     if (record.expiresAt < Date.now()) {
       return res.status(400).json({ error: "invalid_grant", error_description: "Code has expired" });
+    }
+    // RFC 6749 §4.1.3: the redirect_uri and client must match the authorize request.
+    if (redirect_uri && redirect_uri !== record.redirectUri) {
+      return res.status(400).json({ error: "invalid_grant", error_description: "redirect_uri mismatch" });
+    }
+    if (record.clientId && clientId && clientId !== record.clientId) {
+      return res.status(400).json({ error: "invalid_grant", error_description: "client_id mismatch" });
+    }
+    // RFC 7636: a code issued against a challenge is useless without its verifier.
+    if (record.codeChallenge) {
+      const expected = typeof code_verifier === "string"
+        ? crypto.createHash("sha256").update(code_verifier).digest("base64url")
+        : "";
+      if (expected !== record.codeChallenge) {
+        return res.status(400).json({ error: "invalid_grant", error_description: "PKCE verification failed" });
+      }
     }
 
     try {

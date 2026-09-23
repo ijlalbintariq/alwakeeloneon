@@ -497,6 +497,7 @@ export async function runToolJudgmentSearch(
     return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
   }
 
+  unique.splice(Number(process.env.TOOL_POOL_MAX || 25)); // same cap as the OpenRouter tool search
   const lines = unique.map(
     (r) =>
       `- CITATION: ${r.citation} | COURT: ${r.court} | TITLE: ${r.title}` +

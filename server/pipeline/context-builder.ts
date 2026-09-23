@@ -80,7 +80,16 @@ function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSect
 
     const reportingInfo = reportingType ? ` | REPORTING: ${reportingType}` : "";
     // Judgment rows: mark explicitly so AI knows this is from the verified DB
-    const sourceTag = row.sourceType === "judgment" ? " | SOURCE: Verified Judgment DB" : "";
+    // Only a row whose text is provably its own may be called verified.
+    // textIntegrity is set by applyJudgmentTextIntegrity / dropMislabeledJudgmentChunks.
+    const integrity = (row as any).textIntegrity as string | undefined;
+    const sourceTag = row.sourceType !== "judgment"
+      ? ""
+      : integrity === "headnote-only"
+        ? " | SOURCE: Headnote only (full text unavailable)"
+        : integrity === "own"
+          ? " | SOURCE: Verified Judgment DB"
+          : " | SOURCE: Judgment DB (text not verified)";
     // Ordinal rank label — the LLM is instructed to prefer lower ranks (higher relevance)
     const rankLabel = rank === 0 ? "[1] HIGHEST RELEVANCE" : `[${rank + 1}] RELEVANCE RANK ${rank + 1}`;
     lines.push(`- ${rankLabel} | CITATION: ${citation} | COURT: ${courtName}${reportingInfo}${sourceTag}${summary}`);
@@ -93,7 +102,8 @@ function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSect
     heading: "=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===",
     lines: [
       "Use ONLY these citations. Copy each CITATION string EXACTLY. Format: **[CITATION STRING]** — explanation.",
-      "STRICT RULE: Cite ONLY the formal citation string (e.g. **[2024 SCMR 142]**). DO NOT write party names, case titles, or 'vs' anywhere in your text.",
+      "STRICT RULE: Cite ONLY the formal citation string, copied from this list. DO NOT write party names, case titles, or 'vs' anywhere in your text.",
+      "SOURCE labels: 'Verified Judgment DB' = the excerpt is from that judgment's own text. 'Headnote only' = only the reporter headnote is available; do not quote or characterise the judgment beyond it. 'Text not verified' = provenance unconfirmed; state the proposition cautiously and do not quote.",
       "FORBIDDEN: Do NOT use [I] [II] [A] (1) (2) placeholder notation. Every citation must be a real string from this list.",
       ...lines,
     ],
@@ -117,40 +127,6 @@ function buildVerifiedStatutesSection(statutes: RetrievedStatute[]): ContextSect
       "DOMAIN RELEVANCE OMISSION RULE: Check the legal domain of every statutory section listed below. Only discuss statutory sections that directly apply to the user's primary legal topic (e.g., criminal law, PPC, CrPC, bail, family law). You MUST IGNORE and COMPLETELY OMIT any statutory section whose legal domain does not match the user's primary case type (for example, omit civil, transport, or commercial regulatory acts like Tramways Act, Railways Act, Companies Act, etc., when answering criminal or family law queries).",
       ...lines,
     ],
-  };
-}
-
-function buildCaseLawDetailSection(caseLaw: RetrievedCaseLaw[]): ContextSection | null {
-  if (caseLaw.length === 0) return null;
-  const lines: string[] = [];
-  for (const { row } of caseLaw) {
-    const citation = String(row.citation || "").trim();
-    if (!citation) continue;
-    const isJudgment = row.sourceType === "judgment";
-    const excerptLen = isJudgment ? EXCERPT_CHARS_JUDGMENT : EXCERPT_CHARS_EXTRACTED;
-    const detail = row.summary ? String(row.summary).slice(0, excerptLen) : "";
-    // Judgment rows get a clear label so the AI treats them as authoritative
-    const rowLabel = isJudgment ? "JUDGMENT" : "CASE";
-    lines.push(`- [${rowLabel}] ${citation} (${row.court})`);
-    if (detail) lines.push(`  ${isJudgment ? "Headnotes" : "Excerpt"}: ${detail}${detail.length >= excerptLen ? "..." : ""}`);
-  }
-  if (lines.length === 0) return null;
-  return {
-    id: "caselaw-detail",
-    heading: "=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===",
-    lines,
-  };
-}
-
-function buildStatutesDetailSection(statutes: RetrievedStatute[]): ContextSection | null {
-  if (statutes.length === 0) return null;
-  const lines = statutes.map(
-    (s) => `- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`,
-  );
-  return {
-    id: "statutes-detail",
-    heading: "=== INTERNAL KNOWLEDGE VAULT: STATUTES ===",
-    lines,
   };
 }
 
@@ -202,24 +178,14 @@ export function buildContext(
 
   const judgeSection = buildVerifiedJudgmentsSection(retrieval.caseLaw);
   const statSection  = buildVerifiedStatutesSection(retrieval.statutes);
-  const detailSection    = buildCaseLawDetailSection(retrieval.caseLaw);
-  const statDetailSection = buildStatutesDetailSection(retrieval.statutes);
-
+  // The "INTERNAL KNOWLEDGE VAULT" detail sections repeated every judgment and
+  // statute already listed above, doubling context tokens for no new facts.
   if (statuteFirst) {
-    // Statute queries: concise citations first (both statutes + case law),
-    // then verbose detail sections. This ordering ensures case law citations
-    // survive token-budget truncation — the detail sections are large and
-    // were previously pushing case law off the end of the context window.
     if (statSection)       sections.push(statSection);
     if (judgeSection)      sections.push(judgeSection);
-    if (statDetailSection) sections.push(statDetailSection);
-    if (detailSection)     sections.push(detailSection);
   } else {
-    // Judgment queries: judgments first
     if (judgeSection)      sections.push(judgeSection);
     if (statSection)       sections.push(statSection);
-    if (detailSection)     sections.push(detailSection);
-    if (statDetailSection) sections.push(statDetailSection);
   }
 
   // 5. Admin / Github / Org docs
@@ -247,7 +213,7 @@ Apply the rule to the user's specific facts.
 ### Conclusion
 Directly answer the user's question.
 
-If the provided judgments do not contain a strong match for the user's issue, you must state: 'No strong precedent found in the verified database' and rely on statutory law. Never invent or recall citations from training data.
+If the provided judgments do not contain a strong match for the user's issue, cite none of them and rely on statutory law. Never invent or recall citations from training data.
 
 For EACH cited case, provide a FULL SHORT SUMMARY using this EXACT format:
 

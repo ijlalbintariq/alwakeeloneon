@@ -1622,29 +1622,25 @@ export class DatabaseStorage implements IStorage {
 
   async getStatuteByTitleAndSection(shortTitle: string, section: string): Promise<Statute | undefined> {
     const cleanSec = section.replace(/[^a-z0-9]/gi, "").toLowerCase();
-    
-    // 1. Try direct matching with wildcard on shortTitle and section
+    if (!cleanSec) return undefined;
+    // Exact section (or the same number with a letter suffix, "489" -> "489f")
+    // matched in SQL, principal Act before its amendment Acts. The old query
+    // took 20 arbitrary rows with ILIKE '%3%' and then fell back to rows[0], so
+    // "section 3 PPC" came back as some amendment ordinance's section 3, or as
+    // section 302.
+    const cleanSection = sql`regexp_replace(lower(${statutes.section}), '[^a-z0-9]', '', 'g')`;
     const rows = await db.select()
       .from(statutes)
-      .where(
-        and(
-          ilike(statutes.shortTitle, `%${shortTitle}%`),
-          or(
-            ilike(statutes.section, `%${section}%`),
-            ilike(statutes.section, `%${cleanSec}%`)
-          )
-        )
+      .where(and(
+        ilike(statutes.shortTitle, `%${shortTitle}%`),
+        sql`${cleanSection} ~ ${`^${cleanSec}[a-z]?$`}`,
+      ))
+      .orderBy(
+        sql`(${cleanSection} = ${cleanSec}) DESC`,
+        sql`(${statutes.shortTitle} ~* 'amend') ASC`,
+        sql`length(${statutes.shortTitle}) ASC`,
       )
-      .limit(20);
-      
-    // 2. Perform clean section check to find the best match
-    for (const r of rows) {
-      const dbSecClean = r.section.toLowerCase().replace(/[^a-z0-9]/gi, "");
-      if (dbSecClean === cleanSec || dbSecClean.startsWith(cleanSec) || dbSecClean.includes(cleanSec)) {
-        return r;
-      }
-    }
-    
+      .limit(1);
     return rows[0];
   }
 
@@ -2221,7 +2217,19 @@ export class DatabaseStorage implements IStorage {
   // so every call threw "ReferenceError: options is not defined". Most call sites wrap
   // this in .catch(() => []), which silently turned the judgments table into a dead
   // retrieval source across the whole app.
+  // Every caller (chat pipeline, tool search, case-law search, MCP bridge) goes
+  // through here, so text provenance is enforced once. See applyJudgmentTextIntegrity.
   async searchJudgmentsByKeywords(
+    query: string,
+    limit: number = 10,
+    court?: string,
+    options: { fastAutocomplete?: boolean } = {},
+  ): Promise<CaseLaw[]> {
+    const rows = await this.searchJudgmentsByKeywordsRaw(query, limit, court, options);
+    return applyJudgmentTextIntegrity(rows);
+  }
+
+  private async searchJudgmentsByKeywordsRaw(
     query: string,
     limit: number = 10,
     court?: string,
@@ -2535,10 +2543,13 @@ export class DatabaseStorage implements IStorage {
       "scmr", "pcrlj", "pld", "mld", "clc", "ylr", "ptd", "plj", "cld",
     ]);
 
+    // Tokens go straight into to_tsquery(), where ( ) : & | ! < > * are
+    // operators: "12(2)" or "bail:" made the query throw and the caller
+    // swallowed it as zero results. Keep letters, digits and inner hyphens.
     const allTokens = safeQuery
       .toLowerCase()
-      .split(MULTIPLE_SPACES_REGEX)
-      .map((token) => token.trim())
+      .split(/[^a-z0-9\-]+/)
+      .map((token) => token.replace(/^-+|-+$/g, ""))
       .filter((token) => token.length >= 2 && !STOP_WORDS.has(token));
 
     // Prioritize legal signal tokens so the SQL uses legally relevant terms
@@ -4616,6 +4627,13 @@ export async function ensureSearchIndexes(): Promise<void> {
     idle_in_transaction_session_timeout: 30000,
     statement_timeout: 0, // NO STATEMENT TIMEOUT!
   });
+  // CREATE INDEX (even IF NOT EXISTS) takes a SHARE lock on the table before it
+  // checks the name. Behind a long-running write transaction that lock request
+  // queues forever (statement_timeout is 0 here) and every write queues behind
+  // it. Give up after 5s instead: the index is retried on the next boot.
+  migrationPool.on("connect", (client) => {
+    client.query("SET lock_timeout = '5s'").catch(() => {});
+  });
   const migrationDb = drizzle(migrationPool);
 
   try {
@@ -4628,9 +4646,6 @@ export async function ensureSearchIndexes(): Promise<void> {
       } else {
         console.log("[Indexes] Found existing simple GIN index on judgments. Skipping drop.");
       }
-    } else {
-      console.log("[Indexes] No GIN index on judgments exists yet. Executing initial DROP for safety...");
-      await migrationDb.execute(sql`DROP INDEX IF EXISTS idx_judgments_full_text_tsv`);
     }
   } catch (err) {
     console.warn("[Indexes] Error checking/dropping legacy GIN index:", err);
@@ -5353,13 +5368,33 @@ export async function ensureSearchIndexes(): Promise<void> {
     },
   ];
 
+  // Statements for indexes that already exist are skipped outright, so a normal
+  // boot takes no table locks at all. Only a genuinely missing index is built.
+  const existingIndexes = new Set<string>();
+  try {
+    const idx = await migrationDb.execute(sql`SELECT indexname FROM pg_indexes WHERE schemaname = 'public'`);
+    for (const r of idx.rows as any[]) existingIndexes.add(String(r.indexname));
+  } catch (err: any) {
+    console.warn("[Indexes] Could not list existing indexes:", err?.message || err);
+  }
+  const indexNameOf = (stmt: any): string | null => {
+    const text = (stmt?.queryChunks || [])
+      .map((c: any) => (Array.isArray(c?.value) ? c.value.join("") : ""))
+      .join("");
+    const m = text.match(/CREATE\s+(?:UNIQUE\s+)?INDEX\s+IF\s+NOT\s+EXISTS\s+("?)(\w+)\1/i);
+    return m ? m[2] : null;
+  };
+  let skippedExisting = 0;
   for (const { label, stmt } of indexStatements) {
+    const indexName = indexNameOf(stmt);
+    if (indexName && existingIndexes.has(indexName)) { skippedExisting++; continue; }
     try {
       await migrationDb.execute(stmt);
     } catch (err: any) {
       console.warn(`[Indexes] Could not ensure ${label}:`, err?.cause?.message || err?.message || err);
     }
   }
+  console.log(`[Indexes] ${skippedExisting} existing indexes skipped without locking.`);
   try {
     await migrationDb.execute(
       sql`CREATE INDEX IF NOT EXISTS idx_style_memory_chunks_embedding_cosine ON style_memory_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)`,
@@ -5533,6 +5568,126 @@ export const REAL_CASE_TITLE_SEP_REGEX = /\b(vs?\.?|versus)\b/i;
 export const ALL_CAPS_PREFIX_REGEX = /^[A-Z][A-Z .'-]{3,}/;
 export const PLACEHOLDER_TITLE_REGEX = /^case\s+(?:reported\s+at|cited\s+as|no\.?)\b/i;
 export const PLACEHOLDER_HEADNOTES_REGEX = /^case\s+(?:cited\s+as|reported\s+at)\b/i;
+
+// ── Judgment text provenance ────────────────────────────────────────────
+// 27k judgments hold a body harvested from a different case (text_status =
+// 'mislabeled', migration 0009). Their headnotes/title come from the reporter
+// and are usually right for the citation; their full_text is not. So a
+// mislabeled row may be shown only by its own headnotes, never by anything
+// derived from full_text (summary fallback, header title, header court).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type JudgmentTextIntegrity = "own" | "headnote-only" | "unverified";
+
+// Only ~27.6k of 235k judgments are not 'own'. Holding those ids in memory
+// makes the provenance check free on the hot path: a per-search DB lookup cost
+// ~230ms of round-trip on every vector search. Refreshed hourly; labels only
+// change when judgments:label:apply runs.
+let provenanceCache: { mislabeled: Set<string>; unknown: Set<string>; loadedAt: number } | null = null;
+let provenanceLoading: Promise<void> | null = null;
+const PROVENANCE_TTL_MS = 60 * 60 * 1000;
+
+async function loadProvenanceSets(): Promise<void> {
+  const rows = await db
+    .select({ id: judgments.id, textStatus: judgments.textStatus })
+    .from(judgments)
+    .where(or(eq(judgments.textStatus, "mislabeled"), eq(judgments.textStatus, "unknown"), sql`${judgments.textStatus} IS NULL`));
+  const mislabeled = new Set<string>();
+  const unknown = new Set<string>();
+  for (const r of rows) (r.textStatus === "mislabeled" ? mislabeled : unknown).add(r.id);
+  provenanceCache = { mislabeled, unknown, loadedAt: Date.now() };
+}
+
+/** 'own' | 'mislabeled' | 'unknown' for each id, from the in-memory sets. */
+export async function getTextProvenance(ids: string[]): Promise<Map<string, "own" | "mislabeled" | "unknown">> {
+  if (!provenanceCache || Date.now() - provenanceCache.loadedAt > PROVENANCE_TTL_MS) {
+    if (!provenanceLoading) {
+      provenanceLoading = loadProvenanceSets().finally(() => { provenanceLoading = null; });
+      // A background refresh is never awaited; mark it handled so a DB blip is
+      // a warning, not an unhandled rejection. The stale sets stay in use.
+      provenanceLoading.catch((err) => console.warn("[TextIntegrity] provenance refresh failed:", err?.message || err));
+    }
+    if (!provenanceCache) await provenanceLoading; // first call waits; later refreshes are background
+  }
+  const cache = provenanceCache!;
+  const out = new Map<string, "own" | "mislabeled" | "unknown">();
+  for (const id of ids) {
+    if (!id) continue;
+    out.set(id, cache.mislabeled.has(id) ? "mislabeled" : cache.unknown.has(id) ? "unknown" : "own");
+  }
+  return out;
+}
+
+export async function getJudgmentTextStatuses(ids: string[]): Promise<Map<string, {
+  textStatus: string | null;
+  headnotes: string | null;
+  title: string | null;
+  petitioner: string | null;
+  respondent: string | null;
+  court: string | null;
+}>> {
+  const unique = [...new Set(ids.filter((id) => UUID_RE.test(String(id || ""))))];
+  const out = new Map<string, any>();
+  if (unique.length === 0) return out;
+  const rows = await db
+    .select({
+      id: judgments.id,
+      textStatus: judgments.textStatus,
+      headnotes: judgments.headnotes,
+      title: judgments.title,
+      petitioner: judgments.petitioner,
+      respondent: judgments.respondent,
+      court: judgments.courtNameSnapshot,
+    })
+    .from(judgments)
+    .where(inArray(judgments.id, unique));
+  for (const r of rows) out.set(r.id, r);
+  return out;
+}
+
+export async function applyJudgmentTextIntegrity<T extends Record<string, any>>(rows: T[]): Promise<T[]> {
+  if (!rows.length) return rows;
+  let statuses: Awaited<ReturnType<typeof getJudgmentTextStatuses>>;
+  let provenance: Map<string, "own" | "mislabeled" | "unknown">;
+  try {
+    provenance = await getTextProvenance(rows.map((r) => String(r.judgmentId || "")));
+    // Headnotes/title are fetched only for the few rows that need rewriting.
+    const needDetail = [...provenance].filter(([, st]) => st === "mislabeled").map(([id]) => id);
+    statuses = await getJudgmentTextStatuses(needDetail);
+  } catch (err) {
+    console.warn("[TextIntegrity] status lookup failed; marking rows unverified:", (err as Error)?.message);
+    return rows.map((r) => (r.judgmentId ? { ...r, textIntegrity: "unverified" as JudgmentTextIntegrity } : r));
+  }
+  const out: T[] = [];
+  for (const row of rows) {
+    const id = row.judgmentId ? String(row.judgmentId) : "";
+    const status = id ? provenance.get(id) : undefined;
+    if (!status) { out.push(row); continue; }
+    if (status === "mislabeled") {
+      const info = statuses.get(id);
+      if (!info) continue;
+      const headnotes = String(info.headnotes || "").trim();
+      const usable = headnotes && !PLACEHOLDER_HEADNOTES_REGEX.test(headnotes) && !isMetadataOnlySummary(headnotes);
+      if (!usable) continue; // nothing trustworthy to show for this citation
+      const dbTitle = String(info.title || "").trim();
+      const parties = [info.petitioner, info.respondent].filter(Boolean).join(" vs ");
+      out.push({
+        ...row,
+        title: (dbTitle && looksLikeRealCaseTitle(dbTitle) ? dbTitle : parties) || `Case ${row.citation || ""}`.trim(),
+        court: String(info.court || "").trim(),
+        summary: headnotes.slice(0, 600).trim(),
+        textIntegrity: "headnote-only" as JudgmentTextIntegrity,
+      });
+      continue;
+    }
+    out.push({
+      ...row,
+      textIntegrity: (status === "own" ? "own" : "unverified") as JudgmentTextIntegrity,
+    });
+  }
+  return out;
+}
+
 
 export const TITLE_HEADER_REGEX = /(?:^|)\s*Title\s*:\s*([\s\S]*?)(?=\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
 export const COURT_NAME_HEADER_REGEX = /(?:^|)\s*Court Name\s*:\s*([\s\S]*?)(?=\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;

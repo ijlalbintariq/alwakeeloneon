@@ -78,6 +78,8 @@ export interface ToolJudgmentSearchResult {
  *
  * Latency target: ~1.5-2.5s p50, ~4s p95.
  */
+const TOOL_POOL_MAX = Number(process.env.TOOL_POOL_MAX || 25);
+
 export async function runToolJudgmentSearchOR(
   userQuery: string,
   onStatus: (query: string, found: number) => void,
@@ -277,7 +279,11 @@ export async function runToolJudgmentSearchOR(
     .map((r, i) => ({ r, i, score: subjectOverlap(r) }))
     // Ties keep their original order, which is each sub-query's own ranking.
     .sort((a, b) => b.score - a.score || a.i - b.i)
-    .map((x) => x.r);
+    .map((x) => x.r)
+    // Up to ~90 judgments x 1,500 chars used to go to the model uncapped
+    // (~130k chars). Past the first couple of dozen the model is only being
+    // offered more off-topic cases to cite.
+    .slice(0, TOOL_POOL_MAX);
 
   const lines = ranked.map(
     (r) =>

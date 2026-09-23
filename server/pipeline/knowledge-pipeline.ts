@@ -1,3 +1,4 @@
+import crypto from "crypto";
 /**
  * Knowledge Pipeline
  *
@@ -261,6 +262,8 @@ export interface PipelineRunResult {
   /** Highest relevance score among retrieved case law (0-100). Used by routes.ts
    *  to decide whether to run multi-angle tool search as a quality gate. */
   maxRelevanceScore: number;
+  /** The query retrieval actually ran (after follow-up rewriting). */
+  retrievalQuery?: string;
 }
 
 export async function runKnowledgePipeline(
@@ -272,7 +275,13 @@ export async function runKnowledgePipeline(
   const t0 = Date.now();
   // Key on the normalized module, so "draft" and "legal-drafting" share one entry
   // instead of caching the same answer twice under two spellings.
-  const key = `${userId || "anon"}::${normalizePipelineModule(context?.module)}::${normKey(rawQuery)}`;
+  // A follow-up ("is it bailable?") is rewritten from the conversation, so the
+  // same words mean different things in different threads. Key on the recent
+  // turns too, or one thread's retrieval answers another's.
+  const historyTag = (conversationHistory || []).length
+    ? crypto.createHash("sha1").update(JSON.stringify((conversationHistory || []).slice(-4))).digest("hex").slice(0, 12)
+    : "none";
+  const key = `${userId || "anon"}::${normalizePipelineModule(context?.module)}::${historyTag}::${normKey(rawQuery)}`;
   const cached = cacheGet(key);
   if (cached !== undefined && cached.contextString.length > 0) {
     return {
@@ -332,8 +341,10 @@ export async function runKnowledgePipeline(
       LOW_TOPIC_SCORE > 0 &&
       ((intent.topics?.length || 0) === 0 || (intent.topTopicScore || 0) < LOW_TOPIC_SCORE);
     // A named section is already a precise anchor; no need to pay for a rewrite.
+    // A citation lookup has no topics by design, so dictionaryMissed is always
+    // true for it; the structured citation match needs no HyDE rewrite.
     const needsLlmExpansion =
-      (tier === "tier2_narrative" || dictionaryMissed) && !intent.statuteRef;
+      (tier === "tier2_narrative" || dictionaryMissed) && !intent.statuteRef && intent.type !== "citation-lookup";
 
     if (needsLlmExpansion && USE_LLM_QUERY_EXTRACTOR) {
       console.log(
@@ -443,6 +454,7 @@ export async function runKnowledgePipeline(
       durationMs: Date.now() - t0,
       caseLawHits,
       maxRelevanceScore,
+      retrievalQuery: queryForRetrieval,
     };
   })();
 

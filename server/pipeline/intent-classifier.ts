@@ -73,6 +73,8 @@ export interface StatuteRef {
 
 // @abbreviation-map-start
 export const STATUTE_ABBREVIATION_MAP: Record<string, string> = {
+  // "article 25 constitution" never resolved: there was no key for it.
+  "constitution": "Constitution of Pakistan 1973",
   // --- Manual Standard Abbreviations ---
   "ppc": "Pakistan Penal Code",
   "crpc": "Code of Criminal Procedure",
@@ -2372,24 +2374,55 @@ export const STATUTE_ABBREVIATION_MAP: Record<string, string> = {
  * "CrPC 497", "section 489-F PPC".
  * Returns null if no statute reference is found.
  */
+// Tokens that are keys in STATUTE_ABBREVIATION_MAP but, in a query, are almost
+// always ordinary words or court / law-report codes. "what is 302 ppc" used to
+// resolve to IS = Industrial Statistics Act 1942 §302, and "PLD 2020 SC 123"
+// to SC = Balochistan Senior Citizens Act §2020. They still resolve when typed
+// in capitals ("IS 3"), which is how a real abbreviation is written.
+const STATUTE_REF_STOPWORDS = new Set([
+  "a", "an", "am", "as", "at", "be", "by", "do", "go", "he", "if", "in", "is", "it", "its", "me", "my",
+  "no", "of", "on", "or", "so", "to", "up", "us", "we", "ie", "id", "per", "set", "see", "saw", "add",
+  "all", "are", "can", "far", "fast", "fist", "lo", "ma", "mi", "mo", "na", "ni", "nu", "re", "rep",
+  "sec", "sic", "um", "un", "ur", "wi", "yo", "ha", "hu", "ah", "ax", "die", "dip", "ed", "er", "es",
+  "el", "fa", "fe", "fi", "fo", "fu", "gi", "de", "se", "si", "ti", "te", "ta", "tu", "da", "das",
+  "under", "and", "the", "for", "with", "vs", "case", "cases", "year", "years", "day", "days",
+]);
+// Court and law-report codes: "2025 SCMR 969", "PLD 2020 SC 123", "2025 LHC 7088".
+// Never a statute reference, even in capitals.
+const COURT_REPORT_CODES = new Set([
+  "sc", "hc", "lhc", "shc", "phc", "ihc", "bhc", "fsc", "gbcc", "ajk", "pld", "scmr", "clc", "mld",
+  "ylr", "plj", "pcrlj", "nlr", "ptd", "ptcl", "plc", "cld", "klr", "gblr", "sbr", "mlr", "psc",
+  "ald", "air", "tax", "clr", "atir", "scr", "pctlr",
+]);
+// Codes that win when a query contains more than one "word number" pair.
+const CORE_STATUTE_ABBRS = new Set([
+  "ppc", "crpc", "cpc", "qso", "constitution", "ata", "cnsa", "peca", "mflo", "nao", "fca", "gwa",
+  "tpa", "sra", "lra", "sta",
+]);
+
 export function detectStatuteRef(query: string): StatuteRef | null {
-  const q = query.toLowerCase().replace(/[^a-z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
+  const raw = String(query || "");
+  const q = raw.toLowerCase().replace(/[^a-z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
+  const typedUpper = new Set((raw.match(/\b[A-Z]{2,12}\b/g) || []).map((t) => t.toLowerCase()));
+  const usable = (abbr: string) =>
+    !!STATUTE_ABBREVIATION_MAP[abbr]
+    && !COURT_REPORT_CODES.has(abbr)
+    && (!STATUTE_REF_STOPWORDS.has(abbr) || typedUpper.has(abbr));
+  const isYear = (n: string) => /^(19|20)\d{2}$/.test(n);
 
-  // Pattern 1: ABBR <section> — e.g. "ppc 392", "crpc 497", "clra 4"
-  const abbrFirst = /\b([a-z]{2,12})\s+(\d[\d\-a-z]*)\b/i.exec(q);
-  if (abbrFirst) {
-    const abbr = abbrFirst[1].toLowerCase();
-    const fullName = STATUTE_ABBREVIATION_MAP[abbr];
-    if (fullName) return { abbr: abbrFirst[1].toUpperCase(), fullName, sectionOrArticle: abbrFirst[2] };
+  // Patterns 1 and 2: "ppc 392" and "392 ppc". Every pair is collected rather
+  // than the first regex hit, so filler words before the real code are skipped.
+  const candidates: StatuteRef[] = [];
+  for (const m of q.matchAll(/\b([a-z]{2,12})\s+(\d[\d\-a-z]*)\b/g)) {
+    const abbr = m[1];
+    if (usable(abbr) && !isYear(m[2])) candidates.push({ abbr: abbr.toUpperCase(), fullName: STATUTE_ABBREVIATION_MAP[abbr], sectionOrArticle: m[2] });
   }
-
-  // Pattern 2: <section> ABBR — e.g. "354 ppc", "497 crpc", "4 clra"
-  // Very common in Pakistani legal queries where users type the section number first.
-  const numFirst = /\b(\d[\d\-a-z]*)\s+([a-z]{2,12})\b/i.exec(q);
-  if (numFirst) {
-    const abbr = numFirst[2].toLowerCase();
-    const fullName = STATUTE_ABBREVIATION_MAP[abbr];
-    if (fullName) return { abbr: numFirst[2].toUpperCase(), fullName, sectionOrArticle: numFirst[1] };
+  for (const m of q.matchAll(/\b(\d[\d\-a-z]*)\s+([a-z]{2,12})\b/g)) {
+    const abbr = m[2];
+    if (usable(abbr) && !isYear(m[1])) candidates.push({ abbr: abbr.toUpperCase(), fullName: STATUTE_ABBREVIATION_MAP[abbr], sectionOrArticle: m[1] });
+  }
+  if (candidates.length > 0) {
+    return candidates.find((c) => CORE_STATUTE_ABBRS.has(c.abbr.toLowerCase())) || candidates[0];
   }
 
   // Pattern 3: section/article <num> ABBR — e.g. "section 302 ppc", "article 25 constitution"
@@ -2399,8 +2432,8 @@ export function detectStatuteRef(query: string): StatuteRef | null {
     const afterSection = sectionFirst[2].trim().split(/\s+/);
     for (const word of afterSection) {
       const abbr = word.toLowerCase();
-      const fullName = STATUTE_ABBREVIATION_MAP[abbr];
-      if (fullName) return { abbr: word.toUpperCase(), fullName, sectionOrArticle: sectionNum };
+      if (!usable(abbr)) continue;
+      return { abbr: word.toUpperCase(), fullName: STATUTE_ABBREVIATION_MAP[abbr], sectionOrArticle: sectionNum };
     }
     // Also check multi-word like "constitution of pakistan"
     const tail = sectionFirst[2].trim();
@@ -2413,8 +2446,7 @@ export function detectStatuteRef(query: string): StatuteRef | null {
   if (articleFirst) {
     const sectionNum = articleFirst[1];
     const tail = articleFirst[2].trim().split(/\s+/)[0].toLowerCase();
-    const fullName = STATUTE_ABBREVIATION_MAP[tail];
-    if (fullName) return { abbr: tail.toUpperCase(), fullName, sectionOrArticle: sectionNum };
+    if (usable(tail)) return { abbr: tail.toUpperCase(), fullName: STATUTE_ABBREVIATION_MAP[tail], sectionOrArticle: sectionNum };
     // Try longer match
     const longTail = articleFirst[2].trim().toLowerCase();
     const fullName2 = STATUTE_ABBREVIATION_MAP[longTail];

@@ -20,6 +20,8 @@ export type RagMatch = {
   chunkIndex: number;
   tokenCount: number;
   chunkText: string;
+  /** The embedded child chunk that actually matched. chunkText is its parent paragraph. */
+  matchedText?: string;
   metadata: Record<string, unknown>;
   score: number;
   vectorScore: number;
@@ -420,6 +422,7 @@ export async function similaritySearch(args: {
         r.chunk_index,
         COALESCE(p.token_count, r.token_count) as token_count,
         COALESCE(p.chunk_text, r.chunk_text) as chunk_text,
+        r.chunk_text AS matched_text,
         r.metadata,
         r.vector_score,
         0::float8 AS keyword_score
@@ -450,6 +453,7 @@ export async function similaritySearch(args: {
       chunk_index,
       token_count,
       chunk_text,
+      matched_text,
       metadata,
       vector_score,
       keyword_score,
@@ -469,6 +473,7 @@ export async function similaritySearch(args: {
         r.chunk_index,
         COALESCE(p.token_count, r.token_count) as token_count,
         COALESCE(p.chunk_text, r.chunk_text) as chunk_text,
+        r.chunk_text AS matched_text,
         r.metadata,
         r.vector_score,
         0::float8 AS keyword_score
@@ -500,6 +505,7 @@ export async function similaritySearch(args: {
         r.chunk_index,
         COALESCE(p.token_count, r.token_count) as token_count,
         COALESCE(p.chunk_text, r.chunk_text) as chunk_text,
+        r.chunk_text AS matched_text,
         r.metadata,
         r.vector_score,
         r.keyword_score
@@ -537,6 +543,7 @@ export async function similaritySearch(args: {
       chunk_index,
       token_count,
       chunk_text,
+      matched_text,
       metadata,
       vector_score,
       keyword_score,
@@ -557,6 +564,7 @@ export async function similaritySearch(args: {
     chunkIndex: Number(row.chunk_index),
     tokenCount: Number(row.token_count),
     chunkText: String(row.chunk_text || ""),
+    matchedText: String(row.matched_text || row.chunk_text || ""),
     metadata: (row.metadata || {}) as Record<string, unknown>,
     score: Number(row.score || 0),
     vectorScore: Number(row.vector_score || 0),

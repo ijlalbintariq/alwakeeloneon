@@ -14,8 +14,8 @@
  *   - Every returned record MUST have a non-empty `citation` field.
  */
 
-import { storage } from "./storage";
-import { retrieveForQuery } from "./rag/rag-service";
+import { runRetrieval } from "./pipeline/retrieval-engine";
+import { classifyQueryIntent, analyzeQueryExplicitness } from "./pipeline/intent-classifier";
 import type { CaseLaw } from "../shared/schema";
 
 // ---------------------------------------------------------------------------
@@ -217,46 +217,6 @@ export function analyzeLegalQuery(query: string): LegalQueryAnalysis {
 // 3. Relevance Scoring
 // ---------------------------------------------------------------------------
 
-function scoreCaseLawRelevance(row: CaseLaw, analysis: LegalQueryAnalysis): number {
-  const titleL = normQ(String(row.title || ""));
-  const summaryL = normQ(String(row.summary || ""));
-  const keywordsL = (row.keywords || []).map((k) => normQ(k)).join(" ");
-  const citationL = normQ(String(row.citation || ""));
-  const combined = `${titleL} ${summaryL} ${keywordsL} ${citationL}`;
-
-  let score = 0;
-
-  // Check against each topic's primary + expand terms
-  for (const topic of analysis.topics) {
-    for (const term of topic.primary) {
-      if (combined.includes(term)) score += 20;
-      if (titleL.includes(term)) score += 15;
-    }
-    for (const term of topic.expand) {
-      if (combined.includes(term)) score += 5;
-      if (titleL.includes(term)) score += 5;
-    }
-  }
-
-  // Check against expanded query terms directly
-  const originalTerms = normQ(analysis.expandedTerms[0] || "").split(/\s+/).filter((t) => t.length >= 3);
-  for (const term of originalTerms) {
-    if (titleL.includes(term)) score += 10;
-    if (summaryL.includes(term)) score += 6;
-    if (keywordsL.includes(term)) score += 8;
-  }
-
-  return score;
-}
-
-function hasCitationTrust(row: CaseLaw): boolean {
-  const citation = String(row.citation || "").trim();
-  if (!citation) return false;
-  // Must match standard Pakistani legal citation format
-  const pattern = /\b(pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd|plc|psc|ald|klr|sls|gblr|cld|tax|air|lhc|ihc|shc|phc|bhc|ajkhc)\b/i;
-  return pattern.test(citation) && /\b(19|20)\d{2}\b/.test(citation);
-}
-
 // ---------------------------------------------------------------------------
 // 4. Main Retrieval Function
 // ---------------------------------------------------------------------------
@@ -275,6 +235,13 @@ export interface LegalRetrievalResult {
   retrievalStrategy: "topic-matched" | "citation-lookup" | "no-results";
 }
 
+// MCP, the ChatGPT REST bridge and MCP petition drafting used to run their own
+// retrieval here: keyword search plus admin-case-law vectors only (3k of the
+// 5.9M chunks), re-sorted by a keyword heuristic that discarded the vector
+// score, with no reranker, while the tool description promised the website's
+// pipeline. They now run the website's case-law retrieval (judgments FTS,
+// case_law FTS, hybrid vector search, RRF, Voyage rerank, text-provenance
+// filtering). Callers keep their own verification on top.
 export async function retrieveLegalCaseLaw(opts: LegalRetrievalOptions): Promise<LegalRetrievalResult> {
   const limit = opts.limit ?? 6;
   const query = String(opts.query || "").trim();
@@ -282,102 +249,21 @@ export async function retrieveLegalCaseLaw(opts: LegalRetrievalOptions): Promise
     return { rows: [], topicsDetected: [], retrievalStrategy: "no-results" };
   }
 
-  const analysis = analyzeLegalQuery(query);
-  const topicsDetected = analysis.topics.map((t) => t.label);
+  const intent = classifyQueryIntent(query);
+  intent.tier = analyzeQueryExplicitness(query, intent);
+  intent.needsCaseLaw = true;
+  intent.needsStatutes = false;
+  intent.needsAdminDocs = false;
 
-  // ---- A. Keyword search with expanded terms ----
-  const expandedQuery = analysis.expandedTerms.slice(0, 4).join(" ");
-  const keywordResultsPromise = storage.searchCaseLaw(expandedQuery || query, limit * 3, {
-    sort: "relevance",
-    includeSourceContentSearch: false,
-  });
-
-  // ---- B. RAG vector search ----
-  const ragResultsPromise = opts.userId
-    ? (async (): Promise<CaseLaw[]> => {
-        try {
-          const retrieval = await retrieveForQuery({
-            userId: opts.userId,
-            query: expandedQuery || query,
-            topK: limit * 5,
-          });
-
-          const sourceDocIds: number[] = [];
-          const seen = new Set<number>();
-          for (const match of retrieval.matches) {
-            const sourceType = String((match.metadata || {}).sourceType || "").toLowerCase();
-            if (sourceType !== "admin-case-law") continue;
-            const docId = Number(match.sourceDocumentId);
-            if (!Number.isInteger(docId) || docId <= 0 || seen.has(docId)) continue;
-            seen.add(docId);
-            sourceDocIds.push(docId);
-            if (sourceDocIds.length >= limit * 4) break;
-          }
-
-          if (sourceDocIds.length === 0) return [];
-          return storage.getCaseLawBySourceDocuments(sourceDocIds, "admin");
-        } catch {
-          return [];
-        }
-      })()
-    : Promise.resolve([]);
-
-  const [keywordRaw, ragRaw] = await Promise.all([keywordResultsPromise, ragResultsPromise]);
-
-  // ---- C. Merge and deduplicate ----
-  const seen = new Set<string>();
-  const merged: CaseLaw[] = [];
-  for (const row of [...keywordRaw, ...ragRaw]) {
-    const key = `${normQ(String(row.citation || ""))}_${row.id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(row);
-  }
-
-  // ---- D. Filter: must have valid citation, and filter out "Statute Reference" junk entries ----
-  const withCitation = merged.filter((row) => {
-    if (!hasCitationTrust(row)) return false;
-    const court = String(row.court || "").toLowerCase().trim();
-    const title = String(row.title || "").toLowerCase().trim();
-    if (court === "statute reference") return false;
-    if (title.startsWith("statute reference")) return false;
-    return true;
-  });
-
-  // ---- E. Semantic topic validation ----
-  // For citation lookups, skip topic filter
-  if (analysis.isCitationLookup || opts.skipTopicFilter) {
-    const sorted = withCitation
-      .map((row) => ({ row, score: scoreCaseLawRelevance(row, analysis) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .map((x) => x.row);
-    return {
-      rows: sorted,
-      topicsDetected,
-      retrievalStrategy: "citation-lookup",
-    };
-  }
-
-  // If no topics detected, do a lighter relevance filter (any match)
-  const minScore = analysis.topics.length > 0
-    ? Math.max(...analysis.topics.map((t) => t.minRelevanceScore))
-    : 10;
-
-  const scored = withCitation
-    .map((row) => ({ row, score: scoreCaseLawRelevance(row, analysis) }))
-    .filter((x) => x.score >= minScore)
-    .sort((a, b) => b.score - a.score);
-
-  const topResults = scored.slice(0, limit).map((x) => x.row);
-
-  if (topResults.length === 0) {
-    return { rows: [], topicsDetected, retrievalStrategy: "no-results" };
-  }
+  const retrieval = await runRetrieval(intent, opts.userId || "", { caseLaw: Math.max(limit, 10) });
+  const rows = retrieval.caseLaw.slice(0, limit).map((c) => c.row);
+  const topicsDetected = (intent.topics || []).map((t: any) => String(t.label || t.id || ""));
 
   return {
-    rows: topResults,
+    rows,
     topicsDetected,
-    retrievalStrategy: "topic-matched",
+    retrievalStrategy: intent.type === "citation-lookup"
+      ? "citation-lookup"
+      : rows.length > 0 ? "topic-matched" : "no-results",
   };
 }

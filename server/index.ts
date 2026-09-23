@@ -248,7 +248,9 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      // /api/mcp/<token> carries an API key in the path; never write it to logs.
+      const safePath = path.replace(/^(\/api\/mcp\/)aw_live_[A-Za-z0-9]+/, "$1[redacted]");
+      let logLine = `${req.method} ${safePath} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse && shouldLogResponseBody(path)) {
         logLine += ` :: ${compactResponseBody(capturedJsonResponse)}`;
       }
@@ -275,7 +277,9 @@ app.use((req, res, next) => {
     // If any migration/seed hangs, the server still starts with degraded DB features.
     const DB_STARTUP_TIMEOUT_MS = 120_000; // 2 minutes
     const dbStartupPromise = (async () => {
-      const { ensureSearchIndexes } = await import("./storage");
+      const { ensureSearchIndexes, getTextProvenance } = await import("./storage");
+      // Load the judgment-provenance sets now so the first chat search doesn't pay for it.
+      getTextProvenance([]).catch((err) => console.warn("[TextIntegrity] warm-up failed:", err?.message || err));
       await ensureSearchIndexes();
 
       const { initializeSecurityGovernance } = await import("./security-governance");

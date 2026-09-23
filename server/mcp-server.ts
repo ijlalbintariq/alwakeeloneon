@@ -1,14 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { benchSessions, benchMessages } from "../shared/schema";
-import { buildJudgeDecisionProfile, generateAdversarialQueries, runAdversarialRAG, evaluateAdvocateResponse, getStageProceduralDirectives } from "./pipeline/bench-pipeline";
-import { getClient } from "./openrouter-ai";
 
 import { storage } from "./storage";
 import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
+import { classifyQueryIntent } from "./pipeline/intent-classifier";
 import { checkUsageLimit, createSignedUploadSession, logUsageCost, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
 import { PAKISTANI_JUDICIAL_FORMAT_GUIDANCE, CONTRACT_LAW_ADDON } from "./legal-drafting-template";
 import { chatWithDeepSeek } from "./deepseek-ai";
@@ -433,17 +431,9 @@ export function registerAllTools(server: McpServer) {
 
     const t0 = Date.now();
     // Mimic intent classifier and fetch statutes using targeted taxonomic matching
-    const dummyIntent = {
-      raw: query,
-      normalized: query.toLowerCase(),
-      type: "statute" as const,
-      topics: [] as any[],
-      expandedQuery: query,
-      expandedTerms: query.split(/\s+/),
-      needsCaseLaw: false,
-      needsStatutes: true,
-      needsAdminDocs: false,
-    };
+    // Real intent classification, so "PPC 302" takes the exact section lookup
+    // (statuteRef) and topic-mapped Acts instead of only the generic search.
+    const dummyIntent = { ...classifyQueryIntent(query), needsCaseLaw: false, needsStatutes: true, needsAdminDocs: false };
     
     const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
     const latency = Date.now() - t0;
@@ -1173,7 +1163,7 @@ export function registerAllTools(server: McpServer) {
       draft: z.string(),
     },
     annotations: {
-      readOnlyHint: true,
+      readOnlyHint: false, // saves the draft into the user's documents
       openWorldHint: false,
       destructiveHint: false,
     }
@@ -1281,7 +1271,7 @@ ${additionalClauses || "None"}`;
       draft: z.string(),
     },
     annotations: {
-      readOnlyHint: true,
+      readOnlyHint: false, // saves the draft into the user's documents
       openWorldHint: false,
       destructiveHint: false,
     }
@@ -1962,179 +1952,6 @@ export function createMcpServer(): McpServer {
   });
   registerAllTools(server);
   return server;
-  // 9. Simulate Bench Arguments
-  server.registerTool("simulate_bench_arguments", {
-    description: "Submit arguments to the AI Bench Simulator (a Pakistani judicial persona) and get the judge's cross-examination or ruling. Creates a new session if sessionId is missing. Simulates hostile/adversarial courtroom conditions.",
-    inputSchema: {
-      sessionId: z.number().optional().describe("Provide to continue an existing session"),
-      userMessage: z.string().describe("The lawyer's argument, plea, or response to the judge"),
-      config: z.object({
-        courtLevel: z.string(),
-        caseNature: z.string(),
-        proceedingStage: z.string(),
-        benchSize: z.string().optional(),
-        selectedJudgeName: z.string().optional(),
-        selectedJudgeName2: z.string().optional()
-      }).optional().describe("Required if creating a new session"),
-    },
-    outputSchema: {
-      sessionId: z.number(),
-      round: z.number(),
-      judgeResponse: z.string(),
-      evaluation: z.any().optional()
-    },
-    annotations: { readOnlyHint: false, openWorldHint: true, destructiveHint: false }
-  }, async ({ sessionId, userMessage, config }) => {
-    const userId = getAuthenticatedUserId();
-    await enforceQuota(userId, "chat");
-
-    let session;
-    let attackPlan: string;
-    let currentRound = 1;
-    let judgeProfileData: any = null;
-
-    if (!sessionId) {
-      if (!config) throw new McpError(ErrorCode.InvalidParams, "config is required to start a new simulation session");
-      
-      let profileText = "";
-      if (config.selectedJudgeName?.trim()) {
-        const p1 = await buildJudgeDecisionProfile(config.selectedJudgeName, { ...config, userBrief: userMessage });
-        if (p1?.profile) {
-          profileText += `Presiding Judge (${config.selectedJudgeName}):\n${p1.profile}\n\n`;
-          judgeProfileData = p1;
-          judgeProfileData.profile = profileText;
-        }
-      }
-      if ((config.benchSize === 'division' || config.benchSize === 'full') && config.selectedJudgeName2?.trim()) {
-        const p2 = await buildJudgeDecisionProfile(config.selectedJudgeName2, { ...config, userBrief: userMessage });
-        if (p2?.profile) {
-          profileText += `Second Judge (${config.selectedJudgeName2}):\n${p2.profile}\n\n`;
-          if (judgeProfileData) {
-            judgeProfileData.profile = profileText;
-            judgeProfileData.evidenceJudgmentIds = [...new Set([...(judgeProfileData.evidenceJudgmentIds || []), ...(p2.evidenceJudgmentIds || [])])];
-          } else {
-            judgeProfileData = p2;
-            judgeProfileData.profile = profileText;
-          }
-        }
-      }
-
-      const queries = await generateAdversarialQueries(userMessage, { ...config, judgeProfile: judgeProfileData });
-      const flatQueries = [queries.proceduralBar, queries.statutoryException, queries.contraryPrecedent];
-      const hostileCases = await runAdversarialRAG(flatQueries);
-      attackPlan = hostileCases.length > 0 
-        ? hostileCases.map(c => `Citation: ${c.citation}\nRule: ${c.summary?.substring(0, 300) || "N/A"}`).join("\n\n")
-        : "No directly hostile precedent found. Rely on general statutory principles.";
-
-      const inserted = await db.insert(benchSessions).values({
-        userId,
-        courtLevel: config.courtLevel,
-        caseNature: config.caseNature,
-        proceedingStage: config.proceedingStage,
-        selectedJudgeName: config.selectedJudgeName || null,
-        selectedJudgeName2: config.selectedJudgeName2 || null,
-        benchSize: config.benchSize || 'single',
-        judgeProfile: judgeProfileData,
-        userBrief: userMessage,
-        attackPlan: { compactEvidence: attackPlan } as any,
-        status: "active"
-      }).returning();
-      session = inserted[0];
-
-      await db.insert(benchMessages).values({
-        sessionId: session.id,
-        roundIndex: 1,
-        speakerRole: "user",
-        content: userMessage
-      });
-    } else {
-      const sessions = await db.select().from(benchSessions).where(eq(benchSessions.id, sessionId));
-      if (!sessions.length) throw new McpError(ErrorCode.InvalidRequest, "Session not found");
-      session = sessions[0];
-      if (session.userId !== userId) throw new McpError(ErrorCode.InvalidRequest, "Not your session");
-      
-      attackPlan = (session.attackPlan as any)?.compactEvidence || JSON.stringify(session.attackPlan) || "";
-      const msgs = await db.select().from(benchMessages).where(eq(benchMessages.sessionId, session.id));
-      currentRound = Math.floor(msgs.length / 2) + 1;
-      
-      if (currentRound > 5) throw new McpError(ErrorCode.InvalidRequest, "Session ended. Maximum 5 rounds reached.");
-      
-      await db.insert(benchMessages).values({
-        sessionId: session.id,
-        roundIndex: currentRound,
-        speakerRole: "user",
-        content: userMessage
-      });
-    }
-
-    const history = await db.select().from(benchMessages)
-      .where(eq(benchMessages.sessionId, session.id))
-      .orderBy(benchMessages.createdAt);
-      
-    const messages = history.map((h: any) => ({ 
-      role: h.speakerRole === "user" ? "user" : "assistant", 
-      content: h.content 
-    })) as Array<{role: 'user' | 'assistant', content: string}>;
-
-    const stageDirectives = getStageProceduralDirectives(session.proceedingStage as any);
-    const systemPrompt = `Role: Pakistani Judge Simulation.
-Court Level: ${session.courtLevel}
-Stage: ${session.proceedingStage}
-Bench Type: ${session.benchSize === 'division' ? 'Division Bench (2 Judges)' : session.benchSize === 'full' ? 'Full Bench (3+ Judges)' : 'Single Bench (1 Judge)'}
-Stage Statutory Framework: ${stageDirectives.statutoryFramework}
-Stage Legal Directives:
-${stageDirectives.keyDirectives.map((d: string) => `- ${d}`).join("\n")}
-
-The following evidence-derived decision profile describes recurring patterns found in the retrieved judgments for this judge/court.
-Use these patterns when evaluating the advocate's arguments, but independently assess the facts and law in this simulation.
-Do not fabricate quotations, authorities, or prior rulings.
-
-${session.judgeProfile?.profile ? "--- JUDICIAL DECISION PROFILE ---\n" + session.judgeProfile.profile + "\n----------------------------------" : "Standard strict procedural purist temperament."}
-
-Contrary Legal Authority to confront the user with:
-${attackPlan}
-Keep your responses authoritative, interrogative, and strictly focused on legal grounds.`;
-
-    const model = process.env.BENCH_SIMULATOR_MODEL || "google/gemini-3-flash-preview";
-    const client = getClient();
-    
-    // In MCP we do not stream, we wait for full completion.
-    const response = await client.chat.completions.create({
-      model,
-      messages: [{ role: "system", content: systemPrompt }, ...messages],
-    });
-    
-    const fullResponse = response.choices[0]?.message?.content || "";
-    
-    await db.insert(benchMessages).values({
-      sessionId: session.id,
-      roundIndex: currentRound,
-      speakerRole: "judge",
-      content: fullResponse
-    });
-
-    // Run evaluation asynchronously without blocking MCP return
-    evaluateAdvocateResponse({
-      userArgument: userMessage,
-      currentQuestion: history.filter((h: any) => h.speakerRole === "judge").pop()?.content || "Opening argument",
-      expectedDefense: attackPlan,
-      courtLevel: session.courtLevel,
-      currentScore: 100 // simplify for MCP
-    }).catch(e => console.error("Eval error in MCP:", e));
-
-    const payload = {
-      sessionId: session.id,
-      round: currentRound,
-      judgeResponse: fullResponse,
-      judgeProfile: session.judgeProfile
-    };
-
-    return {
-      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
-      structuredContent: payload
-    };
-  });
-
 }
 
 // Single default server instance for backward compatibility (e.g. stdio runner)

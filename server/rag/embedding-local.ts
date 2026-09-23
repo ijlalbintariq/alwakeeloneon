@@ -1,10 +1,17 @@
 import crypto from "crypto";
 
-const DEFAULT_DIM = Number(process.env.RAG_EMBEDDING_DIM || 384);
+// Defaults match the live index: rag_chunks.embedding is halfvec(1024) of
+// voyage-law-2 vectors. The old defaults (384 / "hashing" in production) meant
+// a missing env var silently searched that index with random-projection vectors.
+const DEFAULT_DIM = Number(process.env.RAG_EMBEDDING_DIM || 1024);
 const EMBEDDING_PROVIDER = (
   process.env.RAG_EMBEDDING_PROVIDER ||
-  (process.env.NODE_ENV === "production" ? "hashing" : "semantic")
+  (process.env.NODE_ENV === "production" ? "voyage" : "semantic")
 ).toLowerCase();
+/** Reranking uses Voyage too, so it follows the resolved provider, not the raw env var. */
+export function isVoyageProvider(): boolean {
+  return EMBEDDING_PROVIDER === "voyage";
+}
 const SEMANTIC_MODEL_NAME = process.env.RAG_SEMANTIC_MODEL || "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
 
 // OpenAI / OpenRouter settings (used when EMBEDDING_PROVIDER=openai)
@@ -167,12 +174,16 @@ async function embedTextVoyage(text: string, dim: number = DEFAULT_DIM, inputTyp
     });
     const json = await resp.json() as any;
     const embedding = json?.data?.[0]?.embedding as number[] | undefined;
-    if (!embedding || embedding.length === 0) return embedTextHashing(text, dim);
+    if (!embedding || embedding.length === 0) throw new Error("Voyage returned no embedding");
     return fitToDimension(embedding, dim);
   } catch (err: unknown) {
+    // No hashing fallback. A hashed query vector searched against voyage-law-2
+    // vectors returns arbitrary neighbours that the pipeline then labels as
+    // verified authority. Failing lets callers skip the vector paths and keep
+    // the lexical ones.
     const message = err instanceof Error ? err.message : String(err);
-    console.warn(`[RAG] Voyage embed fetch failed (${message}) — falling back to hashing`);
-    return embedTextHashing(text, dim);
+    console.warn(`[RAG] Voyage embed failed (${message}) — vector search skipped for this query`);
+    throw err instanceof Error ? err : new Error(message);
   }
 }
 
@@ -185,7 +196,7 @@ async function embedTextsVoyage(texts: string[], dim: number = DEFAULT_DIM, inpu
     });
     const json = await resp.json() as any;
     const items = json?.data as Array<{ index: number; embedding: number[] }> | undefined;
-    if (!items) return texts.map((t) => embedTextHashing(t, dim));
+    if (!items) throw new Error("Voyage returned no embeddings");
     return items
       .sort((a, b) => a.index - b.index)
       .map((item) => fitToDimension(item.embedding, dim));
@@ -193,11 +204,8 @@ async function embedTextsVoyage(texts: string[], dim: number = DEFAULT_DIM, inpu
     // Indexing must never fall back to hashing: a hashed vector written into the
     // same column is permanent noise that no later run detects or repairs.
     // Queries may still degrade, since a bad query result is thrown away.
-    if (inputType === "document") {
-      throw new Error(`Voyage bulk embed failed while indexing: ${err?.message || err}`);
-    }
-    console.warn(`[RAG] Voyage bulk embed failed (${err?.message || err}) — falling back to hashing`);
-    return texts.map((t) => embedTextHashing(t, dim));
+    // Queries do not fall back either: see embedTextVoyage.
+    throw new Error(`Voyage bulk embed failed (${inputType}): ${err?.message || err}`);
   }
 }
 

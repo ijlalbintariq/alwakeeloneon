@@ -192,7 +192,7 @@ function providerModelName(provider: ProviderId): string {
     case "gemini":
       return "google/gemini-3-flash-preview";
     case "apex":
-      return "anthropic/claude-3.5-sonnet";
+      return "anthropic/claude-sonnet-5"; // what apex-ai.ts actually calls
   }
 }
 

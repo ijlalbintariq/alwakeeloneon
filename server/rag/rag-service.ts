@@ -1,10 +1,10 @@
 import crypto from "crypto";
-import { storage } from "../storage";
+import { storage, getTextProvenance } from "../storage";
 import { db, dbAvailable, pool } from "../db";
 import { judgments, courtsRef, lawJournals, adminKnowledge, statuteDocuments } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { chunkTextByTokens, type TextChunk } from "./chunker";
-import { embedTextLocal, embedTextsLocal } from "./embedding-local";
+import { embedTextLocal, embedTextsLocal, isVoyageProvider } from "./embedding-local";
 import { cleanLegalDocumentText } from "./text-cleaner";
 import {
   deleteVectorsBySourceDocument,
@@ -221,11 +221,15 @@ async function rerankAndDiversify(matches: RagMatch[], queryText: string, limit:
 
   // Call Voyage Reranker API if active and configured
   const voyageRerankScores = new Map<number, number>();
-  if (process.env.RAG_EMBEDDING_PROVIDER?.toLowerCase() === "voyage") {
+  if (isVoyageProvider()) {
     const docsToRerank = matches.map((m) => `${m.title}\n\n${m.chunkText}`);
     try {
       const { rerankVoyage } = await import("./embedding-local");
-      const rerankResult = await rerankVoyage(queryText, docsToRerank);
+      // Its own deadline: without one a slow rerank ate the caller's whole 8s budget.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      const rerankResult = await rerankVoyage(queryText, docsToRerank, undefined, controller.signal)
+        .finally(() => clearTimeout(timer));
       for (const item of rerankResult) {
         voyageRerankScores.set(item.index, item.score);
       }
@@ -677,6 +681,35 @@ export async function indexJudgmentDocument(judgmentId: string): Promise<RAGInde
   };
 }
 
+// 1.2M judgment chunks were embedded from a body that belongs to another case
+// (judgments.text_status = 'mislabeled'); their metadata still carries the
+// wrong citation. The true owner's row holds the same text and is indexed too,
+// so dropping these loses no content, only the misattribution.
+export async function dropMislabeledJudgmentChunks(matches: RagMatch[]): Promise<RagMatch[]> {
+  const ids = matches
+    .map((m) => String(m.metadata?.judgmentId || ""))
+    .filter(Boolean);
+  if (ids.length === 0) return matches;
+  try {
+    const statuses = await getTextProvenance(ids);
+    return matches
+      .filter((m) => {
+        const id = String(m.metadata?.judgmentId || "");
+        return !id || statuses.get(id) !== "mislabeled";
+      })
+      .map((m) => {
+        const id = String(m.metadata?.judgmentId || "");
+        if (!id) return m;
+        return { ...m, metadata: { ...m.metadata, textIntegrity: statuses.get(id) === "own" ? "own" : "unverified" } };
+      });
+  } catch (err: any) {
+    console.warn(`[TextIntegrity] chunk status lookup failed: ${err?.message || err}`);
+    return matches.map((m) => (m.metadata?.judgmentId
+      ? { ...m, metadata: { ...m.metadata, textIntegrity: "unverified" } }
+      : m));
+  }
+}
+
 const _queryEmbedCache = new Map<string, { promise: Promise<number[]>; ts: number }>();
 const QUERY_EMBED_CACHE_TTL = 300_000; // 5 minutes
 
@@ -686,6 +719,10 @@ export async function getCachedQueryEmbedding(text: string): Promise<number[]> {
   if (cached && Date.now() - cached.ts < QUERY_EMBED_CACHE_TTL) return cached.promise;
   const promise = embedTextLocal(text);
   _queryEmbedCache.set(key, { promise, ts: Date.now() });
+  // A failed embed must not be cached for 5 minutes.
+  promise.catch(() => {
+    if (_queryEmbedCache.get(key)?.promise === promise) _queryEmbedCache.delete(key);
+  });
   // Evict if cache grows too large
   if (_queryEmbedCache.size > 500) {
     const oldest = [..._queryEmbedCache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
@@ -724,7 +761,15 @@ export async function retrieveForQuery(args: {
     : queryText;
 
   const requestedTopK = Math.max(1, args.topK || TOP_K);
-  const queryEmbedding = await getCachedQueryEmbedding(queryText);
+  let queryEmbedding: number[];
+  try {
+    queryEmbedding = await getCachedQueryEmbedding(queryText);
+  } catch (err: any) {
+    // Hybrid search needs the vector; without it return nothing rather than
+    // noise. The pipeline's lexical paths (judgments / case_law FTS) still run.
+    console.warn(`[RAG] query embedding unavailable (${err?.message || err}) — returning no vector matches`);
+    return { matches: [], confidence: "low" };
+  }
   const { vectorWeight, keywordWeight } = resolveHybridWeights();
   const candidateTopK = Math.min(RERANK_POOL_CAP, Math.max(requestedTopK, requestedTopK * 4));
   const isGlobalAdminUser = GLOBAL_ADMIN_RAG_USER_IDS.includes(args.userId as any);
@@ -795,9 +840,10 @@ export async function retrieveForQuery(args: {
   // Strict filter: only return results that meet the minimum relevance threshold.
   // No last-resort fallbacks — returning wrong documents is worse than returning nothing.
   // Also filter out internal workspace state documents (not real user content).
-  const filtered = allMatches
+  const scored = allMatches
     .filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE)
     .filter((m) => !m.title.startsWith("__"));
+  const filtered = await dropMislabeledJudgmentChunks(scored);
 
   // Ensure source diversity: separate statutes, judgments, and user documents.
   // Then take top candidates from EACH category so one type can't crowd out the others.

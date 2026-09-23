@@ -46,11 +46,13 @@ services:
       - key: R2_PUBLIC_BASE_URL
         sync: false
       - key: RAG_EMBEDDING_PROVIDER
-        value: openai
+        value: voyage
       - key: RAG_SEMANTIC_MODEL
         value: Xenova/paraphrase-multilingual-MiniLM-L12-v2
       - key: RAG_EMBEDDING_DIM
-        value: "384"
+        value: "1024"
+      - key: AI_ROUTER_V2
+        value: "1"
       - key: RAG_INDEX_BATCH_SIZE
         value: "16"
       - key: CLOUD_OCR_PROVIDER
