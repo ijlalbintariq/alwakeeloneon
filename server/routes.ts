@@ -8596,17 +8596,26 @@ app.post("/api/admin/blogs/generate", async (req, res) => {
       ...String(process.env.OAUTH_ALLOWED_REDIRECT_HOSTS || "").split(","),
     ].map((h) => h.trim().toLowerCase()).filter(Boolean),
   );
-  const isAllowedOAuthRedirect = (redirectUri: unknown, clientId?: unknown): boolean => {
+  // The host allowlist is the only thing that makes a callback trustworthy.
+  // Registration (DCR) is open to anyone, so a URI being registered proves
+  // nothing: trusting registered URIs let anyone mint a client whose callback
+  // was their own server and phish a key out of a single "Authorize" click.
+  // Registration now rejects off-list URIs, and a registered client may only
+  // use URIs it registered.
+  const isTrustedRedirectUri = (redirectUri: unknown): boolean => {
     if (typeof redirectUri !== "string" || !redirectUri) return false;
     let parsed: URL;
     try { parsed = new URL(redirectUri); } catch { return false; }
-    if (parsed.hash) return false;
-    const client = typeof clientId === "string" ? registeredClients.get(clientId) : undefined;
-    if (client?.redirectUris.includes(redirectUri)) return true;
+    if (parsed.hash || parsed.username || parsed.password) return false;
     const host = parsed.hostname.toLowerCase();
     // Native / desktop MCP clients (Claude Desktop, Cursor, MCP Inspector) use a loopback callback.
     if ((host === "localhost" || host === "127.0.0.1" || host === "[::1]") && parsed.protocol === "http:") return true;
     return parsed.protocol === "https:" && OAUTH_TRUSTED_REDIRECT_HOSTS.has(host);
+  };
+  const isAllowedOAuthRedirect = (redirectUri: unknown, clientId?: unknown): boolean => {
+    if (!isTrustedRedirectUri(redirectUri)) return false;
+    const client = typeof clientId === "string" ? registeredClients.get(clientId) : undefined;
+    return client ? client.redirectUris.includes(String(redirectUri)) : true;
   };
 
   app.post("/api/oauth/register", (req, res) => {
@@ -8616,6 +8625,13 @@ app.post("/api/admin/blogs/generate", async (req, res) => {
       const clientSecret = `alws_${crypto.randomBytes(32).toString("hex")}`;
       const safeName = String(client_name || "MCP Client").slice(0, 100);
       const safeRedirects = Array.isArray(redirect_uris) ? redirect_uris.map(String).slice(0, 5) : [];
+      // RFC 7591 §3.2.2: refuse redirect URIs we would never send a code to.
+      if (safeRedirects.length === 0 || !safeRedirects.every(isTrustedRedirectUri)) {
+        return res.status(400).json({
+          error: "invalid_redirect_uri",
+          error_description: "redirect_uris must be https callbacks of a supported MCP client (Claude, ChatGPT, Smithery) or an http loopback address",
+        });
+      }
 
       registeredClients.set(clientId, {
         clientId,
