@@ -11642,11 +11642,33 @@ RAG POLICY (STRICT):
     }
   });
 
+  // One search_history row per judgment search. "Load more" is not a new
+  // search, and a repeat of the same query by the same user within a minute
+  // (double submit, back navigation) is counted once.
+  const recentJudgmentSearches = new Map<string, number>();
+  const recordJudgmentSearch = (userId: string, query: string) => {
+    const key = `${userId}::${query.toLowerCase()}`;
+    const now = Date.now();
+    const last = recentJudgmentSearches.get(key);
+    if (last && now - last < 60_000) return;
+    recentJudgmentSearches.set(key, now);
+    if (recentJudgmentSearches.size > 5000) {
+      for (const [k, t] of recentJudgmentSearches) if (now - t > 60_000) recentJudgmentSearches.delete(k);
+    }
+    storage.addSearchHistory({ userId, type: "judgment", query: query.slice(0, 500) })
+      .catch((err) => console.warn("[SearchHistory] could not record judgment search:", err?.message || err));
+  };
+
   app.get(api.caseLaw.search.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
       const query = ((req.query.q as string) || "").trim();
+      // The new judgment search page never recorded searches, so since the
+      // 2026-09-03 UI cutover this, the most-used page, was invisible in the
+      // data. Record here, server-side, so every client (web, Word add-in)
+      // is counted. Only real searches: a text query, first page.
+      if (query && !(Number(req.query.offset) > 0)) recordJudgmentSearch(userId, query);
       const limitRaw = Number(req.query.limit);
       const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.floor(limitRaw))) : 25;
       const yearRaw = Number(req.query.year);
