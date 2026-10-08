@@ -927,10 +927,18 @@ export const PreviewJudgments: React.FC = () => {
                   <span>Searching 600,000+ Pakistani Precedent Records...</span>
                 </div>
               ) : searchError ? (
-                <div className="py-16 text-center rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 space-y-2 text-red-600 dark:text-red-400 shadow-xs">
+                <div className="py-16 px-6 text-center rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 space-y-3 text-red-600 dark:text-red-400 shadow-xs flex flex-col items-center">
                   <AlertTriangle className="w-8 h-8 mx-auto text-red-500" />
-                  <p className="text-xs font-bold">Search Failed</p>
-                  <p className="text-[11px] opacity-80">{searchError}</p>
+                  <p className="text-sm font-bold">Search Failed</p>
+                  <p className="text-xs opacity-90 max-w-sm">{searchError}</p>
+                  {searchError.toLowerCase().includes("upgrade") && (
+                    <button 
+                      onClick={() => window.location.href = "/pricing"}
+                      className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-full transition-colors shadow-sm"
+                    >
+                      View Paid Plans
+                    </button>
+                  )}
                 </div>
               ) : hasSearched && searchResults.length === 0 ? (
                 <div className="py-16 text-center rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] shadow-xs">

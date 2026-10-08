@@ -9868,12 +9868,18 @@ app.post("/api/admin/blogs/generate", async (req, res) => {
       const uploadTierPlan = getTierPlan(uploadUserTier);
       if (!uploadIsAdmin) {
         const uploadLimit = typeof uploadTierPlan.uploadLimitPerMonth === "number" ? uploadTierPlan.uploadLimitPerMonth : Infinity;
-        const uploadedThisMonth = await storage.getMonthlyDocumentUploadCount(userId);
-        if (uploadedThisMonth + files.length > uploadLimit) {
+        // Free tier: lifetime limit (never resets). Paid tiers: monthly.
+        const isFreeTierUpload = uploadUserTier === "free";
+        const uploadedCount = isFreeTierUpload
+          ? await storage.getTotalDocumentUploadCount(userId)
+          : await storage.getMonthlyDocumentUploadCount(userId);
+        if (uploadedCount + files.length > uploadLimit) {
           return res.status(429).json({
-            message: `Monthly upload limit reached (${uploadLimit} files/month on ${uploadTierPlan.label} plan). ${uploadedThisMonth} already uploaded this month.`,
+            message: isFreeTierUpload
+              ? `Lifetime upload limit reached (${uploadLimit} files on ${uploadTierPlan.label} plan). ${uploadedCount} already uploaded. Please upgrade to continue.`
+              : `Monthly upload limit reached (${uploadLimit} files/month on ${uploadTierPlan.label} plan). ${uploadedCount} already uploaded this month.`,
             limit: uploadLimit,
-            used: uploadedThisMonth,
+            used: uploadedCount,
             tier: uploadUserTier,
           });
         }
@@ -9941,13 +9947,16 @@ app.post("/api/admin/blogs/generate", async (req, res) => {
             content = "";
           }
           if (!content) {
-            // Check monthly OCR page limit before attempting OCR
+            // Check OCR page limit — free tier: lifetime (never resets), paid: monthly
             if (ocrPageTracker) {
               const ocrLimit = typeof uploadTierPlan.ocrPagesPerMonth === "number" ? uploadTierPlan.ocrPagesPerMonth : Infinity;
               if (ocrLimit !== Infinity) {
-                const monthlyOcrPages = await storage.getMonthlyOcrPageCount(userId);
-                if (monthlyOcrPages + ocrPageTracker.pagesUsed >= ocrLimit) {
-                  errors.push(`${original}: monthly OCR page limit reached (${ocrLimit} pages/month on ${uploadTierPlan.label} plan)`);
+                const isFreeTierOcr = uploadUserTier === "free";
+                const ocrPagesUsed = isFreeTierOcr
+                  ? await storage.getTotalOcrPageCount(userId)
+                  : await storage.getMonthlyOcrPageCount(userId);
+                if (ocrPagesUsed + ocrPageTracker.pagesUsed >= ocrLimit) {
+                  errors.push(`${original}: ${isFreeTierOcr ? "lifetime" : "monthly"} OCR page limit reached (${ocrLimit} pages on ${uploadTierPlan.label} plan)`);
                   continue;
                 }
               }
@@ -11663,6 +11672,21 @@ RAG POLICY (STRICT):
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
+      // Free tier: lifetime limit of 25 judgment searches (Voyage AI vector search costs money per query)
+      const searchUserTier = normalizeTier(await storage.getUserTier(userId));
+      if (searchUserTier === "free") {
+        const searchCount = await storage.getJudgmentSearchCount(userId);
+        if (searchCount >= 25) {
+          return res.status(403).json({
+            message: "Lifetime free tier limit reached (25 judgment searches). Please upgrade to Standard or Pro to continue researching.",
+            limit: 25,
+            used: searchCount,
+            tier: "free",
+            upgradeRequired: true,
+          });
+        }
+      }
+
       const query = ((req.query.q as string) || "").trim();
       // The new judgment search page never recorded searches, so since the
       // 2026-09-03 UI cutover this, the most-used page, was invisible in the

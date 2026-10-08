@@ -300,6 +300,14 @@ export async function searchJudgments(
         });
       } catch {}
 
+      // Free tier quota exhausted — stop immediately, don't fall through to AI search
+      if (res && res.status === 403) {
+        const errBody = await res.json().catch(() => ({}));
+        if (errBody.upgradeRequired) {
+          throw new Error(errBody.message || "Free quota exhausted. Please upgrade to continue.");
+        }
+      }
+
       if (!res || !res.ok) {
         if (query.length >= 3) {
           try {

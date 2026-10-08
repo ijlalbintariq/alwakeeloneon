@@ -590,7 +590,10 @@ export interface IStorage {
   getMonthlyUsageCountByFeature(userId: string, feature: string): Promise<number>;
   getTotalUsageCountByFeature(userId: string, feature: string): Promise<number>;
   getMonthlyDocumentUploadCount(userId: string): Promise<number>;
+  getTotalDocumentUploadCount(userId: string): Promise<number>;
   getMonthlyOcrPageCount(userId: string): Promise<number>;
+  getTotalOcrPageCount(userId: string): Promise<number>;
+  getJudgmentSearchCount(userId: string): Promise<number>;
   logOcrPages(userId: string, pageCount: number): Promise<void>;
   resetMonthlyUsageCount(userId: string): Promise<{ before: number; deleted: number; after: number; windowStart: Date }>;
   getUserTier(userId: string): Promise<string>;
@@ -3281,6 +3284,33 @@ export class DatabaseStorage implements IStorage {
         eq(usageTracking.userId, userId),
         eq(usageTracking.feature, "ocr-pages" as any),
         gte(usageTracking.createdAt, startOfMonth)
+      ));
+    return Number(result?.total || 0);
+  }
+
+  async getTotalDocumentUploadCount(userId: string): Promise<number> {
+    const [result] = await db.select({ total: count() })
+      .from(documents)
+      .where(eq(documents.userId, userId));
+    return Number(result?.total || 0);
+  }
+
+  async getTotalOcrPageCount(userId: string): Promise<number> {
+    const [result] = await db.select({ total: sql<number>`COALESCE(SUM(${usageTracking.inputTokens}), 0)` })
+      .from(usageTracking)
+      .where(and(
+        eq(usageTracking.userId, userId),
+        eq(usageTracking.feature, "ocr-pages" as any),
+      ));
+    return Number(result?.total || 0);
+  }
+
+  async getJudgmentSearchCount(userId: string): Promise<number> {
+    const [result] = await db.select({ total: count() })
+      .from(searchHistory)
+      .where(and(
+        eq(searchHistory.userId, userId),
+        eq(searchHistory.type, "judgment"),
       ));
     return Number(result?.total || 0);
   }
