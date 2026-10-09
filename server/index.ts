@@ -525,6 +525,13 @@ app.use((req, res, next) => {
       if (boundPort !== preferredPort) {
         log(`PORT fallback active. Set PORT=${boundPort} to make this explicit.`, "startup");
       }
+
+      // Start background payment reconciler
+      import("./safepay").then(({ startSafepayReconcilerWorker }) => {
+        startSafepayReconcilerWorker();
+      }).catch(err => {
+        console.error("[Startup] Failed to initialize Safepay reconciler:", err);
+      });
     });
   };
 

@@ -6,6 +6,10 @@
  */
 
 import Safepay from "@sfpy/node-core";
+import { db } from "./db";
+import { storage } from "./storage";
+import { paymentRecords } from "@shared/schema";
+import { eq, and, gte } from "drizzle-orm";
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -247,3 +251,155 @@ export function calculatePlanAmount(planKey: string, billingCycle: string, isExp
   const discountPct = CYCLE_DISCOUNTS[cycle] || 0;
   return Math.round(baseTotal * (1 - discountPct / 100));
 }
+
+// ── Payment Fulfillment & Reconciliation ────────────────────────────────────
+
+/**
+ * Fulfill a completed Safepay payment: mark record completed, activate subscription, and send invoice email.
+ */
+export async function fulfillSafepayPayment(
+  tracker: string,
+  verificationData?: any,
+): Promise<{ success: boolean; alreadyCompleted?: boolean; error?: string }> {
+  const paymentRecord = await storage.getPaymentRecordByTracker(tracker);
+  if (!paymentRecord) {
+    return { success: false, error: "Payment record not found" };
+  }
+  if (paymentRecord.status === "completed") {
+    return { success: true, alreadyCompleted: true };
+  }
+
+  // Update payment record to completed
+  await storage.updatePaymentRecordStatus(tracker, "completed", verificationData || {});
+
+  // Determine cycle and period window
+  const cycle = paymentRecord.billingCycle === "quarterly" || paymentRecord.billingCycle === "yearly"
+    ? paymentRecord.billingCycle
+    : "monthly";
+  const months = cycle === "quarterly" ? 3 : cycle === "yearly" ? 12 : 1;
+  const startAt = new Date();
+  const endAt = new Date(startAt);
+  endAt.setMonth(endAt.getMonth() + months);
+
+  await storage.updateUserSubscription(paymentRecord.userId, {
+    subscriptionTier: paymentRecord.planKey,
+    subscriptionCycle: cycle,
+    subscriptionStartAt: startAt,
+    subscriptionEndAt: endAt,
+    autoRenew: Boolean(paymentRecord.autoRenew),
+  });
+
+  console.log(`[Safepay Fulfill] Subscription activated: tracker=${tracker}, user=${paymentRecord.userId}, plan=${paymentRecord.planKey}`);
+
+  // Send confirmation invoice email
+  try {
+    const userProfile = await storage.getUserProfile(paymentRecord.userId);
+    if (userProfile && userProfile.email) {
+      const { sendSubscriptionInvoiceEmail } = await import("./email");
+      await sendSubscriptionInvoiceEmail({
+        to: userProfile.email,
+        customerName: `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Valued Customer",
+        planKey: paymentRecord.planKey as any,
+        billingCycle: paymentRecord.billingCycle as any,
+        issuedAt: new Date(),
+        periodStartAt: startAt,
+        periodEndAt: endAt,
+        paymentMethod: "Credit/Debit Card (via Safepay)",
+        transactionRef: tracker,
+        subtotalPkr: paymentRecord.amountPkr,
+        discountPkr: 0,
+        taxPkr: 0,
+      });
+      console.log(`[Safepay Fulfill] Invoice email sent to ${userProfile.email}`);
+    }
+  } catch (err: any) {
+    console.error(`[Safepay Fulfill] Failed to send invoice email for user ${paymentRecord.userId}:`, err?.message || err);
+  }
+
+  return { success: true };
+}
+
+/**
+ * Reconcile any pending payments for a specific user (called e.g. on profile load).
+ * If any pending payment is verified as successful, it is immediately activated.
+ */
+export async function reconcileUserPendingPayments(userId: string): Promise<boolean> {
+  try {
+    const records = await storage.getPaymentRecordsByUser(userId);
+    const now = Date.now();
+    // Only check pending payments from the last 72 hours
+    const recentPending = records.filter(
+      (r) =>
+        r.status === "pending" &&
+        r.createdAt &&
+        now - new Date(r.createdAt).getTime() <= 72 * 60 * 60 * 1000
+    );
+
+    let anyUpgraded = false;
+    for (const record of recentPending) {
+      const verification = await verifyPayment(record.safepayTracker);
+      if (verification.success) {
+        console.log(`[Safepay Auto-Reconcile] Detected successful payment on user visit: tracker=${record.safepayTracker}`);
+        await fulfillSafepayPayment(record.safepayTracker, verification.data);
+        anyUpgraded = true;
+      }
+    }
+    return anyUpgraded;
+  } catch (err: any) {
+    console.error(`[Safepay Auto-Reconcile] Error checking user ${userId}:`, err?.message || err);
+    return false;
+  }
+}
+
+/**
+ * Check and reconcile all pending payments created across the system in the last 72 hours.
+ */
+export async function reconcileAllPendingPayments(): Promise<void> {
+  try {
+    const threshold = new Date(Date.now() - 72 * 60 * 60 * 1000);
+    const pending = await db
+      .select()
+      .from(paymentRecords)
+      .where(
+        and(
+          eq(paymentRecords.status, "pending"),
+          gte(paymentRecords.createdAt, threshold)
+        )
+      );
+
+    if (pending.length === 0) return;
+
+    for (const record of pending) {
+      try {
+        const verification = await verifyPayment(record.safepayTracker);
+        if (verification.success) {
+          console.log(`[Safepay Background Reconcile] Auto-completed paid tracker ${record.safepayTracker} for user ${record.userId}`);
+          await fulfillSafepayPayment(record.safepayTracker, verification.data);
+        }
+      } catch (err: any) {
+        console.error(`[Safepay Background Reconcile] Error on tracker ${record.safepayTracker}:`, err?.message || err);
+      }
+    }
+  } catch (err: any) {
+    console.error("[Safepay Background Reconcile] Global check error:", err?.message || err);
+  }
+}
+
+let reconcilerTimer: NodeJS.Timeout | null = null;
+
+/**
+ * Starts a background periodic worker that polls pending payments every 5 minutes
+ * so no payment is ever missed even if the user drops off and webhooks fail.
+ */
+export function startSafepayReconcilerWorker(): void {
+  if (reconcilerTimer) return;
+  console.log("[Safepay Worker] Background payment reconciler started (interval: 5 minutes)");
+  setTimeout(() => {
+    reconcileAllPendingPayments().catch(() => {});
+  }, 15_000);
+
+  reconcilerTimer = setInterval(() => {
+    reconcileAllPendingPayments().catch(() => {});
+  }, 5 * 60 * 1000);
+}
+

@@ -22201,8 +22201,22 @@ ${boundedRaw}`;
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const profile = await storage.getUserProfile(userId);
+      let profile = await storage.getUserProfile(userId);
       if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      // If user tier is free, check if they have any pending Safepay payment that completed
+      if (profile.subscriptionTier === "free") {
+        try {
+          const { reconcileUserPendingPayments } = await import("./safepay");
+          const upgraded = await reconcileUserPendingPayments(userId);
+          if (upgraded) {
+            profile = (await storage.getUserProfile(userId)) || profile;
+          }
+        } catch (reconcileErr) {
+          console.error("[Profile Safepay Reconcile] Soft failure:", reconcileErr);
+        }
+      }
+
       res.json(profile);
     } catch (err) {
       console.error("Error fetching profile:", err);
@@ -23515,13 +23529,22 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
   app.post("/api/safepay/webhook", async (req, res) => {
     try {
-      const { isSafepayConfigured, verifyPayment } = await import("./safepay");
+      const { isSafepayConfigured, verifyPayment, fulfillSafepayPayment } = await import("./safepay");
       if (!isSafepayConfigured()) {
         return res.status(503).json({ message: "Payment gateway is not configured" });
       }
 
-      const tracker = req.body?.tracker || req.body?.data?.tracker || "";
+      // Safepay webhook payloads can deliver tracker under .tracker, .token, .data.tracker, .data.token
+      const tracker =
+        req.body?.tracker ||
+        req.body?.data?.tracker ||
+        req.body?.token ||
+        req.body?.data?.token ||
+        req.body?.data?.tracker?.token ||
+        "";
+
       if (!tracker) {
+        console.warn("[Safepay Webhook] Missing tracker in payload:", JSON.stringify(req.body));
         return res.status(400).json({ message: "Missing tracker" });
       }
 
@@ -23541,44 +23564,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       }
 
       if (verification.success) {
-        // Update payment record
-        await storage.updatePaymentRecordStatus(tracker, "completed", verification.data);
-
-        // Activate subscription
-        const normalizedCycle = normalizeBillingCycle(paymentRecord.billingCycle);
-        const cycleWindow = getSubscriptionWindow(normalizedCycle, new Date());
-
-        await storage.updateUserSubscription(paymentRecord.userId, {
-          subscriptionTier: paymentRecord.planKey,
-          subscriptionCycle: normalizedCycle,
-          subscriptionStartAt: cycleWindow.startAt,
-          subscriptionEndAt: cycleWindow.endAt,
-          autoRenew: Boolean(paymentRecord.autoRenew),
-        });
-
-        console.log(`[Safepay Webhook] Payment completed & subscription activated: tracker=${tracker}, user=${paymentRecord.userId}, plan=${paymentRecord.planKey}`);
-
-        // Send confirmation invoice email to the user
-        const userProfile = await storage.getUserProfile(paymentRecord.userId);
-        if (userProfile && userProfile.email) {
-          const { sendSubscriptionInvoiceEmail } = await import("./email");
-          sendSubscriptionInvoiceEmail({
-            to: userProfile.email,
-            customerName: `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Valued Customer",
-            planKey: paymentRecord.planKey as any,
-            billingCycle: paymentRecord.billingCycle as any,
-            issuedAt: new Date(),
-            periodStartAt: cycleWindow.startAt,
-            periodEndAt: cycleWindow.endAt,
-            paymentMethod: "Credit/Debit Card (via Safepay)",
-            transactionRef: tracker,
-            subtotalPkr: paymentRecord.amountPkr,
-            discountPkr: 0,
-            taxPkr: 0,
-          }).catch(err => {
-            console.error(`[Safepay Webhook Email] Failed to send invoice email for user ${paymentRecord.userId}:`, err);
-          });
-        }
+        await fulfillSafepayPayment(tracker, verification.data);
       } else {
         await storage.updatePaymentRecordStatus(tracker, "failed", verification.data);
         console.warn(`[Safepay Webhook] Payment verification failed: tracker=${tracker}, state=${verification.state}`);
@@ -23728,7 +23714,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         return res.status(400).json({ message: "Missing tracker parameter" });
       }
 
-      const { isSafepayConfigured, verifyPayment } = await import("./safepay");
+      const { isSafepayConfigured, verifyPayment, fulfillSafepayPayment } = await import("./safepay");
       if (!isSafepayConfigured()) {
         return res.status(503).json({ message: "Payment gateway is not configured" });
       }
@@ -23759,43 +23745,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const verification = await verifyPayment(tracker);
 
       if (verification.success && paymentRecord.status === "pending") {
-        // Process the payment
-        await storage.updatePaymentRecordStatus(tracker, "completed", verification.data);
-
-        const normalizedCycle = normalizeBillingCycle(paymentRecord.billingCycle);
-        const cycleWindow = getSubscriptionWindow(normalizedCycle, new Date());
-
-        await storage.updateUserSubscription(paymentRecord.userId, {
-          subscriptionTier: paymentRecord.planKey,
-          subscriptionCycle: normalizedCycle,
-          subscriptionStartAt: cycleWindow.startAt,
-          subscriptionEndAt: cycleWindow.endAt,
-          autoRenew: Boolean(paymentRecord.autoRenew),
-        });
-
-        console.log(`[Safepay Verify] Payment verified & subscription activated: tracker=${tracker}, plan=${paymentRecord.planKey}`);
-
-        // Send confirmation invoice email to the user
-        const userProfile = await storage.getUserProfile(paymentRecord.userId);
-        if (userProfile && userProfile.email) {
-          const { sendSubscriptionInvoiceEmail } = await import("./email");
-          sendSubscriptionInvoiceEmail({
-            to: userProfile.email,
-            customerName: `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Valued Customer",
-            planKey: paymentRecord.planKey as any,
-            billingCycle: paymentRecord.billingCycle as any,
-            issuedAt: new Date(),
-            periodStartAt: cycleWindow.startAt,
-            periodEndAt: cycleWindow.endAt,
-            paymentMethod: "Credit/Debit Card (via Safepay)",
-            transactionRef: tracker,
-            subtotalPkr: paymentRecord.amountPkr,
-            discountPkr: 0,
-            taxPkr: 0,
-          }).catch(err => {
-            console.error(`[Safepay Verify Email] Failed to send invoice email for user ${paymentRecord.userId}:`, err);
-          });
-        }
+        await fulfillSafepayPayment(tracker, verification.data);
       } else if (!verification.success && paymentRecord.status === "pending") {
         await storage.updatePaymentRecordStatus(tracker, "failed", verification.data);
       }
