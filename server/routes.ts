@@ -11672,14 +11672,14 @@ RAG POLICY (STRICT):
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      // Free tier: lifetime limit of 25 judgment searches (Voyage AI vector search costs money per query)
+      // Free tier: lifetime limit of 10 judgment searches (Voyage AI vector search costs money per query)
       const searchUserTier = normalizeTier(await storage.getUserTier(userId));
       if (searchUserTier === "free") {
         const searchCount = await storage.getJudgmentSearchCount(userId);
-        if (searchCount >= 25) {
+        if (searchCount >= 10) {
           return res.status(403).json({
-            message: "Lifetime free tier limit reached (25 judgment searches). Please upgrade to Standard or Pro to continue researching.",
-            limit: 25,
+            message: "Lifetime free tier limit reached (10 judgment searches). Please upgrade to Standard or Pro to continue researching.",
+            limit: 10,
             used: searchCount,
             tier: "free",
             upgradeRequired: true,
