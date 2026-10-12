@@ -23,10 +23,13 @@ import {
   Gavel,
   Download,
   Move,
+  Loader2,
+  FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { PrecedentCitationItem } from "./OverruledAlertBanner";
+import { generateAndDownloadCourtPdf } from "@/experimental/lib/judgmentPdfGenerator";
 
 interface PrecedentGraphProps {
   currentCitation: string;
@@ -54,6 +57,66 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [copiedNodeId, setCopiedNodeId] = useState<string | null>(null);
+  const [isDownloadingCurrentPdf, setIsDownloadingCurrentPdf] = useState<boolean>(false);
+  const [downloadingNodeId, setDownloadingNodeId] = useState<string | null>(null);
+
+  const handleDownloadCurrentCourtPdf = async () => {
+    if (isDownloadingCurrentPdf) return;
+    setIsDownloadingCurrentPdf(true);
+    toast({
+      title: "Generating Court PDF...",
+      description: `Preparing official precedent PDF for "${currentCitation}".`,
+    });
+    try {
+      const result = await generateAndDownloadCourtPdf({
+        citation: currentCitation,
+        title: currentTitle,
+      });
+      toast({
+        title: "Court PDF Downloaded",
+        description: `Saved "${result.filename}" successfully.`,
+      });
+    } catch (err: any) {
+      console.error("Failed to generate Court PDF:", err);
+      toast({
+        title: "Download Failed",
+        description: err?.message || "Could not generate Court PDF.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingCurrentPdf(false);
+    }
+  };
+
+  const handleDownloadNodePdf = async (node: PrecedentCitationItem) => {
+    const citation = node.linkedCitation || node.citationText;
+    if (!citation || downloadingNodeId) return;
+    setDownloadingNodeId(String(node.id));
+    toast({
+      title: "Generating Precedent PDF...",
+      description: `Preparing official Court PDF for authority "${citation}".`,
+    });
+    try {
+      const result = await generateAndDownloadCourtPdf({
+        citation,
+        title: node.linkedTitle || `Precedent Authority (${citation})`,
+        court: node.court || "Pakistani Court",
+      });
+      toast({
+        title: "Court PDF Downloaded",
+        description: `Saved "${result.filename}" successfully.`,
+      });
+    } catch (err: any) {
+      console.error("Failed to generate Court PDF:", err);
+      toast({
+        title: "Download Failed",
+        description: err?.message || "Could not generate Court PDF for this precedent.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingNodeId(null);
+    }
+  };
 
   const treatmentBadge = (type: string) => {
     switch (type?.toLowerCase()) {
@@ -335,14 +398,30 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
             </button>
           </div>
 
-          {/* 1-Click Summary Export */}
+          {/* Download Official Court PDF for Anchor Precedent */}
+          <button
+            type="button"
+            onClick={handleDownloadCurrentCourtPdf}
+            disabled={isDownloadingCurrentPdf}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+            title="Download Court PDF for this judgment"
+          >
+            {isDownloadingCurrentPdf ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            <span>Court PDF</span>
+          </button>
+
+          {/* Export Citation Tree (.txt) */}
           <button
             type="button"
             onClick={handleExportSummary}
             className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] transition-colors"
-            title="Export Citation Tree Summary"
+            title="Export Citation Network Tree Summary (.txt)"
           >
-            <Download className="w-4 h-4" />
+            <FileText className="w-4 h-4" />
           </button>
 
           {/* Fullscreen Toggle */}
@@ -676,11 +755,35 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                     )}
                   </button>
 
-                  {selectedNode.linkedJudgmentId && onSelectJudgment && (
+                  {/* Court PDF Download for Selected Precedent Node */}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadNodePdf(selectedNode)}
+                    disabled={downloadingNodeId === String(selectedNode.id)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 shadow-xs transition-all disabled:opacity-50"
+                    title="Download Court PDF for this precedent authority"
+                  >
+                    {downloadingNodeId === String(selectedNode.id) ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>Court PDF</span>
+                  </button>
+
+                  {/* Open Judgment in Reader */}
+                  {onSelectJudgment && (
                     <button
                       type="button"
-                      onClick={() => onSelectJudgment(selectedNode.linkedJudgmentId!)}
+                      onClick={() =>
+                        onSelectJudgment(
+                          selectedNode.linkedJudgmentId ||
+                            selectedNode.linkedCitation ||
+                            selectedNode.citationText
+                        )
+                      }
                       className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white shadow-xs transition-all"
+                      title="Open full judgment in workstation reader"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Open Judgment</span>
@@ -721,7 +824,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                         if (onSelectJudgment) {
                           onSelectJudgment(
                             item.linkedJudgmentId ||
-                              item.linkedCitation?.toLowerCase().replace(/\s+/g, "-") ||
+                              item.linkedCitation ||
+                              item.citationText ||
                               String(item.id)
                           );
                         }
@@ -769,7 +873,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                         if (onSelectJudgment) {
                           onSelectJudgment(
                             item.linkedJudgmentId ||
-                              item.linkedCitation?.toLowerCase().replace(/\s+/g, "-") ||
+                              item.linkedCitation ||
+                              item.citationText ||
                               String(item.id)
                           );
                         }

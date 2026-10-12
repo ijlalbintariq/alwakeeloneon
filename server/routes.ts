@@ -12784,7 +12784,55 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
         });
       }
 
-      return res.status(400).json({ message: "Invalid judgment ID format" });
+      // If id is a citation string or slug (e.g. "1997-scmr-1203" or "PLD 1955 FC 240")
+      const cleanQuery = id.replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/^extracted\s+/i, "").trim();
+
+      // Look up by citation string in judgments table
+      const [foundJudgment] = await db
+        .select({ id: judgments.id })
+        .from(judgments)
+        .where(
+          or(
+            ilike(judgments.citationString, cleanQuery),
+            ilike(judgments.citationString, id),
+            sql`REPLACE(LOWER(${judgments.citationString}), ' ', '') = REPLACE(LOWER(${cleanQuery}), ' ', '')`
+          )
+        )
+        .limit(1);
+
+      if (foundJudgment) {
+        const detail = await storage.getJudgmentDetail(foundJudgment.id);
+        if (detail) return res.json(detail);
+      }
+
+      // Look up in case_law table by citation or title
+      const [foundCaseLaw] = await db
+        .select()
+        .from(caseLaw)
+        .where(
+          or(
+            ilike(caseLaw.citation, cleanQuery),
+            ilike(caseLaw.citation, id),
+            sql`REPLACE(LOWER(${caseLaw.citation}), ' ', '') = REPLACE(LOWER(${cleanQuery}), ' ', '')`
+          )
+        )
+        .limit(1);
+
+      if (foundCaseLaw) {
+        return res.json({
+          id: foundCaseLaw.id,
+          citation: foundCaseLaw.citation || cleanQuery,
+          title: foundCaseLaw.title || "Reported Precedent Authority",
+          court: foundCaseLaw.court || "Pakistani Court",
+          decisionDate: null,
+          headnotes: foundCaseLaw.summary || "",
+          fullText: foundCaseLaw.summary || "",
+          petitioner: null,
+          respondent: null,
+        });
+      }
+
+      return res.status(404).json({ message: `Judgment not found for citation: ${id}` });
     } catch (err) {
       console.error("Error fetching judgment detail:", err);
       res.status(500).json({ message: "Failed to fetch judgment details" });
@@ -12968,13 +13016,31 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const id = String(req.params.id || "").trim();
       if (!id) return res.status(400).json({ message: "Judgment id is required" });
 
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ||
-                     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      let targetId = id;
+
       if (!isUUID) {
-        return res.status(404).json({ message: "Judgment not found" });
+        const cleanQuery = id.replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/^extracted\s+/i, "").trim();
+        const [foundJudgment] = await db
+          .select({ id: judgments.id })
+          .from(judgments)
+          .where(
+            or(
+              ilike(judgments.citationString, cleanQuery),
+              ilike(judgments.citationString, id),
+              sql`REPLACE(LOWER(${judgments.citationString}), ' ', '') = REPLACE(LOWER(${cleanQuery}), ' ', '')`
+            )
+          )
+          .limit(1);
+
+        if (foundJudgment) {
+          targetId = foundJudgment.id;
+        } else {
+          return res.status(404).json({ message: "Judgment not found" });
+        }
       }
 
-      const judgment = await storage.getJudgmentDetail(id);
+      const judgment = await storage.getJudgmentDetail(targetId);
       if (!judgment) return res.status(404).json({ message: "Judgment not found" });
 
       // A 'mislabeled' row holds another case's judgment. Serving that text under

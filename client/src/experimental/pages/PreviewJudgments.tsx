@@ -64,6 +64,7 @@ import {
   UnifiedJudgmentResult,
   SavedJudgmentRecord,
 } from "@/experimental/lib/judgmentApiClient";
+import { generateAndDownloadCourtPdf } from "@/experimental/lib/judgmentPdfGenerator";
 import { useToast } from "@/hooks/use-toast";
 
 type CaseLawSearchResult = UnifiedJudgmentResult;
@@ -114,6 +115,32 @@ export const PreviewJudgments: React.FC = () => {
 
   // Standalone Precedent Graph Modal State
   const [graphModalTarget, setGraphModalTarget] = useState<UnifiedJudgmentResult | null>(null);
+  const [isDownloadingModalPdf, setIsDownloadingModalPdf] = useState<boolean>(false);
+
+  const handleDownloadModalPdf = async (target: UnifiedJudgmentResult) => {
+    if (isDownloadingModalPdf) return;
+    setIsDownloadingModalPdf(true);
+    toast({
+      title: "Generating Court PDF...",
+      description: `Preparing official precedent PDF for "${target.citation}".`,
+    });
+    try {
+      const result = await generateAndDownloadCourtPdf(target);
+      toast({
+        title: "Court PDF Downloaded",
+        description: `Saved "${result.filename}" successfully.`,
+      });
+    } catch (err: any) {
+      console.error("Court PDF download error:", err);
+      toast({
+        title: "Download Failed",
+        description: err?.message || "Could not generate Court PDF.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingModalPdf(false);
+    }
+  };
 
   // Inline Ratio Expansion Set (for card inline view)
   const [expandedRatioIds, setExpandedRatioIds] = useState<Set<string>>(new Set());
@@ -1174,13 +1201,30 @@ export const PreviewJudgments: React.FC = () => {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setGraphModalTarget(null)}
-                  className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadModalPdf(graphModalTarget)}
+                    disabled={isDownloadingModalPdf}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+                    title="Download Official Court-Standard Precedent PDF"
+                  >
+                    {isDownloadingModalPdf ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>Court PDF</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGraphModalTarget(null)}
+                    className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Precedent Graph Instance */}

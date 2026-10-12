@@ -27,9 +27,9 @@ import {
   ShieldAlert,
   FileEdit,
   PenTool,
+  Loader2,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { jsPDF } from "jspdf";
 import { OverruledAlertBanner, PrecedentCitationItem } from "./OverruledAlertBanner";
 import { RatioDecidendiCard, JudgmentSummaryData } from "./RatioDecidendiCard";
 import { PrecedentGraph } from "./PrecedentGraph";
@@ -40,6 +40,7 @@ import {
   hydrateCitationGraph,
   JudgmentDetailData,
 } from "@/experimental/lib/judgmentApiClient";
+import { generateAndDownloadCourtPdf } from "@/experimental/lib/judgmentPdfGenerator";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -60,108 +61,6 @@ function formatDate(value: string | null): string {
   return d.toLocaleDateString("en-PK", { year: "numeric", month: "long", day: "2-digit" });
 }
 
-function generateCourtPDF(judgment: JudgmentDetailData) {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  const contentWidth = pageWidth - margin * 2;
-  let y = 24;
-
-  const addText = (
-    text: string,
-    fontSize: number,
-    style: "normal" | "bold" | "italic" = "normal",
-    maxWidth = contentWidth
-  ) => {
-    doc.setFontSize(fontSize);
-    doc.setFont("times", style);
-    const paragraphs = text.split(/\r?\n/);
-    for (const paragraph of paragraphs) {
-      if (paragraph.trim() === "") {
-        y += fontSize * 0.45;
-        if (y > 270) {
-          doc.addPage();
-          y = 20;
-        }
-        continue;
-      }
-      const lines = doc.splitTextToSize(paragraph, maxWidth);
-      for (const line of lines) {
-        if (y > 270) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.text(line, margin, y);
-        y += fontSize * 0.45;
-      }
-    }
-    y += 2;
-  };
-
-  const addLine = () => {
-    if (y > 270) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.setDrawColor(180);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 6;
-  };
-
-  // Header Banner
-  doc.setFontSize(8);
-  doc.setTextColor(100);
-  doc.text("AL WAKEELO — PAKISTANI PRECEDENT RESEARCH ENGINE", margin, 14);
-  doc.text(
-    new Date().toLocaleDateString("en-PK", { year: "numeric", month: "long", day: "numeric" }),
-    pageWidth - margin - 40,
-    14
-  );
-  doc.setTextColor(0);
-
-  addText(judgment.title, 14, "bold");
-  y += 1;
-  addText(`Citation: ${judgment.citation}`, 10, "bold");
-  addText(`Court: ${judgment.court || "Supreme Court of Pakistan"}`, 10);
-  if (judgment.decisionDate) {
-    addText(`Decision Date: ${formatDate(judgment.decisionDate)}`, 10);
-  }
-  if (judgment.petitioner || judgment.respondent) {
-    addText(
-      `${judgment.petitioner || "Petitioner"} VS ${judgment.respondent || "Respondent"}`,
-      10,
-      "italic"
-    );
-  }
-
-  if (judgment.headnotes) {
-    y += 2;
-    addLine();
-    addText("OFFICIAL HEADNOTES & STATUTORY PROPOSITIONS", 11, "bold");
-    y += 1;
-    addText(judgment.headnotes, 9);
-  }
-
-  y += 2;
-  addLine();
-  addText("FULL JUDGMENT & ORDER OF THE COURT", 11, "bold");
-  y += 1;
-  addText(judgment.fullText || "Judgment text not available.", 9.5);
-
-  y += 6;
-  addLine();
-  doc.setFontSize(7);
-  doc.setTextColor(120);
-  doc.text(
-    "Generated from Al Wakeelo Legal Research Workstation — www.alwakeelo.com",
-    margin,
-    y
-  );
-
-  const filename = `${judgment.citation.replace(/[^a-zA-Z0-9]/g, "_")}_Judgment.pdf`;
-  doc.save(filename);
-}
-
 export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
   judgment,
   onBack,
@@ -176,6 +75,32 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
   const [fontSize, setFontSize] = useState<number>(15); // 13 - 18 pt
   const [readingTheme, setReadingTheme] = useState<"obsidian" | "cream" | "light">("cream");
   const [activeSidePanel, setActiveSidePanel] = useState<"ai" | "toc">("ai");
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
+
+  const handleDownloadCourtPdf = async () => {
+    if (isDownloadingPdf) return;
+    setIsDownloadingPdf(true);
+    toast({
+      title: "Generating Court PDF...",
+      description: `Preparing official precedent PDF for "${judgment.citation}".`,
+    });
+    try {
+      const result = await generateAndDownloadCourtPdf(judgment);
+      toast({
+        title: "Court PDF Downloaded",
+        description: `Saved "${result.filename}" successfully.`,
+      });
+    } catch (err: any) {
+      console.error("Court PDF download error:", err);
+      toast({
+        title: "Download Failed",
+        description: err?.message || "Could not generate Court PDF.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   // Section Refs for TOC smooth navigation
   const headerRef = useRef<HTMLDivElement>(null);
@@ -400,10 +325,16 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
           {/* Download Court PDF */}
           <button
             type="button"
-            onClick={() => generateCourtPDF(judgment)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white font-bold text-xs transition-colors shadow-xs"
+            onClick={handleDownloadCourtPdf}
+            disabled={isDownloadingPdf}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white font-bold text-xs transition-colors shadow-xs disabled:opacity-50"
+            title="Download Official Court-Standard Precedent PDF"
           >
-            <Download className="w-3.5 h-3.5" />
+            {isDownloadingPdf ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
             <span>Court PDF</span>
           </button>
 

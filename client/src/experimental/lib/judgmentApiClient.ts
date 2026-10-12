@@ -237,8 +237,8 @@ export function hydrateCitationGraph(
           citationText: cited,
           citationType: "referred_to",
           contextExcerpt: `Cited at paragraph context in ${citation}`,
-          linkedTitle: "Referenced Judgment",
-          linkedJudgmentId: null,
+          linkedTitle: `Referenced Precedent (${cited})`,
+          linkedJudgmentId: cited,
         });
       }
     }
@@ -470,7 +470,7 @@ export async function getJudgmentDetail(
         });
       }
 
-      if (res.ok) {
+      if (res && res.ok) {
         const data = await res.json();
         const graphEdges = hydrateCitationGraph(
           data.citation || "",
@@ -500,8 +500,59 @@ export async function getJudgmentDetail(
           },
         };
       }
-    } catch {
-      // Silent fallback
+
+      // Fallback 1: Try /api/case-law/lookup
+      const normalizedQuery = cleanId.replace(/^extracted-/i, "").replace(/[-_]+/g, " ").trim();
+      const lookupRes = await fetch(`/api/case-law/lookup?citation=${encodeURIComponent(normalizedQuery)}`, {
+        credentials: "include",
+      });
+
+      if (lookupRes.ok) {
+        const lookupData = await lookupRes.json();
+        if (lookupData && lookupData.found) {
+          // If full text is available from /api/judgment-text, grab it
+          let fetchedFullText = lookupData.summary || lookupData.content || "";
+          try {
+            const textRes = await fetch(`/api/judgment-text?citation=${encodeURIComponent(lookupData.citation || normalizedQuery)}`, {
+              credentials: "include",
+            });
+            if (textRes.ok) {
+              const textJson = await textRes.json();
+              if (textJson.fullText) fetchedFullText = textJson.fullText;
+            }
+          } catch {}
+
+          const graphEdges = hydrateCitationGraph(
+            lookupData.citation || normalizedQuery,
+            [],
+            [],
+            fetchedFullText
+          );
+
+          return {
+            id: String(lookupData.id || cleanId),
+            citation: lookupData.citation || normalizedQuery,
+            title: lookupData.title || `Precedent Authority (${normalizedQuery})`,
+            petitioner: null,
+            respondent: null,
+            court: lookupData.court || "Pakistani Court",
+            decisionDate: null,
+            headnotes: lookupData.summary || null,
+            fullText: fetchedFullText || "Full text record.",
+            pdfUrl: null,
+            bench: null,
+            ratioDecidendi: null,
+            isOverruled: false,
+            overrulingCitation: null,
+            citations: {
+              made: graphEdges.made,
+              received: graphEdges.received,
+            },
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("getJudgmentDetail lookup failed:", err);
     }
   }
 
