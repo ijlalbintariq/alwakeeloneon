@@ -2046,9 +2046,9 @@
     "semantic_hash": "a0562e8d4333fbea7cddadf05a0630fb"
   },
   "server/mcp-server.ts": {
-    "mtime": 1790180525.2178626,
-    "seen": 1791836288.718189,
-    "ast_hash": "c13d8a962424cbf98f6c288b507fe7f6",
+    "mtime": 1791836809.3512619,
+    "seen": 1791837180.566046,
+    "ast_hash": "6fe53083378ebf398f68c923d0e5bc0c",
     "semantic_hash": ""
   },
   "server/middleware/db-guard.ts": {
@@ -2298,9 +2298,9 @@
     "semantic_hash": "d7c65518e9a60474aedc33c7fd21aeaf"
   },
   "server/routes.ts": {
-    "mtime": 1791835856.6915946,
-    "seen": 1791836288.7187588,
-    "ast_hash": "9272e92c2396b75ef5ed1d5814acb083",
+    "mtime": 1791837001.7719572,
+    "seen": 1791837180.567041,
+    "ast_hash": "ac2ac779665063f79811af1ed7235e77",
     "semantic_hash": ""
   },
   "server/run-mcp.ts": {
@@ -2376,9 +2376,9 @@
     "semantic_hash": ""
   },
   "server/storage.ts": {
-    "mtime": 1791486431.7702239,
-    "seen": 1791836288.719367,
-    "ast_hash": "69205e1c60950dc65b7d83be58e0585d",
+    "mtime": 1791837068.1246116,
+    "seen": 1791837180.567787,
+    "ast_hash": "16e05eb34cf32ac1820f2d1de8c45b35",
     "semantic_hash": ""
   },
   "server/style-memory/backfill.ts": {
@@ -3774,9 +3774,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/AppPreviewRouter.tsx": {
-    "mtime": 1790100562.8026323,
-    "seen": 1791836288.7135308,
-    "ast_hash": "6e7670dba44adc248a7939a3c543023b",
+    "mtime": 1791836834.5688055,
+    "seen": 1791837180.55542,
+    "ast_hash": "3e1d04083a73599733cad52dcca57606",
     "semantic_hash": ""
   },
   "client/src/experimental/__tests__/directory-browser-adversarial.test.ts": {
@@ -4350,9 +4350,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewJudgments.tsx": {
-    "mtime": 1791836142.4759917,
-    "seen": 1791836288.713892,
-    "ast_hash": "995de2dcf350b3a21ef757b80d8917c3",
+    "mtime": 1791836864.9600933,
+    "seen": 1791837180.5578618,
+    "ast_hash": "47b795d8f575d24bd88f7e447157ffdd",
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewKnowledgeVault.tsx": {
@@ -40590,9 +40590,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewPublicJudgment.tsx": {
-    "mtime": 1790186197.8430696,
-    "seen": 1791836288.713897,
-    "ast_hash": "21b440a9c51a203793c90e6ea5950efd",
+    "mtime": 1791836890.711283,
+    "seen": 1791837180.558034,
+    "ast_hash": "48579ba30104adc773ecb5f60978d386",
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewTaxReturn.tsx": {
@@ -42141,6 +42141,12 @@
     "mtime": 1789411343.918191,
     "seen": 1791836288.722572,
     "ast_hash": "0d8d7c6f955ccbe1dca82a9fe63adb57",
+    "semantic_hash": ""
+  },
+  "server/judgment-pdf.ts": {
+    "mtime": 1791836652.5543633,
+    "seen": 1791837180.5659142,
+    "ast_hash": "6def71e43af55d92babaf2442b9cb904",
     "semantic_hash": ""
   }
 }

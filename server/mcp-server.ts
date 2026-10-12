@@ -29,6 +29,7 @@ export const mcpUserContext = new AsyncLocalStorage<string>();
 const VERSION = "1.0";
 const SOURCE = "AlWakeelo AI";
 const RETRIEVAL_VERSION = "v2";
+const PUBLIC_SITE = (process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "");
 
 /**
  * Validates the user's plan limits before tool execution.
@@ -339,7 +340,7 @@ export function registerAllTools(server: McpServer) {
           sourceTable: "judgments",
           verified: true,
           textIntegrity: "own",
-          pdfUrl: v.pdfUrl ?? undefined,
+          pdfUrl: v.pdfUrl || `${PUBLIC_SITE}/api/public/judgments/${v.id}/pdf`,
           sourceUrl: judgmentSourceUrl(v.id),
         };
       }
@@ -469,7 +470,7 @@ export function registerAllTools(server: McpServer) {
 
   // 3. Get Judgment Detail
   server.registerTool("get_judgment", {
-    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available. ASSISTANT INSTRUCTION: Use ONLY the text this tool returns; never supply a judgment body, holding, or quotation from memory. textIntegrity is one of 'own' (safe), 'mislabeled', 'unknown' or 'missing'. If 'textIntegrity' is 'mislabeled', the stored body is a DIFFERENT case - the one named in 'belongsTo' - so do not present it as this citation's judgment; tell the user and offer to fetch 'belongsTo' instead. If 'textIntegrity' is 'unknown', the stored body is not uniquely bound to this citation - say so and do not attribute its contents to the citation. If 'textIntegrity' is 'missing', state that no judgment text is stored. The judgment file is whatever this tool returns and nothing else. Link to a file ONLY via the returned 'pdfUrl' or 'sourceUrl', copied verbatim. If 'pdfUrl' is absent, state that no PDF is stored and offer 'sourceUrl' instead; never construct, guess, or complete a file URL, and never claim a PDF exists. If this tool errors, report that the judgment was not found rather than answering from memory.",
+    description: "Retrieve the full text, headnotes, and court PDF download of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available. ASSISTANT INSTRUCTION: Use ONLY the text this tool returns; never supply a judgment body, holding, or quotation from memory. textIntegrity is one of 'own' (safe), 'mislabeled', 'unknown' or 'missing'. If 'textIntegrity' is 'mislabeled', the stored body is a DIFFERENT case - the one named in 'belongsTo' - so do not present it as this citation's judgment; tell the user and offer to fetch 'belongsTo' instead. If 'textIntegrity' is 'unknown', the stored body is not uniquely bound to this citation - say so and do not attribute its contents to the citation. If 'textIntegrity' is 'missing', state that no judgment text is stored. To provide the official Court PDF file to the user, link to 'pdfUrl'. To open the interactive case page on AlWakeelo, link to 'sourceUrl'. If this tool errors, report that the judgment was not found rather than answering from memory.",
     inputSchema: {
       id: z.string().describe("The judgment UUID, citation string, or caseLaw:N ID from search results"),
     },
@@ -561,10 +562,10 @@ export function registerAllTools(server: McpServer) {
             : undefined,
           headnotes: judgmentRow.headnotes ?? undefined,
           fullText: judgmentRow.fullText ?? undefined,
-          pdfUrl: judgmentRow.pdfUrl ?? undefined,
+          pdfUrl: judgmentRow.pdfUrl || `${PUBLIC_SITE}/api/public/judgments/${judgmentRow.id}/pdf`,
           sourceUrl: judgmentSourceUrl(judgmentRow.id),
           ...textCheck,
-          fileNote: judgmentRow.pdfUrl ? undefined : "No PDF file is stored for this judgment. The authoritative record is the full text returned here; sourceUrl opens the same judgment on AlWakeelo. Do not claim a PDF exists or invent a download link.",
+          fileNote: "Official court-formatted PDF is available at pdfUrl; sourceUrl opens the interactive reader on AlWakeelo.",
           sourceTable: "judgments" as const,
         };
         return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
@@ -643,10 +644,10 @@ export function registerAllTools(server: McpServer) {
         : (detail.decisionDate ?? undefined),
       headnotes: detail.headnotes ?? undefined,
       fullText: detail.fullText ?? undefined,
-      pdfUrl: detail.pdfUrl ?? undefined,
+      pdfUrl: detail.pdfUrl || `${PUBLIC_SITE}/api/public/judgments/${detail.id}/pdf`,
       sourceUrl: judgmentSourceUrl(detail.id),
       ...textCheck,
-      fileNote: detail.pdfUrl ? undefined : "No PDF file is stored for this judgment. The authoritative record is the full text returned here; sourceUrl opens the same judgment on AlWakeelo. Do not claim a PDF exists or invent a download link.",
+      fileNote: "Official court-formatted PDF is available at pdfUrl; sourceUrl opens the interactive reader on AlWakeelo.",
       sourceTable: "judgments" as const,
     };
 

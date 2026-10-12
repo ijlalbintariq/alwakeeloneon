@@ -191,7 +191,7 @@ export const AppPreviewRouter: React.FC = () => {
         <ProtectedRoute path="/preview/drafting" component={PreviewDrafting} />
         <Route path="/judgments" component={PreviewJudgments} />
         <Route path="/judgment-search" component={PreviewJudgments} />
-        <Route path="/judgments/:id" component={PreviewJudgments} />
+        <Route path="/judgments/:id" component={JudgmentPermalink} />
         <Route path="/workspace/bench-simulator" component={BenchSimulator} />
         <Route path="/preview/judgments" component={PreviewJudgments} />
         <Route path="/preview/judgments/:id" component={PreviewJudgments} />

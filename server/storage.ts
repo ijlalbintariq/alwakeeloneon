@@ -2617,7 +2617,7 @@ export class DatabaseStorage implements IStorage {
           sourceDocId: null,
           sourceType: "judgment",
           sourceFilename: null,
-        }));
+        })) as unknown as CaseLaw[];
       }
 
       // Empty query (e.g. /cite on a blank line). Return top recent cases.
@@ -2652,7 +2652,7 @@ export class DatabaseStorage implements IStorage {
         sourceDocId: null,
         sourceType: "judgment",
         sourceFilename: null,
-      }));
+      })) as unknown as CaseLaw[];
     }
 
     // ── Tier 1: tsvector @@ tsquery (GIN indexed) ───────────────────────

@@ -1,5 +1,6 @@
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
 import { resolveJudgment, assessJudgmentText, judgmentSourceUrl, extractCitations, verifyCitations } from "./citation-verify";
+import { generateCourtJudgmentPdfBuffer } from "./judgment-pdf";
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
 import { storage, findTextOwnerJudgment } from "./storage";
@@ -8148,8 +8149,8 @@ export async function registerRoutes(
   });
 
   // Admin Blog Routes
-  app.get("/api/admin/blogs", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+  app.get("/api/admin/blogs", async (req: any, res) => {
+    if (!req.isAuthenticated?.() || (req.user?.role !== "admin" && req.user?.role !== "super_admin")) {
       return res.status(403).json({ error: "Forbidden" });
     }
     try {
@@ -8160,8 +8161,8 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/blogs", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+  app.post("/api/admin/blogs", async (req: any, res) => {
+    if (!req.isAuthenticated?.() || (req.user?.role !== "admin" && req.user?.role !== "super_admin")) {
       return res.status(403).json({ error: "Forbidden" });
     }
     try {
@@ -8172,8 +8173,8 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/admin/blogs/:id", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+  app.patch("/api/admin/blogs/:id", async (req: any, res) => {
+    if (!req.isAuthenticated?.() || (req.user?.role !== "admin" && req.user?.role !== "super_admin")) {
       return res.status(403).json({ error: "Forbidden" });
     }
     try {
@@ -8184,8 +8185,8 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/admin/blogs/:id", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+  app.delete("/api/admin/blogs/:id", async (req: any, res) => {
+    if (!req.isAuthenticated?.() || (req.user?.role !== "admin" && req.user?.role !== "super_admin")) {
       return res.status(403).json({ error: "Forbidden" });
     }
     try {
@@ -8197,8 +8198,8 @@ export async function registerRoutes(
   });
 
   
-  app.post("/api/admin/blogs/seed", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+  app.post("/api/admin/blogs/seed", async (req: any, res) => {
+    if (!req.isAuthenticated?.() || (req.user?.role !== "admin" && req.user?.role !== "super_admin")) {
       return res.status(403).json({ error: "Forbidden" });
     }
     try {
@@ -8228,8 +8229,8 @@ export async function registerRoutes(
     }
   });
 
-app.post("/api/admin/blogs/generate", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== "admin" && req.user.role !== "super_admin") {
+app.post("/api/admin/blogs/generate", async (req: any, res) => {
+    if (!req.isAuthenticated?.() || (req.user?.role !== "admin" && req.user?.role !== "super_admin")) {
       return res.status(403).json({ error: "Forbidden" });
     }
     try {
@@ -13084,6 +13085,109 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       res.status(500).json({ message: "Failed to fetch judgment" });
     }
   });
+
+  // ── Public & Authenticated Judgment Court PDF Generation ──────────────────
+  const handleJudgmentPdfDownload = async (req: any, res: any) => {
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ message: "Judgment id is required" });
+
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      let targetId = id;
+
+      if (!isUUID) {
+        if (/^\d+$/.test(id)) {
+          const [caseLawRow] = await db.select({ citation: caseLaw.citation, title: caseLaw.title, court: caseLaw.court, summary: caseLaw.summary })
+            .from(caseLaw)
+            .where(eq(caseLaw.id, Number(id)))
+            .limit(1);
+          if (caseLawRow) {
+            const buf = generateCourtJudgmentPdfBuffer({
+              citation: caseLawRow.citation || `CaseLaw ${id}`,
+              title: caseLawRow.title || "Reported Judicial Authority",
+              court: caseLawRow.court || "Pakistani Court",
+              headnotes: caseLawRow.summary || "",
+              fullText: caseLawRow.summary || "",
+            });
+            const safeName = (caseLawRow.citation || `case_${id}`).replace(/[^a-zA-Z0-9]/g, "_");
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", `inline; filename="${safeName}_Court_Judgment.pdf"`);
+            return res.send(buf);
+          }
+        }
+
+        const cleanQuery = id.replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/^extracted\s+/i, "").trim();
+        const [foundJudgment] = await db
+          .select({ id: judgments.id })
+          .from(judgments)
+          .where(
+            or(
+              ilike(judgments.citationString, cleanQuery),
+              ilike(judgments.citationString, id),
+              sql`REPLACE(LOWER(${judgments.citationString}), ' ', '') = REPLACE(LOWER(${cleanQuery}), ' ', '')`
+            )
+          )
+          .limit(1);
+
+        if (foundJudgment) {
+          targetId = foundJudgment.id;
+        } else {
+          const [foundCaseLaw] = await db
+            .select()
+            .from(caseLaw)
+            .where(
+              or(
+                ilike(caseLaw.citation, cleanQuery),
+                ilike(caseLaw.citation, id),
+                sql`REPLACE(LOWER(${caseLaw.citation}), ' ', '') = REPLACE(LOWER(${cleanQuery}), ' ', '')`
+              )
+            )
+            .limit(1);
+
+          if (foundCaseLaw) {
+            const buf = generateCourtJudgmentPdfBuffer({
+              citation: foundCaseLaw.citation || cleanQuery,
+              title: foundCaseLaw.title || "Reported Precedent Authority",
+              court: foundCaseLaw.court || "Pakistani Court",
+              headnotes: foundCaseLaw.summary || "",
+              fullText: foundCaseLaw.summary || "",
+            });
+            const safeName = (foundCaseLaw.citation || cleanQuery).replace(/[^a-zA-Z0-9]/g, "_");
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", `inline; filename="${safeName}_Court_Judgment.pdf"`);
+            return res.send(buf);
+          }
+          return res.status(404).json({ message: "Judgment not found" });
+        }
+      }
+
+      const judgment = await storage.getJudgmentDetail(targetId);
+      if (!judgment) return res.status(404).json({ message: "Judgment not found" });
+
+      const buf = generateCourtJudgmentPdfBuffer({
+        citation: judgment.citation,
+        title: judgment.title,
+        court: judgment.court,
+        decisionDate: judgment.decisionDate,
+        petitioner: judgment.petitioner,
+        respondent: judgment.respondent,
+        headnotes: judgment.headnotes,
+        fullText: judgment.fullText,
+      });
+
+      const safeCitation = (judgment.citation || "judgment").replace(/[^a-zA-Z0-9]/g, "_");
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${safeCitation}_Court_Judgment.pdf"`);
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.send(buf);
+    } catch (err) {
+      console.error("Court PDF generation failed:", err);
+      res.status(500).json({ message: "Failed to generate court PDF" });
+    }
+  };
+
+  app.get("/api/public/judgments/:id/pdf", handleJudgmentPdfDownload);
+  app.get("/api/judgments/:id/pdf", handleJudgmentPdfDownload);
 
   app.get("/api/public/statutes/:id", async (req, res) => {
     try {
@@ -24426,8 +24530,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         decisionDate: detail.decisionDate,
         headnotes: detail.headnotes,
         fullText: detail.fullText,
-        pdfUrl: detail.pdfUrl,
+        pdfUrl: detail.pdfUrl || `${(process.env.PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "")}/api/public/judgments/${detail.id}/pdf`,
         sourceUrl: judgmentSourceUrl(detail.id),
+        fileNote: "Downloadable court-formatted PDF is available at pdfUrl; sourceUrl opens the judgment on AlWakeelo.",
         ...textCheck,
       });
     } catch (err) {

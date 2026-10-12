@@ -87,7 +87,9 @@ const YEARS_LIST = ["All Years", "2026", "2025", "2024", "2023", "2022", "2021",
 export const PreviewJudgments: React.FC = () => {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [, routeParams] = useRoute("/preview/judgments/:id");
+  const [, previewRouteParams] = useRoute("/preview/judgments/:id");
+  const [, publicRouteParams] = useRoute("/judgments/:id");
+  const currentRouteId = previewRouteParams?.id || publicRouteParams?.id;
 
   // Navigation tab: search | pinpoint | directory | bookmarks
   const [activeTab, setActiveTab] = useState<"search" | "pinpoint" | "directory" | "bookmarks">("search");
@@ -108,7 +110,7 @@ export const PreviewJudgments: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
   // Active Selected Judgment for Full-Text Reader
-  const [selectedJudgmentId, setSelectedJudgmentId] = useState<string | null>(routeParams?.id || null);
+  const [selectedJudgmentId, setSelectedJudgmentId] = useState<string | null>(currentRouteId || null);
   const [activeJudgmentDetail, setActiveJudgmentDetail] = useState<JudgmentDetailData | null>(null);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -280,10 +282,10 @@ export const PreviewJudgments: React.FC = () => {
 
   // Sync with route params if provided
   useEffect(() => {
-    if (routeParams?.id && routeParams.id !== selectedJudgmentId) {
-      loadJudgmentById(routeParams.id);
+    if (currentRouteId && currentRouteId !== selectedJudgmentId) {
+      loadJudgmentById(currentRouteId);
     }
-  }, [routeParams?.id, loadJudgmentById, selectedJudgmentId]);
+  }, [currentRouteId, loadJudgmentById, selectedJudgmentId]);
 
   // Two-Tier Search Execution
   const handleExecuteTwoTierSearch = async (

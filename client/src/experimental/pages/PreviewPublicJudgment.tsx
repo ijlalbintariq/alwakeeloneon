@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Lock, Search, Scale, ChevronRight, FileText, Share2, Printer, Sparkles, Building2, Calendar, User } from 'lucide-react';
+import { Lock, Search, Scale, ChevronRight, FileText, Share2, Printer, Download, Sparkles, Building2, Calendar, User } from 'lucide-react';
 
 interface PublicJudgmentData {
   id: string;
@@ -218,6 +218,18 @@ export default function PreviewPublicJudgment() {
                 <Button variant="ghost" size="sm" className="h-8 px-2 text-slate-500 hover:text-[#105B38]" onClick={() => window.print()}>
                   <Printer className="w-4 h-4 mr-1.5" /> Print
                 </Button>
+                {data?.id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-slate-500 hover:text-[#105B38]"
+                    onClick={() => {
+                      window.open(`/api/public/judgments/${encodeURIComponent(data.id)}/pdf`, '_blank');
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-1.5" /> Court PDF
+                  </Button>
+                )}
               </div>
             </div>
           </div>
