@@ -65,6 +65,10 @@ export default function AuthPage() {
     const params = new URLSearchParams();
     params.set("mode", mode);
     params.set("termsVersion", TERMS_VERSION);
+    const redirect = new URLSearchParams(window.location.search).get("redirect");
+    if (redirect) {
+      params.set("redirect", redirect);
+    }
     const captchaToken = getCaptchaToken();
     if (captchaToken) {
       params.set("captchaToken", captchaToken);
@@ -433,7 +437,7 @@ export default function AuthPage() {
             <div className="flex-1 h-px bg-[hsl(var(--preview-border))]" />
           </div>
 
-          {googleStatus?.available ? (
+          {googleStatus?.available !== false ? (
             googleLoading ? (
               <div className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-3">
                 <div className="w-4 h-4 border-2 border-slate-300 dark:border-slate-500/30 border-t-transparent rounded-full animate-spin" />
@@ -472,7 +476,7 @@ export default function AuthPage() {
             </button>
           )}
 
-          {!googleStatus?.available && (
+          {googleStatus?.available === false && (
             <p className="mt-2 text-[10px] text-muted-foreground text-center">
               Google sign-in is currently unavailable.
             </p>

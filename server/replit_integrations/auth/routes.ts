@@ -111,20 +111,53 @@ const authRateCleanupTimer = setInterval(() => {
 }, 30 * 60 * 1000);
 authRateCleanupTimer.unref?.();
 
+function canonicalizeAlwakeeloUrl(url: string): string {
+  if (!url) return url;
+  return url.replace(/^https?:\/\/alwakeelo\.com(\/|$)/i, "https://www.alwakeelo.com$1");
+}
+
+function getSafeRedirectUrl(target?: string): string {
+  if (!target) return "/dashboard";
+  const trimmed = target.trim();
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//") && !trimmed.startsWith("/\\")) {
+    return trimmed;
+  }
+  return "/dashboard";
+}
+
 function normalizeSiteBaseUrl(req: Request): string {
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0]?.trim();
+  const host = (forwardedHost || req.get("host") || "").toLowerCase();
+
+  // If host is the production domain (apex or www), always use the canonical https://www.alwakeelo.com
+  if (host === "alwakeelo.com" || host === "www.alwakeelo.com") {
+    return "https://www.alwakeelo.com";
+  }
+
   const configured = String(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "").trim();
-  if (configured) return configured.replace(/\/+$/, "");
+  if (configured) {
+    return canonicalizeAlwakeeloUrl(configured.replace(/\/+$/, ""));
+  }
 
   const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0]?.trim();
   const proto = forwardedProto || req.protocol || "https";
-  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0]?.trim();
-  const host = forwardedHost || req.get("host") || "localhost";
-  return `${proto}://${host}`.replace(/\/+$/, "");
+  return `${proto}://${host || "localhost"}`.replace(/\/+$/, "");
 }
 
 function getGoogleRedirectUri(req: Request): string {
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0]?.trim();
+  const host = (forwardedHost || req.get("host") || "").toLowerCase();
+
+  // If running on or routed to production domain (apex or www), always use canonical www redirect URI
+  if (host === "alwakeelo.com" || host === "www.alwakeelo.com") {
+    return "https://www.alwakeelo.com/api/auth/google/callback";
+  }
+
   const configured = String(process.env.GOOGLE_REDIRECT_URI || "").trim();
-  if (configured) return configured;
+  if (configured) {
+    return canonicalizeAlwakeeloUrl(configured);
+  }
+
   return `${normalizeSiteBaseUrl(req)}/api/auth/google/callback`;
 }
 
@@ -450,10 +483,13 @@ export function registerAuthRoutes(app: Express): void {
       const codeVerifier = base64UrlEncode(crypto.randomBytes(48));
       const codeChallenge = base64UrlEncode(crypto.createHash("sha256").update(codeVerifier).digest());
       const redirectUri = getGoogleRedirectUri(req);
+      const redirectParam = String(req.query.redirect || "").trim();
 
       (req.session as any).googleOAuth = {
         state,
         codeVerifier,
+        redirectUri,
+        redirectParam: redirectParam || undefined,
         createdAt: Date.now(),
       };
       await new Promise<void>((resolve, reject) => {
@@ -519,7 +555,7 @@ export function registerAuthRoutes(app: Express): void {
       const code = String(req.query.code || "").trim();
       const state = String(req.query.state || "").trim();
       const oauthSession = (req.session as any)?.googleOAuth as
-        | { state?: string; codeVerifier?: string; createdAt?: number }
+        | { state?: string; codeVerifier?: string; redirectUri?: string; redirectParam?: string; createdAt?: number }
         | undefined;
 
       (req.session as any).googleOAuth = null;
@@ -548,7 +584,7 @@ export function registerAuthRoutes(app: Express): void {
         return fail("state_mismatch");
       }
 
-      const redirectUri = getGoogleRedirectUri(req);
+      const redirectUri = oauthSession?.redirectUri || getGoogleRedirectUri(req);
       const tokenForm = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -664,7 +700,8 @@ export function registerAuthRoutes(app: Express): void {
       }).catch(() => {});
 
       await establishSession(req, user);
-      return res.redirect("/dashboard");
+      const destination = getSafeRedirectUrl(oauthSession?.redirectParam);
+      return res.redirect(destination);
     } catch (error) {
       console.error("Google OAuth callback error:", error);
       if (!dbAvailable || isDatabaseConnectivityError(error)) {

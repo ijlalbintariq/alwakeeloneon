@@ -111,10 +111,14 @@ export default function PreviewAuth() {
     if (mode === "register" && !acceptedTerms) return;
     setGoogleLoading(true);
 
-    if (googleStatus?.available) {
+    if (googleStatus === undefined || googleStatus?.available) {
       const gParams = new URLSearchParams();
       gParams.set("mode", mode);
       gParams.set("termsVersion", TERMS_VERSION);
+      const redirect = params.get("redirect");
+      if (redirect) {
+        gParams.set("redirect", redirect);
+      }
       const captchaToken = getCaptchaToken();
       if (captchaToken) {
         gParams.set("captchaToken", captchaToken);
@@ -129,7 +133,7 @@ export default function PreviewAuth() {
         variant: "destructive",
       });
     }
-  }, [acceptedTerms, mode, googleStatus, params, navigate, savePreviewSession, toast]);
+  }, [acceptedTerms, mode, googleStatus, params, toast]);
 
   const loginMutation = useMutation({
     mutationFn: async () => {

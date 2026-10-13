@@ -58,7 +58,8 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   if (process.env.NODE_ENV !== "production") return next();
 
-  const host = req.get("host") || "";
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0]?.trim();
+  const host = (forwardedHost || req.get("host") || "").toLowerCase();
   // Only redirect the apex domain to www — skip if already www or other subdomain
   if (host === "alwakeelo.com") {
     return res.redirect(301, `https://www.alwakeelo.com${req.originalUrl}`);
