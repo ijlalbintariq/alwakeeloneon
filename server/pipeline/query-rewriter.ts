@@ -13,10 +13,10 @@
 import { chatWithDeepSeek, isDeepSeekAvailable } from "../deepseek-ai";
 
 // Patterns that signal the current query refers to something from prior context.
-const VAGUE_REFERENCE_RE = /\b(it|its|that|this|the case|the section|the same|the above|the punishment|the penalty|the offence|what about|and also|and what|how about|applicable here|apply here|related to that|regarding that|regarding this|my issue|my situation|my case|more judgments|more cases)\b/i;
+const VAGUE_REFERENCE_RE = /\b(it|its|that|this|the case|the section|the same|the above|the punishment|the penalty|the offence|what about|and also|and what|how about|applicable here|apply here|related to that|regarding that|regarding this|my issue|my situation|my case|more judgments|more cases|hamara case|hamare case|is case|is hawale se|koi case|koi faisla|is par|is tarah|isi tarah|yeh wala|wahi|dobara|aur batain|wapis lene|iske bare|uska kya|yeh bhi|wo bhi|pehle wala|agla|pichla)\b/i;
 
 // Starters that are obviously a follow-up even without a pronoun.
-const FOLLOWUP_STARTER_RE = /^(what about|how about|and |but |so |then |also |why |what if|does it|is it|are they|can it|can they|give more|more case law|more cases|any more|give me more)\b/i;
+const FOLLOWUP_STARTER_RE = /^(what about|how about|and |but |so |then |also |why |what if|does it|is it|are they|can it|can they|give more|more case law|more cases|any more|give me more|aur |phir |lekin |bhai |janab |yeh batain|koi judgment|same hamre|in urdu|urdu mein|roman urdu)\b/i;
 
 const REWRITE_TIMEOUT_MS = 5000; // 5 seconds (allows DeepSeek network buffer)
 
