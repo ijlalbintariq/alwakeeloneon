@@ -13037,7 +13037,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const id = String(req.params.id || "").trim();
       if (!id) return res.status(400).json({ message: "Judgment id is required" });
 
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
       let targetId = id;
 
       if (!isUUID) {
