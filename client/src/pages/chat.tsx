@@ -8,6 +8,8 @@ import { parseReferences, ReferenceCards } from "@/components/reference-cards";
 import { CaseLawCard, type CaseLawCardData } from "@/components/case-law-card";
 import { useDocumentHead } from "@/hooks/use-document-head";
 import { formatDuration, useVoiceRecorder } from "@/hooks/use-voice-recorder";
+import { useLocation } from "wouter";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 interface ApexModelInfo {
   id: string;
@@ -38,6 +40,7 @@ interface ChatMessage {
   ragConfidence?: "high" | "medium" | "low";
   /** Raw DB case-law results (no AI processing) — rendered above AI prose. */
   caseLawCard?: CaseLawCardData;
+  isLimitError?: boolean;
 
 }
 
@@ -181,7 +184,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const isAlWakeelo = type === "al-wakeelo";
   const activeThreadStorageKey = useMemo(() => `${ACTIVE_THREAD_KEY_PREFIX}${type}`, [type]);
   const stored = chatStateStore[type];
+  const [, navigate] = useLocation();
   const [messages, setMessages] = useState<ChatMessage[]>(stored?.messages || []);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [input, setInput] = useState(initialMessage || "");
   const [isLoading, setIsLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -840,15 +845,16 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       setMessages(prev => {
         const last = prev[prev.length - 1];
         if (last && last.id === assistantId && !last.content) {
-          return [...prev.slice(0, -1), { id: assistantId, role: "assistant", content: limitMsg }];
+          return [...prev.slice(0, -1), { id: assistantId, role: "assistant", content: limitMsg, isLimitError }];
         }
         if (!prev.find(m => m.id === assistantId)) {
-          return [...prev, { id: assistantId, role: "assistant", content: limitMsg }];
+          return [...prev, { id: assistantId, role: "assistant", content: limitMsg, isLimitError }];
         }
         return prev;
       });
       setApiError(isLimitError ? serverLimitMessage : (err?.message || "Communication disruption."));
       if (isLimitError) {
+        setShowUpgradeModal(true);
         queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
       }
     } finally {
@@ -1390,6 +1396,124 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     </div>
   );
 
+  const renderUpgradeModal = () => (
+    <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+      <DialogContent className="max-w-xl p-0 overflow-hidden border border-primary/30 bg-background text-foreground shadow-2xl rounded-2xl">
+        <div className="relative p-6 sm:p-7 border-b border-border bg-gradient-to-b from-primary/15 via-primary/5 to-transparent">
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-amber-400 mb-3">
+            <Crown size={13} />
+            Free Trial Limit Reached
+          </div>
+          <DialogTitle className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-serif">
+            Continue Your Legal Research
+          </DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-2 leading-relaxed">
+            You've completed your 10 free queries. Choose a package to unlock uninterrupted access to Pakistan's verified judgments, statutes, and AI legal drafting.
+          </DialogDescription>
+        </div>
+
+        <div className="p-5 sm:p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Standard Plan */}
+            <div className="relative rounded-2xl border border-border bg-card p-4 sm:p-5 flex flex-col justify-between hover:border-primary/50 transition-all">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Standard</span>
+                  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">Solo</span>
+                </div>
+                <div className="mb-3">
+                  <span className="text-2xl font-black text-foreground">PKR 500</span>
+                  <span className="text-xs text-muted-foreground"> / month</span>
+                </div>
+                <ul className="space-y-1.5 text-xs text-muted-foreground mb-4">
+                  <li className="flex items-center gap-1.5">
+                    <Check size={13} className="text-emerald-400 shrink-0" />
+                    <span><strong>120</strong> AI actions / month</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <Check size={13} className="text-emerald-400 shrink-0" />
+                    <span>600,000+ verified judgments</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <Check size={13} className="text-emerald-400 shrink-0" />
+                    <span>30 file uploads / month</span>
+                  </li>
+                </ul>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  navigate("/checkout?plan=standard&cycle=monthly");
+                }}
+                className="w-full py-2.5 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary hover:text-primary-foreground text-primary text-xs font-black uppercase tracking-wider transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                Choose Standard
+              </button>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="relative rounded-2xl border-2 border-primary bg-primary/5 p-4 sm:p-5 flex flex-col justify-between shadow-lg">
+              <div className="absolute -top-2.5 right-4 bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-sm">
+                Most Popular
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-black uppercase tracking-widest text-primary">Pro</span>
+                  <span className="text-[10px] font-bold text-primary bg-primary/20 px-2 py-0.5 rounded">Active Practice</span>
+                </div>
+                <div className="mb-3">
+                  <span className="text-2xl font-black text-foreground">PKR 1,000</span>
+                  <span className="text-xs text-muted-foreground"> / month</span>
+                </div>
+                <ul className="space-y-1.5 text-xs text-muted-foreground mb-4">
+                  <li className="flex items-center gap-1.5">
+                    <Check size={13} className="text-emerald-400 shrink-0" />
+                    <span><strong>350</strong> AI actions / month</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <Check size={13} className="text-emerald-400 shrink-0" />
+                    <span><strong>Turbo Mode</strong> (Fast AI answers)</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <Check size={13} className="text-emerald-400 shrink-0" />
+                    <span>100 uploads (500 PDF pages)</span>
+                  </li>
+                </ul>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  navigate("/checkout?plan=pro&cycle=monthly");
+                }}
+                className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-black uppercase tracking-wider transition-all shadow-md text-center flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles size={13} /> Upgrade to Pro
+              </button>
+            </div>
+          </div>
+
+          {/* Alternative payment (JazzCash / EasyPaisa / Raast) */}
+          <div className="rounded-xl border border-border bg-card/60 p-3.5 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-foreground">JazzCash, EasyPaisa or Raast Transfer?</p>
+              <p className="text-[11px] text-muted-foreground">Direct manual payment via WhatsApp with instant activation.</p>
+            </div>
+            <a
+              href="https://wa.me/923358341897?text=Hi%2C%20I%20have%20reached%20my%2010%20free%20queries%20limit%20and%20want%20to%20subscribe%20to%20Al%20Wakeelo."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 px-3.5 py-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-1"
+            >
+              Pay on WhatsApp
+            </a>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (!isAlWakeelo) {
     return (
       <div className="flex flex-col h-[calc(100vh-120px)] bg-card border border-border rounded-2xl overflow-hidden shadow-lg relative fade-in">
@@ -1584,9 +1708,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         </div>
 
         {apiError && (
-          <div className="px-6 py-2 bg-red-500/10 border-t border-red-500/20 flex items-center gap-3">
-            <AlertCircle size={14} className="text-red-500" />
-            <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">{apiError}</span>
+          <div className="px-6 py-2 bg-red-500/10 border-t border-red-500/20 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <AlertCircle size={14} className="text-red-500 shrink-0" />
+              <span className="text-[10px] font-black text-red-400 uppercase tracking-widest truncate">{apiError}</span>
+            </div>
+            {(apiError.includes("limit") || apiError.includes("429") || apiError.includes("quota")) && (
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(true)}
+                className="shrink-0 px-2.5 py-1 rounded bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors cursor-pointer"
+              >
+                Upgrade Now
+              </button>
+            )}
           </div>
         )}
 
@@ -1815,6 +1950,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </button>
           </div>
         </div>
+        {renderUpgradeModal()}
       </div>
     );
   }
@@ -2087,6 +2223,37 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           ) : (
                             <LegalMarkdown content={displayContent} />
                           )}
+                          {(m.isLimitError || m.content?.includes("limit of 10 has been used") || m.content?.includes("usage limit has ended")) && (
+                            <div className="mt-4 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-background to-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                                  <p className="text-xs font-bold text-foreground">Free Tier Quota Exhausted (10/10 Queries)</p>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                  Subscribe to continue uninterrupted legal research, statute search, and case-law analysis.
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowUpgradeModal(true)}
+                                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black uppercase tracking-wider hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
+                                >
+                                  <Sparkles size={13} /> View Plans & Upgrade
+                                </button>
+                                <a
+                                  href="https://wa.me/923358341897?text=Hi%2C%20I%20have%20reached%20my%20query%20limit%20and%20want%20to%20subscribe%20to%20Al%20Wakeelo."
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-semibold transition-all"
+                                  title="Pay via JazzCash / EasyPaisa / Raast on WhatsApp"
+                                >
+                                  WhatsApp
+                                </a>
+                              </div>
+                            </div>
+                          )}
                           {parsed?.references && <ReferenceCards references={parsed.references} />}
                           {(m.ragCitations?.length || 0) > 0 && (() => {
                             const visibleCitations = m.ragCitations!.filter(isVisibleCitation);
@@ -2260,9 +2427,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
           <div className="p-2 sm:p-6 pt-2 border-t border-primary/15 bg-background/75" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
             {apiError && (
-              <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
-                <AlertCircle size={14} className="text-red-400" />
-                <span className="text-[10px] text-red-300 font-bold uppercase tracking-widest">{apiError}</span>
+              <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertCircle size={14} className="text-red-400 shrink-0" />
+                  <span className="text-[10px] text-red-300 font-bold uppercase tracking-widest truncate">{apiError}</span>
+                </div>
+                {(apiError.includes("limit") || apiError.includes("429") || apiError.includes("quota")) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="shrink-0 px-2.5 py-1 rounded bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors cursor-pointer"
+                  >
+                    Upgrade Now
+                  </button>
+                )}
               </div>
             )}
 
@@ -2452,7 +2630,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         </main>
 
-
+        {renderUpgradeModal()}
       </div>
     </div>
   );
