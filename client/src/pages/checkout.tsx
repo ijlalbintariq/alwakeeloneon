@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, ChevronRight, CreditCard, Loader2, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronRight, CreditCard, Loader2, RefreshCw, ShieldCheck, Sparkles, Copy, Check, PhoneCall, Wallet, Smartphone } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -30,6 +30,8 @@ export default function CheckoutPage() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanKey>(initialPlan.key);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(initialCycle);
   const [autoRenew, setAutoRenew] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">("wallet");
+  const [copiedNumber, setCopiedNumber] = useState(false);
 
   // Detect cancellation redirect from Safepay
   useEffect(() => {
@@ -59,6 +61,29 @@ export default function CheckoutPage() {
     () => getPlanCyclePricing(selectedPlanData, selectedPlanData.key === "enterprise" ? "monthly" : billingCycle),
     [selectedPlanData, billingCycle],
   );
+
+  const handleCopyNumber = () => {
+    navigator.clipboard.writeText("03358341897");
+    setCopiedNumber(true);
+    toast({
+      title: "Account Number Copied",
+      description: "0335 8341897 copied to clipboard.",
+    });
+    setTimeout(() => setCopiedNumber(false), 2500);
+  };
+
+  const whatsappMessage = useMemo(() => {
+    const emailText = user?.email || "My Registered Account";
+    return `Hi Al Wakeelo Support, I want to activate my subscription:
+• Plan: ${selectedPlanData.title}
+• Billing Cycle: ${billingCycle.toUpperCase()}
+• Amount: ${selectedPlanPricing.totalLabel}
+• Account Email: ${emailText}
+
+Attached is my payment transfer receipt screenshot:`;
+  }, [selectedPlanData.title, billingCycle, selectedPlanPricing.totalLabel, user?.email]);
+
+  const whatsappUrl = `https://wa.me/923358341897?text=${encodeURIComponent(whatsappMessage)}`;
 
   const paymentMutation = useMutation({
     mutationFn: async () => {
@@ -310,45 +335,113 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Payment Method Info */}
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                <div className="flex items-start gap-3">
-                  <ShieldCheck size={18} className="text-emerald-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold text-emerald-300 mb-1">Secure Payment Processing</p>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      You'll be redirected to Safepay's secure payment page to enter your payment details.
-                      We never store or see your card information. Safepay supports credit/debit cards,
-                      JazzCash, EasyPaisa, and bank transfers.
-                    </p>
+              {/* Payment Method Switcher */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Choose Payment Method</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("wallet")}
+                    className={`p-3.5 rounded-xl border text-left transition-all ${
+                      paymentMethod === "wallet"
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                        : "border-border bg-background hover:border-slate-500"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                        <Smartphone size={14} className="text-primary" />
+                        <span>JazzCash / EasyPaisa / Raast</span>
+                      </div>
+                      {paymentMethod === "wallet" && <CheckCircle2 size={14} className="text-primary" />}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Direct mobile wallet or bank transfer</p>
+                    <span className="inline-block mt-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                      Recommended in Pakistan
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("card")}
+                    className={`p-3.5 rounded-xl border text-left transition-all ${
+                      paymentMethod === "card"
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                        : "border-border bg-background hover:border-slate-500"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                        <CreditCard size={14} className="text-primary" />
+                        <span>Debit / Credit Card</span>
+                      </div>
+                      {paymentMethod === "card" && <CheckCircle2 size={14} className="text-primary" />}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Automated card checkout via Safepay</p>
+                    <span className="inline-block mt-1.5 text-[9px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      Cardholders
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Wallet Method Info */}
+              {paymentMethod === "wallet" && (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <div className="flex items-center gap-2">
+                      <Wallet size={15} className="text-emerald-400" />
+                      <span className="text-xs font-bold text-foreground">Direct Account Details</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                      Instant Activation
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="p-2.5 bg-background rounded-xl border border-border">
+                      <span className="text-[9px] uppercase font-bold text-muted-foreground block mb-0.5">Account / Mobile Number</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-sm font-bold text-foreground">0335 8341897</span>
+                        <button
+                          type="button"
+                          onClick={handleCopyNumber}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 text-[10px] font-bold transition-colors cursor-pointer"
+                        >
+                          {copiedNumber ? <Check size={11} /> : <Copy size={11} />}
+                          <span>{copiedNumber ? "Copied" : "Copy"}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 bg-background rounded-xl border border-border">
+                      <span className="text-[9px] uppercase font-bold text-muted-foreground block mb-0.5">Account Title</span>
+                      <span className="text-xs font-bold text-foreground block">Ijlal Bin Tariq / Al Wakeelo</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-muted-foreground">
+                    Supported: <strong>JazzCash, EasyPaisa, SadaPay, NayaPay, Raast</strong> & all Pakistani bank apps.
+                  </p>
+                </div>
+              )}
+
+              {/* Card Method Info */}
+              {paymentMethod === "card" && (
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck size={18} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-300 mb-1">Card Payment via Safepay</p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        You'll be redirected to Safepay's 3D-Secure payment page. Please ensure online / e-commerce transactions are enabled on your card.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Payment Methods Visual */}
-              <div className="flex items-center justify-center gap-4 py-2">
-                <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5">
-                  <CreditCard size={13} className="text-muted-foreground" />
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cards</span>
-                </div>
-              </div>
-
-              {/* JazzCash / EasyPaisa Notice */}
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-center">
-                <p className="text-sm font-extrabold text-foreground leading-relaxed">
-                  For JazzCash and EasyPaisa payments, kindly contact us on WhatsApp:{" "}
-                  <a
-                    href="https://wa.me/923358341897"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline hover:no-underline"
-                  >
-                    0335 8341897
-                  </a>
-                </p>
-              </div>
-
-              {/* Pay Now Button */}
+              {/* Action Button */}
               {selectedPlan === "enterprise" ? (
                 <a
                   href="mailto:support@alwakeelo.com?subject=Enterprise%20Plan%20Inquiry"
@@ -357,12 +450,27 @@ export default function CheckoutPage() {
                 >
                   Contact Chamber for Enterprise
                 </a>
+              ) : paymentMethod === "wallet" ? (
+                <div className="space-y-2">
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-3.5 text-xs font-black uppercase tracking-widest text-white shadow-md transition-colors cursor-pointer text-center"
+                  >
+                    <PhoneCall size={14} />
+                    <span>Send Receipt on WhatsApp</span>
+                  </a>
+                  <p className="text-[10px] text-center text-muted-foreground leading-tight">
+                    Send <strong>{selectedPlanPricing.totalLabel}</strong> to <strong>0335 8341897</strong> & share screenshot for instant activation.
+                  </p>
+                </div>
               ) : (
                 <button
                   type="button"
                   onClick={handlePayNow}
                   disabled={paymentMutation.isPending}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-70"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-70 cursor-pointer"
                   data-testid="checkout-pay-now"
                 >
                   {paymentMutation.isPending ? (

@@ -20,6 +20,11 @@ import {
   Percent,
   Building2,
   PhoneCall,
+  Copy,
+  Check,
+  Wallet,
+  Smartphone,
+  ExternalLink,
 } from "lucide-react";
 import "@/experimental/styles/preview-theme.css";
 
@@ -184,6 +189,8 @@ export default function PreviewCheckout() {
   // Checkout Processing state
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [processingPhase, setProcessingPhase] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">("wallet");
+  const [copiedNumber, setCopiedNumber] = useState<boolean>(false);
 
   // Live Calculations synchronized 1:1 with backend
   const currentPlan = availablePlans.find((p) => p.id === selectedPlanKey) || availablePlans.find((p) => p.id === "pro") || availablePlans[0];
@@ -207,6 +214,29 @@ export default function PreviewCheckout() {
   const handleCycleChange = (cyc: BillingCycle) => {
     setSelectedCycle(cyc);
   };
+
+  const handleCopyNumber = () => {
+    navigator.clipboard.writeText("03358341897");
+    setCopiedNumber(true);
+    toast({
+      title: "Account Number Copied",
+      description: "0335 8341897 copied to clipboard. Paste into your banking/wallet app.",
+    });
+    setTimeout(() => setCopiedNumber(false), 2500);
+  };
+
+  const whatsappMessage = useMemo(() => {
+    const emailText = user?.email || "My Account";
+    return `Hi Al Wakeelo Support, I want to activate my subscription:
+• Plan: ${currentPlan.name}
+• Billing Cycle: ${selectedCycle.toUpperCase()}
+• Amount: PKR ${finalTotal.toLocaleString("en-US")}
+• Account Email: ${emailText}
+
+Attached is my payment transfer receipt screenshot:`;
+  }, [currentPlan.name, selectedCycle, finalTotal, user?.email]);
+
+  const whatsappUrl = `https://wa.me/923358341897?text=${encodeURIComponent(whatsappMessage)}`;
 
   // Handle live promo validation via real backend route
   const handleApplyPromo = async (e: React.FormEvent) => {
@@ -482,7 +512,7 @@ export default function PreviewCheckout() {
               </div>
             </div>
 
-            {/* Step 2: Safepay Secure Payment Gateway */}
+            {/* Step 2: Choose Payment Method */}
             <div className="bg-white dark:bg-[#131E2E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] p-5 sm:p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -490,81 +520,206 @@ export default function PreviewCheckout() {
                     2
                   </span>
                   <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] font-serif">
-                    Secure Payment Gateway (Safepay)
+                    Choose Payment Method
                   </h2>
                 </div>
                 <span className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Step 2 of 2</span>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-[#105B38]" />
-                    <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Debit & Credit Card Checkout</span>
+              {/* Method Switcher Tabs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                {/* Tab 1: JazzCash / EasyPaisa / Raast */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("wallet")}
+                  className={`p-4 rounded-xl border text-left transition-all relative ${
+                    paymentMethod === "wallet"
+                      ? "border-[#105B38] bg-[#EBF5F0]/60 dark:bg-[#105B38]/15 ring-2 ring-[#105B38]/20"
+                      : "border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] hover:border-[#CBD5E1]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-[#105B38]" />
+                      <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
+                        JazzCash / EasyPaisa / Raast
+                      </span>
+                    </div>
+                    {paymentMethod === "wallet" && (
+                      <CheckCircle2 className="w-4 h-4 text-[#105B38]" />
+                    )}
                   </div>
-                  <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded font-bold">
-                    Safepay Verified
+                  <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-tight">
+                    Instant activation via Mobile Wallet or 1-Link Bank Transfer
+                  </p>
+                  <span className="inline-block mt-2 text-[9px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 px-2 py-0.5 rounded">
+                    Recommended in Pakistan
                   </span>
-                </div>
+                </button>
 
-                <p className="text-xs text-[#475569] leading-relaxed">
-                  Your payment is processed through <strong>Safepay</strong>, Pakistan's leading PCI-DSS Level 1 certified payment gateway. You will be redirected to Safepay's secure checkout page to complete your payment with instant 3D-Secure authentication.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                  <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-2.5">
-                    <ShieldCheck className="w-4 h-4 text-[#105B38] shrink-0" />
-                    <div>
-                      <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] block">PCI-DSS Compliant</span>
-                      <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Zero card data stored</span>
+                {/* Tab 2: Credit / Debit Card (Safepay) */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("card")}
+                  className={`p-4 rounded-xl border text-left transition-all relative ${
+                    paymentMethod === "card"
+                      ? "border-[#105B38] bg-[#EBF5F0]/60 dark:bg-[#105B38]/15 ring-2 ring-[#105B38]/20"
+                      : "border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] hover:border-[#CBD5E1]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-[#105B38]" />
+                      <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
+                        Debit & Credit Card
+                      </span>
                     </div>
+                    {paymentMethod === "card" && (
+                      <CheckCircle2 className="w-4 h-4 text-[#105B38]" />
+                    )}
                   </div>
-
-                  <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-2.5">
-                    <Lock className="w-4 h-4 text-[#105B38] shrink-0" />
-                    <div>
-                      <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] block">3D-Secure 2.0</span>
-                      <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">OTP verification</span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-2.5">
-                    <Sparkles className="w-4 h-4 text-[#105B38] shrink-0" />
-                    <div>
-                      <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] block">Instant Activation</span>
-                      <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Automated provisioning</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
-                  <span>Supported Cards: Visa, Mastercard, PayPak, UnionPay</span>
-                  <span className="font-mono text-[#105B38] font-semibold">PKR Settlement</span>
-                </div>
+                  <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-tight">
+                    Automated card checkout via Safepay (Visa / Mastercard)
+                  </p>
+                  <span className="inline-block mt-2 text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded">
+                    Cardholders
+                  </span>
+                </button>
               </div>
 
-              {/* Wire Transfer Support Notice */}
-              <div className="mt-4 p-4 rounded-xl bg-amber-50/9 dark:bg-amber-500/100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-start gap-3">
-                <Building2 className="w-5 h-5 text-amber-800 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-950 dark:text-amber-300">
-                  <p className="font-bold text-amber-900 dark:text-amber-300 mb-1">
-                    To buy through wire transfer:
-                  </p>
-                  <p className="text-[11.5px] leading-relaxed text-amber-900 dark:text-amber-300/90">
-                    Kindly contact on our chamber support number via WhatsApp or call:{" "}
-                    <a
-                      href="https://wa.me/923358341897"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-bold text-[#105B38] underline hover:text-[#0D4A2E] inline-flex items-center gap-1"
-                    >
-                      <span>0335 8341897</span>
-                      <PhoneCall className="w-3 h-3 inline" />
-                    </a>{" "}
-                    (or email <a href="mailto:support@alwakeelo.com" className="font-semibold underline text-amber-900 dark:text-amber-300 hover:text-black">support@alwakeelo.com</a>) for manual bank details & instant activation.
-                  </p>
+              {/* Method 1 Content: Mobile Wallet & Bank Transfer */}
+              {paymentMethod === "wallet" && (
+                <div className="space-y-4">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#F8FAFC] via-white to-emerald-50/30 dark:from-[#0B131E] dark:via-[#131E2E] dark:to-emerald-950/20 border border-emerald-500/30 shadow-sm">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="w-4 h-4 text-[#105B38]" />
+                        <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
+                          Chamber Direct Account Details
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
+                        Zero Gateway Surcharge
+                      </span>
+                    </div>
+
+                    <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-[#64748B] dark:text-[#94A3B8] block mb-1">
+                          Account / Mobile Number
+                        </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-base font-black text-[#0F172A] dark:text-[#F8FAFC] tracking-wider">
+                            0335 8341897
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleCopyNumber}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-[#105B38] dark:text-emerald-400 hover:bg-emerald-100 text-xs font-bold border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
+                          >
+                            {copiedNumber ? (
+                              <>
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-[#64748B] dark:text-[#94A3B8] block mb-1">
+                          Account Title / Beneficiary
+                        </span>
+                        <span className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] block">
+                          Ijlal Bin Tariq / Al Wakeelo
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#475569] dark:text-[#94A3B8]">
+                      <span>Accepted Apps: <strong>JazzCash, EasyPaisa, SadaPay, NayaPay, Raast & all Pakistani Bank Apps</strong></span>
+                      <span className="font-mono font-bold text-[#105B38]">Payable: PKR {finalTotal.toLocaleString("en-US")}</span>
+                    </div>
+
+                    {/* 3 Step Instructions */}
+                    <div className="mt-4 pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
+                      <p className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC]">
+                        How to complete your activation:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-[#475569] dark:text-[#94A3B8]">
+                        <div className="p-2.5 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44]">
+                          <span className="font-bold text-[#105B38] block mb-0.5">1. Send PKR {finalTotal.toLocaleString("en-US")}</span>
+                          <span>Transfer to 0335 8341897 via JazzCash, EasyPaisa or Raast.</span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44]">
+                          <span className="font-bold text-[#105B38] block mb-0.5">2. Take Screenshot</span>
+                          <span>Save the receipt screenshot or copy the transaction ID (TID).</span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44]">
+                          <span className="font-bold text-[#105B38] block mb-0.5">3. Tap WhatsApp Below</span>
+                          <span>Send your screenshot. Your account is activated within minutes!</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Method 2 Content: Safepay Card Processing */}
+              {paymentMethod === "card" && (
+                <div className="p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[#1E2D44]">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-[#105B38]" />
+                      <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">Debit & Credit Card Checkout</span>
+                    </div>
+                    <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded font-bold">
+                      Safepay Verified
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-[#475569] leading-relaxed">
+                    Your card payment is processed through <strong>Safepay</strong> with 3D-Secure authentication. Please ensure your card has <strong>online / e-commerce transactions enabled</strong> with your issuing bank.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                    <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-2.5">
+                      <ShieldCheck className="w-4 h-4 text-[#105B38] shrink-0" />
+                      <div>
+                        <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] block">PCI-DSS Compliant</span>
+                        <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8]">Zero card data stored</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-2.5">
+                      <Lock className="w-4 h-4 text-[#105B38] shrink-0" />
+                      <div>
+                        <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] block">3D-Secure 2.0</span>
+                        <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8]">Bank OTP verification</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white dark:bg-[#131E2E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] flex items-center gap-2.5">
+                      <Sparkles className="w-4 h-4 text-[#105B38] shrink-0" />
+                      <div>
+                        <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] block">Instant Activation</span>
+                        <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8]">Automated provisioning</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between text-[11px] text-[#64748B] dark:text-[#94A3B8]">
+                    <span>Supported Cards: Visa, Mastercard, PayPak, UnionPay</span>
+                    <span className="font-mono text-[#105B38] font-semibold">PKR Settlement</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -707,28 +862,45 @@ export default function PreviewCheckout() {
               </div>
 
               {/* Complete Payment Button */}
-              <button
-                type="button"
-                onClick={handleCompletePayment}
-                disabled={isProcessing}
-                className="w-full py-3.5 px-4 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white font-bold text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-75"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Connecting to Safepay...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>
-                      {finalTotal === 0
-                        ? "Activate Free Starter Plan"
-                        : `Pay PKR ${finalTotal.toLocaleString("en-US")} with Safepay`}
-                    </span>
-                  </>
-                )}
-              </button>
+              {paymentMethod === "wallet" && finalTotal > 0 ? (
+                <div className="space-y-2.5">
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
+                  >
+                    <PhoneCall className="w-4 h-4" />
+                    <span>Send Receipt on WhatsApp</span>
+                  </a>
+                  <p className="text-[11px] text-center text-[#64748B] dark:text-[#94A3B8] leading-tight">
+                    Transferred <strong>PKR {finalTotal.toLocaleString("en-US")}</strong> to <strong>0335 8341897</strong>? Tap above to send receipt screenshot for instant activation.
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCompletePayment}
+                  disabled={isProcessing}
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white font-bold text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-75 cursor-pointer"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Connecting to Safepay...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>
+                        {finalTotal === 0
+                          ? "Activate Free Starter Plan"
+                          : `Pay PKR ${finalTotal.toLocaleString("en-US")} with Safepay`}
+                      </span>
+                    </>
+                  )}
+                </button>
+              )}
 
               {isProcessing && (
                 <div className="mt-3 p-3 bg-[#EBF5F0] dark:bg-[#105B38]/20 border border-[#A3D4BC] dark:border-[#10B981]/30 rounded-xl text-center text-xs font-mono text-[#105B38] animate-pulse">
