@@ -40,6 +40,7 @@ import {
 import { StatutoryClauseLibrary } from "@/experimental/components/drafting/StatutoryClauseLibrary";
 import { DraftingTemplateLibrary } from "@/experimental/components/drafting/DraftingTemplateLibrary";
 import { StyleMemoryDraftingPanel } from "@/experimental/components/drafting/StyleMemoryDraftingPanel";
+import { DiffReviewCard } from "@/experimental/components/drafting/DiffReviewCard";
 import { type LegalPageProfileId } from "@/lib/legal-page-layout";
 
 export type RightSidebarTab = "ai_chat" | "templates" | "clauses" | "compliance" | "tools";
@@ -53,6 +54,14 @@ interface RightDraftingSidebarProps {
    *  ("turn this into a writ petition") changes it, and the tab must adopt it or
    *  the next edit is drafted against the old filing type's checklist. */
   onReplaceDocument: (content: string, documentType?: string) => void;
+  /** Surgically replaces a targeted range after validating it hasn't changed unexpectedly */
+  onApplyTargetedEdit?: (revisedSnippet: string, selection: { text: string; from: number; to: number; docVersion?: number }) => boolean;
+  /** Locked text selection for surgical AI editing */
+  lockedSelection?: { text: string; from: number; to: number; docVersion?: number } | null;
+  /** Clears the locked selection */
+  onClearLockedSelection?: () => void;
+  /** Programmatic prompt triggered externally (e.g. from editor contextual bar) */
+  triggerPrompt?: { prompt: string; timestamp: number } | null;
   onLoadTemplate: (template: DraftingTemplate) => void;
   onInsertTemplateAtCursor: (template: DraftingTemplate) => void;
   onOpenFeeModal: () => void;
@@ -81,6 +90,13 @@ interface ChatMessage {
   documentType?: string;
   timestamp: string;
   recommendations?: any[];
+  /** Claude-like diff review context */
+  diffContext?: {
+    originalText: string;
+    revisedText: string;
+    selection?: { text: string; from: number; to: number; docVersion?: number };
+    status: "pending" | "accepted" | "rejected";
+  };
 }
 
 export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
@@ -89,6 +105,10 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   currentDocumentText,
   onInsertClause,
   onReplaceDocument,
+  onApplyTargetedEdit,
+  lockedSelection,
+  onClearLockedSelection,
+  triggerPrompt,
   onLoadTemplate,
   onInsertTemplateAtCursor,
   onOpenFeeModal,
@@ -229,6 +249,14 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
     }
   }, [messages, isGenerating, activeTab]);
 
+  // Handle programmatic trigger prompt from editor contextual bar
+  useEffect(() => {
+    if (triggerPrompt?.prompt) {
+      setActiveTab("ai_chat");
+      handleSend(triggerPrompt.prompt);
+    }
+  }, [triggerPrompt?.timestamp]);
+
   const handleSend = async (textOverride?: string) => {
     const query = (textOverride || inputPrompt).trim();
     if (!query || isGenerating) return;
@@ -244,8 +272,9 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
     if (!textOverride) setInputPrompt("");
     setIsGenerating(true);
 
-    // Read the selection now — clicking into the chat box clears it in the editor.
-    const selectedSnippet = (getSelectedText?.() || "").trim();
+    // Read the selection now — prioritize lockedSelection from parent
+    const activeTargetSelection = lockedSelection || (getSelectedText?.() ? { text: getSelectedText()!, from: 0, to: 0 } : null);
+    const selectedSnippet = (activeTargetSelection?.text || "").trim();
 
     try {
       let data;
@@ -278,6 +307,12 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
           formData.append("conversationHistory", JSON.stringify(conversationHistory));
           if (selectedSnippet) {
             formData.append("selectedSnippet", selectedSnippet);
+            if (activeTargetSelection?.from !== undefined) {
+              formData.append("selectedSnippetStart", String(activeTargetSelection.from));
+            }
+            if (activeTargetSelection?.to !== undefined) {
+              formData.append("selectedSnippetEnd", String(activeTargetSelection.to));
+            }
             formData.append("forceTargetedEdit", "true");
           }
           aiContextFiles.forEach(f => formData.append("attachments", f));
@@ -302,7 +337,12 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
             stream: false,
             conversationHistory,
             ...(selectedSnippet
-              ? { selectedSnippet, forceTargetedEdit: true }
+              ? {
+                  selectedSnippet,
+                  selectedSnippetStart: activeTargetSelection?.from,
+                  selectedSnippetEnd: activeTargetSelection?.to,
+                  forceTargetedEdit: true,
+                }
               : {}),
           };
           res = await apiRequest("POST", "/api/retrieval/clauses/generate", payload);
@@ -314,12 +354,13 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
             throw new Error("Chamber session unauthenticated. Please sign in via the Sign In tab (/preview/auth) to enable live AI drafting.");
           }
           if (err.status === 422) {
-            // 422 means the server REFUSED the edit and handed back the draft
-            // unchanged. Rendering it as a normal result showed an Apply button
-            // on identical text and hid the reason, so report it instead.
+            // 422 can mean either a refused bounded edit (unchanged draft)
+            // or a draft with court-readiness advisories.
             data = err.data;
             if (!data) throw err;
-            data = { ...data, rejected: true };
+            if (!data.clause && !data.text && !data.content) {
+              data = { ...data, rejected: true };
+            }
           } else {
             throw err;
           }
@@ -335,8 +376,8 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
 
       const recommendations = data.recommendations || [];
 
-      // A refused edit returns the original draft, so there is nothing to apply.
-      if (data.rejected) {
+      // A refused edit with no generated draft text returns nothing to apply.
+      if (data.rejected && !data.clause && !data.text && !data.content) {
         setMessages((prev) => [...prev, {
           id: `ai-rejected-${Date.now()}`,
           role: "assistant",
@@ -393,16 +434,33 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
         "initial-draft",
       ]);
       const isWholeDocument = WHOLE_DOCUMENT_OPERATIONS.has(String(data.operation || ""));
+      const isTargetedSelection = !!activeTargetSelection?.text;
+
+      // Build diff context for Claude-style review
+      const originalTextForDiff = isTargetedSelection
+        ? activeTargetSelection.text
+        : currentDocumentText;
+
+      const diffContext = generatedClause
+        ? {
+            originalText: originalTextForDiff,
+            revisedText: generatedClause,
+            selection: activeTargetSelection || undefined,
+            status: "pending" as const,
+          }
+        : undefined;
+
       const explanation =
         data.assistantMessage ||
         data.explanation ||
+        data.message ||
         data.summary ||
         "Here is the court-ready legal draft generated by the AI legal model:";
       const advisories: string[] = Array.isArray(data.advisories) ? data.advisories : [];
       const clauseTitle =
         data.title ||
         (data.changedTarget ? `Updated draft — ${data.changedTarget}` : null) ||
-        (isWholeDocument ? "Updated Draft" : "Court-Ready Clause");
+        (isTargetedSelection ? "Targeted Selection Revision" : isWholeDocument ? "Updated Draft" : "Court-Ready Clause");
       const explanationWithAdvisories = advisories.length
         ? `${explanation}\n\nBefore filing:\n${advisories.map((a) => `• ${a}`).join("\n")}`
         : explanation;
@@ -414,6 +472,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
         insertableClause: generatedClause || undefined,
         clauseTitle,
         isWholeDocument,
+        diffContext,
         documentType:
           typeof data.documentType === "string" && data.documentType !== "custom-input"
             ? data.documentType
@@ -622,6 +681,26 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
             ))}
           </div>
 
+          {/* Active Selection Indicator Bar */}
+          {lockedSelection && (
+            <div className="mx-3 mt-2 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 rounded-lg flex items-center justify-between gap-2 text-xs animate-in fade-in-50 duration-150 shrink-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Sparkles className="w-3.5 h-3.5 text-[#105B38] dark:text-emerald-400 shrink-0" />
+                <span className="font-semibold text-emerald-950 dark:text-emerald-200 truncate text-[11px]">
+                  Target Locked: &quot;{lockedSelection.text.slice(0, 38)}{lockedSelection.text.length > 38 ? "..." : ""}&quot;
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onClearLockedSelection}
+                className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-white px-1.5 py-0.5 rounded bg-white dark:bg-black/40 border border-emerald-300 dark:border-emerald-700 shrink-0 transition-colors"
+                title="Clear locked selection target"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
           {/* Messages Scroll Area */}
           <div
             ref={chatScrollRef}
@@ -658,64 +737,120 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                 >
                   <p className="whitespace-pre-wrap">{msg.text}</p>
 
-                  {/* Render Insertable Clause Card */}
-                  {msg.insertableClause && (
-                    <div className="mt-2.5 pt-2.5 border-t border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-[#105B38] flex items-center gap-1">
-                          <Scale className="w-3 h-3" />
-                          {msg.clauseTitle || "Clause Preview"}
-                        </span>
+                  {/* Claude-Style Diff Review Card */}
+                  {msg.diffContext && msg.diffContext.status === "pending" ? (
+                    <DiffReviewCard
+                      originalText={msg.diffContext.originalText}
+                      revisedText={msg.diffContext.revisedText}
+                      targetLabel={msg.clauseTitle || (msg.isWholeDocument ? "Updated Pleading Draft" : "Targeted Selection Edit")}
+                      isWholeDocument={msg.isWholeDocument}
+                      isRevising={isGenerating}
+                      onAccept={(revisedText) => {
+                        let applied = false;
+                        if (msg.diffContext?.selection && onApplyTargetedEdit) {
+                          applied = onApplyTargetedEdit(revisedText, msg.diffContext.selection);
+                        } else {
+                          onReplaceDocument(revisedText, msg.documentType);
+                          applied = true;
+                        }
+                        if (applied) {
+                          setMessages((prev) =>
+                            prev.map((m) =>
+                              m.id === msg.id && m.diffContext
+                                ? { ...m, diffContext: { ...m.diffContext, status: "accepted" } }
+                                : m
+                            )
+                          );
+                          onClearLockedSelection?.();
+                        }
+                      }}
+                      onReject={() => {
+                        setMessages((prev) =>
+                          prev.map((m) =>
+                            m.id === msg.id && m.diffContext
+                              ? { ...m, diffContext: { ...m.diffContext, status: "rejected" } }
+                              : m
+                          )
+                        );
+                        toast({
+                          title: "Revision Dismissed",
+                          description: "Draft was kept unchanged in original form.",
+                        });
+                      }}
+                      onRevise={(prompt) => {
+                        handleSend(prompt);
+                      }}
+                    />
+                  ) : msg.diffContext && msg.diffContext.status === "accepted" ? (
+                    <div className="mt-2.5 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-200 font-semibold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>Revision Accepted &amp; Applied to Document Canvas</span>
+                    </div>
+                  ) : msg.diffContext && msg.diffContext.status === "rejected" ? (
+                    <div className="mt-2.5 p-2 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1.5">
+                      <X className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span>Revision Rejected · Original Text Preserved</span>
+                    </div>
+                  ) : (
+                    /* Fallback for legacy messages or initial templates */
+                    msg.insertableClause && (
+                      <div className="mt-2.5 pt-2.5 border-t border-[#E2E8F0] dark:border-[#1E2D44] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-[#105B38] flex items-center gap-1">
+                            <Scale className="w-3 h-3" />
+                            {msg.clauseTitle || "Clause Preview"}
+                          </span>
 
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(msg.id, msg.insertableClause!)}
-                            className="p-1 rounded bg-[#F1F5F9] dark:bg-[#1E2D44] hover:bg-[#E2E8F0] text-[#334155] dark:text-[#CBD5E1] text-[10px] font-semibold transition-colors"
-                            title="Copy Clause"
-                          >
-                            {copiedId === msg.id ? (
-                              <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                            ) : (
-                              <Copy className="w-3 h-3" />
-                            )}
-                          </button>
-
-                          {!msg.isWholeDocument && (
+                          <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() =>
-                                onInsertClause(msg.insertableClause!, msg.clauseTitle)
-                              }
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#105B38] hover:bg-[#0D4A2E] text-white text-[10px] font-bold shadow-xs transition-all"
-                              title="Insert at cursor position in editor"
+                              onClick={() => handleCopy(msg.id, msg.insertableClause!)}
+                              className="p-1 rounded bg-[#F1F5F9] dark:bg-[#1E2D44] hover:bg-[#E2E8F0] text-[#334155] dark:text-[#CBD5E1] text-[10px] font-semibold transition-colors"
+                              title="Copy Clause"
                             >
-                              <PlusCircle className="w-3 h-3" />
-                              <span>Insert</span>
+                              {copiedId === msg.id ? (
+                                <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
                             </button>
-                          )}
 
-                          <button
-                            type="button"
-                            onClick={() => onReplaceDocument(msg.insertableClause!, msg.documentType)}
-                            className={cn(
-                              "inline-flex items-center gap-1 rounded-md text-[10px] font-bold transition-colors",
-                              msg.isWholeDocument
-                                ? "px-2 py-0.5 bg-[#105B38] hover:bg-[#0D4A2E] text-white shadow-xs"
-                                : "px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20"
+                            {!msg.isWholeDocument && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onInsertClause(msg.insertableClause!, msg.clauseTitle)
+                                }
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#105B38] hover:bg-[#0D4A2E] text-white text-[10px] font-bold shadow-xs transition-all"
+                                title="Insert at cursor position in editor"
+                              >
+                                <PlusCircle className="w-3 h-3" />
+                                <span>Insert</span>
+                              </button>
                             )}
-                            title={msg.isWholeDocument ? "Apply the updated draft" : "Replace full document"}
-                          >
-                            <RefreshCw className="w-3 h-3" />
-                            <span>{msg.isWholeDocument ? "Apply" : "Replace"}</span>
-                          </button>
+
+                            <button
+                              type="button"
+                              onClick={() => onReplaceDocument(msg.insertableClause!, msg.documentType)}
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-md text-[10px] font-bold transition-colors",
+                                msg.isWholeDocument
+                                  ? "px-2 py-0.5 bg-[#105B38] hover:bg-[#0D4A2E] text-white shadow-xs"
+                                  : "px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20"
+                              )}
+                              title={msg.isWholeDocument ? "Apply the updated draft" : "Replace full document"}
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              <span>{msg.isWholeDocument ? "Apply" : "Replace"}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] font-serif text-[11px] text-[#1E293B] dark:text-[#F8FAFC] leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto custom-scrollbar">
+                          {msg.insertableClause}
                         </div>
                       </div>
-
-                      <div className="p-2.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] font-serif text-[11px] text-[#1E293B] dark:text-[#F8FAFC] leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto custom-scrollbar">
-                        {msg.insertableClause}
-                      </div>
-                    </div>
+                    )
                   )}
 
                   {/* Render Alternative Case Law Recommendations */}

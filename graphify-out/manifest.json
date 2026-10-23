@@ -228,9 +228,9 @@
     "semantic_hash": "81dc7d0829650cc0a81d56083de6a5e1"
   },
   "client/src/components/legal-editor.tsx": {
-    "mtime": 1789894213.7364902,
-    "seen": 1791836288.712509,
-    "ast_hash": "48cdaba8af4fdee8fe25451135412d46",
+    "mtime": 1792753531.1880476,
+    "seen": 1792753662.428163,
+    "ast_hash": "0c6f187b74d6083de6c65669c408f2fa",
     "semantic_hash": ""
   },
   "client/src/components/legal-markdown.tsx": {
@@ -2298,9 +2298,9 @@
     "semantic_hash": "d7c65518e9a60474aedc33c7fd21aeaf"
   },
   "server/routes.ts": {
-    "mtime": 1792743469.8121486,
-    "seen": 1792743543.351255,
-    "ast_hash": "feb3c032e1df0fd4dfc648067451bcd7",
+    "mtime": 1792794568.9640892,
+    "seen": 1792794701.773234,
+    "ast_hash": "bb555382a33730d1d1b1f6da0325536d",
     "semantic_hash": ""
   },
   "server/run-mcp.ts": {
@@ -4056,9 +4056,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/components/drafting/RightDraftingSidebar.tsx": {
-    "mtime": 1789744119.6472142,
-    "seen": 1791836288.713653,
-    "ast_hash": "e65936dec670948df8a804a4161a9c79",
+    "mtime": 1792794472.582734,
+    "seen": 1792794701.76271,
+    "ast_hash": "0dd2a2629cdfdbc234f8c787a88ed136",
     "semantic_hash": ""
   },
   "client/src/experimental/components/drafting/StatutoryClauseLibrary.tsx": {
@@ -4314,9 +4314,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewDrafting.tsx": {
-    "mtime": 1789744119.6480763,
-    "seen": 1791836288.713888,
-    "ast_hash": "56a2337002fe035c3a06866741bdc42c",
+    "mtime": 1792753567.0882316,
+    "seen": 1792753662.431811,
+    "ast_hash": "7e40d03820c5a5f7c68b89478a729015",
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewFaq.tsx": {
@@ -42129,6 +42129,24 @@
     "mtime": 1792061675.2420008,
     "seen": 1792061844.9636102,
     "ast_hash": "33284304fa5203d9a91cd738f4c1f629",
+    "semantic_hash": ""
+  },
+  "client/src/experimental/components/drafting/DiffReviewCard.tsx": {
+    "mtime": 1792753548.366594,
+    "seen": 1792753662.4305978,
+    "ast_hash": "c7ad160841a82f6c58f03ee944e71a5e",
+    "semantic_hash": ""
+  },
+  "client/src/experimental/lib/text-diff.ts": {
+    "mtime": 1792750908.105463,
+    "seen": 1792751030.292445,
+    "ast_hash": "479142751193777a8bab8d9771220485",
+    "semantic_hash": ""
+  },
+  "tests/unit/claude-canvas-diff.test.ts": {
+    "mtime": 1792753584.6873503,
+    "seen": 1792753662.444166,
+    "ast_hash": "1400f60cf72fd7c3f9d8fb8c9fb15aa4",
     "semantic_hash": ""
   }
 }

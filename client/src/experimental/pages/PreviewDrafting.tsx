@@ -130,6 +130,19 @@ export const PreviewDrafting: React.FC = () => {
   const [currentHtml, setCurrentHtml] = useState<string>(activeTab?.htmlContent || "");
   const [currentText, setCurrentText] = useState<string>(activeTab?.textContent || "");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+  const [docVersion, setDocVersion] = useState<number>(1);
+  const [lockedSelection, setLockedSelection] = useState<{
+    text: string;
+    from: number;
+    to: number;
+    docVersion: number;
+  } | null>(null);
+  const [liveSelection, setLiveSelection] = useState<{
+    text: string;
+    from: number;
+    to: number;
+  } | null>(null);
+  const [triggerPrompt, setTriggerPrompt] = useState<{ prompt: string; timestamp: number } | null>(null);
 
   const queryClient = useQueryClient();
   const [isSavedDraftsModalOpen, setIsSavedDraftsModalOpen] = useState(false);
@@ -534,6 +547,7 @@ export const PreviewDrafting: React.FC = () => {
     (html: string, text: string) => {
       setCurrentHtml(html);
       setCurrentText(text);
+      setDocVersion((v) => v + 1);
       setSaveStatus("unsaved");
 
       setTabs((prev) => {
@@ -773,6 +787,80 @@ export const PreviewDrafting: React.FC = () => {
     });
   };
 
+  // ── Claude-Style Safe Surgical Targeted Edit Handler ───────────────────────
+  const handleApplyTargetedEdit = useCallback(
+    (
+      revisedSnippet: string,
+      selection: { text: string; from: number; to: number; docVersion?: number }
+    ): boolean => {
+      if (!editorRef.current) return false;
+
+      // Integrity verification: ensure target range content has not changed unexpectedly
+      const formattedHtml = plainTextToTiptapHTML(revisedSnippet);
+      const success = editorRef.current.replaceRange(
+        selection.from,
+        selection.to,
+        formattedHtml,
+        selection.text
+      );
+
+      if (!success) {
+        toast({
+          title: "Stale Edit Warning",
+          description: "The text was modified since this edit was generated. To prevent overwriting newer changes, please re-select and regenerate.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      setDocVersion((v) => v + 1);
+      setLockedSelection(null);
+      setLiveSelection(null);
+      toast({
+        title: "Targeted Edit Applied",
+        description: "Surgically updated the selected passage without modifying other sections.",
+      });
+      return true;
+    },
+    [toast]
+  );
+
+  // Dismiss floating action bar on Escape key
+  useEffect(() => {
+    if (!liveSelection) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setLiveSelection(null);
+        setLockedSelection(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [liveSelection]);
+
+  const handleSelectionChange = useCallback(
+    (sel: { text: string; from: number; to: number } | null) => {
+      if (sel && sel.text.trim().length > 0) {
+        setLiveSelection(sel);
+        setLockedSelection({ ...sel, docVersion });
+      } else {
+        setLiveSelection(null);
+      }
+    },
+    [docVersion]
+  );
+
+  const handleTriggerAiEdit = useCallback(
+    (sel: { text: string; from: number; to: number }, preset?: string) => {
+      setLockedSelection({ ...sel, docVersion });
+      setIsRightSidebarOpen(true);
+      if (preset) {
+        setTriggerPrompt({ prompt: preset, timestamp: Date.now() });
+      }
+    },
+    [docVersion]
+  );
+
   // Metrics computation
   const wordCount = currentText.trim() ? currentText.trim().split(/\s+/).length : 0;
   const characterCount = currentText.length;
@@ -792,7 +880,7 @@ export const PreviewDrafting: React.FC = () => {
       ) : (
         <div className="flex h-full w-full overflow-hidden relative bg-white dark:bg-[#131E2E]">
           {/* ── Main Full-Width Writing Canvas ─────────────── */}
-          <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-white dark:bg-[#131E2E]">
+          <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-white dark:bg-[#131E2E] relative">
             {/* Document Tabs Bar (Clean & Focused) */}
             <div className="flex items-center justify-between px-4 py-1.5 bg-white dark:bg-[#131E2E] border-b border-[#E2E8F0] dark:border-[#1E2D44] shrink-0 h-11">
               {/* Tabs List */}
@@ -901,6 +989,79 @@ export const PreviewDrafting: React.FC = () => {
               </div>
             </div>
 
+            {/* Contextual AI Selection Action Bar (Floats & hovers over canvas when scrolling) */}
+            {liveSelection && (
+              <div className="absolute top-14 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-4xl px-3.5 py-2 rounded-2xl bg-white/95 dark:bg-[#071322]/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none pointer-events-auto">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-lg bg-[#105B38]/10 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 text-[#105B38] dark:text-emerald-400" />
+                  </div>
+                  <span className="font-semibold text-emerald-950 dark:text-emerald-100 truncate max-w-[240px] sm:max-w-md">
+                    Selected: &quot;{liveSelection.text.slice(0, 45)}{liveSelection.text.length > 45 ? "..." : ""}&quot;
+                  </span>
+                  <span className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 shrink-0 font-medium">
+                    ({liveSelection.text.split(/\s+/).filter(Boolean).length} words)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleTriggerAiEdit(liveSelection, "Improve legal clarity and flow")}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 text-xs font-medium transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                  >
+                    ✍️ Polish
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleTriggerAiEdit(liveSelection, "Shorten and make concise")}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 text-xs font-medium transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                  >
+                    ✂️ Shorten
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleTriggerAiEdit(liveSelection, "Expand with comprehensive legal grounds")}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 text-xs font-medium transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                  >
+                    📜 Expand
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleTriggerAiEdit(liveSelection, "Rewrite in formal court-assertive language")}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 text-xs font-medium transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                  >
+                    ⚖️ Court Tone
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleTriggerAiEdit(liveSelection)}
+                    className="px-3 py-1 rounded-lg bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Ask AI</span>
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setLiveSelection(null);
+                      setLockedSelection(null);
+                    }}
+                    className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors ml-0.5 cursor-pointer"
+                    title="Dismiss selection bar"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Virtual Court Sheet Canvas Area (100% Unobstructed Writing Space) */}
             <div
               data-editor-width={editorWidthMode}
@@ -917,6 +1078,8 @@ export const PreviewDrafting: React.FC = () => {
                   pageProfileId={activeProfileId}
                   onPageProfileChange={handleProfileChange}
                   onUpdate={handleEditorUpdate}
+                  onSelectionChange={handleSelectionChange}
+                  onTriggerAiEdit={handleTriggerAiEdit}
                   className="w-full shadow-lg rounded-sm"
                 />
               </div>
@@ -951,6 +1114,10 @@ export const PreviewDrafting: React.FC = () => {
             currentDocumentText={currentText}
             onInsertClause={handleInsertClause}
             onReplaceDocument={handleReplaceDocument}
+            onApplyTargetedEdit={handleApplyTargetedEdit}
+            lockedSelection={lockedSelection}
+            onClearLockedSelection={() => setLockedSelection(null)}
+            triggerPrompt={triggerPrompt}
             onLoadTemplate={handleLoadTemplate}
             onInsertTemplateAtCursor={handleInsertTemplateAtCursor}
             onOpenFeeModal={() => setIsFeeModalOpen(true)}

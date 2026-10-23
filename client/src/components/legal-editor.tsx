@@ -69,6 +69,7 @@ import {
   CaseSensitive,
   ChevronDown,
   BetweenHorizontalStart,
+  Sparkles,
 } from "lucide-react";
 import { Pilcrow } from "lucide-react";
 import { LegalPageBreak } from "@/lib/legal-page-break";
@@ -98,8 +99,12 @@ export type LegalEditorHandle = {
   insertContent: (html: string) => void;
   /** Get the currently selected text (empty string if no selection) */
   getSelectedText: () => string;
+  /** Get selection range and text, or null if collapsed */
+  getSelectionRange: () => { from: number; to: number; text: string } | null;
   /** Replace the current selection with new content */
   replaceSelection: (html: string) => void;
+  /** Replace a specific range after validating it hasn't changed unexpectedly */
+  replaceRange: (from: number, to: number, html: string, expectedOriginalText?: string) => boolean;
   /** Focus the editor */
   focus: () => void;
   /** Check if the editor is empty */
@@ -121,6 +126,10 @@ type LegalEditorProps = {
   pageProfileId?: LegalPageProfileId;
   /** Change the active paper and margin profile */
   onPageProfileChange?: (profileId: LegalPageProfileId) => void;
+  /** Callback when user changes selection range */
+  onSelectionChange?: (selection: { text: string; from: number; to: number } | null) => void;
+  /** Callback when user clicks an AI action chip on selection */
+  onTriggerAiEdit?: (selection: { text: string; from: number; to: number }, promptPreset?: string) => void;
 };
 
 // ── Toolbar button ───────────────────────────────────────────────────────
@@ -487,9 +496,13 @@ function LegalEditorInner(
     className,
     pageProfileId = DEFAULT_LEGAL_PAGE_PROFILE_ID,
     onPageProfileChange,
+    onSelectionChange,
+    onTriggerAiEdit,
   }: LegalEditorProps,
   ref: Ref<LegalEditorHandle>,
 ) {
+  const [selectedSnippet, setSelectedSnippet] = useState<{ text: string; from: number; to: number } | null>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -613,6 +626,20 @@ function LegalEditorInner(
         return false;
       },
     },
+    onSelectionUpdate: ({ editor: ed }) => {
+      const { from, to } = ed.state.selection;
+      if (from !== to) {
+        const text = ed.state.doc.textBetween(from, to, "\n");
+        if (text.trim().length > 0) {
+          const snippet = { text, from, to };
+          setSelectedSnippet(snippet);
+          onSelectionChange?.(snippet);
+          return;
+        }
+      }
+      setSelectedSnippet(null);
+      onSelectionChange?.(null);
+    },
     onUpdate: ({ editor: ed }) => {
       onUpdate?.(ed.getHTML(), ed.getText());
     },
@@ -639,6 +666,13 @@ function LegalEditorInner(
         if (from === to) return "";
         return editor.state.doc.textBetween(from, to, "\n");
       },
+      getSelectionRange: () => {
+        if (!editor) return null;
+        const { from, to } = editor.state.selection;
+        if (from === to) return null;
+        const text = editor.state.doc.textBetween(from, to, "\n");
+        return { from, to, text };
+      },
       replaceSelection: (html: string) => {
         if (!editor) return;
         editor
@@ -647,6 +681,27 @@ function LegalEditorInner(
           .deleteSelection()
           .insertContent(html)
           .run();
+      },
+      replaceRange: (from: number, to: number, html: string, expectedOriginalText?: string) => {
+        if (!editor) return false;
+        const docSize = editor.state.doc.content.size;
+        if (from < 0 || to > docSize || from > to) {
+          return false;
+        }
+        if (expectedOriginalText !== undefined) {
+          const currentTextAtRange = editor.state.doc.textBetween(from, to, "\n");
+          if (currentTextAtRange.trim() !== expectedOriginalText.trim()) {
+            return false;
+          }
+        }
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({ from, to })
+          .deleteSelection()
+          .insertContent(html)
+          .run();
+        return true;
       },
       focus: () => editor?.commands.focus(),
       isEmpty: () => editor?.isEmpty ?? true,
@@ -682,7 +737,7 @@ function LegalEditorInner(
 
   return (
     <div
-      className={`${className || ""} legal-editor-page-shell overflow-y-auto`}
+      className={`${className || ""} legal-editor-page-shell`}
       data-page-profile={pageProfileId}
       style={pageStyle}
     >

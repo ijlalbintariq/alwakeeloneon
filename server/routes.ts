@@ -14501,21 +14501,19 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       ],
     },
     "civil-misc-application": {
-      forumHeading: "IN THE COURT OF [CIVIL COURT/JUDGE] AT [CITY]",
-      filingCaption: "CIVIL MISC. APPLICATION / CMA",
+      forumHeading: "IN THE COURT OF [SENIOR CIVIL JUDGE / CIVIL JUDGE] AT [CITY]",
+      filingCaption: "CIVIL MISCELLANEOUS APPLICATION / APPLICATION UNDER [CPC PROVISION]",
       requiredInHeader: [
         { regex: /IN THE COURT OF/i, label: "Civil Court heading" },
-        { regex: /(CIVIL\s+MISC|CMA)/i, label: "Civil Misc. caption" },
-        { regex: /APPLICATION UNDER/i, label: "Application title" },
+        { regex: /(APPLICATION\s+(?:UNDER|FOR|TO|SEEKING|ON\s+BEHALF|OF)|PETITION\s+UNDER|CIVIL\s+MISC|CMA|C\.M\.|MISC\.?\s*APPLICATION)/i, label: "Application title or caption" },
       ],
     },
     "criminal-misc-application": {
-      forumHeading: "IN THE COURT OF THE JUSTICE OF PEACE / EX-OFFICIO JUSTICE OF PEACE AT [CITY]",
-      filingCaption: "CRIMINAL MISCELLANEOUS APPLICATION UNDER RELEVANT Cr.P.C. PROVISION",
+      forumHeading: "IN THE COURT OF [JUDICIAL MAGISTRATE / SESSIONS JUDGE / SPECIAL JUDGE / JUSTICE OF PEACE] AT [CITY]",
+      filingCaption: "CRIMINAL MISCELLANEOUS APPLICATION / APPLICATION UNDER RELEVANT Cr.P.C. PROVISION",
       requiredInHeader: [
-        { regex: /(JUSTICE OF PEACE|SESSIONS JUDGE|MAGISTRATE)/i, label: "Criminal forum heading" },
-        { regex: /(CRIMINAL\s+MISC|CRL\.?\s*MISC)/i, label: "Criminal Misc. caption" },
-        { regex: /APPLICATION UNDER/i, label: "Application title" },
+        { regex: /(IN THE COURT OF|JUSTICE OF PEACE|SESSIONS JUDGE|MAGISTRATE|HIGH COURT|SPECIAL JUDGE|SPECIAL COURT)/i, label: "Criminal forum heading" },
+        { regex: /(APPLICATION\s+(?:UNDER|FOR|TO|SEEKING|ON\s+BEHALF|OF)|PETITION\s+UNDER|CRIMINAL\s+MISC|CRL\.?\s*MISC|MISC\.?\s*APPLICATION)/i, label: "Criminal application title or caption" },
       ],
     },
     "temporary-injunction-application": {
@@ -14538,17 +14536,17 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       forumHeading: "IN THE COURT OF THE SESSIONS JUDGE, [CITY] (or IN THE SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES), [CITY] for CNSA cases; IN THE SPECIAL COURT (ANTI-TERRORISM), [CITY] for ATA cases)",
       filingCaption: "APPLICATION FOR POST-ARREST BAIL UNDER SECTION 497 Cr.P.C.",
       requiredInHeader: [
-        { regex: /(SESSIONS JUDGE|SPECIAL COURT)/i, label: "Sessions/Special Court heading" },
-        { regex: /(BAIL APPLICATION|APPLICATION (?:FOR|UNDER) (?:POST-ARREST |PRE-ARREST )?BAIL)/i, label: "Bail caption" },
+        { regex: /(SESSIONS JUDGE|SPECIAL COURT|COURT OF)/i, label: "Sessions/Special Court heading" },
+        { regex: /(BAIL\s+APPLICATION|APPLICATION\s+FOR\s+(?:THE\s+)?(?:GRANT\s+OF\s+)?(?:POST-ARREST\s+|PRE-ARREST\s+)?BAIL|APPLICATION\s+UNDER\s+SECTION\s+49[78]|POST-ARREST\s+BAIL|BAIL)/i, label: "Bail caption" },
       ],
     },
     "sessions-pre-arrest-bail": {
       forumHeading: "IN THE COURT OF THE SESSIONS JUDGE AT [CITY]",
       filingCaption: "APPLICATION FOR PRE-ARREST BAIL UNDER SECTION 498 Cr.P.C.",
       requiredInHeader: [
-        { regex: /SESSIONS JUDGE/i, label: "Sessions Court heading" },
-        { regex: /(PRE-ARREST|BEFORE ARREST)/i, label: "Pre-arrest caption" },
-        { regex: /498\s*Cr\.?P\.?C/i, label: "Section 498 Cr.P.C reference" },
+        { regex: /(SESSIONS JUDGE|SPECIAL COURT|COURT OF)/i, label: "Sessions Court heading" },
+        { regex: /(PRE-ARREST|BEFORE ARREST|ANTICIPATORY)/i, label: "Pre-arrest caption" },
+        { regex: /498\s*(?:Cr\.?\s*P\.?\s*C|CODE OF CRIMINAL PROCEDURE)/i, label: "Section 498 Cr.P.C reference" },
       ],
     },
     "sessions-criminal-appeal": {
@@ -14612,8 +14610,8 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       filingCaption: "CRIMINAL BAIL BEFORE ARREST UNDER SECTION 498 Cr.P.C.",
       requiredInHeader: [
         { regex: /HIGH COURT/i, label: "High Court heading" },
-        { regex: /(BAIL BEFORE ARREST|PRE-ARREST BAIL)/i, label: "Bail Before Arrest caption" },
-        { regex: /498\s*Cr\.?P\.?C/i, label: "Section 498 Cr.P.C reference" },
+        { regex: /(BAIL BEFORE ARREST|PRE-ARREST BAIL|BEFORE ARREST)/i, label: "Bail Before Arrest caption" },
+        { regex: /498\s*(?:Cr\.?\s*P\.?\s*C|CODE OF CRIMINAL PROCEDURE)/i, label: "Section 498 Cr.P.C reference" },
       ],
     },
     "supreme-court-cpla": {
@@ -15497,7 +15495,20 @@ Rules:
       { keywords: ["khula", "hizanat"], phrases: ["family suit", "family petition", "child custody", "custody of minor", "custody of child", "dissolution of marriage", "family court", "maintenance"], weight: 10 },
     ],
     "criminal-misc-application": [
-      { keywords: [], phrases: ["criminal misc", "criminal miscellaneous", "crl misc", "crm misc"], weight: 10 },
+      {
+        keywords: [
+          "crpc", "challan", "512", "superdari", "516-a", "249-a", "561-a",
+          "discharge", "remand", "magistrate", "proclaimed", "custody",
+          "investigation", "warrant", "nbw", "surety"
+        ],
+        phrases: [
+          "criminal misc", "criminal miscellaneous", "crl misc", "crm misc",
+          "recall challan", "consign to record", "consigne to record",
+          "512 crpc", "512 cr.p.c", "249-a crpc", "561-a crpc", "superdari application",
+          "cancellation of warrant", "exemption from personal appearance"
+        ],
+        weight: 10
+      },
     ],
     "sessions-criminal-revision": [
       { keywords: [], phrases: ["criminal revision", "revision petition"], weight: 8 },
@@ -15529,6 +15540,8 @@ Rules:
   const NEGATIVE_SIGNALS: Partial<Record<LegalDraftingDocType, RegExp>> = {
     "family-suit-petition": /(bail|497|498|fir|arrested|judicial custody|in custody|criminal|accused|challan)/,
     "nikah-nama-divorce": /(bail|fir|arrested|criminal|accused)/,
+    "civil-misc-application": /(cr\.?p\.?c|challan|fir\b|arrested|judicial custody|in custody|criminal|accused|512\s*cr|superdari|249-a|561-a)/i,
+    "civil-suit-plaint": /(cr\.?p\.?c|challan|fir\b|arrested|judicial custody|criminal|accused)/i,
   };
 
   function inferLegalDraftingDocTypeFromPrompt(prompt: string): LegalDraftingDocType | null {
@@ -15597,7 +15610,7 @@ Rules:
     const familySignalsNet = familySignals && !bailCriminalSignals;
     const supremeSignals = /(supreme court|cpla|leave to appeal)/.test(text);
     const sessionsSignals = /(sessions court|section\s*497|section\s*498|criminal bail)/.test(text);
-    const justiceOfPeaceSignals = /(22[-\s]?a|22[-\s]?b|justice of peace|registration of fir|section\s*154\s*cr\.?p\.?c)/.test(text);
+    const criminalMiscSignals = /(22[-\s]?a|22[-\s]?b|justice of peace|registration of fir|section\s*154|cr\.?p\.?c|challan|512|superdari|516-a|249-a|561-a|remand|magistrate|warrant)/i.test(text);
 
     if (inferredType === "high-court-writ-petition" && highCourtSignals) return true;
     if (inferredType === "family-suit-petition" && familySignalsNet) return true;
@@ -15608,7 +15621,7 @@ Rules:
     ) {
       return true;
     }
-    if (inferredType === "criminal-misc-application" && justiceOfPeaceSignals) return true;
+    if (inferredType === "criminal-misc-application" && criminalMiscSignals) return true;
     return false;
   }
 
@@ -15669,6 +15682,15 @@ Rules:
     if (isFullLegalRewriteRequested(prompt)) return false;
     const trimmed = String(prompt || "").trim();
     if (!trimmed || trimmed.length < 6) return false; // Too short to even ask about
+
+    // Clear drafting requests for applications, petitions, or suits are actionable, not ambiguous:
+    if (/\b(draft|write|prepare|formulate|generate)\b/i.test(trimmed) && /\b(application|petition|suit|cma|notice|agreement|reply|deed)\b/i.test(trimmed)) {
+      return false;
+    }
+    if (/\b(application|petition|suit)\s+(?:for|under|to|seeking|against|regarding)\b/i.test(trimmed)) {
+      return false;
+    }
+
     // Ambiguous: short prompt with no clear doc type and no draft
     if (trimmed.length <= 100 && trimmed.split(/\s+/).length <= 15) return true;
     return false;
@@ -16887,6 +16909,33 @@ ${lengthDirective}
 
         if (!isLocalizedEdit && !validation.ok) {
           draftedText = draftedText.replace(/```references[\s\S]*?```/gi, "").trim();
+          if (countDraftWords(draftedText) >= 30) {
+            const reviewAdvisories = validation.issues.map((i) => `Court-readiness review: ${i}`);
+            const finalAdvisories = attachmentAdvisories.concat(reviewAdvisories).concat(collectDraftAdvisories(
+              draftedText,
+              selectedDocType || "",
+              referenceResolution.references.caseLaw.length,
+              { boundedEdit: isLocalizedEdit },
+            ));
+            return res.json({
+              clause: draftedText,
+              sourceId: `legal-${selectedDocType || "custom-input"}`,
+              confidence: 0.82,
+              method: "ai-legal-drafting",
+              assistantMode: "draft",
+              operation: followUpOperation,
+              assistantMessage: `Draft prepared. Review required before court filing: ${validation.issues.join(" ")}`,
+              documentType: selectedDocType || "custom-input",
+              customDocumentType: useCustomDocType ? customDocType : undefined,
+              attachmentsUsed: files?.length || 0,
+              references: referenceResolution.references,
+              styleMemory: styleMemoryMeta || undefined,
+              recommendations: typeof extractedRecs !== "undefined" ? extractedRecs : [],
+              courtReady: false,
+              advisories: finalAdvisories,
+              validation,
+            });
+          }
           return res.status(422).json({
             message: `Draft requires review and was not marked court-ready: ${validation.issues.join(" ")}`,
             clause: draftedText,
