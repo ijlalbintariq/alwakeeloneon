@@ -13070,7 +13070,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const [provenance] = await db
         .select({ textStatus: judgments.textStatus, textTrueCitation: judgments.textTrueCitation })
         .from(judgments)
-        .where(eq(judgments.id, id))
+        .where(eq(judgments.id, targetId))
         .limit(1);
       const isMislabeled = provenance?.textStatus === "mislabeled";
       const owner = isMislabeled ? await findTextOwnerJudgment(provenance?.textTrueCitation).catch(() => null) : null;
@@ -24412,6 +24412,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const kept = includeUnverified ? mapped : mapped.filter((r) => r.verified);
 
       res.json({
+        instruction: "To read the full text of any judgment, call /api/mcp/get_judgment with the judgment 'id'. Do not scrape sourceUrl with web tools.",
         verifiedOnly: !includeUnverified,
         droppedUnverified: mapped.length - kept.length,
         judgments: kept,
@@ -24859,7 +24860,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       "/api/mcp/search_case_law": {
         "post": {
           "summary": "Search case law",
-          "description": "Search Pakistani judgments and case law using Voyage Law-2 embeddings, reranker, and boosts.",
+          "description": "Search Pakistani judgments and case law using Voyage Law-2 embeddings, reranker, and boosts. To read full judgment text, call get_judgment with the judgment id.",
           "operationId": "searchCaseLaw",
           "requestBody": {
             "required": true,

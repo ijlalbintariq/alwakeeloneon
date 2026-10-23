@@ -32,6 +32,7 @@ const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/judgment-view$/,
   /^\/citation-search$/,
   /^\/judgment\/[^/]+$/,
+  /^\/judgments\/[^/]+$/,
   /^\/statute-search$/,
   /^\/statute-view\/[^/]+$/,
   /^\/al-wakeelo$/,
@@ -672,9 +673,9 @@ export function serveStatic(app: Express) {
     let preRenderBlock: string | undefined;
     let notFound = false;
 
-    // Dynamic judgment pages — DB lookup for per-judgment SEO
-    const judgmentMatch = pathname.match(/^\/judgment\/([^/]+)$/);
-    if (judgmentMatch) {
+    // Dynamic judgment pages — DB lookup for per-judgment SEO (supports both /judgment/:id and /judgments/:id)
+    const judgmentMatch = pathname.match(/^\/judgments?\/([^/]+)$/);
+    if (judgmentMatch && judgmentMatch[1] !== "browse") {
       const judgmentId = judgmentMatch[1];
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(judgmentId);
       if (!isUuid) {

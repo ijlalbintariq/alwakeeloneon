@@ -780,9 +780,9 @@
     "semantic_hash": "030ba33c10681c75086e5fa232562771"
   },
   "client/src/pages/chat.tsx": {
-    "mtime": 1788565021.571884,
-    "seen": 1791836288.714484,
-    "ast_hash": "4d62af78d0b53a2a2551f58558c2a9d2",
+    "mtime": 1792522492.2389462,
+    "seen": 1792526036.708896,
+    "ast_hash": "9f7a33ea5b4a79d84cfb2c362e289f70",
     "semantic_hash": ""
   },
   "client/src/pages/checkout-success.tsx": {
@@ -792,8 +792,8 @@
     "semantic_hash": "ebbe1530d5ae43b9dd3405ed175b58e1"
   },
   "client/src/pages/checkout.tsx": {
-    "mtime": 1788565021.5611093,
-    "seen": 1791836288.714504,
+    "mtime": 1792586339.0384414,
+    "seen": 1792586406.8761148,
     "ast_hash": "42b211daf90abe1f6179b839862f6a8e",
     "semantic_hash": ""
   },
@@ -2046,9 +2046,9 @@
     "semantic_hash": "a0562e8d4333fbea7cddadf05a0630fb"
   },
   "server/mcp-server.ts": {
-    "mtime": 1791836809.3512619,
-    "seen": 1791837180.566046,
-    "ast_hash": "6fe53083378ebf398f68c923d0e5bc0c",
+    "mtime": 1792743447.5657775,
+    "seen": 1792743543.35042,
+    "ast_hash": "70303006a935cbc4fcae29d40cbc9431",
     "semantic_hash": ""
   },
   "server/middleware/db-guard.ts": {
@@ -2298,9 +2298,9 @@
     "semantic_hash": "d7c65518e9a60474aedc33c7fd21aeaf"
   },
   "server/routes.ts": {
-    "mtime": 1792331060.7370276,
-    "seen": 1792331109.5634181,
-    "ast_hash": "6bab3cfdb58333c025d3a905b742d5a6",
+    "mtime": 1792743469.8121486,
+    "seen": 1792743543.351255,
+    "ast_hash": "feb3c032e1df0fd4dfc648067451bcd7",
     "semantic_hash": ""
   },
   "server/run-mcp.ts": {
@@ -2370,9 +2370,9 @@
     "semantic_hash": ""
   },
   "server/static.ts": {
-    "mtime": 1790185949.14669,
-    "seen": 1791836288.7193658,
-    "ast_hash": "8c34add219a39e2bd50c3daa80aa6ed8",
+    "mtime": 1792743196.1861968,
+    "seen": 1792743543.351882,
+    "ast_hash": "17aed581d17500834bb5f9a4b82b3bdf",
     "semantic_hash": ""
   },
   "server/storage.ts": {
@@ -4272,8 +4272,8 @@
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewCheckout.tsx": {
-    "mtime": 1788565021.6239047,
-    "seen": 1791836288.713883,
+    "mtime": 1792586339.0380046,
+    "seen": 1792586406.87458,
     "ast_hash": "99f60d21221459ee7398b7befe08a3d9",
     "semantic_hash": ""
   },

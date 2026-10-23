@@ -160,7 +160,7 @@ async function callMcpDraftingAI(
 export function registerAllTools(server: McpServer) {
   // 1. Search Case Law
   server.registerTool("search_case_law", {
-    description: "Search Pakistani judgments and case law using the exact AlWakeelo hybrid search pipeline (Voyage Law-2, reranker, and court boosts). By default ONLY returns fully verified results: the citation is confirmed to exist in the judgments table AND that judgment's stored text is confirmed to be its own, so citation/title/court/year are authoritative. A hit whose citation is real but whose stored text belongs to a different case is returned with verified=false, textIntegrity='mislabeled', a belongsTo citation, and its title and summary withheld. ASSISTANT INSTRUCTION: Only cite records returned by this tool with verified=true. Never reconstruct, complete, or guess a citation yourself. Never present the title or holdings of a record whose textIntegrity is not 'own'. If droppedUnverified > 0, tell the user some hits were withheld and why.",
+    description: "Search Pakistani judgments and case law using the exact AlWakeelo hybrid search pipeline (Voyage Law-2, reranker, and court boosts). By default ONLY returns fully verified results: the citation is confirmed to exist in the judgments table AND that judgment's stored text is confirmed to be its own, so citation/title/court/year are authoritative. A hit whose citation is real but whose stored text belongs to a different case is returned with verified=false, textIntegrity='mislabeled', a belongsTo citation, and its title and summary withheld. ASSISTANT INSTRUCTION: Only cite records returned by this tool with verified=true. Never reconstruct, complete, or guess a citation yourself. Never present the title or holdings of a record whose textIntegrity is not 'own'. If droppedUnverified > 0, tell the user some hits were withheld and why. To retrieve the complete judgment full text, headnotes, and analysis for any record, call the 'get_judgment' tool using the judgment's 'id'. Never attempt to browse, scrape, or fetch 'sourceUrl' via web tools; 'sourceUrl' is exclusively a human-facing reference link for markdown output.",
     inputSchema: {
       query: z.string().describe("The search query containing legal topics or case details"),
       limit: z.number().optional().default(5).describe("Maximum number of records to return (default 5, max 10)"),
@@ -176,6 +176,7 @@ export function registerAllTools(server: McpServer) {
       droppedUnverified: z.number(),
       duplicatesDropped: z.number(),
       note: z.string().optional(),
+      instruction: z.string().optional(),
       judgments: z.array(z.object({
         id: z.string(),
         citation: z.string(),
@@ -190,7 +191,7 @@ export function registerAllTools(server: McpServer) {
         belongsTo: z.string().optional(),
         warning: z.string().optional(),
         pdfUrl: z.string().optional(),
-        sourceUrl: z.string().optional(),
+        sourceUrl: z.string().optional().describe("Human-facing reference link for markdown output only. Do NOT scrape or fetch with browser tools; use get_judgment to read full text."),
       })),
     },
     annotations: {
@@ -383,6 +384,7 @@ export function registerAllTools(server: McpServer) {
       note: droppedUnverified > 0
         ? `${droppedUnverified} hit(s) were withheld: either the citation could not be matched to a real judgment record, or the judgment's stored text is not its own and so its title and summary describe a different case. Do not cite them. Re-run with includeUnverified=true to inspect them as leads only.`
         : undefined,
+      instruction: "To read the complete text of any judgment, call the 'get_judgment' tool using its 'id'. Do not attempt to scrape or fetch 'sourceUrl' via web tools.",
       judgments: keptRows,
     };
 
@@ -664,7 +666,7 @@ export function registerAllTools(server: McpServer) {
 
   // 4. Legal Research (Full Grounded RAG Pipeline)
   server.registerTool("legal_research", {
-    description: "Perform deep, multi-stage legal research across AlWakeelo's full RAG context (intent analysis, Voyage Law-2 embeddings, reranker, citation validation, and parent-child chunk resolution). Returns the grounded text context injected into LLM system prompts, plus a per-citation verification report. ASSISTANT INSTRUCTION: The context is retrieved text and may contain citations that do not exist. Only cite a citation listed in `citations` with verified=true. Never repeat, complete or reconstruct an unverified citation — refer to that material descriptively without a citation, or call search_case_law instead.",
+    description: "Perform deep, multi-stage legal research across AlWakeelo's full RAG context (intent analysis, Voyage Law-2 embeddings, reranker, citation validation, and parent-child chunk resolution). Returns the grounded text context injected into LLM system prompts, plus a per-citation verification report. ASSISTANT INSTRUCTION: The context is retrieved text and may contain citations that do not exist. Only cite a citation listed in `citations` with verified=true. Never repeat, complete or reconstruct an unverified citation — refer to that material descriptively without a citation, or call search_case_law instead. To read the complete judgment text of any verified citation, call 'get_judgment' with its citation or judgmentId. Never attempt to scrape or fetch judgment web URLs with browser tools.",
     inputSchema: {
       query: z.string().describe("The legal query, scenario description, or question to research"),
     },
