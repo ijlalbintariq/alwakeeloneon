@@ -115,3 +115,22 @@ test("computeWordDiff: preserves sentence structure and line breaks in tokens", 
   // Reconstructed text should account for the new additions cleanly
   assert.ok(fullText.includes("(amended)"));
 });
+
+test("computeWordDiff: handles large documents without call stack overflow", () => {
+  const lineCount = 1200;
+  const originalLines = Array.from({ length: lineCount }, (_, i) => `Paragraph line ${i} of legal filing text.`);
+  const revisedLines = Array.from({ length: lineCount }, (_, i) =>
+    i % 10 === 0 ? `Updated paragraph line ${i} with modified legal clause.` : `Paragraph line ${i} of legal filing text.`
+  );
+
+  const original = originalLines.join("\n");
+  const revised = revisedLines.join("\n");
+
+  // This would throw RangeError: Maximum call stack size exceeded with recursive LCS
+  assert.doesNotThrow(() => {
+    const result = computeWordDiff(original, revised);
+    assert.ok(result.hasChanges);
+    assert.ok(result.additionsCount > 0);
+    assert.ok(result.deletionsCount > 0);
+  });
+});

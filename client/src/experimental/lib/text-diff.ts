@@ -53,25 +53,37 @@ function computeLCS(tokensA: string[], tokensB: string[]): number[][] {
 }
 
 /**
- * Backtracks the LCS table to build the diff tokens array.
+ * Backtracks the LCS table iteratively to build the diff tokens array.
+ * Iterative backtracking prevents call stack overflows on long legal filings.
  */
 function backtrackLCS(
   dp: number[][],
   tokensA: string[],
   tokensB: string[],
-  i: number,
-  j: number,
+  startI: number,
+  startJ: number,
   result: DiffToken[]
 ): void {
-  if (i > 0 && j > 0 && tokensA[i - 1] === tokensB[j - 1]) {
-    backtrackLCS(dp, tokensA, tokensB, i - 1, j - 1, result);
-    result.push({ type: "eq", value: tokensA[i - 1] });
-  } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-    backtrackLCS(dp, tokensA, tokensB, i, j - 1, result);
-    result.push({ type: "add", value: tokensB[j - 1] });
-  } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
-    backtrackLCS(dp, tokensA, tokensB, i - 1, j, result);
-    result.push({ type: "del", value: tokensA[i - 1] });
+  let i = startI;
+  let j = startJ;
+  const reversed: DiffToken[] = [];
+
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && tokensA[i - 1] === tokensB[j - 1]) {
+      reversed.push({ type: "eq", value: tokensA[i - 1] });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      reversed.push({ type: "add", value: tokensB[j - 1] });
+      j--;
+    } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+      reversed.push({ type: "del", value: tokensA[i - 1] });
+      i--;
+    }
+  }
+
+  for (let k = reversed.length - 1; k >= 0; k--) {
+    result.push(reversed[k]);
   }
 }
 

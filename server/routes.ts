@@ -7726,6 +7726,12 @@ function getUserId(req: any): string | null {
   return req.session?.userId || null;
 }
 
+function requireAuthenticatedUser(req: any, res: any, next: any) {
+  const userId = getUserId(req);
+  if (!userId) return res.sendStatus(401);
+  next();
+}
+
 export async function checkUsageLimit(userId: string, feature: string, res: any): Promise<boolean> {
   try {
     if (!checkRateLimit(userId, feature)) {
@@ -15780,9 +15786,8 @@ Rules:
     return [];
   }
 
-  app.post("/api/retrieval/clauses/generate", guardedUploadQueue, retrievalAttachmentUpload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.sendStatus(401);
+  app.post("/api/retrieval/clauses/generate", requireAuthenticatedUser, guardedUploadQueue, retrievalAttachmentUpload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
+    const userId = getUserId(req)!;
     let extractedRecs: any[] = [];
     try {
       const { prompt, draftText, jurisdiction, module, documentType } = req.body as {
@@ -16374,6 +16379,7 @@ Response format:
           });
         }
         let draftedText = "";
+        let replacementSnippet: string | undefined = undefined;
         extractedRecs = [];
         let rawModelWords = 0;
         if (isLocalizedEdit && editTarget) {
@@ -16476,6 +16482,7 @@ ${legalKnowledgeContextBlock}${styleContext ? `\n\nPersonal Style Memory:\n${sty
             });
           }
           draftedText = patched.text;
+          replacementSnippet = replacementText;
         } else {
           // When conversion is requested, add explicit override instruction
           const conversionOverride = isConversionRequest && selectedDocType
@@ -16928,6 +16935,7 @@ ${lengthDirective}
               documentType: selectedDocType || "custom-input",
               customDocumentType: useCustomDocType ? customDocType : undefined,
               attachmentsUsed: files?.length || 0,
+              replacementSnippet: isLocalizedEdit ? replacementSnippet : undefined,
               references: referenceResolution.references,
               styleMemory: styleMemoryMeta || undefined,
               recommendations: typeof extractedRecs !== "undefined" ? extractedRecs : [],
@@ -16973,6 +16981,7 @@ ${lengthDirective}
           documentType: selectedDocType || "custom-input",
           customDocumentType: useCustomDocType ? customDocType : undefined,
           attachmentsUsed: files?.length || 0,
+          replacementSnippet: isLocalizedEdit ? replacementSnippet : undefined,
           references: referenceResolution.references,
           styleMemory: styleMemoryMeta || undefined,
           recommendations: typeof extractedRecs !== "undefined" ? extractedRecs : [],

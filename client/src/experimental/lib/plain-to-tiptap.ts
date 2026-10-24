@@ -93,9 +93,13 @@ export const BULLET_ITEM_RE = /^[-*•+]\s+(.+)$/;
 // Detect horizontal rules (e.g. "---", "***", "___")
 export const HORIZONTAL_RULE_RE = /^(\-{3,}|\*{3,}|_{3,})$/;
 
-export function plainTextToTiptapHTML(raw: string): string {
-  if (!raw || typeof raw !== "string") return "<p></p>";
+export function plainTextToTiptapHTML(raw: string, options?: { inlineOnly?: boolean }): string {
+  if (!raw || typeof raw !== "string") return options?.inlineOnly ? "" : "<p></p>";
   if (isHTMLContent(raw)) return raw;
+
+  if (options?.inlineOnly) {
+    return parseInlineFormatting(raw).replace(/\r?\n/g, "<br>");
+  }
 
   const lines = raw.split(/\r?\n/);
   const blocks: string[] = [];

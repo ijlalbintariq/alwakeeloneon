@@ -83,9 +83,15 @@ type ParsedNode =
 
 function parseHTML(html: string): ParsedNode[] {
   const nodes: ParsedNode[] = [];
-  // Use a temporary DOM element to parse HTML
-  const container = document.createElement("div");
-  container.innerHTML = html;
+  // Parse HTML using DOMParser for safe inert DOM parsing (prevents inline script execution during parse)
+  let container: Element;
+  if (typeof DOMParser !== "undefined") {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    container = doc.body;
+  } else {
+    container = document.createElement("div");
+    container.innerHTML = html;
+  }
 
   function extractTextRuns(el: Node, parentBold = false, parentItalic = false, parentUnderline = false): TextRun[] {
     const runs: TextRun[] = [];

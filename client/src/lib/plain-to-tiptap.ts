@@ -35,9 +35,13 @@ const STANDALONE_ROLE_RE = /^[.…]*\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF
 // Detect numbered items like "1. ", "2. ", "10. " at start of line
 const NUMBERED_ITEM_RE = /^\d{1,3}\.\s+/;
 
-export function plainTextToTiptapHTML(raw: string): string {
-  if (!raw || typeof raw !== "string") return "<p></p>";
+export function plainTextToTiptapHTML(raw: string, options?: { inlineOnly?: boolean }): string {
+  if (!raw || typeof raw !== "string") return options?.inlineOnly ? "" : "<p></p>";
   if (raw.trimStart().startsWith("<")) return raw;
+
+  if (options?.inlineOnly) {
+    return esc(raw).replace(/\r?\n/g, "<br>");
+  }
 
   const lines = raw.split(/\r?\n/);
   const blocks: string[] = [];

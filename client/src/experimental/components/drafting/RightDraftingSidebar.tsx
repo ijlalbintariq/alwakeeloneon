@@ -71,6 +71,7 @@ interface RightDraftingSidebarProps {
   /** Current editor selection. Sending it turns the request into a bounded edit
    *  of that passage instead of a whole-document rewrite. */
   getSelectedText?: () => string;
+  getSelectionRange?: () => { from: number; to: number; text: string } | null;
   onChangeProfileId: (id: LegalPageProfileId) => void;
   editorWidthMode: "wide" | "full" | "court";
   onChangeWidthMode: (mode: "wide" | "full" | "court") => void;
@@ -116,6 +117,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   activeProfileId,
   activeDocumentType,
   getSelectedText,
+  getSelectionRange,
   onChangeProfileId,
   editorWidthMode,
   onChangeWidthMode,
@@ -272,8 +274,9 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
     if (!textOverride) setInputPrompt("");
     setIsGenerating(true);
 
-    // Read the selection now — prioritize lockedSelection from parent
-    const activeTargetSelection = lockedSelection || (getSelectedText?.() ? { text: getSelectedText()!, from: 0, to: 0 } : null);
+    // Read the selection now — prioritize lockedSelection from parent, then active range
+    const liveRange = getSelectionRange?.();
+    const activeTargetSelection = lockedSelection || (liveRange && liveRange.from !== liveRange.to ? liveRange : null) || (getSelectedText?.() ? { text: getSelectedText()!, from: 0, to: 0 } : null);
     const selectedSnippet = (activeTargetSelection?.text || "").trim();
 
     try {
@@ -434,18 +437,23 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
         "initial-draft",
       ]);
       const isWholeDocument = WHOLE_DOCUMENT_OPERATIONS.has(String(data.operation || ""));
-      const isTargetedSelection = !!activeTargetSelection?.text;
+      const isTargetedSelection = !!activeTargetSelection?.text && activeTargetSelection.from !== activeTargetSelection.to;
 
-      // Build diff context for Claude-style review
-      const originalTextForDiff = isTargetedSelection
+      // If the server returned an isolated replacement snippet for a bounded range,
+      // compare the snippet against the selected text. Otherwise, compare the whole document.
+      const hasSurgicalSnippet = !!data.replacementSnippet && isTargetedSelection;
+      const originalTextForDiff = hasSurgicalSnippet
         ? activeTargetSelection.text
         : currentDocumentText;
+      const revisedTextForDiff = hasSurgicalSnippet
+        ? data.replacementSnippet
+        : generatedClause;
 
       const diffContext = generatedClause
         ? {
             originalText: originalTextForDiff,
-            revisedText: generatedClause,
-            selection: activeTargetSelection || undefined,
+            revisedText: revisedTextForDiff,
+            selection: hasSurgicalSnippet ? activeTargetSelection : undefined,
             status: "pending" as const,
           }
         : undefined;
@@ -460,7 +468,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
       const clauseTitle =
         data.title ||
         (data.changedTarget ? `Updated draft — ${data.changedTarget}` : null) ||
-        (isTargetedSelection ? "Targeted Selection Revision" : isWholeDocument ? "Updated Draft" : "Court-Ready Clause");
+        (hasSurgicalSnippet ? "Targeted Selection Revision" : isWholeDocument ? "Updated Draft" : "Court-Ready Clause");
       const explanationWithAdvisories = advisories.length
         ? `${explanation}\n\nBefore filing:\n${advisories.map((a) => `• ${a}`).join("\n")}`
         : explanation;
@@ -742,15 +750,15 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                     <DiffReviewCard
                       originalText={msg.diffContext.originalText}
                       revisedText={msg.diffContext.revisedText}
-                      targetLabel={msg.clauseTitle || (msg.isWholeDocument ? "Updated Pleading Draft" : "Targeted Selection Edit")}
-                      isWholeDocument={msg.isWholeDocument}
+                      targetLabel={msg.clauseTitle || (msg.diffContext.selection ? "Targeted Selection Revision" : "Updated Pleading Draft")}
+                      isWholeDocument={!msg.diffContext.selection}
                       isRevising={isGenerating}
                       onAccept={(revisedText) => {
                         let applied = false;
                         if (msg.diffContext?.selection && onApplyTargetedEdit) {
                           applied = onApplyTargetedEdit(revisedText, msg.diffContext.selection);
                         } else {
-                          onReplaceDocument(revisedText, msg.documentType);
+                          onReplaceDocument(msg.insertableClause || revisedText, msg.documentType);
                           applied = true;
                         }
                         if (applied) {

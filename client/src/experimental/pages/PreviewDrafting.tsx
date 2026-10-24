@@ -796,7 +796,10 @@ export const PreviewDrafting: React.FC = () => {
       if (!editorRef.current) return false;
 
       // Integrity verification: ensure target range content has not changed unexpectedly
-      const formattedHtml = plainTextToTiptapHTML(revisedSnippet);
+      // If the revised snippet or target selection contains no newlines (single inline fragment),
+      // format as inline HTML so ProseMirror doesn't split the surrounding paragraph.
+      const isInline = !selection.text.includes("\n") && !revisedSnippet.includes("\n");
+      const formattedHtml = plainTextToTiptapHTML(revisedSnippet, { inlineOnly: isInline });
       const success = editorRef.current.replaceRange(
         selection.from,
         selection.to,
@@ -1125,6 +1128,7 @@ export const PreviewDrafting: React.FC = () => {
             activeProfileId={activeProfileId}
             activeDocumentType={activeTab?.documentType}
             getSelectedText={() => editorRef.current?.getSelectedText() || ""}
+            getSelectionRange={() => editorRef.current?.getSelectionRange() || null}
             onChangeProfileId={handleProfileChange}
             editorWidthMode={editorWidthMode}
             onChangeWidthMode={setEditorWidthMode}
