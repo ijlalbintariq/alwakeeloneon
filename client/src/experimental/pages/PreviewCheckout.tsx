@@ -48,13 +48,13 @@ const FALLBACK_PLANS: PlanDetail[] = [
     badge: "Solo Counsel",
     monthlyPricePkr: 0,
     seats: "1 Advocate Seat",
-    aiActions: "10 AI Actions / mo",
+    aiActions: "5 AI Actions / mo",
     features: [
-      "10 AI Actions per month",
+      "5 AI Actions per month",
       "Standard AI model access",
       "83,117 Pakistani Statutes & 5,887 Acts",
       "Limitation Act Schedule calculator",
-      "10 case file uploads (100 pages PDF chat)",
+      "5 case file uploads (50 pages PDF chat)",
     ],
   },
   {

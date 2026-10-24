@@ -2670,7 +2670,7 @@ function resolveFreeTierLimit(featureRaw: string): {
   return {
     limitKey: "chat",
     label: "AI chat",
-    monthlyLimit: 10,
+    monthlyLimit: 5,
     features: [...FREE_TIER_CHAT_BUCKET_FEATURES],
   };
 }
@@ -7784,7 +7784,7 @@ export async function checkUsageLimit(userId: string, feature: string, res: any)
       }
       if (usedTotal >= freeTierLimit.monthlyLimit) {
         res.status(429).json({
-          message: `Your free-tier ${freeTierLimit.label} limit of ${freeTierLimit.monthlyLimit} has been used. Please subscribe to continue using Al Wakeelo.`,
+          message: `Your free-tier ${freeTierLimit.label} limit of ${freeTierLimit.monthlyLimit} has been reached. Please buy the bundle to continue using Al Wakeelo.`,
           limit: freeTierLimit.monthlyLimit,
           used: usedTotal,
           tier,
@@ -7808,7 +7808,7 @@ export async function checkUsageLimit(userId: string, feature: string, res: any)
     }
 
     if (usedThisMonth >= limits.monthlyQueries) {
-      const limitMessage = `Your ${limits.label} package limit has ended for this cycle (${limits.monthlyQueries}). Please re-subscribe/renew your package to continue using the app.`;
+      const limitMessage = `Your ${limits.label} package limit has ended for this cycle (${limits.monthlyQueries}). Please buy the bundle to continue using Al Wakeelo.`;
       res.status(429).json({
         message: limitMessage,
         limit: limits.monthlyQueries,
@@ -8504,7 +8504,7 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
         { name: "citation_search", description: "Look up case law by PLD, SCMR, CLC, YLR, MLD citation", endpoint: "https://www.alwakeelo.com/citation-search" }
       ],
       authentication: "OAuth 2.0",
-      pricing: { freeTier: true, description: "Free tier includes 10 AI chats, 1 legal draft, and 1 contract draft per month." },
+      pricing: { freeTier: true, description: "Free tier includes 5 AI chats, 1 legal draft, and 1 contract draft per month." },
       lastUpdated: "2026-07-24"
     });
   });
@@ -11699,14 +11699,14 @@ RAG POLICY (STRICT):
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      // Free tier: lifetime limit of 10 judgment searches (Voyage AI vector search costs money per query)
+      // Free tier: lifetime limit of 5 judgment searches (Voyage AI vector search costs money per query)
       const searchUserTier = normalizeTier(await storage.getUserTier(userId));
       if (searchUserTier === "free") {
         const searchCount = await storage.getJudgmentSearchCount(userId);
-        if (searchCount >= 10) {
+        if (searchCount >= 5) {
           return res.status(403).json({
-            message: "Lifetime free tier limit reached (10 judgment searches). Please upgrade to Standard or Pro to continue researching.",
-            limit: 10,
+            message: "Free-tier limit reached (5 judgment searches). Please buy the bundle to continue researching.",
+            limit: 5,
             used: searchCount,
             tier: "free",
             upgradeRequired: true,
@@ -23600,13 +23600,13 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
           badge: "Solo Counsel",
           monthlyPricePkr: 0,
           seats: "1 Advocate Seat",
-          aiActions: "10 AI Actions / mo",
+          aiActions: "5 AI Actions / mo",
           features: [
-            "10 AI Actions per month",
+            "5 AI Actions per month",
             "Standard AI model access",
             "83,117 Pakistani Statutes & 5,887 Acts",
             "Limitation Act Schedule calculator",
-            "10 case file uploads (100 pages PDF chat)",
+            "5 case file uploads (50 pages PDF chat)",
           ],
         },
         {

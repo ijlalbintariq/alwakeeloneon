@@ -63294,7 +63294,7 @@
       "file_type": "code",
       "norm_label": "rightdraftingsidebar()",
       "source_file": "client/src/experimental/components/drafting/RightDraftingSidebar.tsx",
-      "source_location": "L103"
+      "source_location": "L104"
     },
     {
       "id": "client_src_experimental_lib_cleanchatresponse_cleanlegalchatresponse",
@@ -201730,7 +201730,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "client/src/experimental/components/drafting/RightDraftingSidebar.tsx",
-      "source_location": "L1042",
+      "source_location": "L1066",
       "weight": 1.0
     },
     {
@@ -201742,7 +201742,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "client/src/experimental/components/drafting/RightDraftingSidebar.tsx",
-      "source_location": "L127",
+      "source_location": "L128",
       "weight": 1.0
     },
     {
@@ -201754,7 +201754,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "client/src/experimental/components/drafting/RightDraftingSidebar.tsx",
-      "source_location": "L168",
+      "source_location": "L169",
       "weight": 1.0
     },
     {
@@ -201766,7 +201766,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "client/src/experimental/components/drafting/RightDraftingSidebar.tsx",
-      "source_location": "L329",
+      "source_location": "L330",
       "weight": 1.0
     },
     {
@@ -201778,7 +201778,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "client/src/experimental/components/drafting/RightDraftingSidebar.tsx",
-      "source_location": "L351",
+      "source_location": "L352",
       "weight": 1.0
     },
     {
@@ -201790,7 +201790,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "client/src/experimental/components/drafting/RightDraftingSidebar.tsx",
-      "source_location": "L605",
+      "source_location": "L610",
       "weight": 1.0
     },
     {
@@ -347963,7 +347963,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "client/src/experimental/components/drafting/RightDraftingSidebar.tsx",
-      "source_location": "L103",
+      "source_location": "L104",
       "weight": 1.0
     },
     {
@@ -439403,5 +439403,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "dc9dcbe8e078c862098d605901161392107e369a"
+  "built_at_commit": "6465e4f7d7b6a86f4fdd8654899468c741b0b373"
 }

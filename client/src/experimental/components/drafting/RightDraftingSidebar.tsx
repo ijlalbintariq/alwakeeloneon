@@ -91,6 +91,7 @@ interface ChatMessage {
   documentType?: string;
   timestamp: string;
   recommendations?: any[];
+  isLimitError?: boolean;
   /** Claude-like diff review context */
   diffContext?: {
     originalText: string;
@@ -493,11 +494,15 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
     } catch (err: any) {
       console.error("AI Drafting error:", err);
       const errorMsg = err?.message || "Communication disrupted. Please try again.";
+      const isLimitError =
+        err?.status === 429 ||
+        /limit|bundle|free-tier|quota/i.test(errorMsg);
       const aiMsg: ChatMessage = {
         id: `ai-err-${Date.now()}`,
         role: "assistant",
         text: `⚠️ ${errorMsg}`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        isLimitError,
       };
       setMessages((prev) => [...prev, aiMsg]);
     } finally {
@@ -744,6 +749,25 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                   )}
                 >
                   <p className="whitespace-pre-wrap">{msg.text}</p>
+
+                  {/* Limit / Buy Bundle CTA */}
+                  {(msg.isLimitError || /limit|bundle/i.test(msg.text)) && msg.role === "assistant" && (
+                    <div className="mt-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-[#105B38]/30 dark:border-emerald-600/40 flex flex-col gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#105B38] dark:text-emerald-400">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Buy the Bundle
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Your free-tier limit has been reached. Please buy the bundle to continue drafting court petitions, contracts, and legal submissions.
+                      </p>
+                      <a
+                        href="/preview/pricing"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#105B38] text-white hover:bg-[#0d4a2d] text-xs font-semibold transition-colors shadow-xs"
+                      >
+                        Buy the Bundle →
+                      </a>
+                    </div>
+                  )}
 
                   {/* Claude-Style Diff Review Card */}
                   {msg.diffContext && msg.diffContext.status === "pending" ? (

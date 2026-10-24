@@ -346,7 +346,7 @@ export default function UserPanelPage() {
             </CardHeader>
             <CardContent className="space-y-2 px-4 pb-4 pt-1">
               <p className="text-[10px] text-muted-foreground leading-relaxed">
-                {TIER_LIMITS[profile?.subscriptionTier || "free"]?.description || "10 AI chats + 1 legal draft + 1 contract draft/month"}
+                {TIER_LIMITS[profile?.subscriptionTier || "free"]?.description || "5 AI chats + 1 legal draft + 1 contract draft"}
               </p>
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-background px-2.5 py-2">

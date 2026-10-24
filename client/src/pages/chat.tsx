@@ -2223,15 +2223,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           ) : (
                             <LegalMarkdown content={displayContent} />
                           )}
-                          {(m.isLimitError || m.content?.includes("limit of 10 has been used") || m.content?.includes("usage limit has ended")) && (
+                          {(m.isLimitError || m.content?.includes("limit of 5 has been reached") || m.content?.includes("limit of 10 has been used") || m.content?.includes("buy the bundle") || m.content?.includes("usage limit has ended")) && (
                             <div className="mt-4 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-background to-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                   <Crown className="w-4 h-4 text-amber-500 shrink-0" />
-                                  <p className="text-xs font-bold text-foreground">Free Tier Quota Exhausted (10/10 Queries)</p>
+                                  <p className="text-xs font-bold text-foreground">Free Tier Quota Exhausted (5/5 Queries)</p>
                                 </div>
                                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                  Subscribe to continue uninterrupted legal research, statute search, and case-law analysis.
+                                  Please buy the bundle to continue uninterrupted legal research, statute search, and case-law analysis.
                                 </p>
                               </div>
                               <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
@@ -2240,7 +2240,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                                   onClick={() => setShowUpgradeModal(true)}
                                   className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black uppercase tracking-wider hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
                                 >
-                                  <Sparkles size={13} /> View Plans & Upgrade
+                                  <Sparkles size={13} /> Buy the Bundle & Upgrade
                                 </button>
                                 <a
                                   href="https://wa.me/923358341897?text=Hi%2C%20I%20have%20reached%20my%20query%20limit%20and%20want%20to%20subscribe%20to%20Al%20Wakeelo."

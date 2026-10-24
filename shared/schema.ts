@@ -1310,17 +1310,17 @@ export type TierPlanConfig = {
 
 export const TIER_LIMITS: Record<string, TierPlanConfig> = {
   free: {
-    monthlyQueries: 12,
+    monthlyQueries: 7,
     label: "Free",
-    description: "10 AI chats + 1 legal draft + 1 contract draft (one-time, does not renew)",
+    description: "5 AI chats + 1 legal draft + 1 contract draft (one-time, does not renew)",
     pricePkr: 0,
     includedUsers: 1,
     pooled: false,
     modeAccess: { standard: true, turbo: false, apex: false },
     maxOutputTokens: { standard: 8192, turbo: 0, apex: 0 },
     apexMonthlyCap: 0,
-    uploadLimitPerMonth: 10,
-    ocrPagesPerMonth: 100,
+    uploadLimitPerMonth: 5,
+    ocrPagesPerMonth: 50,
     maxFileSizeMb: 75,
   },
   standard: {

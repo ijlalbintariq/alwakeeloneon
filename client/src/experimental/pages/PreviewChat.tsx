@@ -1074,6 +1074,29 @@ export const PreviewChat: React.FC = () => {
                       <div className="p-5 sm:p-6 rounded-2xl bg-[#FFFFFF] dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-sm sm:text-base text-[#1A1A1A] dark:text-[#F8FAFC] leading-relaxed shadow-sm">
                         <LegalMarkdown content={displayContent} />
 
+                        {/* Limit / Buy Bundle CTA for Assistant Messages */}
+                        {(msg.content?.includes("limit of 5 has been reached") || msg.content?.includes("buy the bundle") || msg.content?.includes("package limit has ended")) && (
+                          <div className="mt-4 rounded-xl border border-[#105B38]/30 bg-gradient-to-r from-[#105B38]/10 via-background to-[#105B38]/5 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                                <p className="text-xs font-bold text-foreground">Free Tier Quota Exhausted (5/5 Queries)</p>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                Please buy the bundle to continue uninterrupted Pakistani legal research, case-law analysis, and AI drafting.
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+                              <Link
+                                href="/preview/pricing"
+                                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#105B38] text-white text-xs font-black uppercase tracking-wider hover:bg-[#0d4a2d] transition-all shadow-xs cursor-pointer"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" /> Buy the Bundle →
+                              </Link>
+                            </div>
+                          </div>
+                        )}
+
                         {/* RAG Knowledge Vault Citations strip */}
                         {msg.ragCitations && msg.ragCitations.length > 0 && (
                           <div className="mt-5 pt-3 border-t border-[#E5E4E2] dark:border-[#1E2D44] space-y-2">
@@ -1138,12 +1161,32 @@ export const PreviewChat: React.FC = () => {
 
             {/* API Error Box */}
             {apiError && (
-              <div className="max-w-4xl mx-auto p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-start gap-2.5 text-xs">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold">Query Interrupted</div>
-                  <div className="text-[11px] text-rose-400/90 mt-0.5">{apiError}</div>
+              <div className="max-w-4xl mx-auto p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex flex-col gap-3 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-rose-200">
+                      {/limit|bundle/i.test(apiError) ? "Usage Limit Reached" : "Query Interrupted"}
+                    </div>
+                    <div className="text-[11px] text-rose-300/90 mt-0.5 leading-relaxed">{apiError}</div>
+                  </div>
                 </div>
+                {/limit|bundle/i.test(apiError) && (
+                  <div className="flex items-center gap-3 pt-2 border-t border-rose-500/20">
+                    <Link
+                      href="/preview/pricing"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#105B38] hover:bg-[#0d4a2d] text-white text-xs font-semibold shadow-xs transition-colors"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Buy the Bundle →
+                    </Link>
+                    <Link
+                      href="/preview/pricing"
+                      className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+                    >
+                      Compare all chamber plans & bundles
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
 

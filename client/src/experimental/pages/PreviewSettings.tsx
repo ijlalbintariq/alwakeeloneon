@@ -485,14 +485,14 @@ export const PreviewSettings: React.FC = () => {
                 {profile?.subscriptionTier?.toUpperCase() || "FREE STARTER"}
               </Badge>
               <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1 leading-relaxed">
-                {TIER_LIMITS[effectiveTier as keyof typeof TIER_LIMITS]?.description || "10 AI chats + 1 legal draft / month"}
+                {TIER_LIMITS[effectiveTier as keyof typeof TIER_LIMITS]?.description || "5 AI chats + 1 legal draft + 1 contract draft"}
               </p>
             </div>
 
             <div className="pt-3 border-t border-[#E2E8F0] dark:border-[#1E2D44] space-y-3">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Usage</span>
-                <span className="font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC]">{usage?.used ?? 0} / {usage?.monthlyLimit === 999999 ? "∞" : (usage?.monthlyLimit ?? 10)}</span>
+                <span className="font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC]">{usage?.used ?? 0} / {usage?.monthlyLimit === 999999 ? "∞" : (usage?.monthlyLimit ?? 5)}</span>
               </div>
               <Progress value={Math.min(usage?.percentage || 0, 100)} className="h-1.5 bg-[#E2E8F0] rounded-full" />
               {isNearLimit && (
@@ -530,7 +530,7 @@ export const PreviewSettings: React.FC = () => {
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">Monthly AI Quota</span>
                 <span className="font-mono font-bold text-[#105B38]">
-                  {usage?.used ?? 0} / {usage?.monthlyLimit === 999999 ? "Unlimited" : (usage?.monthlyLimit ?? 10)} used
+                  {usage?.used ?? 0} / {usage?.monthlyLimit === 999999 ? "Unlimited" : (usage?.monthlyLimit ?? 5)} used
                 </span>
               </div>
               <Progress
@@ -538,7 +538,7 @@ export const PreviewSettings: React.FC = () => {
                 className="h-2 bg-[#E2E8F0] rounded-full"
               />
               <div className="flex justify-between text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
-                <span>{usage?.remaining ?? 10} queries remaining</span>
+                <span>{usage?.remaining ?? 5} queries remaining</span>
                 <span>Resets on {renewalLabel}</span>
               </div>
             </div>
@@ -579,12 +579,12 @@ export const PreviewSettings: React.FC = () => {
               <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]">Current Subscription</h2>
             </div>
             <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
-              {TIER_LIMITS[effectiveTier as keyof typeof TIER_LIMITS]?.description || "10 AI chats + 1 legal draft / month"}
+              {TIER_LIMITS[effectiveTier as keyof typeof TIER_LIMITS]?.description || "5 AI chats + 1 legal draft + 1 contract draft"}
             </p>
             <div className="space-y-2 text-xs border-t border-[#E2E8F0] dark:border-[#1E2D44] pt-4 mt-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-bold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">Monthly Quota</span>
-                <span className="font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC]">{usage?.used ?? 0} / {usage?.monthlyLimit === 999999 ? "∞" : (usage?.monthlyLimit ?? 10)}</span>
+                <span className="font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC]">{usage?.used ?? 0} / {usage?.monthlyLimit === 999999 ? "∞" : (usage?.monthlyLimit ?? 5)}</span>
               </div>
               <Progress value={Math.min(usage?.percentage || 0, 100)} className="h-1.5 bg-[#105B38] rounded-full" />
               {isNearLimit && (
