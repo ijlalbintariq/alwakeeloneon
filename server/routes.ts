@@ -82,6 +82,7 @@ import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
 import { generateDocxBuffer } from "./services/docx-generator";
 import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, handleSitemapJudgmentsPriority, handleSitemapJudgmentsTier2, handleSitemapStatutes, clearSitemapCache } from "./sitemap";
+import { getIndexNowKey } from "./indexnow";
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
@@ -8379,13 +8380,15 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
 
   // IndexNow key verification — Bing/Yandex fetch /{key}.txt to verify ownership
   app.get("/:key.txt", (req, res, next) => {
-    const { getIndexNowKey } = require("./indexnow");
-    const indexNowKey = getIndexNowKey();
-    if (req.params.key === indexNowKey) {
-      res.type("text/plain").send(indexNowKey);
-    } else {
-      next();
+    try {
+      const indexNowKey = getIndexNowKey();
+      if (req.params.key === indexNowKey) {
+        return res.type("text/plain").send(indexNowKey);
+      }
+    } catch {
+      // Fall through to other routes if getIndexNowKey throws
     }
+    next();
   });
 
   // OpenAI Apps Challenge domain verification
@@ -8439,6 +8442,91 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
   app.get("/.well-known/ai.txt", (req, res) => {
     res.setHeader("Content-Type", "text/plain");
     res.send(`# AI Agent Access Policy for alwakeelo.com\n# See https://ai-txt.org for specification\n\nUser-agent: *\nAllow: /\n\nName: Al Wakeelo\nDescription: Pakistan's first AI-powered legal assistant. Search 600,000+ court judgments, draft contracts and petitions, research Pakistani statutes and case law.\nContact: support@alwakeelo.com\nPolicy: https://www.alwakeelo.com/privacy\nLLMs: https://www.alwakeelo.com/llms.txt\n`);
+  });
+
+  // llms.txt — tells AI models how to construct correct judgment URLs
+  app.get("/llms.txt", (req, res) => {
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send([
+      "# Al Wakeelo — llms.txt",
+      "# https://www.alwakeelo.com",
+      "",
+      "## About",
+      "Al Wakeelo is Pakistan's first AI legal assistant.",
+      "Database: 600,000+ court judgments from the Supreme Court, High Courts, and Federal Shariat Court of Pakistan.",
+      "",
+      "## Judgment URLs",
+      "IMPORTANT: When linking to a judgment, use the CITATION-BASED URL format, NOT a UUID.",
+      "AI models frequently hallucinate UUIDs, leading users to the wrong judgment.",
+      "",
+      "### Correct format (citation-based — PREFERRED):",
+      "  https://www.alwakeelo.com/judgment/2020-SCMR-293",
+      "  https://www.alwakeelo.com/judgment/2020-CLC-1910",
+      "  https://www.alwakeelo.com/judgment/PLD-2024-SC-100",
+      "",
+      "### Also accepted (UUID-based — only if you have the exact UUID):",
+      "  https://www.alwakeelo.com/judgment/9351dc15-239e-4321-8287-3acfe592825d",
+      "",
+      "Citation format: replace spaces with hyphens in the citation string.",
+      "Examples:",
+      "  2020 SCMR 293    -> /judgment/2020-SCMR-293",
+      "  2020 CLC 1910    -> /judgment/2020-CLC-1910",
+      "  PLD 2024 SC 100  -> /judgment/PLD-2024-SC-100",
+      "  2023 YLR 500     -> /judgment/2023-YLR-500",
+      "",
+      "The server resolves citation slugs to the correct judgment automatically.",
+      "Do NOT guess or fabricate UUIDs. Use the citation string instead.",
+      "",
+      "## API",
+      "Public judgment lookup (no auth required):",
+      "  GET https://www.alwakeelo.com/api/public/judgments/{citation-or-uuid}",
+      "  Example: GET /api/public/judgments/2020-CLC-1910",
+      "",
+      "## Statute URLs",
+      "  https://www.alwakeelo.com/statute-view/{statute-id}",
+      "",
+      "## Contact",
+      "  support@alwakeelo.com",
+      "",
+    ].join("\n"));
+  });
+
+  // Citation slug redirect: converts citation slugs (e.g. /judgment/2020-CLC-1910)
+  // to canonical UUID URLs (/judgment/9351dc15-...). Solves LLM URL hallucination.
+  app.get(["/judgment/:slug", "/judgments/:slug"], async (req, res, next) => {
+    const slug = String(req.params.slug || "").trim();
+    if (!slug || slug === "browse" || slug === "search") return next();
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+    if (isUUID) return next();
+
+    const cleanCitation = decodeURIComponent(slug)
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    try {
+      const [found] = await db
+        .select({ id: judgments.id })
+        .from(judgments)
+        .where(
+          or(
+            ilike(judgments.citationString, cleanCitation),
+            ilike(judgments.citationString, slug),
+            sql`REPLACE(LOWER(${judgments.citationString}), ' ', '') = REPLACE(LOWER(${cleanCitation}), ' ', '')`
+          )
+        )
+        .limit(1);
+
+      if (found) {
+        const qs = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
+        return res.redirect(301, `/judgment/${found.id}${qs}`);
+      }
+    } catch (e) {
+      console.error("[Citation Redirect] Lookup error:", e);
+    }
+    next();
   });
 
   app.get("/ai/summary.json", (req, res) => {
@@ -13082,7 +13170,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const owner = isMislabeled ? await findTextOwnerJudgment(provenance?.textTrueCitation).catch(() => null) : null;
 
       const sourceText = isMislabeled ? "" : (judgment.formattedText || judgment.fullText || "");
-      const { preview, truncated, totalWords } = trimWords(sourceText, PUBLIC_JUDGMENT_PREVIEW_WORDS);
+      const totalWords = sourceText ? sourceText.trim().split(/\s+/).filter(Boolean).length : 0;
 
       // Cache at the edge so repeat crawls don't hit DB.
       res.setHeader("Cache-Control", "public, max-age=300, s-maxage=21600");
@@ -13095,11 +13183,11 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         court: judgment.court,
         decisionDate: judgment.decisionDate,
         headnotes: judgment.headnotes,
-        previewText: preview,
-        previewWordCount: Math.min(totalWords, PUBLIC_JUDGMENT_PREVIEW_WORDS),
+        previewText: sourceText,
+        previewWordCount: totalWords,
         totalWordCount: totalWords,
-        isPreview: true,
-        isTruncated: truncated,
+        isPreview: false,
+        isTruncated: false,
         citations: judgment.citations || { made: [], received: [] },
         textIntegrity: provenance?.textStatus || "unknown",
         textBelongsTo: isMislabeled

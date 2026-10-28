@@ -5,7 +5,7 @@ import { injectSeoMeta, type SeoMeta } from "./seo-meta";
 import { db } from "./db";
 import { judgments, statuteDocuments } from "@shared/schema";
 import { findTextOwnerJudgment } from "./storage";
-import { eq } from "drizzle-orm";
+import { eq, or, ilike, sql } from "drizzle-orm";
 import { BLOG_ARTICLES } from "../shared/blog-data";
 
 const KNOWN_SPA_ROUTES: RegExp[] = [
@@ -679,6 +679,34 @@ export function serveStatic(app: Express) {
       const judgmentId = judgmentMatch[1];
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(judgmentId);
       if (!isUuid) {
+        // Citation-slug resolution: AI models (ChatGPT, Perplexity) often know
+        // the correct citation string but hallucinate the UUID portion of the
+        // URL.  Resolve "2020-CLC-1910" or "2020 CLC 1910" to the real UUID
+        // and 301-redirect so the canonical URL is always UUID-based.
+        const cleanCitation = decodeURIComponent(judgmentId)
+          .replace(/[-_]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        try {
+          const [found] = await db
+            .select({ id: judgments.id })
+            .from(judgments)
+            .where(
+              or(
+                ilike(judgments.citationString, cleanCitation),
+                ilike(judgments.citationString, judgmentId),
+                sql`REPLACE(LOWER(${judgments.citationString}), ' ', '') = REPLACE(LOWER(${cleanCitation}), ' ', '')`
+              )
+            )
+            .limit(1);
+
+          if (found) {
+            const qs = raw.includes("?") ? raw.substring(raw.indexOf("?")) : "";
+            return res.redirect(301, `/judgment/${found.id}${qs}`);
+          }
+        } catch (e) {
+          console.error("[SEO] Citation slug lookup failed:", e);
+        }
         notFound = true;
       } else {
         const seoData = await getJudgmentSeoData(judgmentId);

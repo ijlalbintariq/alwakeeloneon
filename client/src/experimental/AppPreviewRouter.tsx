@@ -87,8 +87,11 @@ function ProtectedRoute({ path, component: Component }: { path: string, componen
 function JudgmentPermalink({ params }: { params: { id: string } }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <FallbackLoader />;
-  if (user) return <Redirect to={`/preview/judgments/${params.id}`} />;
-  return <PreviewPublicJudgment />;
+  if (user) {
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    return <Redirect to={`/preview/judgments/${params.id}${search}`} />;
+  }
+  return <PreviewPublicJudgment id={params?.id} />;
 }
 
 export const AppPreviewRouter: React.FC = () => {

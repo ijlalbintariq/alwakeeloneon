@@ -2298,9 +2298,9 @@
     "semantic_hash": "d7c65518e9a60474aedc33c7fd21aeaf"
   },
   "server/routes.ts": {
-    "mtime": 1792849919.6386864,
-    "seen": 1792850158.433774,
-    "ast_hash": "b5b17dbcbaa16537a9dec5937c83fa5c",
+    "mtime": 1793222508.2884662,
+    "seen": 1793222614.3135412,
+    "ast_hash": "094ed183cd7bad7082b40af81a1bf71e",
     "semantic_hash": ""
   },
   "server/run-mcp.ts": {
@@ -2370,9 +2370,9 @@
     "semantic_hash": ""
   },
   "server/static.ts": {
-    "mtime": 1792743196.1861968,
-    "seen": 1792743543.351882,
-    "ast_hash": "17aed581d17500834bb5f9a4b82b3bdf",
+    "mtime": 1793221825.4534464,
+    "seen": 1793222149.5656488,
+    "ast_hash": "04112dd4061def322dc0d76dda16bb1d",
     "semantic_hash": ""
   },
   "server/storage.ts": {
@@ -3774,9 +3774,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/AppPreviewRouter.tsx": {
-    "mtime": 1791836834.5688055,
-    "seen": 1791837180.55542,
-    "ast_hash": "3e1d04083a73599733cad52dcca57606",
+    "mtime": 1793221416.437001,
+    "seen": 1793221564.606712,
+    "ast_hash": "f39ce19933cc713895f7a86aeb669337",
     "semantic_hash": ""
   },
   "client/src/experimental/__tests__/directory-browser-adversarial.test.ts": {
@@ -4350,9 +4350,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewJudgments.tsx": {
-    "mtime": 1791836864.9600933,
-    "seen": 1791837180.5578618,
-    "ast_hash": "47b795d8f575d24bd88f7e447157ffdd",
+    "mtime": 1793221481.02287,
+    "seen": 1793221564.609327,
+    "ast_hash": "6101ed0f3102f8c226dd7ec12b408566",
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewKnowledgeVault.tsx": {
@@ -40560,9 +40560,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewPublicJudgment.tsx": {
-    "mtime": 1791836890.711283,
-    "seen": 1791837180.558034,
-    "ast_hash": "48579ba30104adc773ecb5f60978d386",
+    "mtime": 1793222495.6063533,
+    "seen": 1793222614.30384,
+    "ast_hash": "bb311155bd2967092ca920418ee000a5",
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewTaxReturn.tsx": {

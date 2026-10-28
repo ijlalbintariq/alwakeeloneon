@@ -89,7 +89,8 @@ export const PreviewJudgments: React.FC = () => {
   const [, setLocation] = useLocation();
   const [, previewRouteParams] = useRoute("/preview/judgments/:id");
   const [, publicRouteParams] = useRoute("/judgments/:id");
-  const currentRouteId = previewRouteParams?.id || publicRouteParams?.id;
+  const [, singularPublicRouteParams] = useRoute("/judgment/:id");
+  const currentRouteId = previewRouteParams?.id || publicRouteParams?.id || singularPublicRouteParams?.id;
 
   // Navigation tab: search | pinpoint | directory | bookmarks
   const [activeTab, setActiveTab] = useState<"search" | "pinpoint" | "directory" | "bookmarks">("search");
@@ -112,7 +113,7 @@ export const PreviewJudgments: React.FC = () => {
   // Active Selected Judgment for Full-Text Reader
   const [selectedJudgmentId, setSelectedJudgmentId] = useState<string | null>(currentRouteId || null);
   const [activeJudgmentDetail, setActiveJudgmentDetail] = useState<JudgmentDetailData | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(Boolean(currentRouteId));
   const [detailError, setDetailError] = useState<string | null>(null);
 
   // Standalone Precedent Graph Modal State
@@ -278,14 +279,19 @@ export const PreviewJudgments: React.FC = () => {
     } finally {
       setLoadingDetail(false);
     }
-  }, []);
+  }, [toast]);
 
   // Sync with route params if provided
   useEffect(() => {
-    if (currentRouteId && currentRouteId !== selectedJudgmentId) {
-      loadJudgmentById(currentRouteId);
+    if (currentRouteId) {
+      if (!activeJudgmentDetail || activeJudgmentDetail.id !== currentRouteId) {
+        loadJudgmentById(currentRouteId);
+      }
+    } else if (activeJudgmentDetail && !previewRouteParams?.id && !publicRouteParams?.id && !singularPublicRouteParams?.id) {
+      setSelectedJudgmentId(null);
+      setActiveJudgmentDetail(null);
     }
-  }, [currentRouteId, loadJudgmentById, selectedJudgmentId]);
+  }, [currentRouteId, loadJudgmentById, activeJudgmentDetail, previewRouteParams?.id, publicRouteParams?.id, singularPublicRouteParams?.id]);
 
   // Two-Tier Search Execution
   const handleExecuteTwoTierSearch = async (
@@ -583,8 +589,14 @@ export const PreviewJudgments: React.FC = () => {
             onBack={() => {
               setSelectedJudgmentId(null);
               setActiveJudgmentDetail(null);
+              if (currentRouteId) {
+                setLocation("/preview/judgments");
+              }
             }}
-            onSelectJudgment={(id) => loadJudgmentById(id)}
+            onSelectJudgment={(id) => {
+              setLocation(`/preview/judgments/${id}`);
+              loadJudgmentById(id);
+            }}
             isBookmarked={isCurrentBookmarked}
             onToggleBookmark={handleToggleBookmark}
           />

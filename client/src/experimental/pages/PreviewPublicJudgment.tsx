@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Lock, Search, Scale, ChevronRight, FileText, Share2, Printer, Download, Sparkles, Building2, Calendar, User } from 'lucide-react';
+import { Search, Scale, ChevronRight, FileText, Share2, Printer, Download, Sparkles, Building2, Calendar, User } from 'lucide-react';
 
 interface PublicJudgmentData {
   id: string;
@@ -26,9 +26,15 @@ interface PublicJudgmentData {
   textBelongsTo?: { citation: string | null; id: string | null } | null;
 }
 
-export default function PreviewPublicJudgment() {
+interface PreviewPublicJudgmentProps {
+  id?: string;
+  params?: { id?: string };
+}
+
+export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps) {
   // Mounted on /judgment/:id, /preview/p/:id and /preview/public/judgments/:id
   const params = useParams<{ id: string }>();
+  const targetId = props?.id || props?.params?.id || params?.id;
   const [data, setData] = useState<PublicJudgmentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +42,13 @@ export default function PreviewPublicJudgment() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!params?.id) return;
+    if (!targetId) return;
 
     const fetchJudgment = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/public/judgments/${encodeURIComponent(params.id)}`);
+        const res = await fetch(`/api/public/judgments/${encodeURIComponent(targetId)}`);
         if (!res.ok) {
           if (res.status === 404) throw new Error("Judgment not found");
           if (res.status === 429) throw new Error("Too many requests. Please try again later.");
@@ -67,7 +73,7 @@ export default function PreviewPublicJudgment() {
     return () => {
       document.title = 'AL WAKEELO AI Legal Platform';
     };
-  }, [params?.id]);
+  }, [targetId]);
 
   
   const formattedParagraphs = useMemo(() => {
@@ -299,44 +305,6 @@ export default function PreviewPublicJudgment() {
                 </>
               )}
             </CardContent>
-
-            {/* Paywall / Authwall Overlay if truncated */}
-            {data?.isTruncated && !loading && (
-              <div className="absolute bottom-0 left-0 right-0 h-[400px] flex flex-col justify-end p-8 md:p-12 bg-gradient-to-t from-white via-white to-transparent">
-                <div className="bg-white dark:bg-[#131E2E]/90 backdrop-blur-sm border border-slate-200 dark:border-slate-500/20 rounded-2xl p-8 shadow-xl max-w-2xl mx-auto text-center relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#105B38] to-emerald-400"></div>
-                  
-                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-200 dark:border-slate-500/20 shadow-sm">
-                    <Lock className="w-7 h-7 text-[#105B38]" />
-                  </div>
-                  
-                  <h3 className="text-2xl font-bold text-slate-900 mb-3">Keep reading this judgment</h3>
-                  <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto leading-relaxed">
-                    You've reached the end of the free preview ({data.previewWordCount.toLocaleString()} of {data.totalWordCount.toLocaleString()} words). 
-                    Create a free account to unlock the full text, AI summaries, and citation network.
-                  </p>
-                  
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button 
-                      onClick={handleSignup} 
-                      className="bg-[#105B38] hover:bg-[#0D4B2E] text-white px-8 h-12 text-base font-semibold rounded-lg shadow-sm"
-                    >
-                      Create Free Account
-                    </Button>
-                    <Button 
-                      onClick={() => setLocation('/preview/login')} 
-                      variant="outline" 
-                      className="px-8 h-12 text-base font-semibold rounded-lg border-slate-300 dark:border-slate-500/30 text-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:bg-slate-800"
-                    >
-                      Sign In
-                    </Button>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-6">
-                    Join 15,000+ legal professionals on AL WAKEELO.
-                  </p>
-                </div>
-              </div>
-            )}
           </Card>
         </div>
 
