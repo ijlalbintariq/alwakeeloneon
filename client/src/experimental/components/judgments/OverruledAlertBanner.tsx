@@ -136,11 +136,11 @@ export const OverruledAlertBanner: React.FC<OverruledAlertBannerProps> = ({
                   )}
                 </div>
 
-                {item.linkedJudgmentId && onSelectJudgment && (
+                {(item.linkedJudgmentId || item.linkedCitation || item.citationText) && onSelectJudgment && (
                   <button
                     type="button"
-                    onClick={() => onSelectJudgment(item.linkedJudgmentId!)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-[#F1F5F9] dark:bg-[#1E2D44] hover:bg-[#E2E8F0] text-[#0F172A] dark:text-[#F8FAFC] border border-[#CBD5E1] transition-all self-start sm:self-center flex-shrink-0"
+                    onClick={() => onSelectJudgment((item.linkedJudgmentId || item.linkedCitation || item.citationText)!)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-[#F1F5F9] dark:bg-[#1E2D44] hover:bg-[#E2E8F0] text-[#0F172A] dark:text-[#F8FAFC] border border-[#CBD5E1] transition-all self-start sm:self-center flex-shrink-0 cursor-pointer"
                   >
                     <span>View Citing Case</span>
                     <ArrowUpRight className="w-3.5 h-3.5 text-[#105B38]" />

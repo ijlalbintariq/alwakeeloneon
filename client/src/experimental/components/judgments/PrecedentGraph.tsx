@@ -157,6 +157,38 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
     }
   };
 
+  const getTargetJudgmentId = useCallback((item?: PrecedentCitationItem | null): string => {
+    if (!item) return "";
+    if (item.linkedJudgmentId && !item.linkedJudgmentId.startsWith("extracted-")) {
+      return item.linkedJudgmentId;
+    }
+    if (item.linkedCitation) return item.linkedCitation;
+    if (item.citationText) return item.citationText;
+    return String(item.id || "").replace(/^extracted-/i, "");
+  }, []);
+
+  const handleOpenJudgment = useCallback((item?: PrecedentCitationItem | null) => {
+    if (!item || !onSelectJudgment) return;
+    const targetId = getTargetJudgmentId(item);
+    if (targetId) {
+      onSelectJudgment(targetId);
+    }
+  }, [onSelectJudgment, getTargetJudgmentId]);
+
+  const handleNodeClick = useCallback((item: PrecedentCitationItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selectedNode?.id === item.id) {
+      handleOpenJudgment(item);
+    } else {
+      setSelectedNode(item);
+    }
+  }, [selectedNode?.id, handleOpenJudgment]);
+
+  const handleNodeDoubleClick = useCallback((item: PrecedentCitationItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleOpenJudgment(item);
+  }, [handleOpenJudgment]);
+
   const filteredMade = useMemo(() => {
     return citationsMade.filter((c) => {
       const matchFilter = selectedFilter === "all" || c.citationType === selectedFilter;
@@ -575,10 +607,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                     <g
                       key={`made-svg-${item.id}`}
                       className="cursor-pointer group"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedNode(item);
-                      }}
+                      onClick={(e) => handleNodeClick(item, e)}
+                      onDoubleClick={(e) => handleNodeDoubleClick(item, e)}
                     >
                       {/* Connection Line */}
                       <path
@@ -621,7 +651,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                         fontWeight="bold"
                         fontFamily="sans-serif"
                       >
-                        {badge.label.toUpperCase()}
+                        {isSelected ? `${badge.label.toUpperCase()} · OPEN ↗` : badge.label.toUpperCase()}
                       </text>
                     </g>
                   );
@@ -650,10 +680,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                     <g
                       key={`received-svg-${item.id}`}
                       className="cursor-pointer group"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedNode(item);
-                      }}
+                      onClick={(e) => handleNodeClick(item, e)}
+                      onDoubleClick={(e) => handleNodeDoubleClick(item, e)}
                     >
                       {/* Connection Line */}
                       <path
@@ -696,7 +724,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                         fontWeight="bold"
                         fontFamily="sans-serif"
                       >
-                        {badge.label.toUpperCase()}
+                        {isSelected ? `${badge.label.toUpperCase()} · OPEN ↗` : badge.label.toUpperCase()}
                       </text>
                     </g>
                   );
@@ -709,7 +737,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
             {/* Quick Helper Label */}
             <div className="absolute bottom-3 left-4 flex items-center gap-1.5 text-[11px] font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-white dark:bg-[#131E2E]/90 backdrop-blur-xs px-3 py-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs pointer-events-none">
               <Info className="w-3.5 h-3.5 text-[#105B38]" />
-              <span>Click any node to view judicial reasoning | Drag canvas to pan</span>
+              <span>Click node to select · Click again or double-click to open | Drag canvas to pan</span>
             </div>
           </div>
 
@@ -745,7 +773,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                         selectedNode.linkedCitation || selectedNode.citationText
                       )
                     }
-                    className="p-1.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] text-xs transition-colors"
+                    className="p-1.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] text-xs transition-colors cursor-pointer"
                     title="Copy Citation"
                   >
                     {copiedNodeId === String(selectedNode.id) ? (
@@ -760,7 +788,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                     type="button"
                     onClick={() => handleDownloadNodePdf(selectedNode)}
                     disabled={downloadingNodeId === String(selectedNode.id)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 shadow-xs transition-all disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
                     title="Download Court PDF for this precedent authority"
                   >
                     {downloadingNodeId === String(selectedNode.id) ? (
@@ -775,14 +803,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                   {onSelectJudgment && (
                     <button
                       type="button"
-                      onClick={() =>
-                        onSelectJudgment(
-                          selectedNode.linkedJudgmentId ||
-                            selectedNode.linkedCitation ||
-                            selectedNode.citationText
-                        )
-                      }
-                      className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white shadow-xs transition-all"
+                      onClick={() => handleOpenJudgment(selectedNode)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white shadow-xs transition-all cursor-pointer"
                       title="Open full judgment in workstation reader"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
@@ -820,16 +842,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                   filteredMade.map((item) => (
                     <div
                       key={`list-made-${item.id}`}
-                      onClick={() => {
-                        if (onSelectJudgment) {
-                          onSelectJudgment(
-                            item.linkedJudgmentId ||
-                              item.linkedCitation ||
-                              item.citationText ||
-                              String(item.id)
-                          );
-                        }
-                      }}
+                      onClick={() => handleOpenJudgment(item)}
                       className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] hover:shadow-xs transition-all cursor-pointer space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
@@ -869,16 +882,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                   filteredReceived.map((item) => (
                     <div
                       key={`list-received-${item.id}`}
-                      onClick={() => {
-                        if (onSelectJudgment) {
-                          onSelectJudgment(
-                            item.linkedJudgmentId ||
-                              item.linkedCitation ||
-                              item.citationText ||
-                              String(item.id)
-                          );
-                        }
-                      }}
+                      onClick={() => handleOpenJudgment(item)}
                       className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] hover:shadow-xs transition-all cursor-pointer space-y-1.5"
                     >
                       <div className="flex items-center justify-between">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocation, useRoute } from "wouter";
 import { PreviewShell } from "@/experimental/components/PreviewShell";
 import {
@@ -83,6 +83,33 @@ const COURTS_LIST = [
 ];
 
 const YEARS_LIST = ["All Years", "2026", "2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2012", "1955"];
+
+function normalizeCitationKey(str?: string | null): string {
+  if (!str) return "";
+  let s = str;
+  try {
+    s = decodeURIComponent(s);
+    if (s.includes("%")) s = decodeURIComponent(s);
+  } catch {}
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function doesJudgmentMatchRoute(judgment: JudgmentDetailData | null, routeId?: string | null): boolean {
+  if (!judgment || !routeId) return false;
+  let decodedRoute = routeId;
+  try {
+    decodedRoute = decodeURIComponent(routeId);
+    if (decodedRoute.includes("%")) decodedRoute = decodeURIComponent(decodedRoute);
+  } catch {}
+  
+  if (judgment.id === routeId || judgment.id === decodedRoute) return true;
+  
+  const normRoute = normalizeCitationKey(decodedRoute);
+  const normCitation = normalizeCitationKey(judgment.citation);
+  if (normRoute && normCitation && normRoute === normCitation) return true;
+  
+  return false;
+}
 
 export const PreviewJudgments: React.FC = () => {
   const { toast } = useToast();
@@ -254,19 +281,28 @@ export const PreviewJudgments: React.FC = () => {
     }
   };
 
+  const lastLoadedRouteRef = useRef<string | null>(null);
+
   // Load Judgment details by ID with Two-Tier Resilient Fallback
   const loadJudgmentById = useCallback(async (id: string) => {
     if (!id) return;
-    setSelectedJudgmentId(id);
+    let cleanId = String(id || "").trim();
+    try {
+      cleanId = decodeURIComponent(cleanId);
+      if (cleanId.includes("%")) cleanId = decodeURIComponent(cleanId);
+    } catch {}
+    cleanId = cleanId.replace(/^extracted-/i, "").trim();
+
+    setSelectedJudgmentId(cleanId);
     setLoadingDetail(true);
     setDetailError(null);
 
     try {
-      const detail = await getJudgmentDetail(id);
+      const detail = await getJudgmentDetail(cleanId);
       if (detail) {
         setActiveJudgmentDetail(detail);
       } else {
-        throw new Error(`Judgment not found (${id})`);
+        throw new Error(`Judgment not found (${cleanId})`);
       }
     } catch (err: any) {
       console.error("Failed to load judgment detail:", err);
@@ -281,13 +317,36 @@ export const PreviewJudgments: React.FC = () => {
     }
   }, [toast]);
 
+  // Unified navigation helper that updates URL route slug and loads judgment
+  const navigateToJudgment = useCallback((id: string) => {
+    let cleanId = String(id || "").trim();
+    try {
+      cleanId = decodeURIComponent(cleanId);
+      if (cleanId.includes("%")) cleanId = decodeURIComponent(cleanId);
+    } catch {}
+    cleanId = cleanId.replace(/^extracted-/i, "").trim();
+    if (!cleanId) return;
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+    const routeParam = isUUID ? cleanId : cleanId.replace(/\s+/g, "-");
+    lastLoadedRouteRef.current = routeParam;
+    setLocation(`/preview/judgments/${encodeURIComponent(routeParam)}`);
+    loadJudgmentById(cleanId);
+  }, [loadJudgmentById, setLocation]);
+
   // Sync with route params if provided
   useEffect(() => {
     if (currentRouteId) {
-      if (!activeJudgmentDetail || activeJudgmentDetail.id !== currentRouteId) {
-        loadJudgmentById(currentRouteId);
+      if (!doesJudgmentMatchRoute(activeJudgmentDetail, currentRouteId)) {
+        if (lastLoadedRouteRef.current !== currentRouteId) {
+          lastLoadedRouteRef.current = currentRouteId;
+          loadJudgmentById(currentRouteId);
+        }
+      } else {
+        lastLoadedRouteRef.current = currentRouteId;
       }
     } else if (activeJudgmentDetail && !previewRouteParams?.id && !publicRouteParams?.id && !singularPublicRouteParams?.id) {
+      lastLoadedRouteRef.current = null;
       setSelectedJudgmentId(null);
       setActiveJudgmentDetail(null);
     }
@@ -361,7 +420,7 @@ export const PreviewJudgments: React.FC = () => {
       if (match) {
         setSearchResults([match]);
         // Automatically load into reader!
-        loadJudgmentById(String(match.judgmentId || match.id));
+        navigateToJudgment(String(match.judgmentId || match.id));
       } else {
         setSearchResults([]);
         setSearchError("No judgment found matching this pinpoint citation.");
@@ -593,10 +652,7 @@ export const PreviewJudgments: React.FC = () => {
                 setLocation("/preview/judgments");
               }
             }}
-            onSelectJudgment={(id) => {
-              setLocation(`/preview/judgments/${id}`);
-              loadJudgmentById(id);
-            }}
+            onSelectJudgment={navigateToJudgment}
             isBookmarked={isCurrentBookmarked}
             onToggleBookmark={handleToggleBookmark}
           />
@@ -655,7 +711,7 @@ export const PreviewJudgments: React.FC = () => {
                             type="button"
                             onClick={() => {
                               if (item.judgmentId || item.id) {
-                                loadJudgmentById(String(item.judgmentId || item.id));
+                                navigateToJudgment(String(item.judgmentId || item.id));
                               }
                             }}
                             className="px-4 py-2 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-xs"
@@ -673,7 +729,7 @@ export const PreviewJudgments: React.FC = () => {
           </div>
         ) : activeTab === "directory" ? (
           /* Directory Browser Tab */
-          <DirectoryBrowser onSelectJudgment={(id) => loadJudgmentById(id)} />
+          <DirectoryBrowser onSelectJudgment={navigateToJudgment} />
         ) : activeTab === "bookmarks" ? (
           /* Bookmarked Precedents Tab */
           <div className="space-y-4">
@@ -1078,7 +1134,7 @@ export const PreviewJudgments: React.FC = () => {
                               {/* 1. Read Judgment Button */}
                               <button
                                 type="button"
-                                onClick={() => loadJudgmentById(caseId)}
+                                onClick={() => navigateToJudgment(caseId)}
                                 className="px-3.5 py-1.5 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-xs"
                               >
                                 <BookOpen className="w-3.5 h-3.5" />
@@ -1146,7 +1202,7 @@ export const PreviewJudgments: React.FC = () => {
                               {/* 6. AI Summary Shortcut Button */}
                               <button
                                 type="button"
-                                onClick={() => loadJudgmentById(caseId)}
+                                onClick={() => navigateToJudgment(caseId)}
                                 className="px-3 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#475569] hover:text-[#105B38] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
                                 title="Open in Reader & AI Sidecar"
                               >
@@ -1249,7 +1305,7 @@ export const PreviewJudgments: React.FC = () => {
                 citationsReceived={graphModalTarget.citationsReceived || []}
                 onSelectJudgment={(targetId) => {
                   setGraphModalTarget(null);
-                  loadJudgmentById(targetId);
+                  navigateToJudgment(targetId);
                 }}
               />
             </div>

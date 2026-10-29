@@ -2298,9 +2298,9 @@
     "semantic_hash": "d7c65518e9a60474aedc33c7fd21aeaf"
   },
   "server/routes.ts": {
-    "mtime": 1793222508.2884662,
-    "seen": 1793222614.3135412,
-    "ast_hash": "094ed183cd7bad7082b40af81a1bf71e",
+    "mtime": 1793294103.5083106,
+    "seen": 1793294594.431865,
+    "ast_hash": "d85aaba4ec4d0496c0be7e078ae14946",
     "semantic_hash": ""
   },
   "server/run-mcp.ts": {
@@ -4098,9 +4098,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/components/judgments/OverruledAlertBanner.tsx": {
-    "mtime": 1788565021.6575787,
-    "seen": 1791836288.7136571,
-    "ast_hash": "56a1769ed1db8fce781133a609b0a8aa",
+    "mtime": 1793294455.7585022,
+    "seen": 1793294594.421855,
+    "ast_hash": "17116ccaa4af75658bc7a0bdf0f879b0",
     "semantic_hash": ""
   },
   "client/src/experimental/components/judgments/PinpointCitationParser.tsx": {
@@ -4110,9 +4110,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/components/judgments/PrecedentGraph.tsx": {
-    "mtime": 1791836014.7397392,
-    "seen": 1791836288.713658,
-    "ast_hash": "e8956872d0d520c2490d32c5f09d96a1",
+    "mtime": 1793294215.7090976,
+    "seen": 1793294594.4218829,
+    "ast_hash": "593a8441e600ceef6765f8fc52e809d3",
     "semantic_hash": ""
   },
   "client/src/experimental/components/judgments/RatioDecidendiCard.tsx": {
@@ -4200,9 +4200,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/lib/judgmentApiClient.ts": {
-    "mtime": 1791835885.9725633,
-    "seen": 1791836288.71381,
-    "ast_hash": "4bcc0ccf72e459a5d2988cd2c1b69f42",
+    "mtime": 1793294113.8551407,
+    "seen": 1793294594.4222631,
+    "ast_hash": "60d90a37f53f9753fcbd40817af21d7b",
     "semantic_hash": ""
   },
   "client/src/experimental/lib/plain-to-tiptap.ts": {
@@ -4350,9 +4350,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewJudgments.tsx": {
-    "mtime": 1793221481.02287,
-    "seen": 1793221564.609327,
-    "ast_hash": "6101ed0f3102f8c226dd7ec12b408566",
+    "mtime": 1793294433.93974,
+    "seen": 1793294594.4229052,
+    "ast_hash": "26942a2362dc781f5cccb887a9d6f2cb",
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewKnowledgeVault.tsx": {
@@ -42147,6 +42147,12 @@
     "mtime": 1792848670.5527487,
     "seen": 1792849094.363232,
     "ast_hash": "2561b9cc9739c6ea5977760a460b6cf3",
+    "semantic_hash": ""
+  },
+  "tests/unit/precedent-citation-opening.test.ts": {
+    "mtime": 1793296726.02536,
+    "seen": 1793296781.280751,
+    "ast_hash": "fcbb7aa13bdcb0d9fc86a21d6c121acf",
     "semantic_hash": ""
   }
 }

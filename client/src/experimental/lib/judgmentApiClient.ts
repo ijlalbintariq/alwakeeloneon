@@ -454,7 +454,12 @@ export async function lookupCitation(
 export async function getJudgmentDetail(
   id: string | number
 ): Promise<JudgmentDetailData | null> {
-  const cleanId = String(id || "").trim();
+  let rawId = String(id || "").trim();
+  try {
+    rawId = decodeURIComponent(rawId);
+    if (rawId.includes("%")) rawId = decodeURIComponent(rawId);
+  } catch {}
+  const cleanId = rawId.trim();
   if (!cleanId) return null;
 
   // Live Backend /api/judgments/:id
@@ -464,7 +469,7 @@ export async function getJudgmentDetail(
         credentials: "include",
       });
 
-      if (!res.ok && res.status === 401) {
+      if (!res.ok && (res.status === 401 || res.status === 404)) {
         res = await fetch(`/api/public/judgments/${encodeURIComponent(cleanId)}`, {
           credentials: "include",
         });
@@ -476,7 +481,7 @@ export async function getJudgmentDetail(
           data.citation || "",
           data.citations?.made,
           data.citations?.received,
-          data.fullText
+          data.fullText || data.previewText
         );
 
         return {

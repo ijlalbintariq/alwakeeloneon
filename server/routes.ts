@@ -12868,7 +12868,12 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const id = String(req.params.id || "").trim();
+      let id = String(req.params.id || "").trim();
+      try {
+        id = decodeURIComponent(id);
+        if (id.includes("%")) id = decodeURIComponent(id);
+      } catch {}
+      id = id.trim();
       if (!id) return res.status(400).json({ message: "Judgment id is required" });
 
       // Check if it's a UUID (judgments table) or numeric (case_law table)
@@ -12961,7 +12966,12 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const id = String(req.params.id || "").trim();
+      let id = String(req.params.id || "").trim();
+      try {
+        id = decodeURIComponent(id);
+        if (id.includes("%")) id = decodeURIComponent(id);
+      } catch {}
+      id = id.trim();
       if (!id) return res.status(400).json({ message: "Judgment id is required" });
 
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -13128,11 +13138,42 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       if (!takePublicJudgmentToken(req)) {
         return res.status(429).json({ message: "Too many requests. Please try again shortly." });
       }
-      const id = String(req.params.id || "").trim();
+      let id = String(req.params.id || "").trim();
+      try {
+        id = decodeURIComponent(id);
+        if (id.includes("%")) id = decodeURIComponent(id);
+      } catch {}
+      id = id.trim();
       if (!id) return res.status(400).json({ message: "Judgment id is required" });
 
+      const isNumeric = /^\d+$/.test(id);
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
       let targetId = id;
+
+      if (isNumeric) {
+        const caseLawEntry = await storage.getCaseLawById(Number(id));
+        if (!caseLawEntry) return res.status(404).json({ message: "Case law entry not found" });
+        const summaryText = caseLawEntry.summary || "";
+        const words = summaryText ? summaryText.trim().split(/\s+/).filter(Boolean).length : 0;
+        return res.json({
+          id: caseLawEntry.id,
+          citation: caseLawEntry.citation || "",
+          title: caseLawEntry.title || "Pakistani Court Precedent",
+          petitioner: null,
+          respondent: null,
+          court: caseLawEntry.court || "Pakistani Court",
+          decisionDate: null,
+          headnotes: caseLawEntry.summary || "",
+          previewText: summaryText,
+          previewWordCount: words,
+          totalWordCount: words,
+          isPreview: false,
+          isTruncated: false,
+          citations: { made: [], received: [] },
+          textIntegrity: "own",
+          textBelongsTo: null,
+        });
+      }
 
       if (!isUUID) {
         const cleanQuery = id.replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/^extracted\s+/i, "").trim();
@@ -13151,6 +13192,42 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         if (foundJudgment) {
           targetId = foundJudgment.id;
         } else {
+          // Fallback to caseLaw table by citation
+          const [foundCaseLaw] = await db
+            .select()
+            .from(caseLaw)
+            .where(
+              or(
+                ilike(caseLaw.citation, cleanQuery),
+                ilike(caseLaw.citation, id),
+                sql`REPLACE(LOWER(${caseLaw.citation}), ' ', '') = REPLACE(LOWER(${cleanQuery}), ' ', '')`
+              )
+            )
+            .limit(1);
+
+          if (foundCaseLaw) {
+            const summaryText = foundCaseLaw.summary || "";
+            const words = summaryText ? summaryText.trim().split(/\s+/).filter(Boolean).length : 0;
+            return res.json({
+              id: foundCaseLaw.id,
+              citation: foundCaseLaw.citation || cleanQuery,
+              title: foundCaseLaw.title || "Reported Precedent Authority",
+              petitioner: null,
+              respondent: null,
+              court: foundCaseLaw.court || "Pakistani Court",
+              decisionDate: null,
+              headnotes: foundCaseLaw.summary || "",
+              previewText: summaryText,
+              previewWordCount: words,
+              totalWordCount: words,
+              isPreview: false,
+              isTruncated: false,
+              citations: { made: [], received: [] },
+              textIntegrity: "own",
+              textBelongsTo: null,
+            });
+          }
+
           return res.status(404).json({ message: "Judgment not found" });
         }
       }
@@ -13203,7 +13280,12 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
   // ── Public & Authenticated Judgment Court PDF Generation ──────────────────
   const handleJudgmentPdfDownload = async (req: any, res: any) => {
     try {
-      const id = String(req.params.id || "").trim();
+      let id = String(req.params.id || "").trim();
+      try {
+        id = decodeURIComponent(id);
+        if (id.includes("%")) id = decodeURIComponent(id);
+      } catch {}
+      id = id.trim();
       if (!id) return res.status(400).json({ message: "Judgment id is required" });
 
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
