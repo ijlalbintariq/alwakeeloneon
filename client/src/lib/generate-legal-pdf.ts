@@ -287,15 +287,12 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: [PAGE_WIDTH, PAGE_HEIGHT] });
   const nodes = parseHTML(html);
   let y = MARGIN_TOP;
-  let pageNum = 1;
 
   // ── Helper: check page break ──────────────────────────────────────────
   const maxY = PAGE_HEIGHT - MARGIN_BOTTOM;
 
   function startNewPage() {
-    addPageFooter();
     doc.addPage([PAGE_WIDTH, PAGE_HEIGHT], "portrait");
-    pageNum++;
     y = MARGIN_TOP;
   }
 
@@ -305,16 +302,6 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
       return true;
     }
     return false;
-  }
-
-  // ── Page footer ───────────────────────────────────────────────────────
-  function addPageFooter() {
-    // Page number only
-    doc.setFont("times", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Page ${pageNum}`, PAGE_WIDTH / 2, FOOTER_Y, { align: "center" });
-    doc.setTextColor(0, 0, 0);
   }
 
   // ── Diagonal watermark ────────────────────────────────────────────────
@@ -355,73 +342,87 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
     align?: "left" | "center" | "right" | "justify",
     lineHeightOverride?: number,
   ) {
-    // For simplicity and reliability with jsPDF's limited rich-text support,
-    // we render runs as lines of text, applying the dominant style per line.
-    const plainText = runsToPlainText(runs);
-    if (!plainText.trim()) return;
-
-    const lhFactor = lineHeightOverride ?? LINE_HEIGHT_FACTOR;
-    const lineSpacing = fontSize * 0.353 * lhFactor; // pt to mm conversion with spacing
-    const effectiveWidth = CONTENT_WIDTH - indent;
-
-    // Determine dominant style from runs
-    const hasBold = runs.some((r) => r.bold);
-    const hasItalic = runs.some((r) => r.italic);
-
-    let fontStyle: "normal" | "bold" | "italic" | "bolditalic" = baseStyle;
-    if (hasBold && hasItalic) fontStyle = "bolditalic";
-    else if (hasBold) fontStyle = "bold";
-    else if (hasItalic) fontStyle = "italic";
-
-    doc.setFont("times", fontStyle);
-    doc.setFontSize(fontSize);
-
-    // Handle multiline text with inline newlines
-    const paragraphs = plainText.split("\n");
-
-    for (const para of paragraphs) {
-      if (!para.trim()) {
-        y += lineSpacing * 0.4;
-        continue;
+    if (!runsToPlainText(runs).trim()) return;
+    const lineSpacing = fontSize * 0.353 * (lineHeightOverride ?? LINE_HEIGHT_FACTOR);
+    const effectiveWidth = Math.max(10, CONTENT_WIDTH - indent);
+    const setRunFont = (run: TextRun) => {
+      const bold = run.bold || baseStyle === "bold";
+      const italic = run.italic || baseStyle === "italic";
+      doc.setFont("times", bold && italic ? "bolditalic" : bold ? "bold" : italic ? "italic" : "normal");
+      doc.setFontSize(fontSize);
+    };
+    type Line = { runs: TextRun[]; width: number; paragraphEnd: boolean };
+    const lines: Line[] = [];
+    let line: Line = { runs: [], width: 0, paragraphEnd: false };
+    const flush = (paragraphEnd = false) => {
+      while (line.runs.length && /^\s+$/.test(line.runs[line.runs.length - 1].text)) {
+        const last = line.runs.pop()!;
+        setRunFont(last);
+        line.width -= doc.getTextWidth(last.text);
       }
-
-      const lines = doc.splitTextToSize(para, effectiveWidth) as string[];
-      let lineIndex = 0;
-
-      while (lineIndex < lines.length) {
-        let availableLines = Math.floor((maxY - y) / lineSpacing);
-        const remainingLines = lines.length - lineIndex;
-        if (availableLines < 2 && remainingLines > availableLines && y > MARGIN_TOP + 1) {
-          startNewPage();
-          availableLines = Math.floor((maxY - y) / lineSpacing);
+      lines.push({ ...line, paragraphEnd });
+      line = { runs: [], width: 0, paragraphEnd: false };
+    };
+    const append = (text: string, run: TextRun) => {
+      setRunFont(run);
+      let width = doc.getTextWidth(text);
+      if (line.width + width > effectiveWidth && line.runs.length) flush();
+      if (!line.runs.length && /^\s+$/.test(text)) return;
+      // A single long URL or reference must also fit inside the court margins.
+      if (width > effectiveWidth) {
+        for (const character of Array.from(text)) {
+          setRunFont(run);
+          const characterWidth = doc.getTextWidth(character);
+          if (line.width + characterWidth > effectiveWidth && line.runs.length) flush();
+          line.runs.push({ ...run, text: character });
+          line.width += characterWidth;
         }
-        let linesOnPage = Math.min(remainingLines, Math.max(1, availableLines));
-        if (remainingLines > linesOnPage && remainingLines - linesOnPage === 1 && linesOnPage > 1) {
-          linesOnPage -= 1;
-        }
+      } else {
+        line.runs.push({ ...run, text });
+        line.width += width;
+      }
+    };
+    for (const run of runs) {
+      for (const token of run.text.split(/(\n|[^\S\n]+)/).filter(Boolean)) {
+        if (token === "\n") flush(true);
+        else append(token, run);
+      }
+    }
+    if (line.runs.length) flush(true);
+    else if (lines.length) lines[lines.length - 1].paragraphEnd = true;
 
-        for (let offset = 0; offset < linesOnPage; offset++) {
-          const currentLineIndex = lineIndex + offset;
-          const line = lines[currentLineIndex];
-
-          const xPos = MARGIN_LEFT + indent;
-          const isLastLine = currentLineIndex === lines.length - 1;
-
-          if (align === "center") {
-            doc.text(line, PAGE_WIDTH / 2, y, { align: "center" });
-          } else if (align === "right") {
-            doc.text(line, PAGE_WIDTH - MARGIN_RIGHT, y, { align: "right" });
-          } else if (align === "justify" && !isLastLine) {
-            doc.text(line, xPos, y, { align: "justify", maxWidth: effectiveWidth });
-          } else {
-            doc.text(line, xPos, y);
+    let lineIndex = 0;
+    while (lineIndex < lines.length) {
+      let availableLines = Math.floor((maxY - y) / lineSpacing);
+      const remainingLines = lines.length - lineIndex;
+      if (availableLines < 2 && remainingLines > availableLines && y > MARGIN_TOP + 1) {
+        startNewPage();
+        availableLines = Math.floor((maxY - y) / lineSpacing);
+      }
+      let count = Math.min(remainingLines, Math.max(1, availableLines));
+      if (remainingLines > count && remainingLines - count === 1 && count > 1) count--;
+      for (let offset = 0; offset < count; offset++) {
+        const current = lines[lineIndex + offset];
+        const spaces = current.runs.reduce((total, run) => total + (run.text.match(/\s/g)?.length || 0), 0);
+        const gap = align === "justify" && !current.paragraphEnd && spaces
+          ? Math.max(0, effectiveWidth - current.width) / spaces : 0;
+        let x = MARGIN_LEFT + indent;
+        if (align === "center") x += (effectiveWidth - current.width) / 2;
+        else if (align === "right") x += effectiveWidth - current.width;
+        for (const run of current.runs) {
+          setRunFont(run);
+          const width = doc.getTextWidth(run.text) + gap * (run.text.match(/\s/g)?.length || 0);
+          doc.text(run.text, x, y);
+          if (run.underline) {
+            doc.setLineWidth(0.2);
+            doc.line(x, y + 0.7, x + width, y + 0.7);
           }
-
-          y += lineSpacing;
+          x += width;
         }
-        lineIndex += linesOnPage;
-        if (lineIndex < lines.length) startNewPage();
+        y += current.runs.length ? lineSpacing : lineSpacing * 0.4;
       }
+      lineIndex += count;
+      if (lineIndex < lines.length) startNewPage();
     }
   }
 
@@ -559,43 +560,42 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
             cellLines.push(lines);
             maxLines = Math.max(maxLines, lines.length);
           }
-          const rowH = Math.max(ROW_MIN_H, maxLines * (TABLE_FONT * 0.353 * 1.4) + CELL_PAD_Y * 2);
-
-          ensureSpace(rowH + 1);
-
-          let cellX = MARGIN_LEFT;
-          for (let ci = 0; ci < numCols; ci++) {
-            const cellW = colWidths[ci];
-            const isBold = row.cells[ci]?.bold || row.isHeader;
-
-            // Fill header cells
-            if (row.isHeader) {
-              doc.setFillColor(26, 35, 50); // #1a2332
-              doc.rect(cellX, y, cellW, rowH, "F");
+          const tableLineHeight = TABLE_FONT * 0.353 * 1.4;
+          let firstLine = 0;
+          while (firstLine < maxLines) {
+            let capacity = Math.floor((maxY - y - CELL_PAD_Y * 2) / tableLineHeight);
+            if (capacity < 1) {
+              startNewPage();
+              capacity = Math.max(1, Math.floor((maxY - y - CELL_PAD_Y * 2) / tableLineHeight));
             }
-
-            // Cell border
-            doc.setDrawColor(80, 80, 80);
-            doc.setLineWidth(0.3);
-            doc.rect(cellX, y, cellW, rowH, "S");
-
-            // Cell text
-            doc.setFont("times", isBold ? "bold" : "normal");
-            doc.setFontSize(TABLE_FONT);
-            doc.setTextColor(row.isHeader ? 255 : 0, row.isHeader ? 255 : 0, row.isHeader ? 255 : 0);
-
-            const lines = cellLines[ci] || [];
-            let textY = y + CELL_PAD_Y + TABLE_FONT * 0.353;
-            for (const line of lines) {
-              doc.text(line, cellX + CELL_PAD_X, textY);
-              textY += TABLE_FONT * 0.353 * 1.4;
+            const lineCount = Math.min(capacity, maxLines - firstLine);
+            const rowH = Math.max(ROW_MIN_H, lineCount * tableLineHeight + CELL_PAD_Y * 2);
+            let cellX = MARGIN_LEFT;
+            for (let ci = 0; ci < numCols; ci++) {
+              const cellW = colWidths[ci];
+              const isBold = row.cells[ci]?.bold || row.isHeader;
+              if (row.isHeader) {
+                doc.setFillColor(26, 35, 50);
+                doc.rect(cellX, y, cellW, rowH, "F");
+              }
+              doc.setDrawColor(80, 80, 80);
+              doc.setLineWidth(0.3);
+              doc.rect(cellX, y, cellW, rowH, "S");
+              doc.setFont("times", isBold ? "bold" : "normal");
+              doc.setFontSize(TABLE_FONT);
+              doc.setTextColor(row.isHeader ? 255 : 0, row.isHeader ? 255 : 0, row.isHeader ? 255 : 0);
+              let textY = y + CELL_PAD_Y + TABLE_FONT * 0.353;
+              for (const textLine of (cellLines[ci] || []).slice(firstLine, firstLine + lineCount)) {
+                doc.text(textLine, cellX + CELL_PAD_X, textY);
+                textY += tableLineHeight;
+              }
+              cellX += cellW;
             }
-
-            cellX += cellW;
+            doc.setTextColor(0, 0, 0);
+            y += rowH;
+            firstLine += lineCount;
+            if (firstLine < maxLines) startNewPage();
           }
-
-          doc.setTextColor(0, 0, 0);
-          y += rowH;
         }
 
         y += 4; // spacing after table
@@ -616,9 +616,6 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
     }
   }
 
-  // Add footer to last page
-  addPageFooter();
-
   // Add DRAFT watermark to all pages if needed
   if (isDraft) {
     const totalPages = doc.getNumberOfPages();
@@ -635,9 +632,6 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
     doc.setFont("times", "normal");
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    // White-out old page number
-    doc.setFillColor(255, 255, 255);
-    doc.rect(PAGE_WIDTH / 2 - 20, FOOTER_Y - 4, 40, 6, "F");
     doc.text(`Page ${i} of ${totalPages}`, PAGE_WIDTH / 2, FOOTER_Y, { align: "center" });
     doc.setTextColor(0, 0, 0);
   }

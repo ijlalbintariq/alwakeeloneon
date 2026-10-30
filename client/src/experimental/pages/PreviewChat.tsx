@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Bot,
@@ -42,6 +42,8 @@ import { ChatCitationChip } from "@/experimental/components/chat/ChatCitationChi
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { parseReferences } from "@/components/reference-cards";
 import { cleanLegalChatResponse } from "@/experimental/lib/cleanChatResponse";
+import { readChatEvents } from "@/experimental/lib/chat-stream";
+import { hydrateCitationGraph, normalizePrecedentCitation } from "@/experimental/lib/judgmentApiClient";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -78,10 +80,13 @@ export const PreviewChat: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [_, setLocation] = useLocation();
+  const search = useSearch();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputPrompt, setInputPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [modelTier, setModelTier] = useState<ModelTier>("standard");
 
@@ -107,6 +112,11 @@ export const PreviewChat: React.FC = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeThreadIdRef = useRef<number | null>(activeThreadId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const conversationEpochRef = useRef(0);
+  const recordingEpochRef = useRef(0);
+  const restoredAccountRef = useRef<string | null>(null);
+  const pendingSaveRef = useRef<{ userMsg: ChatMessage; assistantMsg: ChatMessage; threadId: number | null; epoch: number } | null>(null);
+  const storageKey = `${PREVIEW_ACTIVE_THREAD_KEY}:${user?.id || "anonymous"}`;
 
   useEffect(() => {
     activeThreadIdRef.current = activeThreadId;
@@ -137,11 +147,39 @@ export const PreviewChat: React.FC = () => {
 
   // Voice recording with Whisper
   const handleVoiceTranscription = useCallback((text: string) => {
+    if (recordingEpochRef.current !== conversationEpochRef.current) return;
     setInputPrompt((prev) => (prev ? `${prev}\n\n[Voice Note]: ${text}` : text));
     setApiError(null);
   }, []);
 
   const voice = useVoiceRecorder({ onAutoTranscription: handleVoiceTranscription });
+  const handleStopVoice = async () => {
+    const epoch = conversationEpochRef.current;
+    try {
+      const text = await voice.stopAndTranscribe();
+      if (text && epoch === conversationEpochRef.current) handleVoiceTranscription(text);
+    } catch {}
+  };
+  useEffect(() => {
+    if (voice.error) toast({ title: "Voice dictation failed", description: voice.error, variant: "destructive" });
+  }, [voice.error, toast]);
+
+  const cancelActiveWork = useCallback(() => {
+    conversationEpochRef.current++;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    pendingSaveRef.current = null;
+    setIsLoading(false);
+    setIsSaving(false);
+    setSaveError(null);
+    setIsThinking(false);
+    setToolSearchStatus({ active: false, queries: [], totalFound: 0, totalMs: 0 });
+  }, []);
+
+  useEffect(() => () => {
+    conversationEpochRef.current++;
+    abortControllerRef.current?.abort();
+  }, []);
 
   // Data fetching: threads, case files, user docs, bookmarks, usage
   const { data: threads = [], isLoading: threadsLoading } = useQuery<ThreadItem[]>({
@@ -164,21 +202,14 @@ export const PreviewChat: React.FC = () => {
   const canUseTurbo = usage?.tier === "pro" || usage?.tier === "chamber" || usage?.tier === "enterprise" || user?.isAdmin;
   const canUseApex = usage?.tier === "chamber" || usage?.tier === "enterprise" || user?.isAdmin;
 
-  // Restore persisted active thread
-  useEffect(() => {
-    if (activeThreadId !== null) return;
-    const saved = localStorage.getItem(PREVIEW_ACTIVE_THREAD_KEY);
-    const savedId = Number(saved);
-    if (savedId > 0 && threads.some((t) => t.id === savedId)) {
-      handleLoadThread(savedId);
-    }
-  }, [threads]);
-
   // Persist consultation turn
-  const persistTurn = useCallback(async (userMsg: ChatMessage, assistantMsg: ChatMessage) => {
+  const persistTurn = useCallback(async (userMsg: ChatMessage, assistantMsg: ChatMessage, currentThreadId: number | null, epoch: number) => {
+    if (epoch !== conversationEpochRef.current) return;
+    pendingSaveRef.current = { userMsg, assistantMsg, threadId: currentThreadId, epoch };
+    setIsSaving(true);
+    setSaveError(null);
     try {
-      const currentThreadId = activeThreadIdRef.current;
-      const titleClean = String(userMsg.content || "")
+      const titleClean = String(userMsg.displayContent ?? userMsg.content)
         .replace(/\s*\[Attached:[^\]]+\]\s*/gi, " ")
         .trim();
       const title = (titleClean || "Al Wakeelo Consultation").slice(0, 240);
@@ -192,34 +223,46 @@ export const PreviewChat: React.FC = () => {
 
       const data = await res.json().catch(() => null);
       const nextThreadId = Number(data?.thread?.id || data?.threadId || 0);
+      if (!Number.isSafeInteger(nextThreadId) || nextThreadId <= 0) throw new Error("Invalid saved consultation ID.");
+      queryClient.invalidateQueries({ queryKey: ["/api/threads"] });
+      if (epoch !== conversationEpochRef.current) return;
+      pendingSaveRef.current = null;
       if (nextThreadId > 0 && nextThreadId !== currentThreadId) {
         setActiveThreadId(nextThreadId);
         activeThreadIdRef.current = nextThreadId;
-        localStorage.setItem(PREVIEW_ACTIVE_THREAD_KEY, String(nextThreadId));
+        try { localStorage.setItem(storageKey, String(nextThreadId)); } catch {}
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/threads"] });
     } catch (err) {
       console.warn("Failed to auto-persist turn:", err);
+      if (epoch === conversationEpochRef.current) setSaveError("This consultation has not been saved. Retry saving before continuing.");
+    } finally {
+      if (epoch === conversationEpochRef.current) setIsSaving(false);
     }
-  }, []);
+  }, [storageKey]);
 
   // Load thread from backend
   const handleLoadThread = useCallback(async (threadId: number) => {
+    cancelActiveWork();
+    voice.cancelRecording();
+    const epoch = conversationEpochRef.current;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     try {
       setIsLoading(true);
-      const res = await apiRequest("GET", `/api/threads/${threadId}`);
+      const res = await apiRequest("GET", `/api/threads/${threadId}`, undefined, controller.signal);
       const data = await res.json();
-      if (!data?.messages) return;
+      if (epoch !== conversationEpochRef.current) return;
+      if (!Array.isArray(data?.messages)) throw new Error("Invalid consultation history.");
 
-      const restored: ChatMessage[] = data.messages.map((m: any, idx: number) => {
+      const restored: ChatMessage[] = data.messages.filter((m: any) => m && ["user", "assistant"].includes(m.role)).map((m: any, idx: number) => {
         const rawContent = String(m.content || "");
         const isAssistant = m.role === "assistant";
         const cleaned = isAssistant ? cleanLegalChatResponse(rawContent) : null;
-        const content = cleaned ? cleaned.cleanContent : rawContent;
         const base: ChatMessage = {
           id: String(m.id ?? `${threadId}-${idx}`),
           role: isAssistant ? "assistant" : "user",
-          content,
+          content: rawContent,
+          displayContent: !isAssistant ? rawContent.split("\n\n[ATTACHED DOCUMENTS]\n")[0] : undefined,
         };
 
         if (isAssistant && cleaned?.references?.judgments && cleaned.references.judgments.length > 0) {
@@ -227,7 +270,7 @@ export const PreviewChat: React.FC = () => {
             hits: cleaned.references.judgments.map((j) => ({
               citation: j.citation,
               title: j.title || "",
-              court: j.court || "Supreme Court of Pakistan",
+              court: j.court || "",
               snippet: j.description || "",
             })),
             totalFound: cleaned.references.judgments.length,
@@ -240,60 +283,80 @@ export const PreviewChat: React.FC = () => {
       setMessages(restored);
       setActiveThreadId(threadId);
       activeThreadIdRef.current = threadId;
-      localStorage.setItem(PREVIEW_ACTIVE_THREAD_KEY, String(threadId));
+      try { localStorage.setItem(storageKey, String(threadId)); } catch {}
+      setInputPrompt("");
+      setAttachedFiles([]);
       setApiError(null);
     } catch (err) {
+      if (epoch !== conversationEpochRef.current || controller.signal.aborted) return;
       console.error("Failed to load thread:", err);
       setApiError("Unable to load consultation history.");
     } finally {
-      setIsLoading(false);
+      if (epoch === conversationEpochRef.current) { setIsLoading(false); abortControllerRef.current = null; }
     }
-  }, []);
+  }, [cancelActiveWork, storageKey, voice.cancelRecording]);
 
   // Start new consultation
   const handleNewConsultation = () => {
+    restoredAccountRef.current = String(user?.id || "");
+    cancelActiveWork();
+    voice.cancelRecording();
     setMessages([]);
     setActiveThreadId(null);
     activeThreadIdRef.current = null;
-    localStorage.removeItem(PREVIEW_ACTIVE_THREAD_KEY);
+    try { localStorage.removeItem(storageKey); } catch {}
     setApiError(null);
     setAttachedFiles([]);
     setInputPrompt("");
+    setSelectedCaseFileId(null);
     setToolSearchStatus({ active: false, queries: [], totalFound: 0, totalMs: 0 });
   };
 
 
-  // Parse threadId from URL if present
+  // Restore once per account; explicit links take priority over saved state.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlThreadId = params.get('threadId');
-    if (urlThreadId && Number(urlThreadId) > 0) {
-      handleLoadThread(Number(urlThreadId));
-      // Optionally clean the URL so it doesn't get stuck
-      window.history.replaceState({}, '', '/preview/chat');
+    if (!user?.id || threadsLoading) return;
+    const params = new URLSearchParams(search);
+    const urlThread = params.get("threadId");
+    const prompt = params.get("prompt") || params.get("q");
+    if (restoredAccountRef.current === String(user.id) && !urlThread && !prompt) return;
+    restoredAccountRef.current = String(user.id);
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(storageKey); } catch {}
+    const threadId = Number(urlThread || (!prompt ? saved : null));
+    if (Number.isSafeInteger(threadId) && threadId > 0 && (urlThread || threads.some((t) => t.id === threadId))) {
+      void handleLoadThread(threadId);
+    } else {
+      cancelActiveWork();
+      setMessages([]);
+      setActiveThreadId(null);
+      activeThreadIdRef.current = null;
+      setInputPrompt(prompt || "");
     }
-  }, [handleLoadThread]);
+    if (urlThread || prompt) {
+      params.delete("threadId"); params.delete("prompt"); params.delete("q");
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${params.size ? `?${params}` : ""}${window.location.hash}`);
+    }
+  }, [user?.id, threadsLoading, threads, storageKey, handleLoadThread, cancelActiveWork, search]);
 
   // Delete thread
   const handleDeleteThread = async (threadId: number) => {
     try {
       await apiRequest("DELETE", `/api/threads/${threadId}`);
       queryClient.invalidateQueries({ queryKey: ["/api/threads"] });
-      if (activeThreadId === threadId) {
+      if (activeThreadIdRef.current === threadId) {
         handleNewConsultation();
       }
     } catch (err) {
       console.error("Failed to delete thread:", err);
+      toast({ title: "Delete failed", description: "The consultation is still available. Please try again.", variant: "destructive" });
     }
   };
 
   // Stop current streaming generation
   const handleStop = () => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-    setIsLoading(false);
-    setIsThinking(false);
-    setToolSearchStatus({ active: false, queries: [], totalFound: 0, totalMs: 0 });
+    cancelActiveWork();
+    setApiError("Response stopped. Any partial output has not been saved.");
   };
 
   // Bookmark an assistant message
@@ -301,7 +364,7 @@ export const PreviewChat: React.FC = () => {
     mutationFn: async (msg: ChatMessage) => {
       const idx = messages.findIndex((m) => m.id === msg.id);
       const userMsg = idx > 0 ? messages.slice(0, idx).reverse().find((m) => m.role === "user") : null;
-      const rawTitle = userMsg ? userMsg.content.slice(0, 80) : "Al Wakeelo Legal Research";
+      const rawTitle = userMsg ? (userMsg.displayContent ?? userMsg.content).slice(0, 80) : "Al Wakeelo Legal Research";
 
       await apiRequest("POST", "/api/bookmarks", {
         title: rawTitle.trim(),
@@ -315,40 +378,56 @@ export const PreviewChat: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookmarks"] });
       toast({ title: "Saved to Bookmarks", description: "You can view this in your Knowledge Vault bookmarks." });
     },
+    onError: () => toast({ title: "Bookmark failed", description: "The answer could not be bookmarked. Please try again.", variant: "destructive" }),
   });
 
   // Share conversation turn
   const [copiedShareUrl, setCopiedShareUrl] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const sharingRef = useRef(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const handleShare = async () => {
-    if (messages.length < 2) return;
+    if (messages.length < 2 || isLoading || isSaving || saveError || apiError || sharingRef.current) return;
+    const epoch = conversationEpochRef.current;
+    sharingRef.current = true;
+    setIsSharing(true);
     try {
       let tId = activeThreadId;
       if (!tId) {
         const firstUser = messages.find((m) => m.role === "user");
         const threadRes = await apiRequest("POST", "/api/threads/save-for-share", {
-          title: firstUser?.content.slice(0, 100) || "Al Wakeelo Legal Research",
+          title: (firstUser?.displayContent ?? firstUser?.content)?.slice(0, 100) || "Al Wakeelo Legal Research",
           messages: messages.map((m) => ({ role: m.role, content: m.content })),
         });
         const threadData = await threadRes.json();
         tId = threadData.id;
+        if (epoch !== conversationEpochRef.current) return;
         setActiveThreadId(tId);
+        activeThreadIdRef.current = tId;
+        try { localStorage.setItem(storageKey, String(tId)); } catch {}
       }
       const shareRes = await apiRequest("POST", `/api/threads/${tId}/share`);
       const shareData = await shareRes.json();
+      if (epoch !== conversationEpochRef.current) return;
       const fullUrl = `${window.location.origin}${shareData.shareUrl}`;
       await navigator.clipboard.writeText(fullUrl);
       setCopiedShareUrl(true);
       setTimeout(() => setCopiedShareUrl(false), 3000);
     } catch (err) {
       console.error("Failed to share consultation:", err);
+      if (epoch === conversationEpochRef.current) toast({ title: "Share failed", description: "The link could not be copied. Please try again.", variant: "destructive" });
+    } finally {
+      sharingRef.current = false;
+      setIsSharing(false);
     }
   };
 
   // Main Send handler for SSE Streaming
   const handleSend = async (overridePrompt?: string) => {
-    const text = overridePrompt || inputPrompt;
-    if ((!text.trim() && attachedFiles.length === 0) || isLoading) return;
+    const text = (overridePrompt ?? inputPrompt).trim();
+    if ((!text && attachedFiles.length === 0) || isLoading || isSaving || saveError || abortControllerRef.current) return;
+    const epoch = conversationEpochRef.current;
+    const threadId = activeThreadIdRef.current;
 
     setApiError(null);
     const controller = new AbortController();
@@ -360,7 +439,7 @@ export const PreviewChat: React.FC = () => {
       : text;
 
     const userMsg: ChatMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: "user",
       content: displayText,
       attachments: fileNames.length > 0 ? fileNames : undefined,
@@ -376,38 +455,46 @@ export const PreviewChat: React.FC = () => {
     const currentFiles = [...attachedFiles];
     setAttachedFiles([]);
 
-    const assistantId = (Date.now() + 1).toString();
+    const assistantId = crypto.randomUUID();
+    let responseStarted = false;
 
     try {
       // RAG Vault mode branch
       if (ragEnabled && text.trim().length > 0 && currentFiles.length === 0) {
-        const recentHistory = updatedMessages
+        const recentHistory = messages
           .slice(-10)
           .map((m) => ({ role: m.role, content: m.content.substring(0, 500) }));
 
         const ragBody: any = {
           query: text,
           documentIds: [],
-          conversationHistory: recentHistory.length > 1 ? recentHistory : undefined,
+          conversationHistory: recentHistory.length ? recentHistory : undefined,
         };
         if (selectedCaseFileId) ragBody.caseFileId = selectedCaseFileId;
 
-        const ragRes = await apiRequest("POST", "/api/rag/ask", ragBody);
+        const ragRes = await apiRequest("POST", "/api/rag/ask", ragBody, controller.signal);
         const ragData = await ragRes.json();
+        if (epoch !== conversationEpochRef.current || controller.signal.aborted) return;
+        if (typeof ragData?.answer !== "string" || !ragData.answer.trim()) throw new Error("The vault returned an empty answer. Please try again.");
 
+        const sources = Array.isArray(ragData.citations) ? ragData.citations : [];
+        const sourceText = sources.length ? `\n\n### Knowledge Vault Sources\n${sources.map((source: any) => `- ${String(source.title || "Source")} (document ${source.sourceDocumentId ?? source.documentId ?? "unknown"}): ${String(source.quote || "")}`).join("\n")}` : "";
         const assistantMsg: ChatMessage = {
           id: assistantId,
           role: "assistant",
-          content: ragData?.answer || "No response generated from vault.",
+          content: ragData.answer + sourceText,
+          displayContent: ragData.answer,
           modeName: "Vault Grounded",
           modelName: "Knowledge Vault RAG",
           modelId: "rag-engine",
           modelDescription: "Grounded with Pakistani statutes and chamber documents.",
-          ragCitations: Array.isArray(ragData?.citations) ? ragData.citations : [],
+          ragCitations: sources,
         };
 
         setMessages([...updatedMessages, assistantMsg]);
-        await persistTurn(userMsg, assistantMsg);
+        responseStarted = true;
+        setIsLoading(false);
+        await persistTurn(userMsg, assistantMsg, threadId, epoch);
         queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
         return;
       }
@@ -450,212 +537,90 @@ export const PreviewChat: React.FC = () => {
       }
 
       if (!response.ok) {
-        const errText = await response.text();
-        const isLimitError = response.status === 429;
+        const error = await response.json().catch(() => null);
         if (response.status === 401) {
           throw { message: "Chamber session unauthenticated. Please sign in via the Sign In tab (/preview/auth) to enable live LLM intelligence." };
         }
-        throw { message: `${response.status}: ${errText}`, isLimit: isLimitError };
+        throw new Error(error?.message || `Chat request failed (${response.status}). Please try again.`);
       }
 
       const contentType = response.headers.get("content-type") || "";
-      let persistedAssistantContent = "";
+      let accumulated = "";
+      let metadata: Record<string, any> = {};
+      let responseWarning = "";
+      let caseLawCard: CaseLawCardData | undefined;
+      const publish = () => {
+        if (epoch !== conversationEpochRef.current) return;
+        responseStarted = Boolean(cleanLegalChatResponse(accumulated).cleanContent.trim());
+        const assistantMessage: ChatMessage = {
+          id: assistantId, role: "assistant", content: accumulated, caseLawCard,
+          modeName: requestedMode.toUpperCase(),
+          modelName: requestedMode === "apex" ? "Apex Tier" : requestedMode === "turbo" ? "Turbo Intelligence" : "Standard Intelligence",
+          modelId: metadata.model || requestedMode,
+          moduleProfile: metadata.moduleProfile,
+          routingPath: Array.isArray(metadata.routingPath) ? metadata.routingPath.map(String) : undefined,
+        };
+        setMessages((previous) => [...previous.filter((message) => message.id !== assistantId), assistantMessage]);
+      };
 
       if (contentType.includes("application/json")) {
-        const data = await response.json();
-        const modelId = data.model || modelTier;
-        const modelLabel =
-          modelTier === "apex" ? "Apex Tier" : modelTier === "turbo" ? "Turbo Intelligence" : "Standard Intelligence";
-        const cleaned = cleanLegalChatResponse(data.content || "");
-        const assistantMessage: ChatMessage = {
-          id: assistantId,
-          role: "assistant",
-          content: cleaned.cleanContent,
-          modeName: modelTier.toUpperCase(),
-          modelName: modelLabel,
-          modelId,
-          moduleProfile: typeof data.moduleProfile === "string" ? data.moduleProfile : undefined,
-          routingPath: Array.isArray(data.routingPath) ? data.routingPath.map(String) : undefined,
-          caseLawCard: cleaned.references?.judgments && cleaned.references.judgments.length > 0 ? {
-            hits: cleaned.references.judgments.map((j) => ({
-              citation: j.citation,
-              title: j.title || "",
-              court: j.court || "Supreme Court of Pakistan",
-              snippet: j.description || "",
-            })),
-            totalFound: cleaned.references.judgments.length,
-            queriesUsed: [],
-          } : undefined,
-        };
-        persistedAssistantContent = assistantMessage.content;
-        setMessages([...updatedMessages, assistantMessage]);
-      } else {
-        setMessages([...updatedMessages, { id: assistantId, role: "assistant", content: "" }]);
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let accumulated = "";
-
-        if (reader) {
-          let buffer = "";
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines.pop() || "";
-
-              for (const line of lines) {
-                if (line.startsWith("data: ")) {
-                  const jsonStr = line.slice(6).trim();
-                  if (!jsonStr) continue;
-                  try {
-                    const parsed = JSON.parse(jsonStr);
-                    if (parsed.error) {
-                      throw { message: parsed.error, isLimit: false };
-                    }
-                    if (parsed.searching === true) {
-                      setToolSearchStatus((prev) => ({
-                        ...prev,
-                        active: true,
-                        queries: [...prev.queries, { query: parsed.query, found: parsed.found ?? 0, elapsedMs: parsed.elapsedMs ?? 0 }],
-                      }));
-                      continue;
-                    }
-                    if (parsed.searching === false) {
-                      setToolSearchStatus((prev) => ({
-                        ...prev,
-                        active: false,
-                        totalFound: parsed.found ?? prev.totalFound,
-                        totalMs: parsed.totalMs ?? prev.totalMs,
-                      }));
-                      continue;
-                    }
-                    if (parsed.thinking === true) {
-                      setIsThinking(true);
-                      continue;
-                    }
-                    if (parsed.thinking === false) {
-                      setIsThinking(false);
-                      continue;
-                    }
-                    if (parsed.caseLawCard && Array.isArray(parsed.caseLawCard.hits)) {
-                      const cardData: CaseLawCardData = {
-                        hits: parsed.caseLawCard.hits,
-                        totalFound: parsed.caseLawCard.totalFound ?? parsed.caseLawCard.hits.length,
-                        queriesUsed: Array.isArray(parsed.caseLawCard.queriesUsed) ? parsed.caseLawCard.queriesUsed : [],
-                      };
-                      setMessages((prev) => {
-                        const last = prev[prev.length - 1];
-                        if (last && last.id === assistantId) {
-                          return [...prev.slice(0, -1), { ...last, caseLawCard: cardData }];
-                        }
-                        return prev;
-                      });
-                      continue;
-                    }
-                    if (parsed.reset) {
-                      accumulated = "";
-                      setMessages((prev) => {
-                        const last = prev[prev.length - 1];
-                        if (last && last.id === assistantId) {
-                          return [...prev.slice(0, -1), { ...last, content: "" }];
-                        }
-                        return prev;
-                      });
-                      continue;
-                    }
-                    if (parsed.done) {
-                      const modelId = parsed.model || modelTier;
-                      const modelLabel =
-                        modelTier === "apex" ? "Apex Tier" : modelTier === "turbo" ? "Turbo Intelligence" : "Standard Intelligence";
-                      const cleaned = cleanLegalChatResponse(accumulated);
-                      setMessages((prev) => {
-                        const last = prev[prev.length - 1];
-                        if (last && last.id === assistantId) {
-                          const cardData = last.caseLawCard || (cleaned.references?.judgments && cleaned.references.judgments.length > 0 ? {
-                            hits: cleaned.references.judgments.map((j) => ({
-                              citation: j.citation,
-                              title: j.title || "",
-                              court: j.court || "Supreme Court of Pakistan",
-                              snippet: j.description || "",
-                            })),
-                            totalFound: cleaned.references.judgments.length,
-                            queriesUsed: [],
-                          } : undefined);
-                          return [
-                            ...prev.slice(0, -1),
-                            {
-                              ...last,
-                              content: cleaned.cleanContent,
-                              caseLawCard: cardData,
-                              modeName: modelTier.toUpperCase(),
-                              modelName: modelLabel,
-                              modelId,
-                            },
-                          ];
-                        }
-                        return prev;
-                      });
-                      persistedAssistantContent = cleaned.cleanContent;
-                      break;
-                    }
-                    if (parsed.text) {
-                      accumulated += parsed.text;
-                      const cleaned = cleanLegalChatResponse(accumulated);
-                      const current = cleaned.cleanContent || accumulated;
-                      setMessages((prev) => {
-                        const last = prev[prev.length - 1];
-                        if (last && last.id === assistantId) {
-                          return [...prev.slice(0, -1), { ...last, content: current }];
-                        }
-                        return prev;
-                      });
-                    }
-                  } catch (e: any) {
-                    if (e?.isLimit !== undefined) throw e;
-                  }
-                }
-              }
-            }
-          } catch (streamErr: any) {
-            console.warn("Stream interrupted:", streamErr);
-            if (accumulated.trim()) {
-              persistedAssistantContent = accumulated;
-            } else {
-              throw streamErr;
-            }
+        metadata = await response.json();
+        accumulated = typeof metadata.content === "string" ? metadata.content : "";
+      } else if (contentType.includes("text/event-stream")) {
+        let completed = false;
+        for await (const event of readChatEvents(response)) {
+          if (epoch !== conversationEpochRef.current || controller.signal.aborted) return;
+          if (event.error) throw new Error(String(event.error));
+          if (event.warning) { responseWarning = String(event.warning); setApiError(responseWarning); }
+          if (typeof event.thinking === "boolean") setIsThinking(event.thinking);
+          if (typeof event.searching === "boolean") {
+            setToolSearchStatus((previous) => ({
+              ...previous, active: event.searching,
+              queries: event.searching ? [...previous.queries, { query: event.query || "", found: event.found || 0, elapsedMs: event.elapsedMs || 0 }] : previous.queries,
+              totalFound: event.found ?? previous.totalFound, totalMs: event.totalMs ?? previous.totalMs,
+            }));
           }
+          if (event.caseLawCard && Array.isArray(event.caseLawCard.hits)) caseLawCard = { ...event.caseLawCard, verified: true };
+          if (event.reset) accumulated = "";
+          if (typeof event.text === "string") accumulated += event.text;
+          if (event.done) { metadata = event; completed = true; }
+          publish();
+          if (completed) break;
         }
-        if (!persistedAssistantContent && accumulated) {
-          persistedAssistantContent = accumulated;
-        }
+        if (!completed) throw new Error("The response ended before completion. The partial answer has not been saved.");
+      } else {
+        throw new Error("The server returned an unsupported chat response. Please try again.");
       }
-
-      if (persistedAssistantContent.trim()) {
-        await persistTurn(userMsg, {
-          id: assistantId,
-          role: "assistant",
-          content: persistedAssistantContent,
-        });
+      if (epoch !== conversationEpochRef.current || controller.signal.aborted) return;
+      if (!cleanLegalChatResponse(accumulated).cleanContent.trim()) throw new Error("The AI returned an empty answer. Please try again.");
+      if (responseWarning) accumulated = `> Incomplete response: ${responseWarning}\n\n${accumulated}`;
+      if (currentFiles.length && typeof metadata.embeddedAttachmentContent === "string") {
+        userMsg.displayContent = displayText;
+        userMsg.content = metadata.embeddedAttachmentContent;
+        setMessages((previous) => previous.map((message) => message.id === userMsg.id ? { ...userMsg } : message));
       }
+      publish();
+      setIsLoading(false);
+      await persistTurn(userMsg, { id: assistantId, role: "assistant", content: accumulated }, threadId, epoch);
 
       await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
       queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     } catch (err: any) {
+      if (epoch !== conversationEpochRef.current || controller.signal.aborted) return;
       console.error("Chat error:", err);
-      const errMsg = err?.message || "Communication disrupted. Please try again.";
-      setApiError(errMsg);
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && last.id === assistantId && !last.content) {
-          return [...prev.slice(0, -1), { id: assistantId, role: "assistant", content: `⚠️ ${errMsg}` }];
-        }
-        return prev;
-      });
+      setApiError(err?.message || "Communication disrupted. Please try again.");
+      if (!responseStarted) {
+        setInputPrompt(text);
+        setAttachedFiles(currentFiles);
+        setMessages((previous) => previous.filter((message) => message.id !== userMsg.id && message.id !== assistantId));
+      }
     } finally {
-      setIsLoading(false);
-      setIsThinking(false);
+      if (epoch === conversationEpochRef.current) {
+        abortControllerRef.current = null;
+        setIsLoading(false);
+        setIsThinking(false);
+        setToolSearchStatus((previous) => ({ ...previous, active: false }));
+      }
     }
   };
 
@@ -687,27 +652,24 @@ export const PreviewChat: React.FC = () => {
     const statutes: StatuteItem[] = [];
 
     // Precedent regex
-    const citeRegex = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C|SCMR|PLJ|CLD|LHC|IHC|SHC)\s+\d+)\b/gi;
     let match;
     const seenCites = new Set<string>();
-    while ((match = citeRegex.exec(text)) !== null) {
-      const citeStr = match[0].trim();
-      if (!seenCites.has(citeStr)) {
-        seenCites.add(citeStr);
-        citations.push({ citation: citeStr });
-      }
+    for (const edge of hydrateCitationGraph("", [], [], text).made) {
+      seenCites.add(normalizePrecedentCitation(edge.citationText));
+      citations.push({ citation: edge.citationText });
     }
 
     // Also include hits from caseLawCard
     if (latestAssistantMessage.caseLawCard?.hits) {
       latestAssistantMessage.caseLawCard.hits.forEach((h) => {
-        if (!seenCites.has(h.citation)) {
-          seenCites.add(h.citation);
+        if (!seenCites.has(normalizePrecedentCitation(h.citation))) {
+          seenCites.add(normalizePrecedentCitation(h.citation));
           citations.push({
             citation: h.citation,
             court: h.court,
             title: h.title,
             snippet: h.snippet,
+            id: h.id,
           });
         }
       });
@@ -726,13 +688,6 @@ export const PreviewChat: React.FC = () => {
 
     return { citations, statutes };
   }, [latestAssistantMessage]);
-
-  // Set of citation strings the AI actually referenced in its prose body
-  // (passed to CaseLawCard to light up the "AI Cited" badge)
-  const aiCitedSet = useMemo(
-    () => new Set(inspectorData.citations.map((c) => c.citation)),
-    [inspectorData]
-  );
 
   return (
     <PreviewShell noPadding>
@@ -822,6 +777,7 @@ export const PreviewChat: React.FC = () => {
               {messages.length > 1 && (
                 <button
                   onClick={handleShare}
+                  disabled={isLoading || isSaving || !!saveError || !!apiError || isSharing}
                   className="p-2 rounded-lg bg-white dark:bg-[#131E2E] border border-[#E5E4E2] dark:border-[#1E2D44] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#1A1A1A] dark:text-[#F8FAFC] text-xs transition-colors"
                   title="Share Consultation URL"
                 >
@@ -940,12 +896,12 @@ export const PreviewChat: React.FC = () => {
               const isUser = msg.role === "user";
               const isBookmarked = bookmarks.some((b) => b.content === msg.content);
               const cleaned = !isUser ? cleanedMessagesMap.get(`${msg.id}::${msg.content}`) ?? null : null;
-              const displayContent = cleaned ? cleaned.cleanContent : msg.content;
+              const displayContent = msg.displayContent ?? (cleaned ? cleaned.cleanContent : msg.content);
               const effectiveCaseLawCard = msg.caseLawCard || (cleaned?.references?.judgments && cleaned.references.judgments.length > 0 ? {
                 hits: cleaned.references.judgments.map((j) => ({
                   citation: j.citation,
                   title: j.title || "",
-                  court: j.court || "Supreme Court of Pakistan",
+                  court: j.court || "",
                   snippet: j.description || "",
                 })),
                 totalFound: cleaned.references.judgments.length,
@@ -956,6 +912,7 @@ export const PreviewChat: React.FC = () => {
               return (
                 <div
                   key={msg.id || index}
+                  data-chat-role={msg.role}
                   className={cn(
                     "flex flex-col space-y-2 max-w-4xl mx-auto animate-in fade-in duration-200",
                     isUser ? "items-end" : "items-start"
@@ -965,7 +922,7 @@ export const PreviewChat: React.FC = () => {
                   {isUser ? (
                     <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-xs bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-[#0F172A] dark:text-[#F8FAFC] p-4 sm:p-5 shadow-xs space-y-2">
                       <div className="text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap">
-                        {msg.content}
+                        {msg.displayContent ?? msg.content}
                       </div>
 
                       {msg.attachments && msg.attachments.length > 0 && (
@@ -1005,10 +962,14 @@ export const PreviewChat: React.FC = () => {
                         <div className="flex items-center gap-1 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
                           <button
                             type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(displayContent);
-                              setCopiedMessageId(msg.id);
-                              setTimeout(() => setCopiedMessageId(null), 2000);
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(displayContent);
+                                setCopiedMessageId(msg.id);
+                                setTimeout(() => setCopiedMessageId(null), 2000);
+                              } catch {
+                                toast({ title: "Copy failed", description: "Select the answer and copy it directly.", variant: "destructive" });
+                              }
                             }}
                             className={cn(
                               "p-1.5 rounded-lg transition-colors",
@@ -1043,7 +1004,7 @@ export const PreviewChat: React.FC = () => {
                       {effectiveCaseLawCard && (
                         <CaseLawCard
                           data={effectiveCaseLawCard}
-                          aiCitedCitations={aiCitedSet}
+                          aiCitedCitations={new Set(hydrateCitationGraph("", [], [], displayContent).made.map((edge) => edge.citationText))}
                           onCitationClick={(cite) => {
                             setRightDrawerOpen(true);
                           }}
@@ -1160,15 +1121,24 @@ export const PreviewChat: React.FC = () => {
             )}
 
             {/* API Error Box */}
+            {(isSaving || saveError) && (
+              <div role="status" className="max-w-4xl mx-auto p-3 text-sm text-amber-800 dark:text-amber-300">
+                {isSaving ? "Saving consultation..." : saveError}
+                {saveError && <button type="button" className="ml-2 underline" onClick={() => {
+                  const pending = pendingSaveRef.current;
+                  if (pending) void persistTurn(pending.userMsg, pending.assistantMsg, pending.threadId, pending.epoch);
+                }}>Retry saving consultation</button>}
+              </div>
+            )}
             {apiError && (
-              <div className="max-w-4xl mx-auto p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex flex-col gap-3 text-xs">
+              <div role="alert" className="max-w-4xl mx-auto p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 flex flex-col gap-3 text-xs">
                 <div className="flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-rose-200">
+                    <div className="font-semibold text-rose-900 dark:text-rose-200">
                       {/limit|bundle/i.test(apiError) ? "Usage Limit Reached" : "Query Interrupted"}
                     </div>
-                    <div className="text-[11px] text-rose-300/90 mt-0.5 leading-relaxed">{apiError}</div>
+                    <div className="text-[11px] mt-0.5 leading-relaxed">{apiError}</div>
                   </div>
                 </div>
                 {/limit|bundle/i.test(apiError) && (
@@ -1198,6 +1168,7 @@ export const PreviewChat: React.FC = () => {
             input={inputPrompt}
             onInputChange={setInputPrompt}
             onSend={() => handleSend()}
+            disabled={isSaving || !!saveError || voice.isRecording || voice.isTranscribing}
             onStop={handleStop}
             isLoading={isLoading}
             attachedFiles={attachedFiles}
@@ -1211,8 +1182,8 @@ export const PreviewChat: React.FC = () => {
             isVoiceRecording={voice.isRecording}
             isVoiceTranscribing={voice.isTranscribing}
             voiceDuration={voice.duration}
-            onStartVoiceRecording={voice.startRecording}
-            onStopVoiceRecording={voice.stopAndTranscribe}
+            onStartVoiceRecording={() => { recordingEpochRef.current = conversationEpochRef.current; return voice.startRecording(); }}
+            onStopVoiceRecording={handleStopVoice}
             onCancelVoiceRecording={voice.cancelRecording}
           />
         </div>

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { normalizePrecedentCitation } from "@/experimental/lib/judgmentApiClient";
 
 export interface CaseLawHit {
   id?: string | number;
@@ -25,6 +26,7 @@ export interface CaseLawCardData {
   hits: CaseLawHit[];
   totalFound: number;
   queriesUsed: string[];
+  verified?: boolean;
 }
 
 interface CaseLawCardProps {
@@ -60,13 +62,13 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
     if (!aiCitedCitations) return new Set<string>();
     const out = new Set<string>();
     for (const c of aiCitedCitations) {
-      out.add(String(c || "").toLowerCase().replace(/\s+/g, " ").trim());
+      out.add(normalizePrecedentCitation(c));
     }
     return out;
   }, [aiCitedCitations]);
 
   const wasAiCited = (citation: string): boolean => {
-    const k = String(citation || "").toLowerCase().replace(/\s+/g, " ").trim();
+    const k = normalizePrecedentCitation(citation);
     return normalizedCited.has(k);
   };
 
@@ -142,7 +144,7 @@ export const CaseLawCard: React.FC<CaseLawCardProps> = ({
             <Database className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform duration-200" />
           </div>
           <span className="text-xs font-bold font-mono uppercase tracking-wider text-[#1A1A1A] dark:text-[#F8FAFC]">
-            Verified Precedents from Database
+            {data.verified ? "Verified Precedents from Database" : "Referenced Precedents"}
           </span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#1A1A1A]/10 text-[#1A1A1A] dark:text-[#F8FAFC] border border-[#1A1A1A]/20 dark:border-[#1E2D44]">
             {data.totalFound} match{data.totalFound !== 1 ? "es" : ""}

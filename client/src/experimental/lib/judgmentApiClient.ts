@@ -10,12 +10,14 @@
  *    - CustomEvent("alwakeelo-drafting-insert")
  *    - LocalStorage("alwakeelo_drafting_insert")
  *    - Structured court citation & ratio decidendi payload builder.
- * 3. Seed Judgments fallback for offline and unmocked test environments.
+ * 3. API-backed records; synthetic catalogs are confined to test fixtures.
  * ============================================================================
  */
 
-import { PrecedentCitationItem } from "../components/judgments/OverruledAlertBanner.js";
-import { JudgmentSummaryData } from "../components/judgments/RatioDecidendiCard.js";
+import type { PrecedentCitationItem } from "../components/judgments/OverruledAlertBanner.js";
+import type { JudgmentSummaryData } from "../components/judgments/RatioDecidendiCard.js";
+import { parsePakistaniCitation } from "../components/judgments/PinpointCitationParser";
+
 export interface JudgmentRatioDecidendi {
   result: string;
   legalPrinciples: string[];
@@ -211,62 +213,90 @@ export function dispatchDraftingInsert(payload: DraftingInsertPayload): void {
   }
 }
 
-/**
- * Hydrates complete citation graph edges for a given judgment.
- */
+export function getPrecedentTarget(item?: Partial<PrecedentCitationItem> | null): string {
+  const linkedId = String(item?.linkedJudgmentId ?? "").trim();
+  if (linkedId && !/^extracted-/i.test(linkedId)) return linkedId;
+  return String(item?.linkedCitation || "").trim() || String(item?.citationText || "").trim();
+}
+
+export function getCitationTreatment(type?: string | null): string {
+  const key = String(type || "").toLowerCase().replace(/[\s_-]+/g, "");
+  if (["reliedupon", "followed", "approved"].includes(key)) return "relied_upon";
+  if (["distinguished", "explained"].includes(key)) return "distinguished";
+  if (["overruled", "overruledby", "disapproved", "reversed"].includes(key)) return "overruled";
+  return "referred_to";
+}
+
+export function normalizePrecedentCitation(value?: string | null): string {
+  let text = String(value || "");
+  try { text = decodeURIComponent(text); if (text.includes("%")) text = decodeURIComponent(text); } catch {}
+  text = text.replace(/[-_]+/g, " ");
+  const parsed = parsePakistaniCitation(text);
+  if (!parsed) return text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  let journal = parsed.journal;
+  let court = String(parsed.court || "").toUpperCase().replace(/\s/g, "");
+  const pldCourt = journal.match(/^PLD(SC|FC|FSC|LHC|SHC|IHC|PHC|BHC)$/);
+  if (pldCourt) { journal = "PLD"; court = pldCourt[1]; }
+  const courts: Record<string, string> = { LAHORE: "LHC", KARACHI: "SHC", ISLAMABAD: "IHC", PESHAWAR: "PHC", QUETTA: "BHC", SUPREMECOURT: "SC", FEDERALCOURT: "FC" };
+  return `${parsed.year}:${journal}:${journal === "PLD" ? courts[court] || court : ""}:${parsed.page}`;
+}
+
+/** Keep recorded treatments and add only citations actually present in the text. */
 export function hydrateCitationGraph(
   citation: string,
   existingMade?: PrecedentCitationItem[],
   existingReceived?: PrecedentCitationItem[],
   fullText?: string
 ): { made: PrecedentCitationItem[]; received: PrecedentCitationItem[] } {
-  let made = existingMade ? [...existingMade] : [];
-  let received = existingReceived ? [...existingReceived] : [];
-
-  if (fullText) {
-    const regex = /\b(19\d\d|20\d\d)\s+(PLD|SCMR|LHC|SHC|PHC|BHC|IHC|FSC|CLC|PCrLJ|YLR|MLD|CLD|PTD|PLC)\s+(\d+)\b/gi;
-    let match;
-    const found = new Set<string>();
-    while ((match = regex.exec(fullText)) !== null) {
-      const cited = match[0].toUpperCase();
-      if (cited !== citation.toUpperCase() && !found.has(cited)) {
-        found.add(cited);
-        made.push({
-          id: `extracted-${cited.replace(/[^a-zA-Z0-9]/g, "")}-${found.size}`,
-          linkedCitation: cited,
-          citationText: cited,
-          citationType: "referred_to",
-          contextExcerpt: `Cited at paragraph context in ${citation}`,
-          linkedTitle: `Referenced Precedent (${cited})`,
-          linkedJudgmentId: cited,
-        });
-      }
+  const anchorKey = normalizePrecedentCitation(citation);
+  const cleanEdges = (edges?: PrecedentCitationItem[]) => {
+    const unique = new Map<string, PrecedentCitationItem>();
+    for (const edge of Array.isArray(edges) ? edges : []) {
+      if (!edge) continue;
+      const key = normalizePrecedentCitation(edge.linkedCitation || edge.citationText);
+      if (!key || key === anchorKey) continue;
+      const identity = `${key}:${String(edge.citationType || "referred_to").toLowerCase().replace(/[\s-]+/g, "_")}`;
+      const previous = unique.get(identity);
+      unique.set(identity, previous ? {
+        ...edge, ...previous,
+        linkedJudgmentId: previous.linkedJudgmentId && !/^extracted-/i.test(String(previous.linkedJudgmentId)) ? previous.linkedJudgmentId : edge.linkedJudgmentId || previous.linkedJudgmentId,
+        linkedTitle: previous.linkedTitle || edge.linkedTitle,
+        contextExcerpt: previous.contextExcerpt || edge.contextExcerpt,
+      } : { ...edge, citationType: edge.citationType || "referred_to" });
     }
-  }
-
-  // Filter out any self-referencing citations created by backend indexing anomalies
-  const cleanMade = made.filter(
-    (c) =>
-      c.linkedCitation?.toUpperCase() !== citation.toUpperCase() &&
-      c.citationText?.toUpperCase() !== citation.toUpperCase()
-  );
-  const cleanReceived = received.filter(
-    (c) =>
-      c.linkedCitation?.toUpperCase() !== citation.toUpperCase() &&
-      c.citationText?.toUpperCase() !== citation.toUpperCase()
-  );
-
-  return {
-    made: cleanMade,
-    received: cleanReceived,
+    return [...unique.values()];
   };
+  const made = cleanEdges(existingMade);
+  const received = cleanEdges(existingReceived);
+  const found = new Set(made.map((edge) => normalizePrecedentCitation(edge.linkedCitation || edge.citationText)));
+  const journals = ["PLD", "SCMR", "PLJ", "LHC", "SHC", "PHC", "BHC", "IHC", "FSC", "CLC", "PCRLJ", "YLR", "MLD", "CLD", "PTD", "PLC"].map((journal) => journal.split("").join("\\s*\\.?\\s*") + "\\.?").join("|");
+  const courts = "SC|FC|FSC|LHC|SHC|IHC|PHC|BHC|Lahore|Karachi|Islamabad|Peshawar|Quetta";
+  const pattern = new RegExp(`\\b(?:(?:${journals})\\s+(?:19|20)\\d{2}|(?:19|20)\\d{2}\\s+(?:${journals}))(?:\\s+(?:${courts}))?\\s+\\d{1,6}\\b`, "gi");
+  for (const match of String(fullText || "").matchAll(pattern)) {
+    const parsed = parsePakistaniCitation(match[0]);
+    if (!parsed) continue;
+    const pldCourt = parsed.journal.match(/^PLD(SC|FC|FSC|LHC|SHC|IHC|PHC|BHC)$/);
+    const cited = (parsed.journal === "PLD" || pldCourt
+      ? `PLD ${parsed.year} ${parsed.court || pldCourt?.[1] || ""} ${parsed.page}`
+      : `${parsed.year} ${parsed.journal} ${parsed.page}`).replace(/\s+/g, " ").trim();
+    const key = normalizePrecedentCitation(cited);
+    if (key === anchorKey || found.has(key)) continue;
+    found.add(key);
+    made.push({
+      id: `extracted-${key.replace(/[^a-z0-9]/gi, "")}`,
+      linkedCitation: cited, citationText: cited, citationType: "referred_to",
+      contextExcerpt: String(fullText).slice(Math.max(0, match.index! - 100), match.index! + match[0].length + 100).replace(/\s+/g, " ").trim(),
+      linkedTitle: null, linkedJudgmentId: null,
+    });
+  }
+  return { made, received };
 }
 
 // ─── Two-Tier Judgment Search ───────────────────────────────────────────────
 
 /**
- * Searches judgments across Tier 1 (Seed Registry) and Tier 2 (Live Case-Law Endpoints).
- * Guarantees zero user-visible 401 errors and seamless offline resilience.
+ * Searches live case-law endpoints. Unavailable endpoints produce an empty list,
+ * never invented fallback authorities.
  */
 export async function searchJudgments(
   params: JudgmentSearchParams
@@ -353,7 +383,8 @@ export async function searchJudgments(
                 headnotes: ar.headnotes || ar.summary,
                 decisionDate: ar.decisionDate || null,
                 bench: ar.bench || null,
-                treatment: ar.treatment || "relied_upon",
+                treatment: ar.treatment || "referred_to",
+                isOverruled: ar.isOverruled === true,
                 category: ar.category || "civil",
                 source: "tier2_live_api",
                 citationsMade: ar.citationsMade || [],
@@ -414,6 +445,9 @@ export async function lookupCitation(
             title: m.title,
             summary: m.headnotes || m.summary || m.fullText || "Reported judgment record.",
             headnotes: m.headnotes || m.summary,
+            bench: m.bench || null,
+            category: m.category,
+            ratioDecidendi: m.ratioDecidendi || null,
             decisionDate: m.decisionDate || null,
             treatment: "relied_upon",
             source: "tier2_live_api",
@@ -429,6 +463,9 @@ export async function lookupCitation(
             title: data.title,
             summary: data.summary || "Reported judgment record.",
             headnotes: data.summary,
+            bench: data.bench || null,
+            category: data.category,
+            ratioDecidendi: data.ratioDecidendi || null,
             decisionDate: null,
             treatment: "relied_upon",
             source: "tier2_live_api",

@@ -38,6 +38,7 @@ import {
   createDraftingInsertPayload,
   dispatchDraftingInsert,
   hydrateCitationGraph,
+  getCitationTreatment,
   JudgmentDetailData,
 } from "@/experimental/lib/judgmentApiClient";
 import { generateAndDownloadCourtPdf } from "@/experimental/lib/judgmentPdfGenerator";
@@ -134,16 +135,14 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
   const overrulingCases = useMemo(() => {
     return (judgment.citations?.received || []).filter(
       (c) =>
-        c.citationType?.toLowerCase() === "overruled" ||
-        c.citationType?.toLowerCase() === "disapproved"
+        getCitationTreatment(c.citationType) === "overruled"
     );
   }, [judgment.citations?.received]);
 
   const distinguishedCases = useMemo(() => {
     return (judgment.citations?.received || []).filter(
       (c) =>
-        c.citationType?.toLowerCase() === "distinguished" ||
-        c.citationType?.toLowerCase() === "explained"
+        getCitationTreatment(c.citationType) === "distinguished"
     );
   }, [judgment.citations?.received]);
 
@@ -709,10 +708,10 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
                   )}
                 >
                   {overrulingCases.length > 0
-                    ? "Overruled"
+                    ? "Negative Treatment"
                     : distinguishedCases.length > 0
-                    ? "Distinguished"
-                    : "Good Law"}
+                    ? "Distinguished / Explained"
+                    : "No adverse treatment recorded"}
                 </span>
               </div>
             </div>

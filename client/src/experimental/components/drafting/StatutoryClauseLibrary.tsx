@@ -18,6 +18,7 @@ import {
   FileText,
   FileCheck,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface StatutoryClauseLibraryProps {
   onInsertClause: (clauseText: string, title?: string) => void;
@@ -36,6 +37,7 @@ export const StatutoryClauseLibrary: React.FC<StatutoryClauseLibraryProps> = ({
   onInsertClause,
   className = "",
 }) => {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ClauseCategory>("All");
   const [expandedClauseId, setExpandedClauseId] = useState<string | null>("stat_partnership_s48");
@@ -66,11 +68,14 @@ export const StatutoryClauseLibrary: React.FC<StatutoryClauseLibraryProps> = ({
     });
   }, [searchQuery, selectedCategory]);
 
-  const handleCopy = (clause: StatutoryClause) => {
-    navigator.clipboard.writeText(clause.clauseText).then(() => {
+  const handleCopy = async (clause: StatutoryClause) => {
+    try {
+      await navigator.clipboard.writeText(clause.clauseText);
       setCopiedId(clause.id);
       setTimeout(() => setCopiedId(null), 2000);
-    });
+    } catch {
+      toast({ title: "Copy Failed", description: "Clipboard access was denied. Select and copy the clause directly.", variant: "destructive" });
+    }
   };
 
   const getCategoryIcon = (category: string) => {

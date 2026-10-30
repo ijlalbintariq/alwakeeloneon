@@ -2,6 +2,27 @@ import { z } from "zod";
 
 export const LEGAL_DRAFTING_WORKSPACE_VERSION = 1 as const;
 
+export const legalDraftBriefSchema = z.object({
+  draftType: z.enum(["pleading", "contract"]).default("pleading"),
+  forum: z.string().trim().min(1).max(500),
+  matterTitle: z.string().trim().min(1).max(240),
+  reliefType: z.string().trim().min(1).max(500),
+  facts: z.string().trim().max(100_000).default(""),
+});
+
+export const legalDraftInputSchema = z.object({
+  title: z.string().trim().min(1).max(240),
+  templateType: z.string().trim().max(120).nullish(),
+  content: z.string().min(1).max(500_000),
+  status: z.enum(["draft", "final", "archived"]).optional(),
+  metadata: z.object({
+    textContent: z.string().max(250_000).optional(),
+    pageProfileId: z.enum(["court-legal", "a4"]).optional(),
+    category: z.string().max(120).optional(),
+    documentType: z.string().max(120).optional(),
+  }).nullish(),
+});
+
 export const legalDraftChatMessageSchema = z.object({
   id: z.string().trim().max(120),
   role: z.enum(["user", "assistant"]),

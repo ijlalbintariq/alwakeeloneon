@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
 import { generateLegalDocx } from "@/lib/generate-legal-docx";
+import { printLegalDocument } from "@/lib/print-legal-document";
 import { useToast } from "@/hooks/use-toast";
 import type { LegalPageProfileId } from "@/lib/legal-page-layout";
 
@@ -69,7 +70,7 @@ export const DraftingExportModal: React.FC<DraftingExportModalProps> = ({
         });
         onClose();
       } else if (selectedFormat === "print") {
-        window.print();
+        await printLegalDocument(documentHtml, documentTitle, pageProfileId);
         onClose();
       } else if (selectedFormat === "text") {
         await navigator.clipboard.writeText(documentText);

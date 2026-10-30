@@ -58,6 +58,8 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
   const startTimeRef = useRef<number>(0);
   const autoStopTriggeredRef = useRef(false);
   const onAutoTranscriptionRef = useRef(options.onAutoTranscription);
+  const transcriptionControllerRef = useRef<AbortController | null>(null);
+  const recordingSessionRef = useRef(0);
 
   const isSupported =
     typeof window !== "undefined" &&
@@ -67,6 +69,9 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      recordingSessionRef.current++;
+      transcriptionControllerRef.current?.abort();
+      transcriptionControllerRef.current = null;
       if (timerRef.current) clearInterval(timerRef.current);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
@@ -94,14 +99,20 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
   }, []);
 
   const startRecording = useCallback(async () => {
+    if (mediaRecorderRef.current?.state === "recording") return;
     if (!isSupported) {
       setError("Voice recording is not supported in this browser.");
       return;
     }
 
+    const session = ++recordingSessionRef.current;
+    transcriptionControllerRef.current?.abort();
+    transcriptionControllerRef.current = null;
+    setIsTranscribing(false);
     try {
       setError(null);
       chunksRef.current = [];
+      const chunks = chunksRef.current;
       autoStopTriggeredRef.current = false;
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -111,6 +122,10 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
           sampleRate: 16000,
         },
       });
+      if (session !== recordingSessionRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
 
       // Prefer webm/opus, fallback to whatever is available
@@ -127,7 +142,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
+          chunks.push(event.data);
         }
       };
 
@@ -135,6 +150,9 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
       setIsRecording(true);
       startTimer();
     } catch (err: any) {
+      if (session !== recordingSessionRef.current) return;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
       if (err.name === "NotAllowedError") {
         setError("Microphone permission denied. Please allow microphone access.");
       } else if (err.name === "NotFoundError") {
@@ -146,6 +164,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
   }, [isSupported, startTimer]);
 
   const stopRecording = useCallback(async (): Promise<Blob | null> => {
+    const session = recordingSessionRef.current;
     return new Promise((resolve) => {
       const recorder = mediaRecorderRef.current;
       if (!recorder || recorder.state === "inactive") {
@@ -156,6 +175,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
       }
 
       recorder.onstop = () => {
+        if (session !== recordingSessionRef.current) { resolve(null); return; }
         const blob = new Blob(chunksRef.current, {
           type: recorder.mimeType || "audio/webm",
         });
@@ -177,6 +197,11 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
   }, [stopTimer]);
 
   const cancelRecording = useCallback(() => {
+    recordingSessionRef.current++;
+    transcriptionControllerRef.current?.abort();
+    transcriptionControllerRef.current = null;
+    setIsTranscribing(false);
+    setError(null);
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== "inactive") {
       recorder.stop();
@@ -194,6 +219,9 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
   }, [stopTimer]);
 
   const transcribe = useCallback(async (blob: Blob): Promise<string> => {
+    transcriptionControllerRef.current?.abort();
+    const controller = new AbortController();
+    transcriptionControllerRef.current = controller;
     setIsTranscribing(true);
     setError(null);
 
@@ -215,6 +243,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
         method: "POST",
         body: formData,
         credentials: "include",
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -223,23 +252,29 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
       }
 
       const data = await response.json();
+      if (controller.signal.aborted) throw new DOMException("Transcription cancelled.", "AbortError");
       if (!data.transcription) {
         throw new Error("No transcription returned. The audio may be too short or unclear.");
       }
 
       return data.transcription;
     } catch (err: any) {
+      if (controller.signal.aborted) throw err;
       const msg = err.message || "Failed to transcribe audio.";
       setError(msg);
       throw err;
     } finally {
-      setIsTranscribing(false);
+      if (transcriptionControllerRef.current === controller) {
+        transcriptionControllerRef.current = null;
+        setIsTranscribing(false);
+      }
     }
   }, []);
 
   const stopAndTranscribe = useCallback(async (): Promise<string | null> => {
+    const session = recordingSessionRef.current;
     const blob = await stopRecording();
-    if (!blob || blob.size === 0) return null;
+    if (!blob || blob.size === 0 || session !== recordingSessionRef.current) return null;
     return transcribe(blob);
   }, [stopRecording, transcribe]);
 

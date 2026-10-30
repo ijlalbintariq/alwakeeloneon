@@ -1,0 +1,61 @@
+{
+  "startedAt": "2026-10-30T13:24:39.134Z",
+  "baseURL": "https://www.alwakeelo.com",
+  "accountId": "fda6ca4e-3c22-44e4-be7b-4dc316eec712",
+  "deployedCommit": "8fcd63fbf20c0fd1b4abb936bd729d2bd903ddc5",
+  "checks": [
+    {
+      "name": "production health",
+      "passed": true,
+      "commit": "8fcd63fbf20c0fd1b4abb936bd729d2bd903ddc5"
+    },
+    {
+      "name": "normal production login",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "create draft",
+      "passed": true,
+      "status": 201
+    },
+    {
+      "name": "filing type persists",
+      "passed": false,
+      "returnedDocumentType": null
+    },
+    {
+      "name": "API update reaches the real database",
+      "passed": true
+    },
+    {
+      "name": "unauthenticated draft access denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "live studio loads saved draft",
+      "passed": true
+    },
+    {
+      "name": "unmocked browser autosave reaches production database",
+      "passed": true
+    },
+    {
+      "name": "production refresh recovery",
+      "passed": true
+    },
+    {
+      "name": "deployed selection AI button is unobstructed",
+      "passed": false
+    },
+    {
+      "name": "live studio has no browser exceptions",
+      "passed": true,
+      "errors": []
+    }
+  ],
+  "cleanup": true,
+  "draftId": 32,
+  "finishedAt": "2026-10-30T13:25:06.118Z"
+}

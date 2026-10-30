@@ -6,7 +6,7 @@ import {
   getSeedJudgmentById,
   findSeedJudgmentByCitation,
   searchSeedJudgments,
-} from "../../client/src/experimental/data/seedJudgmentsData";
+} from "../fixtures/seed-judgments";
 import { parsePakistaniCitation } from "../../client/src/experimental/components/judgments/PinpointCitationParser";
 import { generateLocalLegalResponse } from "../../client/src/experimental/components/judgments/JudgmentAiSidecar";
 
@@ -194,7 +194,11 @@ import {
   hydrateCitationGraph,
 } from "../../client/src/experimental/lib/judgmentApiClient";
 
-test("judgmentApiClient: searchJudgments returns structured Pakistani precedent records", async () => {
+test("judgmentApiClient: searchJudgments returns structured API precedent records", async (t) => {
+  t.mock.method(globalThis, "fetch", async (input: string) => {
+    const url = new URL(input, "http://test.invalid");
+    return Response.json(searchSeedJudgments(url.searchParams.get("q") || "", url.searchParams.get("report") || "All", url.searchParams.get("court") || "All Courts"));
+  });
   const allResults = await searchJudgments({ query: "", journal: "All", court: "All Courts" });
   assert.ok(allResults.length >= 10, "Must return at least 10 seed judgments");
 
@@ -207,7 +211,11 @@ test("judgmentApiClient: searchJudgments returns structured Pakistani precedent 
   assert.ok(scCases.every((j) => j.court.includes("Supreme Court")));
 });
 
-test("judgmentApiClient: lookupCitation resolves pinpoint citation queries with full metadata", async () => {
+test("judgmentApiClient: lookupCitation resolves pinpoint API responses with full metadata", async (t) => {
+  t.mock.method(globalThis, "fetch", async (input: string) => {
+    const params = new URL(input, "http://test.invalid").searchParams;
+    return Response.json(SEED_JUDGMENTS.filter((row) => row.year === Number(params.get("year")) && row.page === Number(params.get("page"))));
+  });
   const match = await lookupCitation({ year: 2024, journal: "SCMR", page: 892 });
   assert.ok(match, "Must find 2024 SCMR 892");
   assert.equal(match.citation, "2024 SCMR 892");
@@ -220,7 +228,9 @@ test("judgmentApiClient: lookupCitation resolves pinpoint citation queries with 
   assert.equal(rawMatch.id, "pld-2023-sc-451");
 });
 
-test("judgmentApiClient: getJudgmentDetail returns complete judgment text, TOC anchors, and graph edges", async () => {
+test("judgmentApiClient: getJudgmentDetail returns complete API text, TOC anchors, and graph edges", async (t) => {
+  const record = getSeedJudgmentById("pld-2023-sc-451")!;
+  t.mock.method(globalThis, "fetch", async () => Response.json({ ...record, citations: { made: record.citationsMade, received: record.citationsReceived } }));
   const detail = await getJudgmentDetail("pld-2023-sc-451");
   assert.ok(detail, "Must load PLD 2023 SC 451 detail");
   assert.ok(detail.fullText.length > 200, "Must contain full judgment text");
@@ -249,13 +259,14 @@ test("judgmentApiClient: Drafting Insert Triple-Bridge produces valid schema com
 });
 
 test("judgmentApiClient: hydrateCitationGraph provides complete citation edges for standalone modal", () => {
-  const edges = hydrateCitationGraph("PLD 2023 SC 451");
+  const record = getSeedJudgmentById("pld-2023-sc-451")!;
+  const edges = hydrateCitationGraph(record.citation, record.citationsMade, record.citationsReceived);
   assert.ok(edges.made.length > 0, "Must have outbound citation edges");
   assert.ok(edges.received.length > 0, "Must have inbound citation edges");
 
   const unknownEdges = hydrateCitationGraph("2099 UNREPORTED 999");
-  assert.ok(unknownEdges.made.length > 0, "Fallback must supply default constitutional edges");
-  assert.ok(unknownEdges.received.length > 0, "Fallback must supply default inbound edges");
+  assert.deepEqual(unknownEdges.made, [], "Unknown citations must not invent constitutional edges");
+  assert.deepEqual(unknownEdges.received, [], "Unknown citations must not invent inbound edges");
 });
 
 test("judgmentApiClient: New landmark court coverage in seed registry (PHC, BHC, FSC)", () => {

@@ -761,7 +761,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select()
       .from(messages)
       .where(eq(messages.threadId, threadId))
-      .orderBy(messages.createdAt);
+      .orderBy(messages.createdAt, messages.id);
   }
 
   async createDocument(insertDoc: InsertDocument & { userId: string }): Promise<Document> {

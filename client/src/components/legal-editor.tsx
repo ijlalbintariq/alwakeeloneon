@@ -629,7 +629,7 @@ function LegalEditorInner(
     onSelectionUpdate: ({ editor: ed }) => {
       const { from, to } = ed.state.selection;
       if (from !== to) {
-        const text = ed.state.doc.textBetween(from, to, "\n");
+        const text = ed.state.doc.textBetween(from, to, "\n", (node) => node.attrs.citation || "");
         if (text.trim().length > 0) {
           const snippet = { text, from, to };
           setSelectedSnippet(snippet);
@@ -664,13 +664,13 @@ function LegalEditorInner(
         if (!editor) return "";
         const { from, to } = editor.state.selection;
         if (from === to) return "";
-        return editor.state.doc.textBetween(from, to, "\n");
+        return editor.state.doc.textBetween(from, to, "\n", (node) => node.attrs.citation || "");
       },
       getSelectionRange: () => {
         if (!editor) return null;
         const { from, to } = editor.state.selection;
         if (from === to) return null;
-        const text = editor.state.doc.textBetween(from, to, "\n");
+        const text = editor.state.doc.textBetween(from, to, "\n", (node) => node.attrs.citation || "");
         return { from, to, text };
       },
       replaceSelection: (html: string) => {
@@ -685,23 +685,22 @@ function LegalEditorInner(
       replaceRange: (from: number, to: number, html: string, expectedOriginalText?: string) => {
         if (!editor) return false;
         const docSize = editor.state.doc.content.size;
-        if (from < 0 || to > docSize || from > to) {
+        if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to > docSize || from >= to) {
           return false;
         }
         if (expectedOriginalText !== undefined) {
-          const currentTextAtRange = editor.state.doc.textBetween(from, to, "\n");
-          if (currentTextAtRange.trim() !== expectedOriginalText.trim()) {
+          const currentTextAtRange = editor.state.doc.textBetween(from, to, "\n", (node) => node.attrs.citation || "");
+          if (currentTextAtRange !== expectedOriginalText) {
             return false;
           }
         }
-        editor
+        return editor
           .chain()
           .focus()
           .setTextSelection({ from, to })
           .deleteSelection()
           .insertContent(html)
           .run();
-        return true;
       },
       focus: () => editor?.commands.focus(),
       isEmpty: () => editor?.isEmpty ?? true,

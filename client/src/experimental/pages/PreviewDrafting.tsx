@@ -20,7 +20,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { LegalEditor, type LegalEditorHandle } from "@/components/legal-editor";
-import { type LegalPageProfileId } from "@/lib/legal-page-layout";
+import { resolveLegalPageProfile, type LegalPageProfileId } from "@/lib/legal-page-layout";
+import { isHTMLContent } from "@/lib/plain-to-tiptap";
+import { DraftSaveQueue, draftFingerprint, hasDraftContent, normalizeDraftingTabs, type DocumentTab } from "@/experimental/lib/drafting-persistence";
 import { plainTextToTiptapHTML } from "@/experimental/lib/plain-to-tiptap";
 import {
   COURT_PETITIONS,
@@ -28,51 +30,24 @@ import {
   ALL_DRAFTING_TEMPLATES,
   type DraftingTemplate,
 } from "@/experimental/components/drafting/drafting-data";
-import { RightDraftingSidebar } from "@/experimental/components/drafting/RightDraftingSidebar";
+import { RightDraftingSidebar, type ChatMessage } from "@/experimental/components/drafting/RightDraftingSidebar";
 import { DraftingLaunchpad } from "@/experimental/components/drafting/DraftingLaunchpad";
 import { CourtFeeCalculatorModal } from "@/experimental/components/drafting/CourtFeeCalculatorModal";
 import { DraftingExportModal } from "@/experimental/components/drafting/DraftingExportModal";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-
-interface DocumentTab {
-  id: string;
-  dbDraftId?: number;
-  title: string;
-  category: string;
-  documentType?: string;
-  pageProfileId: LegalPageProfileId;
-  htmlContent: string;
-  textContent: string;
-  lastModified: number;
-}
 
 const generateDocId = () => `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 const TABS_STORAGE_KEY = "alwakeelo_drafting_tabs_v1";
 
-function loadStoredTabs(): { tabs: DocumentTab[]; activeTabId: string } | null {
+function loadStoredTabs(storageKey: string): { tabs: DocumentTab[]; activeTabId: string } | null {
   try {
-    const raw = localStorage.getItem(TABS_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey)
+      ?? (storageKey.endsWith(":guest") ? null : localStorage.getItem(TABS_STORAGE_KEY));
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed?.tabs) || parsed.tabs.length === 0) return null;
-    const tabs: DocumentTab[] = parsed.tabs
-      .filter((t: any) => t && typeof t.id === "string")
-      .map((t: any) => ({
-        id: t.id,
-        dbDraftId: typeof t.dbDraftId === "number" ? t.dbDraftId : undefined,
-        title: typeof t.title === "string" ? t.title : "Untitled Document",
-        category: typeof t.category === "string" ? t.category : "General",
-        documentType: typeof t.documentType === "string" ? t.documentType : undefined,
-        pageProfileId: t.pageProfileId || "court-legal",
-        htmlContent: typeof t.htmlContent === "string" ? t.htmlContent : "",
-        textContent: typeof t.textContent === "string" ? t.textContent : "",
-        lastModified: typeof t.lastModified === "number" ? t.lastModified : Date.now(),
-      }));
-    if (tabs.length === 0) return null;
-    const activeTabId = tabs.some((t) => t.id === parsed.activeTabId) ? parsed.activeTabId : tabs[0].id;
-    return { tabs, activeTabId };
+    return normalizeDraftingTabs(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -90,14 +65,15 @@ function createBlankTab(index: number): DocumentTab {
   };
 }
 
-export const PreviewDrafting: React.FC = () => {
+const DraftingWorkspace: React.FC<{ storageKey: string }> = ({ storageKey }) => {
   const { toast } = useToast();
   const editorRef = useRef<LegalEditorHandle>(null);
+  const chatByTabRef = useRef(new Map<string, ChatMessage[]>());
 
   // ─── Workstation State ───────────────────────────────────────────────────
   // Default to showing the Template Selection Launchpad whenever entering Drafting
   const [showLaunchpad, setShowLaunchpad] = useState(true);
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(() => window.matchMedia("(min-width: 1024px)").matches);
   const [isLightPaperMode, setIsLightPaperMode] = useState(true);
   const [editorWidthMode, setEditorWidthMode] = useState<"wide" | "full" | "court">("wide");
 
@@ -106,9 +82,10 @@ export const PreviewDrafting: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // ─── Document Tabs Management ─────────────────────────────────────────────
+  const [storedWorkspace] = useState(() => loadStoredTabs(storageKey));
   const [tabs, setTabs] = useState<DocumentTab[]>(
     () =>
-      loadStoredTabs()?.tabs ?? [
+      storedWorkspace?.tabs ?? [
         {
           id: "doc-1",
           title: "Untitled Document",
@@ -121,7 +98,7 @@ export const PreviewDrafting: React.FC = () => {
       ],
   );
 
-  const [activeTabId, setActiveTabId] = useState<string>(() => loadStoredTabs()?.activeTabId ?? "doc-1");
+  const [activeTabId, setActiveTabId] = useState<string>(() => storedWorkspace?.activeTabId ?? "doc-1");
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
   const [activeProfileId, setActiveProfileId] = useState<LegalPageProfileId>(
@@ -129,8 +106,15 @@ export const PreviewDrafting: React.FC = () => {
   );
   const [currentHtml, setCurrentHtml] = useState<string>(activeTab?.htmlContent || "");
   const [currentText, setCurrentText] = useState<string>(activeTab?.textContent || "");
-  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
-  const [docVersion, setDocVersion] = useState<number>(1);
+  const [savedFingerprints, setSavedFingerprints] = useState<Record<string, string>>({});
+  const [savingTabIds, setSavingTabIds] = useState<Set<string>>(new Set());
+  const saveStatus = savingTabIds.has(activeTab.id) ? "saving"
+    : savedFingerprints[activeTab.id] === draftFingerprint(activeTab) ? "saved" : "unsaved";
+  const [docVersions, setDocVersions] = useState<Record<string, number>>({});
+  const docVersion = docVersions[activeTabId] ?? 1;
+  const setDocVersion = useCallback((update: (version: number) => number) => {
+    setDocVersions((prev) => ({ ...prev, [activeTabId]: update(prev[activeTabId] ?? 1) }));
+  }, [activeTabId]);
   const [lockedSelection, setLockedSelection] = useState<{
     text: string;
     from: number;
@@ -147,26 +131,30 @@ export const PreviewDrafting: React.FC = () => {
   const queryClient = useQueryClient();
   const [isSavedDraftsModalOpen, setIsSavedDraftsModalOpen] = useState(false);
   const [isSavingManual, setIsSavingManual] = useState(false);
-  const saveDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const savingTabsRef = useRef<Set<string>>(new Set());
+  const saveTimersRef = useRef(new Map<string, { fingerprint: string; timer: ReturnType<typeof setTimeout> }>());
+  const deletingTabsRef = useRef(new Set<string>());
   const dbDraftIdsRef = useRef<Record<string, number>>({});
+  const workspaceRef = useRef({ tabs, activeTabId });
+  workspaceRef.current = { tabs, activeTabId };
 
-  // Survive a refresh or crash: tabs live only in memory otherwise, and the
-  // database autosave covers the active tab at best.
+  // Keep a local recovery copy immediately, including before a cloud save completes.
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const persistLocal = () => {
       try {
-        localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify({ tabs, activeTabId }));
+        localStorage.setItem(storageKey, JSON.stringify(workspaceRef.current));
+        if (!storageKey.endsWith(":guest")) localStorage.removeItem(TABS_STORAGE_KEY);
       } catch {
         // Quota exceeded — drafts still autosave to the database.
       }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [tabs, activeTabId]);
+    };
+    persistLocal();
+    window.addEventListener("pagehide", persistLocal);
+    return () => window.removeEventListener("pagehide", persistLocal);
+  }, [tabs, activeTabId, storageKey]);
 
   // Live Saved Drafts Query from PostgreSQL
   const { data: savedDrafts = [], isLoading: isLoadingDrafts } = useQuery<any[]>({
-    queryKey: ["/api/drafts"],
+    queryKey: ["/api/drafts", storageKey],
     queryFn: async () => {
       const res = await fetch("/api/drafts", { credentials: "include" });
       if (!res.ok) {
@@ -179,6 +167,7 @@ export const PreviewDrafting: React.FC = () => {
 
   // Auto-load a draft if ?docId= is in the URL (e.g. from Dashboard Activity Stream)
   const docIdLoadedRef = useRef(false);
+  const loadedDocIdRef = useRef<number | null>(null);
   useEffect(() => {
     if (docIdLoadedRef.current || !savedDrafts || savedDrafts.length === 0) return;
     const params = new URLSearchParams(window.location.search);
@@ -187,121 +176,122 @@ export const PreviewDrafting: React.FC = () => {
       const draft = savedDrafts.find((d: any) => d.id === Number(docId));
       if (draft) {
         docIdLoadedRef.current = true;
+        loadedDocIdRef.current = draft.id;
         handleLoadSavedDraft(draft);
-        window.history.replaceState({}, "", "/preview/drafting");
+        const url = new URL(window.location.href);
+        url.searchParams.delete("docId");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
       }
     }
   }, [savedDrafts]);
 
-  // Auto-insert a citation from ?cite= URL param (e.g. from Chat Inspector "Cite in Draft")
+  // URL citations must reach the tab state even while the launchpad hides the editor.
   const citeInsertedRef = useRef(false);
   useEffect(() => {
     if (citeInsertedRef.current) return;
-    const params = new URLSearchParams(window.location.search);
-    const cite = params.get("cite");
-    if (!cite || cite.length < 5) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("docId")) return;
+    if (loadedDocIdRef.current && activeTab.dbDraftId !== loadedDocIdRef.current) return;
+    const cite = url.searchParams.get("cite")?.trim();
+    if (!cite) return;
     citeInsertedRef.current = true;
-    window.history.replaceState({}, "", "/preview/drafting");
-    toast({
-      title: "Citation Inserted",
-      description: `"${cite}" has been inserted into the active document.`,
-    });
-    const citationLine = cite.trim();
-    // Insert at end of current text content
-    setCurrentText((prev) => {
-      const sep = prev.trim() ? "\n\n" : "";
-      return `${prev}${sep}${citationLine}`;
-    });
-    // Also insert as HTML into TipTap editor
-    const editor = editorRef.current;
-    if (editor) {
-      const html = `<p><strong>${citationLine}</strong></p>`;
-      editor.insertContent(html);
-    }
-  }, []);
-
-  // Save/Autosave draft to PostgreSQL
-  const saveDraftToDb = useCallback(async (tabToSave?: DocumentTab, isManual = false) => {
-    const tab = tabToSave || activeTab;
+    url.searchParams.delete("cite");
+    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    const clauseHtml = plainTextToTiptapHTML(cite);
+    const tab = workspaceRef.current.tabs.find((t) => t.id === activeTabId);
     if (!tab) return;
-    const title = tab.title || "Untitled Document";
-    const html = tab.htmlContent;
-    const text = tab.textContent;
+    const html = tab.htmlContent + clauseHtml;
+    const text = [tab.textContent, cite].filter(Boolean).join("\n\n");
+    setTabs((prev) => prev.map((t) => t.id === tab.id
+      ? { ...t, htmlContent: html, textContent: text, lastModified: Date.now() } : t));
+    setCurrentHtml(html);
+    setCurrentText(text);
+    setShowLaunchpad(false);
+    toast({ title: "Citation Inserted", description: `"${cite}" has been inserted into the active document.` });
+  }, [activeTabId, savedDrafts, toast]);
 
-    if (!html.trim() && !text.trim() && title === "Untitled Document") return;
-    // A second save firing while the first POST is still open would create a
-    // duplicate row, because dbDraftId is only known once that POST returns.
-    if (savingTabsRef.current.has(tab.id)) return;
-    savingTabsRef.current.add(tab.id);
+  const [saveQueue] = useState(() => new DraftSaveQueue<DocumentTab>(async (tab) => {
+    const dbDraftId = dbDraftIdsRef.current[tab.id] ?? tab.dbDraftId;
+    const payload = {
+      title: tab.title.trim() || "Untitled Document",
+      templateType: tab.category || "General",
+      content: tab.htmlContent || plainTextToTiptapHTML(tab.textContent) || "<p></p>",
+      status: "draft",
+      metadata: {
+        textContent: tab.textContent,
+        pageProfileId: tab.pageProfileId,
+        category: tab.category,
+        documentType: tab.documentType,
+      },
+    };
+    const res = await fetch(dbDraftId ? `/api/drafts/${dbDraftId}` : "/api/drafts", {
+      method: dbDraftId ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.message || "Draft could not be saved. Your local copy is retained.");
+    }
+    const data = await res.json();
+    if (!Number.isSafeInteger(data.id) || data.id <= 0) throw new Error("Save returned an invalid draft ID.");
+    dbDraftIdsRef.current[tab.id] = data.id;
+    setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, dbDraftId: data.id } : t));
+    setSavedFingerprints((prev) => ({ ...prev, [tab.id]: draftFingerprint(tab) }));
+    void queryClient.invalidateQueries({ queryKey: ["/api/drafts"] });
+  }));
 
+  const saveDraftToDb = useCallback(async (tab: DocumentTab, isManual = false) => {
+    if (deletingTabsRef.current.has(tab.id)) return false;
+    if (!isManual && !hasDraftContent(tab) && !tab.dbDraftId && !dbDraftIdsRef.current[tab.id]) return true;
+    const scheduled = saveTimersRef.current.get(tab.id);
+    if (scheduled) clearTimeout(scheduled.timer);
+    saveTimersRef.current.delete(tab.id);
     if (isManual) setIsSavingManual(true);
-    setSaveStatus("saving");
-
+    setSavingTabIds((prev) => new Set(prev).add(tab.id));
     try {
-      const payload = {
-        title,
-        templateType: tab.category || "General",
-        content: html || text || "<p></p>",
-        status: "draft",
-        metadata: {
-          textContent: text,
-          pageProfileId: tab.pageProfileId,
-          category: tab.category,
-        },
-      };
-
-      let res;
-      // tabToSave is often a stale snapshot built by the editor callback, so fall
-      // back to the id recorded when this tab's first POST returned.
-      const dbDraftId = tab.dbDraftId ?? dbDraftIdsRef.current[tab.id];
-      if (dbDraftId) {
-        res = await fetch(`/api/drafts/${dbDraftId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        });
-      } else {
-        res = await fetch("/api/drafts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        });
-      }
-
-      if (!res.ok) throw new Error("Draft persistence failed");
-      const data = await res.json();
-      if (data && data.id && !dbDraftId) {
-        dbDraftIdsRef.current[tab.id] = data.id;
-        setTabs((prev) =>
-          prev.map((t) => (t.id === tab.id ? { ...t, dbDraftId: data.id } : t))
-        );
-      }
-      setSaveStatus("saved");
-      queryClient.invalidateQueries({ queryKey: ["/api/drafts"] });
-
-      if (isManual) {
-        toast({
-          title: "Pleading Draft Saved",
-          description: `Persisted "${title}" to PostgreSQL database.`,
-        });
-      }
-    } catch (err: any) {
-      console.error("[PreviewDrafting] Save error:", err);
-      setSaveStatus("unsaved");
-      if (isManual) {
-        toast({
-          title: "Save Failed",
-          description: err.message || "Failed to persist draft to database.",
-          variant: "destructive",
-        });
-      }
+      await saveQueue.save(tab);
+      if (isManual) toast({ title: "Draft Saved", description: `Saved "${tab.title}".` });
+      return true;
+    } catch (err) {
+      if (isManual) toast({
+        title: "Save Failed",
+        description: err instanceof Error ? err.message : "Could not save the draft.",
+        variant: "destructive",
+      });
+      return false;
     } finally {
-      savingTabsRef.current.delete(tab.id);
+      setSavingTabIds((prev) => { const next = new Set(prev); next.delete(tab.id); return next; });
       if (isManual) setIsSavingManual(false);
     }
-  }, [activeTab, queryClient, toast]);
+  }, [saveQueue, toast]);
+
+  // All document changes participate, including templates, AI replacements and paper settings.
+  useEffect(() => {
+    for (const [id, entry] of saveTimersRef.current) {
+      if (!tabs.some((tab) => tab.id === id) || deletingTabsRef.current.has(id)) {
+        clearTimeout(entry.timer);
+        saveTimersRef.current.delete(id);
+      }
+    }
+    for (const tab of tabs) {
+      if (deletingTabsRef.current.has(tab.id)) continue;
+      if (!hasDraftContent(tab) && !tab.dbDraftId) continue;
+      const fingerprint = draftFingerprint(tab);
+      if (fingerprint === savedFingerprints[tab.id]) continue;
+      const scheduled = saveTimersRef.current.get(tab.id);
+      if (scheduled?.fingerprint === fingerprint) continue;
+      if (scheduled) clearTimeout(scheduled.timer);
+      const timer = setTimeout(() => { void saveDraftToDb(tab); }, 1500);
+      saveTimersRef.current.set(tab.id, { fingerprint, timer });
+    }
+  }, [tabs, savedFingerprints, saveDraftToDb]);
+
+  useEffect(() => () => {
+    for (const entry of saveTimersRef.current.values()) clearTimeout(entry.timer);
+    saveTimersRef.current.clear();
+  }, []);
 
   // Load draft from PostgreSQL
   const handleLoadSavedDraft = (draft: any) => {
@@ -310,11 +300,12 @@ export const PreviewDrafting: React.FC = () => {
     const existing = tabs.find((t) => t.dbDraftId === draft.id);
     if (existing) {
       handleSwitchTab(existing.id);
+      setShowLaunchpad(false);
       setIsSavedDraftsModalOpen(false);
       return;
     }
     const newDocId = generateDocId();
-    const htmlContent = draft.content?.startsWith("<")
+    const htmlContent = isHTMLContent(draft.content || "")
       ? draft.content
       : plainTextToTiptapHTML(draft.content || "");
     const textContent = draft.metadata?.textContent || draft.content?.replace(/<[^>]+>/g, " ") || "";
@@ -324,7 +315,8 @@ export const PreviewDrafting: React.FC = () => {
       dbDraftId: draft.id,
       title: draft.title || "Loaded Pleading",
       category: draft.templateType || draft.metadata?.category || "General",
-      pageProfileId: draft.metadata?.pageProfileId || "court-legal",
+      pageProfileId: resolveLegalPageProfile(draft.metadata?.pageProfileId).id,
+      documentType: draft.metadata?.documentType,
       htmlContent,
       textContent,
       lastModified: Date.now(),
@@ -337,7 +329,7 @@ export const PreviewDrafting: React.FC = () => {
     setCurrentText(textContent);
     setShowLaunchpad(false);
     setIsSavedDraftsModalOpen(false);
-    setSaveStatus("saved");
+    setSavedFingerprints((prev) => ({ ...prev, [newDocId]: draftFingerprint(newTab) }));
 
     toast({
       title: "Pleading Draft Loaded",
@@ -348,7 +340,15 @@ export const PreviewDrafting: React.FC = () => {
   // Delete draft from PostgreSQL
   const handleDeleteSavedDraft = async (draftId: number, e: React.MouseEvent) => {
     e.stopPropagation();
+    const affectedTabs = workspaceRef.current.tabs.filter((tab) => (dbDraftIdsRef.current[tab.id] ?? tab.dbDraftId) === draftId);
+    for (const tab of affectedTabs) {
+      deletingTabsRef.current.add(tab.id);
+      const scheduled = saveTimersRef.current.get(tab.id);
+      if (scheduled) clearTimeout(scheduled.timer);
+      saveTimersRef.current.delete(tab.id);
+    }
     try {
+      await Promise.all(affectedTabs.map((tab) => saveQueue.idle(tab.id).catch(() => {})));
       const res = await fetch(`/api/drafts/${draftId}`, {
         method: "DELETE",
         credentials: "include",
@@ -356,30 +356,24 @@ export const PreviewDrafting: React.FC = () => {
       if (!res.ok) throw new Error("Delete failed");
       // Close any tab bound to the deleted row. Clearing dbDraftId instead would
       // make the next autosave POST the draft straight back.
-      setTabs((prev) => {
-        const remaining = prev.filter((t) => t.dbDraftId !== draftId);
-        if (remaining.length === 0) {
-          const fresh = createBlankTab(1);
-          setActiveTabId(fresh.id);
-          setActiveProfileId(fresh.pageProfileId);
-          setCurrentHtml(fresh.htmlContent);
-          setCurrentText(fresh.textContent);
-          return [fresh];
-        }
-        if (!remaining.some((t) => t.id === activeTabId)) {
-          setActiveTabId(remaining[0].id);
-          setActiveProfileId(remaining[0].pageProfileId);
-          setCurrentHtml(remaining[0].htmlContent);
-          setCurrentText(remaining[0].textContent);
-        }
-        return remaining;
-      });
+      const remaining = workspaceRef.current.tabs.filter((t) => !affectedTabs.some((tab) => tab.id === t.id));
+      const nextTabs = remaining.length ? remaining : [createBlankTab(1)];
+      setTabs(nextTabs);
+      if (!nextTabs.some((t) => t.id === workspaceRef.current.activeTabId)) {
+        const next = nextTabs[0];
+        setActiveTabId(next.id);
+        setActiveProfileId(next.pageProfileId);
+        setCurrentHtml(next.htmlContent);
+        setCurrentText(next.textContent);
+      }
+      for (const tab of affectedTabs) delete dbDraftIdsRef.current[tab.id];
       queryClient.invalidateQueries({ queryKey: ["/api/drafts"] });
       toast({
         title: "Draft Deleted",
         description: "Draft removed from PostgreSQL database.",
       });
     } catch (err: any) {
+      for (const tab of affectedTabs) deletingTabsRef.current.delete(tab.id);
       toast({
         title: "Delete Failed",
         description: err.message || "Failed to delete draft.",
@@ -394,41 +388,24 @@ export const PreviewDrafting: React.FC = () => {
       const raw = localStorage.getItem("alwakeelo_drafting_insert");
       if (!raw) return;
       const data = JSON.parse(raw);
-      if (!data || !data.clause) return;
-
+      if (!data || typeof data.clause !== "string" || !data.clause.trim()) return;
       localStorage.removeItem("alwakeelo_drafting_insert");
-      setShowLaunchpad(false);
-
       const clauseHtml = plainTextToTiptapHTML(data.clause);
-
-      setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.insertContent(clauseHtml);
-          editorRef.current.focus();
-        } else {
-          setTabs((prev) =>
-            prev.map((t) =>
-              t.id === activeTabId
-                ? {
-                    ...t,
-                    htmlContent: (t.htmlContent ? t.htmlContent + "<p></p>" : "") + clauseHtml,
-                    textContent: (t.textContent ? t.textContent + "\n\n" : "") + data.clause,
-                    lastModified: Date.now(),
-                  }
-                : t
-            )
-          );
-          setCurrentHtml((prev) => (prev ? prev + "<p></p>" : "") + clauseHtml);
-          setCurrentText((prev) => (prev ? prev + "\n\n" : "") + data.clause);
-        }
-
-        toast({
-          title: "Statutory Clause Inserted",
-          description: data.title
-            ? `Affixed ${data.statute || ""} ${data.section || ""}: "${data.title}" into drafting canvas.`
-            : "Statutory clause inserted into drafting canvas.",
-        });
-      }, 80);
+      if (editorRef.current) {
+        editorRef.current.insertContent(clauseHtml);
+        editorRef.current.focus();
+      } else {
+        const tab = workspaceRef.current.tabs.find((t) => t.id === activeTabId);
+        if (!tab) return;
+        const html = tab.htmlContent + clauseHtml;
+        const text = [tab.textContent, data.clause].filter(Boolean).join("\n\n");
+        setTabs((prev) => prev.map((t) => t.id === tab.id
+          ? { ...t, htmlContent: html, textContent: text, lastModified: Date.now() } : t));
+        setCurrentHtml(html);
+        setCurrentText(text);
+      }
+      setShowLaunchpad(false);
+      toast({ title: "Clause Inserted", description: "Added the clause to the active document." });
     } catch (err) {
       console.error("Failed to process incoming drafting insert", err);
     }
@@ -473,7 +450,6 @@ export const PreviewDrafting: React.FC = () => {
     );
     // The debounce timer only ever targets the active tab, so flush the outgoing
     // one now or its last edits never reach the database.
-    if (saveDebounceTimerRef.current) clearTimeout(saveDebounceTimerRef.current);
     if (outgoing) {
       saveDraftToDb({ ...outgoing, htmlContent: latestHtml, textContent: latestText }, false);
     }
@@ -504,7 +480,7 @@ export const PreviewDrafting: React.FC = () => {
     setShowLaunchpad(true);
   };
 
-  const handleCloseTab = (tabId: string, e: React.MouseEvent) => {
+  const handleCloseTab = async (tabId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (tabs.length <= 1) {
       toast({
@@ -518,10 +494,23 @@ export const PreviewDrafting: React.FC = () => {
     const tabIndex = tabs.findIndex((t) => t.id === tabId);
     if (tabIndex === -1) return;
 
-    const remainingTabs = tabs.filter((t) => t.id !== tabId);
+    await saveQueue.idle(tabId).catch(() => {});
+    let closing = workspaceRef.current.tabs.find((tab) => tab.id === tabId);
+    if (!closing) return;
+    while (hasDraftContent(closing) || closing.dbDraftId || dbDraftIdsRef.current[tabId]) {
+      if (!await saveDraftToDb(closing)) {
+        toast({ title: "Draft Kept Open", description: "The draft could not be saved. Retry saving before closing it.", variant: "destructive" });
+        return;
+      }
+      const latest = workspaceRef.current.tabs.find((tab) => tab.id === tabId);
+      if (!latest || draftFingerprint(latest) === draftFingerprint(closing)) break;
+      closing = latest;
+    }
+    const remainingTabs = workspaceRef.current.tabs.filter((t) => t.id !== tabId);
+    if (remainingTabs.length === 0) return;
     setTabs(remainingTabs);
 
-    if (activeTabId === tabId) {
+    if (workspaceRef.current.activeTabId === tabId) {
       const nextActiveIndex = Math.min(tabIndex, remainingTabs.length - 1);
       const nextActiveTab = remainingTabs[nextActiveIndex];
       setActiveTabId(nextActiveTab.id);
@@ -542,39 +531,14 @@ export const PreviewDrafting: React.FC = () => {
     );
   };
 
-  // Editor update callback with debounced PostgreSQL persistence
-  const handleEditorUpdate = useCallback(
-    (html: string, text: string) => {
-      setCurrentHtml(html);
-      setCurrentText(text);
-      setDocVersion((v) => v + 1);
-      setSaveStatus("unsaved");
-
-      setTabs((prev) => {
-        const updated = prev.map((t) =>
-          t.id === activeTabId
-            ? { ...t, htmlContent: html, textContent: text, lastModified: Date.now() }
-            : t
-        );
-        return updated;
-      });
-
-      if (saveDebounceTimerRef.current) {
-        clearTimeout(saveDebounceTimerRef.current);
-      }
-      saveDebounceTimerRef.current = setTimeout(() => {
-        const currentTab = tabs.find((t) => t.id === activeTabId);
-        if (currentTab) {
-          saveDraftToDb({
-            ...currentTab,
-            htmlContent: html,
-            textContent: text,
-          }, false);
-        }
-      }, 1500);
-    },
-    [activeTabId, tabs, saveDraftToDb]
-  );
+  const handleEditorUpdate = useCallback((html: string, text: string) => {
+    setCurrentHtml(html);
+    setCurrentText(text);
+    setDocVersion((v) => v + 1);
+    setTabs((prev) => prev.map((tab) => tab.id === activeTabId
+      ? { ...tab, htmlContent: html, textContent: text, lastModified: Date.now() }
+      : tab));
+  }, [activeTabId, setDocVersion]);
 
   // ─── Template ID → Backend documentType mapping ────────────────────────────
   // Every value here MUST exist in LEGAL_DRAFTING_DOC_TYPES (server/routes.ts).
@@ -633,6 +597,7 @@ export const PreviewDrafting: React.FC = () => {
   };
 
   const handleStartWithAiBrief = async (brief: {
+    draftType: "pleading" | "contract";
     forum: string;
     matterTitle: string;
     reliefType: string;
@@ -645,14 +610,15 @@ export const PreviewDrafting: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ brief })
       });
-      if (!res.ok) throw new Error("Failed to generate draft");
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed to generate draft");
+      if (typeof data.textContent !== "string" || !data.textContent.trim()) throw new Error("No draft text was returned. Please try again.");
       generatedDraftText = data.textContent;
     } catch (err) {
       console.error(err);
       toast({
         title: "Generation Failed",
-        description: "There was an error generating the pleading.",
+        description: err instanceof Error ? err.message : "There was an error generating the pleading.",
         variant: "destructive"
       });
       return;
@@ -663,7 +629,7 @@ export const PreviewDrafting: React.FC = () => {
     const newTab: DocumentTab = {
       id: newDocId,
       title: brief.matterTitle || brief.reliefType,
-      category: brief.forum.includes("High Court") ? "High Court" : "Court Filings",
+      category: brief.draftType === "contract" ? "Commercial Contracts" : brief.forum.includes("High Court") ? "High Court" : "Court Filings",
       pageProfileId: "court-legal",
       htmlContent: formattedHtml,
       textContent: generatedDraftText,
@@ -694,6 +660,9 @@ export const PreviewDrafting: React.FC = () => {
   // ─── Actions from Right Sidebar ──────────────────────────────────────────
 
   const handleLoadTemplate = (template: DraftingTemplate) => {
+    setDocVersion((v) => v + 1);
+    setLockedSelection(null);
+    setLiveSelection(null);
     const formattedHtml = plainTextToTiptapHTML(template.body);
     if (editorRef.current) {
       editorRef.current.setContent(formattedHtml);
@@ -759,6 +728,9 @@ export const PreviewDrafting: React.FC = () => {
   };
 
   const handleReplaceDocument = (content: string, documentType?: string) => {
+    setDocVersion((v) => v + 1);
+    setLockedSelection(null);
+    setLiveSelection(null);
     const formattedHtml = plainTextToTiptapHTML(content);
     if (editorRef.current) {
       editorRef.current.setContent(formattedHtml);
@@ -825,8 +797,14 @@ export const PreviewDrafting: React.FC = () => {
       });
       return true;
     },
-    [toast]
+    [toast, setDocVersion]
   );
+
+  useEffect(() => {
+    setLockedSelection(null);
+    setLiveSelection(null);
+    setTriggerPrompt(null);
+  }, [activeTabId]);
 
   // Dismiss floating action bar on Escape key
   useEffect(() => {
@@ -887,7 +865,7 @@ export const PreviewDrafting: React.FC = () => {
             {/* Document Tabs Bar (Clean & Focused) */}
             <div className="flex items-center justify-between px-4 py-1.5 bg-white dark:bg-[#131E2E] border-b border-[#E2E8F0] dark:border-[#1E2D44] shrink-0 h-11">
               {/* Tabs List */}
-              <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pr-2 py-0.5">
+              <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto custom-scrollbar pr-2 py-0.5">
                 {tabs.map((tab) => {
                   const isActive = tab.id === activeTabId;
                   return (
@@ -907,6 +885,7 @@ export const PreviewDrafting: React.FC = () => {
                       <span className="max-w-[150px] truncate">{tab.title}</span>
                       <button
                         type="button"
+                        aria-label={`Close ${tab.title}`}
                         onClick={(e) => handleCloseTab(tab.id, e)}
                         className="opacity-40 group-hover:opacity-100 hover:text-rose-600 dark:text-rose-400 rounded transition-opacity"
                       >
@@ -992,9 +971,9 @@ export const PreviewDrafting: React.FC = () => {
               </div>
             </div>
 
-            {/* Contextual AI Selection Action Bar (Floats & hovers over canvas when scrolling) */}
+            {/* Keep selection actions outside the editor scroller so its sticky tools cannot cover them. */}
             {liveSelection && (
-              <div className="absolute top-14 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-4xl px-3.5 py-2 rounded-2xl bg-white/95 dark:bg-[#071322]/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none pointer-events-auto">
+              <div role="toolbar" aria-label="AI actions for selected text" className="shrink-0 mx-4 my-2 px-3.5 py-2 rounded-2xl bg-white/95 dark:bg-[#071322]/95 backdrop-blur-xl border border-emerald-500/30 shadow-lg flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-6 h-6 rounded-lg bg-[#105B38]/10 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
                     <Sparkles className="w-3.5 h-3.5 text-[#105B38] dark:text-emerald-400" />
@@ -1007,7 +986,7 @@ export const PreviewDrafting: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -1104,7 +1083,7 @@ export const PreviewDrafting: React.FC = () => {
 
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-serif">
-                  Times New Roman 13pt · Court Legal 8.5×14&quot;
+                  Times New Roman 13pt · {resolveLegalPageProfile(activeProfileId).label}
                 </span>
               </div>
             </div>
@@ -1112,6 +1091,10 @@ export const PreviewDrafting: React.FC = () => {
 
           {/* ── Right-Side Panel: AI Drafter Chat, Templates, Clauses & Tools ── */}
           <RightDraftingSidebar
+            key={activeTabId}
+            initialMessages={chatByTabRef.current.get(activeTabId)}
+            onMessagesChange={(messages) => { chatByTabRef.current.set(activeTabId, messages); }}
+            documentVersion={docVersion}
             isOpen={isRightSidebarOpen}
             onToggle={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
             currentDocumentText={currentText}
@@ -1266,6 +1249,13 @@ export const PreviewDrafting: React.FC = () => {
       )}
     </PreviewShell>
   );
+};
+
+export const PreviewDrafting: React.FC = () => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <div className="p-6">Loading drafting studio…</div>;
+  const storageKey = `${TABS_STORAGE_KEY}:${user?.id ?? "guest"}`;
+  return <DraftingWorkspace key={storageKey} storageKey={storageKey} />;
 };
 
 export default PreviewDrafting;

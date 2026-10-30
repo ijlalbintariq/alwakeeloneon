@@ -198,7 +198,7 @@ export function computeWordDiff(originalText: string = "", revisedText: string =
     additionsCount: additions,
     deletionsCount: deletions,
     unchangedCount: unchanged,
-    hasChanges: additions > 0 || deletions > 0,
+    hasChanges: merged.some((token) => token.type !== "eq"),
     originalText,
     revisedText,
   };
@@ -208,16 +208,19 @@ export function computeWordDiff(originalText: string = "", revisedText: string =
  * Fallback paragraph/line diff for very long documents to avoid O(N*M) table overflow.
  */
 function computeParagraphDiff(originalText: string, revisedText: string): DiffResult {
-  const linesA = originalText.split("\n");
-  const linesB = revisedText.split("\n");
-  const dp = computeLCS(linesA, linesB);
-  const rawLines: DiffToken[] = [];
-  backtrackLCS(dp, linesA, linesB, linesA.length, linesB.length, rawLines);
-
-  const tokens: DiffToken[] = rawLines.map((l) => ({
-    type: l.type,
-    value: l.value + "\n",
-  }));
+  // Keep line terminators in the tokens so copying either side is lossless.
+  const linesA = originalText.match(/[^\n]*\n|[^\n]+$/g) || [];
+  const linesB = revisedText.match(/[^\n]*\n|[^\n]+$/g) || [];
+  const tokens: DiffToken[] = [];
+  // The fallback must itself be bounded: thousands of changed one-line
+  // paragraphs otherwise allocate an even larger quadratic table.
+  if (linesA.length * linesB.length > 2_500_000) {
+    if (originalText) tokens.push({ type: "del", value: originalText });
+    if (revisedText) tokens.push({ type: "add", value: revisedText });
+  } else {
+    const dp = computeLCS(linesA, linesB);
+    backtrackLCS(dp, linesA, linesB, linesA.length, linesB.length, tokens);
+  }
 
   const merged = mergeAdjacentTokens(tokens);
 
@@ -237,7 +240,7 @@ function computeParagraphDiff(originalText: string, revisedText: string): DiffRe
     additionsCount: additions,
     deletionsCount: deletions,
     unchangedCount: unchanged,
-    hasChanges: additions > 0 || deletions > 0,
+    hasChanges: merged.some((token) => token.type !== "eq"),
     originalText,
     revisedText,
   };

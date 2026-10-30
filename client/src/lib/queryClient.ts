@@ -52,6 +52,7 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const upperMethod = method.toUpperCase();
   const res = await fetch(url, {
@@ -60,6 +61,7 @@ export async function apiRequest(
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
+    signal,
   });
 
   await throwIfResNotOk(res);

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from "react";
+import React, { useState, useMemo, useRef, useCallback, useEffect, useId } from "react";
 import {
   Network,
   ListTree,
@@ -26,6 +26,8 @@ import {
   Loader2,
   FileText,
 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { getCitationTreatment, getPrecedentTarget } from "@/experimental/lib/judgmentApiClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { PrecedentCitationItem } from "./OverruledAlertBanner";
@@ -49,6 +51,9 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"graph" | "list">("graph");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
+  const arrowId = useId().replace(/:/g, "");
   const [selectedNode, setSelectedNode] = useState<PrecedentCitationItem | null>(null);
   const [graphSearchQuery, setGraphSearchQuery] = useState<string>("");
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -119,29 +124,25 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
   };
 
   const treatmentBadge = (type: string) => {
-    switch (type?.toLowerCase()) {
+    const label = String(type || "referred_to").toLowerCase().replace(/[_-]+/g, " ").trim().replace(/\b\w/g, (letter) => letter.toUpperCase());
+    switch (getCitationTreatment(type)) {
       case "relied_upon":
-      case "followed":
-      case "approved":
         return {
-          label: "Relied Upon",
+          label,
           color: "#105B38",
           bg: "bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20",
           nodeColor: "#105B38",
         };
       case "distinguished":
-      case "explained":
         return {
-          label: "Distinguished",
+          label,
           color: "#D97706",
           bg: "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-500/20",
           nodeColor: "#D97706",
         };
       case "overruled":
-      case "disapproved":
-      case "reversed":
         return {
-          label: "Overruled",
+          label,
           color: "#DC2626",
           bg: "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20",
           nodeColor: "#DC2626",
@@ -149,7 +150,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
       case "referred_to":
       default:
         return {
-          label: "Referred To",
+          label,
           color: "#2563EB",
           bg: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20",
           nodeColor: "#2563EB",
@@ -157,95 +158,89 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
     }
   };
 
-  const getTargetJudgmentId = useCallback((item?: PrecedentCitationItem | null): string => {
-    if (!item) return "";
-    if (item.linkedJudgmentId && !item.linkedJudgmentId.startsWith("extracted-")) {
-      return item.linkedJudgmentId;
-    }
-    if (item.linkedCitation) return item.linkedCitation;
-    if (item.citationText) return item.citationText;
-    return String(item.id || "").replace(/^extracted-/i, "");
-  }, []);
-
   const handleOpenJudgment = useCallback((item?: PrecedentCitationItem | null) => {
-    if (!item || !onSelectJudgment) return;
-    const targetId = getTargetJudgmentId(item);
-    if (targetId) {
-      onSelectJudgment(targetId);
-    }
-  }, [onSelectJudgment, getTargetJudgmentId]);
+    const target = getPrecedentTarget(item);
+    if (target) onSelectJudgment?.(target);
+  }, [onSelectJudgment]);
 
-  const handleNodeClick = useCallback((item: PrecedentCitationItem, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (selectedNode?.id === item.id) {
-      handleOpenJudgment(item);
-    } else {
-      setSelectedNode(item);
-    }
-  }, [selectedNode?.id, handleOpenJudgment]);
+  const handleNodeClick = (item: PrecedentCitationItem, key: string, event: React.SyntheticEvent) => {
+    event.stopPropagation();
+    if (selectedKey === key) handleOpenJudgment(item);
+    else { setSelectedNode(item); setSelectedKey(key); }
+  };
 
-  const handleNodeDoubleClick = useCallback((item: PrecedentCitationItem, e: React.MouseEvent) => {
-    e.stopPropagation();
-    handleOpenJudgment(item);
-  }, [handleOpenJudgment]);
+  useEffect(() => {
+    setSelectedNode(null); setSelectedKey(null);
+    setSelectedFilter("all"); setGraphSearchQuery("");
+    setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); setIsFullscreen(false);
+  }, [currentCitation]);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setIsFullscreen(false); };
+    window.addEventListener("keydown", onKeyDown);
+    graphRef.current?.querySelector<HTMLButtonElement>('[title="Exit Fullscreen"]')?.focus();
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isFullscreen]);
 
   const filteredMade = useMemo(() => {
     return citationsMade.filter((c) => {
-      const matchFilter = selectedFilter === "all" || c.citationType === selectedFilter;
+      const matchFilter = selectedFilter === "all" || getCitationTreatment(c.citationType) === selectedFilter;
       const matchSearch =
         !graphSearchQuery.trim() ||
-        (c.linkedCitation || c.citationText || "").toLowerCase().includes(graphSearchQuery.toLowerCase()) ||
-        (c.linkedTitle || "").toLowerCase().includes(graphSearchQuery.toLowerCase());
+        (c.linkedCitation || c.citationText || "").toLowerCase().includes(graphSearchQuery.trim().toLowerCase()) ||
+        (c.linkedTitle || "").toLowerCase().includes(graphSearchQuery.trim().toLowerCase());
       return matchFilter && matchSearch;
     });
   }, [citationsMade, selectedFilter, graphSearchQuery]);
 
   const filteredReceived = useMemo(() => {
     return citationsReceived.filter((c) => {
-      const matchFilter = selectedFilter === "all" || c.citationType === selectedFilter;
+      const matchFilter = selectedFilter === "all" || getCitationTreatment(c.citationType) === selectedFilter;
       const matchSearch =
         !graphSearchQuery.trim() ||
-        (c.linkedCitation || c.citationText || "").toLowerCase().includes(graphSearchQuery.toLowerCase()) ||
-        (c.linkedTitle || "").toLowerCase().includes(graphSearchQuery.toLowerCase());
+        (c.linkedCitation || c.citationText || "").toLowerCase().includes(graphSearchQuery.trim().toLowerCase()) ||
+        (c.linkedTitle || "").toLowerCase().includes(graphSearchQuery.trim().toLowerCase());
       return matchFilter && matchSearch;
     });
   }, [citationsReceived, selectedFilter, graphSearchQuery]);
 
   const totalCitations = citationsMade.length + citationsReceived.length;
 
-  const handleCopyCitation = (id: string, text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
+  useEffect(() => {
+    if (!selectedKey) return;
+    const visible = filteredMade.find((item) => `made:${item.id}:${getPrecedentTarget(item)}` === selectedKey)
+      || filteredReceived.find((item) => `received:${item.id}:${getPrecedentTarget(item)}` === selectedKey);
+    setSelectedNode(visible || null);
+    if (!visible) setSelectedKey(null);
+  }, [filteredMade, filteredReceived, selectedKey]);
+
+  const handleCopyCitation = async (id: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
       setCopiedNodeId(id);
       setTimeout(() => setCopiedNodeId(null), 2000);
-      toast({
-        title: "Citation Copied",
-        description: `"${text}" copied to clipboard.`,
-      });
-    });
+      toast({ title: "Citation Copied", description: `"${text}" copied to clipboard.` });
+    } catch {
+      toast({ title: "Copy Failed", description: "Clipboard access was denied. Select and copy the citation directly.", variant: "destructive" });
+    }
   };
 
-  // Pan / Drag handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || (event.target as Element).closest('[data-graph-node]')) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
     setIsDragging(true);
-    dragStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
+    dragStartRef.current = { x: event.clientX - panOffset.x, y: event.clientY - panOffset.y };
   };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setPanOffset({
-      x: e.clientX - dragStartRef.current.x,
-      y: e.clientY - dragStartRef.current.y,
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handlePointerMove = (event: React.PointerEvent) => {
+    if (isDragging) setPanOffset({ x: event.clientX - dragStartRef.current.x, y: event.clientY - dragStartRef.current.y });
   };
 
   const handleResetView = () => {
     setZoomLevel(1);
     setPanOffset({ x: 0, y: 0 });
     setSelectedNode(null);
+    setSelectedKey(null);
   };
 
   // Export Citation Tree Summary
@@ -257,7 +252,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
       `Anchor Precedent: ${currentCitation}`,
       `Title: ${currentTitle}`,
       `Generated: ${new Date().toLocaleString("en-PK")}`,
-      `Total Connected Authorities: ${totalCitations}`,
+      `Total Citation Links: ${totalCitations}`,
       ``,
       `--- OUTBOUND AUTHORITIES (CITED BY THIS BENCH: ${citationsMade.length}) ---`,
     ];
@@ -267,7 +262,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
     } else {
       citationsMade.forEach((c, idx) => {
         lines.push(
-          `[${idx + 1}] ${c.linkedCitation || c.citationText} | Treatment: ${c.citationType.toUpperCase()} | Title: ${c.linkedTitle || "N/A"}`
+          `[${idx + 1}] ${c.linkedCitation || c.citationText} | Treatment: ${String(c.citationType || "referred_to").toUpperCase()} | Title: ${c.linkedTitle || "N/A"}`
         );
         if (c.contextExcerpt) {
           lines.push(`    Excerpt: "${c.contextExcerpt}"`);
@@ -283,7 +278,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
     } else {
       citationsReceived.forEach((c, idx) => {
         lines.push(
-          `[${idx + 1}] ${c.linkedCitation || c.citationText} | Treatment: ${c.citationType.toUpperCase()} | Title: ${c.linkedTitle || "N/A"}`
+          `[${idx + 1}] ${c.linkedCitation || c.citationText} | Treatment: ${String(c.citationType || "referred_to").toUpperCase()} | Title: ${c.linkedTitle || "N/A"}`
         );
         if (c.contextExcerpt) {
           lines.push(`    Excerpt: "${c.contextExcerpt}"`);
@@ -309,8 +304,11 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
     });
   };
 
-  return (
+  const content = (
     <div
+      ref={graphRef}
+      role="region"
+      aria-label={`Precedent graph for ${currentCitation}`}
       className={cn(
         "rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] p-5 sm:p-6 shadow-xs space-y-4 transition-all",
         isFullscreen && "fixed inset-4 z-50 overflow-y-auto bg-white dark:bg-[#131E2E] shadow-2xl border-[#CBD5E1]"
@@ -326,7 +324,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
             <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
               <span>Precedent Citation Network</span>
               <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20">
-                {totalCitations} Nodes
+                {totalCitations} Links
               </span>
             </h3>
             <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
@@ -337,7 +335,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Treatment Filter Pill Buttons */}
-          <div className="flex items-center gap-1 bg-[#F8FAFC] dark:bg-[#0B131E] p-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
+          <div className="flex flex-wrap items-center gap-1 bg-[#F8FAFC] dark:bg-[#0B131E] p-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
             <button
               type="button"
               onClick={() => setSelectedFilter("all")}
@@ -384,7 +382,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                   : "text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-700 dark:text-rose-400"
               )}
             >
-              Overruled
+              Negative
             </button>
             <button
               type="button"
@@ -468,6 +466,22 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
         </div>
       </div>
 
+      {totalCitations > 0 && (
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 text-[#94A3B8] dark:text-[#475569] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={graphSearchQuery}
+                onChange={(e) => setGraphSearchQuery(e.target.value)}
+                placeholder="Filter graph nodes by citation/title..."
+                className="w-full h-8 pl-8 pr-3 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38]"
+              />
+            </div>
+      )}
+      {totalCitations > 0 && filteredMade.length + filteredReceived.length === 0 && (
+        <p role="status" className="text-xs text-slate-500">No citation links match the current filters.</p>
+      )}
+
       {totalCitations === 0 ? (
         <div className="py-12 text-center space-y-2 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-[#F8FAFC] dark:bg-[#0B131E] rounded-2xl border border-[#E2E8F0] dark:border-[#1E2D44] p-6">
           <Layers className="w-8 h-8 mx-auto text-[#CBD5E1]" />
@@ -479,16 +493,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
         <div className="space-y-3">
           {/* Zoom and Search Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-[#94A3B8] dark:text-[#475569] absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={graphSearchQuery}
-                onChange={(e) => setGraphSearchQuery(e.target.value)}
-                placeholder="Filter graph nodes by citation/title..."
-                className="w-full h-8 pl-8 pr-3 rounded-lg bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none focus:border-[#105B38]"
-              />
-            </div>
+
 
             <div className="flex items-center gap-1.5 bg-[#F8FAFC] dark:bg-[#0B131E] p-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] text-xs">
               <button
@@ -522,12 +527,14 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
           </div>
 
           <div
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            data-testid="precedent-graph-canvas"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={() => setIsDragging(false)}
+            onPointerCancel={() => setIsDragging(false)}
+            onLostPointerCapture={() => setIsDragging(false)}
             className={cn(
-              "relative w-full rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] overflow-hidden flex items-center justify-center p-4 transition-all select-none cursor-grab active:cursor-grabbing",
+              "relative w-full rounded-2xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] overflow-auto p-4 transition-all select-none touch-none cursor-grab active:cursor-grabbing",
               isFullscreen ? "h-[calc(100vh-220px)]" : "h-80 sm:h-96"
             )}
           >
@@ -547,15 +554,23 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               const centerY = svgHeight / 2;
               return (
             <svg
-              className="w-full h-full transition-transform duration-100"
+              className="block max-w-none"
+              width="800"
+              height={svgHeight}
               style={{
-                transform: `scale(${zoomLevel}) translate(${panOffset.x}px, ${panOffset.y}px)`,
+                transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
                 transformOrigin: "center center",
               }}
               viewBox={`0 0 800 ${svgHeight}`}
             >
+              <defs>
+                <marker id={arrowId} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto-start-reverse">
+                  <path d="M 0 0 L 7 3.5 L 0 7 Z" fill="context-stroke" />
+                </marker>
+              </defs>
               {/* Center Anchor Node: Current Judgment */}
               <g transform={`translate(400, ${centerY})`}>
+                <title>{currentCitation} — {currentTitle}</title>
                 <circle
                   r="48"
                   fill="#105B38"
@@ -602,21 +617,29 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                   const y = (centerY - (filteredMade.length * 56) / 2) + 28 + idx * 56;
                   const x = 140;
                   const badge = treatmentBadge(item.citationType);
-                  const isSelected = selectedNode?.id === item.id;
+                  const key = `made:${item.id}:${getPrecedentTarget(item)}`;
+                  const isSelected = selectedKey === key;
                   return (
                     <g
                       key={`made-svg-${item.id}`}
                       className="cursor-pointer group"
-                      onClick={(e) => handleNodeClick(item, e)}
-                      onDoubleClick={(e) => handleNodeDoubleClick(item, e)}
+                      data-graph-node="true"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${item.linkedCitation || item.citationText}, ${badge.label}`}
+                      aria-pressed={isSelected}
+                      onClick={(e) => handleNodeClick(item, key, e)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleNodeClick(item, key, e); } }}
                     >
+                      <title>{item.linkedCitation || item.citationText} — {item.linkedTitle || badge.label}</title>
                       {/* Connection Line */}
                       <path
                         d={`M 352 ${centerY} C 260 ${centerY}, 240 ${y}, ${x + 65} ${y}`}
                         fill="none"
                         stroke={badge.nodeColor}
                         strokeWidth={isSelected ? "2.5" : "1.5"}
-                        strokeDasharray={item.citationType === "overruled" ? "4,4" : "none"}
+                        markerEnd={`url(#${arrowId})`}
+                        strokeDasharray={getCitationTreatment(item.citationType) === "overruled" ? "4,4" : "none"}
                         opacity={isSelected ? "1" : "0.7"}
                       />
                       {/* Node Box */}
@@ -675,21 +698,29 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                   const y = (centerY - (filteredReceived.length * 56) / 2) + 28 + idx * 56;
                   const x = 660;
                   const badge = treatmentBadge(item.citationType);
-                  const isSelected = selectedNode?.id === item.id;
+                  const key = `received:${item.id}:${getPrecedentTarget(item)}`;
+                  const isSelected = selectedKey === key;
                   return (
                     <g
                       key={`received-svg-${item.id}`}
                       className="cursor-pointer group"
-                      onClick={(e) => handleNodeClick(item, e)}
-                      onDoubleClick={(e) => handleNodeDoubleClick(item, e)}
+                      data-graph-node="true"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${item.linkedCitation || item.citationText}, ${badge.label}`}
+                      aria-pressed={isSelected}
+                      onClick={(e) => handleNodeClick(item, key, e)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleNodeClick(item, key, e); } }}
                     >
+                      <title>{item.linkedCitation || item.citationText} — {item.linkedTitle || badge.label}</title>
                       {/* Connection Line */}
                       <path
-                        d={`M 448 ${centerY} C 540 ${centerY}, 560 ${y}, ${x - 65} ${y}`}
+                        d={`M ${x - 65} ${y} C 560 ${y}, 540 ${centerY}, 448 ${centerY}`}
                         fill="none"
                         stroke={badge.nodeColor}
                         strokeWidth={isSelected ? "2.5" : "1.5"}
-                        strokeDasharray={item.citationType === "overruled" ? "4,4" : "none"}
+                        markerEnd={`url(#${arrowId})`}
+                        strokeDasharray={getCitationTreatment(item.citationType) === "overruled" ? "4,4" : "none"}
                         opacity={isSelected ? "1" : "0.7"}
                       />
                       {/* Node Box */}
@@ -737,7 +768,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
             {/* Quick Helper Label */}
             <div className="absolute bottom-3 left-4 flex items-center gap-1.5 text-[11px] font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] bg-white dark:bg-[#131E2E]/90 backdrop-blur-xs px-3 py-1 rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs pointer-events-none">
               <Info className="w-3.5 h-3.5 text-[#105B38]" />
-              <span>Click node to select · Click again or double-click to open | Drag canvas to pan</span>
+              <span>Click or press Enter to select · Activate again to open · Drag canvas to pan</span>
             </div>
           </div>
 
@@ -800,7 +831,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
                   </button>
 
                   {/* Open Judgment in Reader */}
-                  {onSelectJudgment && (
+                  {onSelectJudgment && getPrecedentTarget(selectedNode) && (
                     <button
                       type="button"
                       onClick={() => handleOpenJudgment(selectedNode)}
@@ -837,12 +868,15 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               </div>
               <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
                 {filteredMade.length === 0 ? (
-                  <p className="text-xs text-[#94A3B8] dark:text-[#475569] p-3 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">No outbound citations recorded.</p>
+                  <p className="text-xs text-[#94A3B8] dark:text-[#475569] p-3 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">{citationsMade.length ? "No outbound citations match the filters." : "No outbound citations recorded."}</p>
                 ) : (
                   filteredMade.map((item) => (
                     <div
                       key={`list-made-${item.id}`}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleOpenJudgment(item)}
+                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleOpenJudgment(item); } }}
                       className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] hover:shadow-xs transition-all cursor-pointer space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
@@ -877,12 +911,15 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
               </div>
               <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
                 {filteredReceived.length === 0 ? (
-                  <p className="text-xs text-[#94A3B8] dark:text-[#475569] p-3 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">No subsequent citing cases recorded.</p>
+                  <p className="text-xs text-[#94A3B8] dark:text-[#475569] p-3 bg-[#F8FAFC] dark:bg-[#0B131E] rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44]">{citationsReceived.length ? "No inbound citations match the filters." : "No subsequent citing cases recorded."}</p>
                 ) : (
                   filteredReceived.map((item) => (
                     <div
                       key={`list-received-${item.id}`}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleOpenJudgment(item)}
+                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleOpenJudgment(item); } }}
                       className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] hover:border-[#105B38] hover:shadow-xs transition-all cursor-pointer space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
@@ -914,4 +951,5 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
       )}
     </div>
   );
+  return isFullscreen ? createPortal(content, document.body) : content;
 };

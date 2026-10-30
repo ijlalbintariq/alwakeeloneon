@@ -61,6 +61,7 @@ import {
   createDraftingInsertPayload,
   dispatchDraftingInsert,
   hydrateCitationGraph,
+  getCitationTreatment,
   UnifiedJudgmentResult,
   SavedJudgmentRecord,
 } from "@/experimental/lib/judgmentApiClient";
@@ -83,33 +84,6 @@ const COURTS_LIST = [
 ];
 
 const YEARS_LIST = ["All Years", "2026", "2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2012", "1955"];
-
-function normalizeCitationKey(str?: string | null): string {
-  if (!str) return "";
-  let s = str;
-  try {
-    s = decodeURIComponent(s);
-    if (s.includes("%")) s = decodeURIComponent(s);
-  } catch {}
-  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function doesJudgmentMatchRoute(judgment: JudgmentDetailData | null, routeId?: string | null): boolean {
-  if (!judgment || !routeId) return false;
-  let decodedRoute = routeId;
-  try {
-    decodedRoute = decodeURIComponent(routeId);
-    if (decodedRoute.includes("%")) decodedRoute = decodeURIComponent(decodedRoute);
-  } catch {}
-  
-  if (judgment.id === routeId || judgment.id === decodedRoute) return true;
-  
-  const normRoute = normalizeCitationKey(decodedRoute);
-  const normCitation = normalizeCitationKey(judgment.citation);
-  if (normRoute && normCitation && normRoute === normCitation) return true;
-  
-  return false;
-}
 
 export const PreviewJudgments: React.FC = () => {
   const { toast } = useToast();
@@ -144,6 +118,8 @@ export const PreviewJudgments: React.FC = () => {
   const [detailError, setDetailError] = useState<string | null>(null);
 
   // Standalone Precedent Graph Modal State
+  const graphRequestRef = useRef(0);
+  const detailRequestRef = useRef(0);
   const [graphModalTarget, setGraphModalTarget] = useState<UnifiedJudgmentResult | null>(null);
   const [isDownloadingModalPdf, setIsDownloadingModalPdf] = useState<boolean>(false);
 
@@ -249,6 +225,7 @@ export const PreviewJudgments: React.FC = () => {
 
   // Open Standalone Graph Modal with fully hydrated edges
   const handleOpenGraphModal = async (caseItem: UnifiedJudgmentResult) => {
+    const requestId = ++graphRequestRef.current;
     // Show a loading toast because fetching the graph might take a second
     toast({
       title: "Loading Precedent Graph...",
@@ -258,20 +235,27 @@ export const PreviewJudgments: React.FC = () => {
     try {
       // We must fetch the full detail because search results don't contain the citation edges
       const detail = await getJudgmentDetail(String(caseItem.judgmentId || caseItem.id));
+      if (requestId !== graphRequestRef.current) return;
+      if (!detail && !caseItem.fullText && !caseItem.citationsMade?.length && !caseItem.citationsReceived?.length) {
+        throw new Error("Judgment details could not be loaded. Retry opening the graph.");
+      }
       
       const edges = hydrateCitationGraph(
-        caseItem.citation,
+        detail?.citation || caseItem.citation,
         detail?.citations?.made || caseItem.citationsMade,
         detail?.citations?.received || caseItem.citationsReceived,
-        detail?.fullText
+        detail?.fullText || caseItem.fullText
       );
 
       setGraphModalTarget({
         ...caseItem,
+        citation: detail?.citation || caseItem.citation,
+        title: detail?.title || caseItem.title,
         citationsMade: edges.made,
         citationsReceived: edges.received,
       });
     } catch (err) {
+      if (requestId !== graphRequestRef.current) return;
       console.error("Failed to load graph edges:", err);
       toast({
         title: "Graph Loading Failed",
@@ -281,11 +265,10 @@ export const PreviewJudgments: React.FC = () => {
     }
   };
 
-  const lastLoadedRouteRef = useRef<string | null>(null);
-
   // Load Judgment details by ID with Two-Tier Resilient Fallback
   const loadJudgmentById = useCallback(async (id: string) => {
     if (!id) return;
+    const requestId = ++detailRequestRef.current;
     let cleanId = String(id || "").trim();
     try {
       cleanId = decodeURIComponent(cleanId);
@@ -299,12 +282,14 @@ export const PreviewJudgments: React.FC = () => {
 
     try {
       const detail = await getJudgmentDetail(cleanId);
+      if (requestId !== detailRequestRef.current) return;
       if (detail) {
         setActiveJudgmentDetail(detail);
       } else {
         throw new Error(`Judgment not found (${cleanId})`);
       }
     } catch (err: any) {
+      if (requestId !== detailRequestRef.current) return;
       console.error("Failed to load judgment detail:", err);
       toast({
         title: "Error Loading Judgment",
@@ -313,11 +298,11 @@ export const PreviewJudgments: React.FC = () => {
       });
       setActiveJudgmentDetail(null);
     } finally {
-      setLoadingDetail(false);
+      if (requestId === detailRequestRef.current) setLoadingDetail(false);
     }
   }, [toast]);
 
-  // Unified navigation helper that updates URL route slug and loads judgment
+  // The route effect owns loading so browser navigation cancels stale requests too.
   const navigateToJudgment = useCallback((id: string) => {
     let cleanId = String(id || "").trim();
     try {
@@ -329,28 +314,22 @@ export const PreviewJudgments: React.FC = () => {
 
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
     const routeParam = isUUID ? cleanId : cleanId.replace(/\s+/g, "-");
-    lastLoadedRouteRef.current = routeParam;
     setLocation(`/preview/judgments/${encodeURIComponent(routeParam)}`);
-    loadJudgmentById(cleanId);
-  }, [loadJudgmentById, setLocation]);
+  }, [setLocation]);
 
   // Sync with route params if provided
   useEffect(() => {
+    graphRequestRef.current++;
+    setGraphModalTarget(null);
     if (currentRouteId) {
-      if (!doesJudgmentMatchRoute(activeJudgmentDetail, currentRouteId)) {
-        if (lastLoadedRouteRef.current !== currentRouteId) {
-          lastLoadedRouteRef.current = currentRouteId;
-          loadJudgmentById(currentRouteId);
-        }
-      } else {
-        lastLoadedRouteRef.current = currentRouteId;
-      }
-    } else if (activeJudgmentDetail && !previewRouteParams?.id && !publicRouteParams?.id && !singularPublicRouteParams?.id) {
-      lastLoadedRouteRef.current = null;
+      loadJudgmentById(currentRouteId);
+    } else {
       setSelectedJudgmentId(null);
       setActiveJudgmentDetail(null);
+      setLoadingDetail(false);
     }
-  }, [currentRouteId, loadJudgmentById, activeJudgmentDetail, previewRouteParams?.id, publicRouteParams?.id, singularPublicRouteParams?.id]);
+    return () => { detailRequestRef.current++; graphRequestRef.current++; };
+  }, [currentRouteId, loadJudgmentById]);
 
   // Two-Tier Search Execution
   const handleExecuteTwoTierSearch = async (
@@ -1055,7 +1034,7 @@ export const PreviewJudgments: React.FC = () => {
                   <div className="grid grid-cols-1 gap-4">
                     {searchResults.map((caseItem, idx) => {
                       const caseId = String(caseItem.judgmentId || caseItem.id || `case-${idx}`);
-                      const isOverturned = caseItem.treatment === "overruled" || caseItem.citation === "PLD 1955 FC 240";
+                      const isOverturned = caseItem.isOverruled === true || getCitationTreatment(caseItem.treatment) === "overruled";
                       const isRatioExpanded = expandedRatioIds.has(caseId);
                       const isItemBookmarked = allSavedJudgments.some(
                         (s) => s.citation === caseItem.citation || s.title === caseItem.title
@@ -1081,11 +1060,11 @@ export const PreviewJudgments: React.FC = () => {
                               {isOverturned ? (
                                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 flex items-center gap-1 animate-pulse">
                                   <ShieldAlert className="w-3 h-3" />
-                                  Overruled Authority
+                                  {caseItem.isOverruled === true ? "Overruled Authority" : "Negative Treatment"}
                                 </span>
                               ) : (
                                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border-emerald-200 dark:border-emerald-500/20">
-                                  Good Law
+                                  No adverse treatment recorded
                                 </span>
                               )}
                             </div>
@@ -1289,7 +1268,8 @@ export const PreviewJudgments: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => setGraphModalTarget(null)}
+                    onClick={() => { graphRequestRef.current++; setGraphModalTarget(null); }}
+                    aria-label="Close precedent graph"
                     className="p-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-[#F1F5F9] dark:bg-[#1E2D44] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-[#0F172A] dark:text-[#F8FAFC] border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors"
                   >
                     <X className="w-5 h-5" />
@@ -1304,6 +1284,7 @@ export const PreviewJudgments: React.FC = () => {
                 citationsMade={graphModalTarget.citationsMade || []}
                 citationsReceived={graphModalTarget.citationsReceived || []}
                 onSelectJudgment={(targetId) => {
+                  graphRequestRef.current++;
                   setGraphModalTarget(null);
                   navigateToJudgment(targetId);
                 }}

@@ -19,6 +19,7 @@ export interface DiffReviewCardProps {
   revisedText: string;
   targetLabel?: string;
   isWholeDocument?: boolean;
+  isInsertion?: boolean;
   onAccept: (revisedText: string) => void;
   onReject: () => void;
   onRevise?: (revisionPrompt: string) => void;
@@ -30,6 +31,7 @@ export const DiffReviewCard: React.FC<DiffReviewCardProps> = ({
   revisedText,
   targetLabel = "Proposed Revision",
   isWholeDocument = false,
+  isInsertion = false,
   onAccept,
   onReject,
   onRevise,
@@ -104,7 +106,7 @@ export const DiffReviewCard: React.FC<DiffReviewCardProps> = ({
             </span>
           ) : (
             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-              Surgical Selection
+              {isInsertion ? "New Clause" : "Surgical Selection"}
             </span>
           )}
         </div>
@@ -318,10 +320,10 @@ export const DiffReviewCard: React.FC<DiffReviewCardProps> = ({
           type="button"
           onClick={() => onAccept(revisedText)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold shadow-xs hover:shadow-sm transition-all"
-          title={isWholeDocument ? "Apply changes to entire document" : "Surgically replace selected text"}
+          title={isWholeDocument ? "Apply changes to entire document" : isInsertion ? "Insert the proposed clause" : "Surgically replace selected text"}
         >
           <Check className="w-3.5 h-3.5" />
-          <span>{isWholeDocument ? "Accept & Apply All" : "Accept & Replace"}</span>
+          <span>{isWholeDocument ? "Accept & Apply All" : isInsertion ? "Accept & Insert" : "Accept & Replace"}</span>
         </button>
       </div>
     </div>

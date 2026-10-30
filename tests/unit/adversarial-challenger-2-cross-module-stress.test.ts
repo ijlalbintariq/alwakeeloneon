@@ -6,7 +6,7 @@ import {
   getAllSeedJudgments,
   getSeedJudgmentById,
   searchSeedJudgments,
-} from "../../client/src/experimental/data/seedJudgmentsData.js";
+} from "../fixtures/seed-judgments.js";
 import {
   createDraftingInsertPayload,
   dispatchDraftingInsert,

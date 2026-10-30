@@ -82,9 +82,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   }, [input, autoResizeTextarea]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
       e.preventDefault();
-      if ((input.trim() || attachedFiles.length > 0) && !isLoading) {
+      if ((input.trim() || attachedFiles.length > 0) && !isLoading && !disabled) {
         onSend();
       }
     }
@@ -150,6 +150,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 <select
                   value={selectedCaseFileId ?? ""}
                   onChange={(e) => onSelectCaseFile(e.target.value ? Number(e.target.value) : null)}
+                  aria-label="Scope to case file"
                   className="bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
                 >
                   <option value="">All Vault Documents</option>
@@ -188,6 +189,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 <button
                   type="button"
                   onClick={() => onRemoveFile(idx)}
+                  aria-label={`Remove ${file.name}`}
                   className="p-1 rounded-lg text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] hover:text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:bg-rose-500/10 transition-colors ml-1"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -281,7 +283,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             onKeyDown={handleKeyDown}
             disabled={disabled || isLoading}
             placeholder="Ask about Pakistani statutes, landmark judgments, bail under CrPC, CPC writs, or drafting..."
-            className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none resize-none min-h-[48px] max-h-[160px] leading-relaxed custom-scrollbar font-normal"
+            className="flex-1 min-w-0 bg-transparent px-3 py-2 text-xs sm:text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] dark:text-[#475569] focus:outline-none resize-none min-h-[48px] max-h-[160px] leading-relaxed custom-scrollbar font-normal"
             rows={1}
           />
 

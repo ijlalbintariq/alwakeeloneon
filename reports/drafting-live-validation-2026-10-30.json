@@ -1,0 +1,68 @@
+{
+  "startedAt": "2026-10-30T13:20:37.706Z",
+  "baseURL": "https://www.alwakeelo.com",
+  "accountId": "2f06438e-9e02-457e-a81a-cfe7e1afc006",
+  "deployedCommit": "8fcd63fbf20c0fd1b4abb936bd729d2bd903ddc5",
+  "checks": [
+    {
+      "name": "production health",
+      "passed": true,
+      "commit": "8fcd63fbf20c0fd1b4abb936bd729d2bd903ddc5"
+    },
+    {
+      "name": "normal production login",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "create draft",
+      "passed": true,
+      "status": 201
+    },
+    {
+      "name": "filing type persists",
+      "passed": false,
+      "returnedDocumentType": null
+    },
+    {
+      "name": "API update reaches the real database",
+      "passed": true
+    },
+    {
+      "name": "unauthenticated draft access denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "real AI draft generation",
+      "passed": true,
+      "status": 200,
+      "elapsedMs": 37229,
+      "characters": 6069,
+      "operation": "initial-draft"
+    },
+    {
+      "name": "draft retains the supplied test facts",
+      "passed": true
+    },
+    {
+      "name": "real AI selected-passage edit",
+      "passed": true,
+      "status": 200,
+      "operation": "targeted-edit",
+      "replacementCharacters": 366
+    },
+    {
+      "name": "live studio loads saved draft",
+      "passed": true
+    },
+    {
+      "name": "unmocked browser autosave reaches production database",
+      "passed": true
+    }
+  ],
+  "cleanup": true,
+  "draftId": 30,
+  "error": "locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.tiptap') to be visible\u001b[22m\n",
+  "finishedAt": "2026-10-30T13:22:56.797Z"
+}

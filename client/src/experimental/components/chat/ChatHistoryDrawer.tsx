@@ -43,7 +43,7 @@ export const ChatHistoryDrawer: React.FC<ChatHistoryDrawerProps> = ({
 
   const filteredThreads = useMemo(() => {
     if (!searchQuery.trim()) return threads;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
     return threads.filter((t) => (t.title || "").toLowerCase().includes(q));
   }, [threads, searchQuery]);
 
@@ -150,7 +150,10 @@ export const ChatHistoryDrawer: React.FC<ChatHistoryDrawerProps> = ({
                 return (
                   <div
                     key={thread.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onSelectThread(thread.id)}
+                    onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelectThread(thread.id); } }}
                     className={cn(
                       "group flex items-start justify-between gap-2 p-2.5 rounded-xl text-xs cursor-pointer transition-all border",
                       isActive
@@ -165,7 +168,7 @@ export const ChatHistoryDrawer: React.FC<ChatHistoryDrawerProps> = ({
                       <div className="flex items-center gap-2 text-[10px] text-[#94A3B8] dark:text-[#475569] font-mono">
                         <span className="flex items-center gap-1">
                           <Clock className="w-2.5 h-2.5" />
-                          {formatTimestamp(thread.createdAt || thread.updatedAt)}
+                          {formatTimestamp(thread.updatedAt || thread.createdAt)}
                         </span>
                         {isActive && (
                           <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#105B38]/10 text-[#105B38] font-bold">
@@ -183,7 +186,7 @@ export const ChatHistoryDrawer: React.FC<ChatHistoryDrawerProps> = ({
                             onDeleteThread(thread.id);
                           }
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[#F5F4F2] dark:bg-[#0B131E] text-[#999999] dark:text-[#475569] hover:text-[#1A1A1A] dark:text-[#F8FAFC] transition-all"
+                        className="sm:opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded hover:bg-[#F5F4F2] dark:bg-[#0B131E] text-[#999999] dark:text-[#475569] hover:text-[#1A1A1A] dark:text-[#F8FAFC] transition-all"
                         title="Delete Consultation"
                       >
                         <Trash2 className="w-3 h-3" />

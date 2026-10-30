@@ -1,4 +1,5 @@
 import React from "react";
+import { getCitationTreatment, getPrecedentTarget } from "@/experimental/lib/judgmentApiClient";
 import { AlertTriangle, ShieldAlert, ArrowUpRight, ExternalLink, HelpCircle, Scale } from "lucide-react";
 
 export interface PrecedentCitationItem {
@@ -72,29 +73,26 @@ export const OverruledAlertBanner: React.FC<OverruledAlertBannerProps> = ({
                     : "bg-amber-200/80 border-amber-300 dark:border-amber-500/30 text-amber-900 dark:text-amber-300"
                 }`}
               >
-                {isOverruled ? "NEGATIVE PRECEDENT WARNING: OVERRULED" : "CAUTION: DISTINGUISHED PRECEDENT"}
+                {isOverruled ? "NEGATIVE PRECEDENT TREATMENT" : "CAUTION: SUBSEQUENT PRECEDENT TREATMENT"}
               </span>
               <span className="text-[11px] font-mono text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] flex items-center gap-1">
                 <Scale className="w-3 h-3" />
-                Article 189/201 Precedent Alert
+                Recorded Precedent Treatment
               </span>
             </div>
             <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] italic">
-              Do not cite as binding law without addressing subsequent judicial treatment.
+              Review the citing judgments and their recorded context.
             </span>
           </div>
 
           <p className="text-xs sm:text-sm text-[#334155] dark:text-[#CBD5E1] leading-relaxed font-sans">
             {isOverruled ? (
               <>
-                <strong className="text-rose-900 font-semibold">Caution for Counsel:</strong> This judgment has received{" "}
-                <span className="underline decoration-rose-400 font-semibold text-rose-800 dark:text-rose-400">negative treatment (Overruled / Disapproved)</span>{" "}
-                in subsequent High Court or Supreme Court appellate decisions. Citing this ratio in pleadings without addressing the reversal may lead to severe adverse judicial inferences under Article 189 of the Constitution.
+                The following judgments record negative treatment of this authority. Review each treatment and excerpt before relying on it.
               </>
             ) : (
               <>
-                <strong className="text-amber-900 dark:text-amber-300 font-semibold">Notice for Counsel:</strong> This judgment has been{" "}
-                <span className="underline decoration-amber-400 font-semibold text-amber-800 dark:text-amber-400">distinguished</span> in subsequent decisions on facts or constitutional grounds. Ensure factual parity before placing reliance.
+                The following judgments distinguish or explain this authority. Review their recorded treatment and context.
               </>
             )}
           </p>
@@ -113,12 +111,12 @@ export const OverruledAlertBanner: React.FC<OverruledAlertBannerProps> = ({
                     </span>
                     <span
                       className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full border ${
-                        item.citationType === "overruled" || item.citationType === "disapproved"
+                        getCitationTreatment(item.citationType) === "overruled"
                           ? "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 font-bold"
                           : "bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-400 font-bold"
                       }`}
                     >
-                      {item.citationType.replace("_", " ")}
+                      {String(item.citationType || "referred_to").replace(/[_-]+/g, " ")}
                     </span>
                     {item.court && (
                       <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-medium">
@@ -136,10 +134,10 @@ export const OverruledAlertBanner: React.FC<OverruledAlertBannerProps> = ({
                   )}
                 </div>
 
-                {(item.linkedJudgmentId || item.linkedCitation || item.citationText) && onSelectJudgment && (
+                {getPrecedentTarget(item) && onSelectJudgment && (
                   <button
                     type="button"
-                    onClick={() => onSelectJudgment((item.linkedJudgmentId || item.linkedCitation || item.citationText)!)}
+                    onClick={() => onSelectJudgment(getPrecedentTarget(item))}
                     className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-[#F1F5F9] dark:bg-[#1E2D44] hover:bg-[#E2E8F0] text-[#0F172A] dark:text-[#F8FAFC] border border-[#CBD5E1] transition-all self-start sm:self-center flex-shrink-0 cursor-pointer"
                   >
                     <span>View Citing Case</span>

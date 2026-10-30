@@ -28,7 +28,7 @@ export function parseInlineFormatting(t: string): string {
   res = res.replace(/&lt;code&gt;(.*?)&lt;\/code&gt;/gi, "<code>$1</code>");
   res = res.replace(/&lt;mark&gt;(.*?)&lt;\/mark&gt;/gi, "<mark>$1</mark>");
   res = res.replace(/&lt;br\s*\/?&gt;/gi, "<br>");
-  res = res.replace(/&lt;span([^&]*)&gt;(.*?)&lt;\/span&gt;/gi, "<span$1>$2</span>");
+  res = res.replace(/&lt;span&gt;(.*?)&lt;\/span&gt;/gi, "<span>$1</span>");
 
   // Markdown bold + italic: ***text*** or ___text___
   res = res.replace(/\*\*\*([^*]+?)\*\*\*/g, "<strong><em>$1</em></strong>");

@@ -28,7 +28,7 @@ import {
 import {
   SEED_JUDGMENTS,
   type SeedJudgmentRecord,
-} from "../../client/src/experimental/data/seedJudgmentsData.js";
+} from "../fixtures/seed-judgments.js";
 
 // ============================================================================
 // SIMULATION ENGINE: Hybrid Precedent Cache & Dynamic DB Resolver Contract

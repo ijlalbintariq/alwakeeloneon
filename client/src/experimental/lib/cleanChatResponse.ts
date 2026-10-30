@@ -59,7 +59,7 @@ function normalizeJudgments(input: any): JudgmentItem[] {
   return input
     .map((j: any) => ({
       citation: String(j?.citation || j?.cite || "").trim(),
-      court: String(j?.court || "Supreme Court of Pakistan").trim(),
+      court: String(j?.court || "").trim(),
       title: String(j?.title || j?.caseName || j?.name || "").trim(),
       description: String(j?.description || j?.summary || j?.snippet || j?.ratio || "").trim(),
     }))

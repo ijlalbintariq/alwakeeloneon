@@ -17,7 +17,7 @@ import {
   type CourtFeeProvince
 } from "../../client/src/experimental/data/statutesCompendiumData.js";
 import { plainTextToTiptapHTML, isHTMLContent, parseInlineFormatting } from "../../client/src/experimental/lib/plain-to-tiptap.js";
-import { searchSeedJudgments, SEED_JUDGMENTS } from "../../client/src/experimental/data/seedJudgmentsData.js";
+import { searchSeedJudgments, SEED_JUDGMENTS } from "../fixtures/seed-judgments.js";
 
 // ============================================================================
 // SUITE 1: STATUTE CLAUSE FORMATTING & TIPTAP HTML CONVERSION (ALL 40+ SECTIONS)

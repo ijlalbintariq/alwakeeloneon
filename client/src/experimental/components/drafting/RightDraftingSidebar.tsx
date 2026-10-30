@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { useVoiceRecorder, formatDuration } from "@/hooks/use-voice-recorder";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, AppError } from "@/lib/queryClient";
+import { AppError } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import {
   COURT_PETITIONS,
@@ -46,6 +46,9 @@ import { type LegalPageProfileId } from "@/lib/legal-page-layout";
 export type RightSidebarTab = "ai_chat" | "templates" | "clauses" | "compliance" | "tools";
 
 interface RightDraftingSidebarProps {
+  initialMessages?: ChatMessage[];
+  onMessagesChange?: (messages: ChatMessage[]) => void;
+  documentVersion?: number;
   isOpen: boolean;
   onToggle: () => void;
   currentDocumentText: string;
@@ -79,7 +82,7 @@ interface RightDraftingSidebarProps {
   onToggleLightPaperMode: () => void;
 }
 
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
@@ -96,12 +99,16 @@ interface ChatMessage {
   diffContext?: {
     originalText: string;
     revisedText: string;
+    documentVersion?: number;
     selection?: { text: string; from: number; to: number; docVersion?: number };
     status: "pending" | "accepted" | "rejected";
   };
 }
 
 export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
+  initialMessages,
+  onMessagesChange,
+  documentVersion,
   isOpen,
   onToggle,
   currentDocumentText,
@@ -129,6 +136,10 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   const [activeTab, setActiveTab] = useState<RightSidebarTab>("ai_chat");
   const [inputPrompt, setInputPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const generatingRef = useRef(false);
+  const requestRef = useRef<AbortController | null>(null);
+  const riskRequestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => { requestRef.current?.abort(); riskRequestRef.current?.abort(); }, []);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -150,6 +161,11 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   const [riskScanResults, setRiskScanResults] = useState<
     Array<{ id: string; title: string; detail: string; severity: string; prompt: string }>
   >([]);
+  useEffect(() => {
+    riskRequestRef.current?.abort();
+    setRiskScanStatus("idle");
+    setRiskScanResults([]);
+  }, [currentDocumentText]);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -169,7 +185,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   const voice = useVoiceRecorder({ onAutoTranscription: appendVoiceTranscription });
 
   // Chat message history
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? [
     {
       id: "msg-init",
       role: "assistant",
@@ -178,6 +194,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
       timestamp: "Just now",
     },
   ]);
+  useEffect(() => { onMessagesChange?.(messages); }, [messages, onMessagesChange]);
 
   const onAiContextFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -262,7 +279,10 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
 
   const handleSend = async (textOverride?: string) => {
     const query = (textOverride || inputPrompt).trim();
-    if (!query || isGenerating) return;
+    if (!query || generatingRef.current) return;
+    generatingRef.current = true;
+    const controller = new AbortController();
+    requestRef.current = controller;
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -293,7 +313,10 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
             // Assistant turns carry only the explanation. The draft body is sent
             // separately as draftText; echoing it here made the model restore stale drafts.
             content: m.role === "assistant" && m.insertableClause
-              ? "[The assistant updated the active draft during this turn.]"
+              ? m.diffContext?.status === "pending"
+                ? `[Proposed revision, not yet applied]:\n${m.diffContext.revisedText.slice(0, 2000)}`
+                : m.diffContext?.status === "rejected" ? "[The proposed revision was rejected.]"
+                : "[The assistant updated the active draft during this turn.]"
               : m.text.slice(0, 2000),
           }))
           .filter((m) => m.content.trim().length > 0);
@@ -324,6 +347,8 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
           res = await fetch("/api/retrieval/clauses/generate", {
             method: "POST",
             body: formData,
+            credentials: "include",
+            signal: controller.signal,
           });
           if (!res.ok) {
             const errBody = await res.json().catch(() => ({}));
@@ -349,7 +374,17 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                 }
               : {}),
           };
-          res = await apiRequest("POST", "/api/retrieval/clauses/generate", payload);
+          res = await fetch("/api/retrieval/clauses/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+          if (!res.ok) {
+            const error = await res.json().catch(() => ({}));
+            throw new AppError(error.message || "Failed to generate draft", res.status, error);
+          }
         }
         data = await res.json();
       } catch (err: any) {
@@ -372,6 +407,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
           throw err;
         }
       }
+      if (controller.signal.aborted) return;
       
       // The server already extracted these into the prompt context. Holding on to
       // them re-uploaded and re-OCR'd every file on every later message, and with
@@ -425,6 +461,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
       }
 
       const generatedClause = data.clause || data.text || data.content || "";
+      if (typeof generatedClause !== "string" || !generatedClause.trim()) throw new Error("No draft text was returned. Please try again.");
 
       // For an edit the server returns the FULL patched draft, not a snippet.
       // Inserting that at the cursor would duplicate the whole pleading, so
@@ -445,7 +482,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
       const hasSurgicalSnippet = !!data.replacementSnippet && isTargetedSelection;
       const originalTextForDiff = hasSurgicalSnippet
         ? activeTargetSelection.text
-        : currentDocumentText;
+        : isWholeDocument ? currentDocumentText : "";
       const revisedTextForDiff = hasSurgicalSnippet
         ? data.replacementSnippet
         : generatedClause;
@@ -454,6 +491,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
         ? {
             originalText: originalTextForDiff,
             revisedText: revisedTextForDiff,
+            documentVersion,
             selection: hasSurgicalSnippet ? activeTargetSelection : undefined,
             status: "pending" as const,
           }
@@ -492,6 +530,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err: any) {
+      if (controller.signal.aborted) return;
       console.error("AI Drafting error:", err);
       const errorMsg = err?.message || "Communication disrupted. Please try again.";
       const isLimitError =
@@ -506,19 +545,23 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
       };
       setMessages((prev) => [...prev, aiMsg]);
     } finally {
-      setIsGenerating(false);
+      generatingRef.current = false;
+      if (!controller.signal.aborted) setIsGenerating(false);
     }
   };
 
-  const handleCopy = (id: string, text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
+  const handleCopy = async (id: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
       toast({
         title: "Clause Copied",
         description: "Draft text copied to clipboard.",
       });
-    });
+    } catch {
+      toast({ title: "Copy Failed", description: "Clipboard access was denied. Select and copy the text directly.", variant: "destructive" });
+    }
   };
 
   const handleVoiceTranscription = async () => {
@@ -551,13 +594,13 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
           text.includes("in the court of") ||
           text.includes("in the supreme court") ||
           text.includes("judicial department"),
-        fixClause: "IN THE HIGH COURT OF JUDICATURE AT LAHORE\n(JUDICIAL DEPARTMENT)\n\nWrit Petition No. _________ / 2026\n",
+        fixClause: "IN THE [NAME OF COURT]\n[STATION / BENCH]\n\n[CASE TYPE] No. _________ / [YEAR]\n",
       },
       {
         id: "p2",
         title: "Parties & CNIC Block",
         passed: text.includes("cnic") || text.includes("resident of") || text.includes("petitioner"),
-        fixClause: "1. Tariq Mahmood s/o Muhammad Bashir,\n   CNIC: 35201-1234567-1,\n   R/o House 12, Gulberg III, Lahore. ... PETITIONER\n\nVERSUS\n\n1. Province of Punjab...\n",
+        fixClause: "1. [PARTY NAME] [PARENTAGE],\n   CNIC: [CNIC NUMBER],\n   Resident of [FULL ADDRESS]. ... [PARTY ROLE]\n\nVERSUS\n\n1. [OPPOSING PARTY AND ADDRESS]\n",
       },
       {
         id: "p3",
@@ -568,21 +611,20 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
           text.includes("section 498") ||
           text.includes("order xxxix") ||
           text.includes("order vii") ||
-          text.includes("act") ||
-          text.includes("ordinance"),
-        fixClause: "WRIT PETITION UNDER ARTICLE 199 OF THE CONSTITUTION OF PAKISTAN, 1973\n",
+          /\b(?:act|ordinance)\b/.test(text),
+        fixClause: "[DOCUMENT TYPE] UNDER [APPLICABLE STATUTORY PROVISION]\n",
       },
       {
         id: "p4",
         title: "Judicial Recital Formula",
         passed: text.includes("respectfully sheweth") || text.includes("sheweth"),
-        fixClause: "Respectfully Sheweth:\n\n1. That the Petitioner is a citizen of Pakistan...\n",
+        fixClause: "Respectfully Sheweth:\n\n1. [STATE THE MATERIAL FACTS]\n",
       },
       {
         id: "p5",
         title: "Solemn Affirmation Verification",
         passed: text.includes("verification") || text.includes("solemn affirmation") || text.includes("deponent"),
-        fixClause: "VERIFICATION:\nVerified on solemn affirmation at Lahore on this 22nd August 2026 that contents of paras 1-5 are true to my personal knowledge.\n\nDEPONENT\n",
+        fixClause: "VERIFICATION:\nVerified at [PLACE] on [DATE] that paragraphs [NUMBERS] are true to my knowledge and paragraphs [NUMBERS] are based on information believed to be true.\n\n[DEPONENT NAME AND SIGNATURE]\n",
       },
       {
         id: "p6",
@@ -599,7 +641,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
   if (!isOpen) return null;
 
   return (
-    <aside className="w-80 sm:w-96 md:w-[400px] h-full flex flex-col bg-white dark:bg-[#131E2E] border-l border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs z-30 shrink-0 select-none animate-in slide-in-from-right duration-200">
+    <aside className="absolute inset-y-0 right-0 w-full max-w-[400px] lg:static lg:w-[400px] h-full flex flex-col bg-white dark:bg-[#131E2E] border-l border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs z-30 shrink-0 select-none animate-in slide-in-from-right duration-200">
       {/* ── Right Rail Top Navigation Bar ──────────────────────────────────── */}
       <div className="p-3 border-b border-[#E2E8F0] dark:border-[#1E2D44] bg-[#F8FAFC] dark:bg-[#0B131E] flex items-center justify-between gap-2 shrink-0">
         {/* Navigation Tabs */}
@@ -775,13 +817,22 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                       originalText={msg.diffContext.originalText}
                       revisedText={msg.diffContext.revisedText}
                       targetLabel={msg.clauseTitle || (msg.diffContext.selection ? "Targeted Selection Revision" : "Updated Pleading Draft")}
-                      isWholeDocument={!msg.diffContext.selection}
+                      isWholeDocument={!!msg.isWholeDocument && !msg.diffContext.selection}
+                      isInsertion={!msg.isWholeDocument && !msg.diffContext.selection}
                       isRevising={isGenerating}
                       onAccept={(revisedText) => {
                         let applied = false;
                         if (msg.diffContext?.selection && onApplyTargetedEdit) {
                           applied = onApplyTargetedEdit(revisedText, msg.diffContext.selection);
+                        } else if (!msg.isWholeDocument) {
+                          onInsertClause(revisedText, msg.clauseTitle);
+                          applied = true;
                         } else {
+                          if (msg.diffContext?.originalText !== currentDocumentText ||
+                              (msg.diffContext.documentVersion !== undefined && msg.diffContext.documentVersion !== documentVersion)) {
+                            toast({ title: "Draft Has Changed", description: "Regenerate this revision to include your latest changes.", variant: "destructive" });
+                            return;
+                          }
                           onReplaceDocument(msg.insertableClause || revisedText, msg.documentType);
                           applied = true;
                         }
@@ -1113,12 +1164,13 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
           <div className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC]">
-                Procedural Compliance (Order VII R11)
+                Document Structure Checklist
               </span>
               <span className="text-xs font-bold font-mono text-[#105B38]">
                 {complianceScore}% ({passedCount}/6)
               </span>
             </div>
+            <p className="text-[10px] text-slate-500">Checks for common text markers. Review the requirements for the selected filing before using a suggested block.</p>
 
             <div className="space-y-1.5 pt-1 border-t border-[#E2E8F0] dark:border-[#1E2D44]">
               {compliancePillars.map((p) => (
@@ -1161,18 +1213,23 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
               onClick={async () => {
                 if (!currentDocumentText.trim() || riskScanStatus === "scanning") return;
                 setRiskScanStatus("scanning");
+                const controller = new AbortController();
+                riskRequestRef.current = controller;
                 try {
                   const res = await fetch("/api/ai/draft-risk-analysis", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
-                    body: JSON.stringify({ title: "Draft", content: currentDocumentText })
+                    body: JSON.stringify({ title: "Draft", content: currentDocumentText, module: "legal-drafting" }),
+                    signal: controller.signal,
                   });
                   if (!res.ok) throw new Error("Scan failed");
                   const data = await res.json();
+                  if (controller.signal.aborted) return;
                   setRiskScanResults(Array.isArray(data.risks) ? data.risks : []);
                   setRiskScanStatus("done");
                 } catch {
+                  if (controller.signal.aborted) return;
                   setRiskScanResults([]);
                   setRiskScanStatus("error");
                 }
@@ -1253,6 +1310,7 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
                 Court Paper Format
               </label>
               <select
+                aria-label="Court Paper Format"
                 value={activeProfileId}
                 onChange={(e) => onChangeProfileId(e.target.value as LegalPageProfileId)}
                 className="w-full h-9 px-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] border border-[#E2E8F0] dark:border-[#1E2D44] text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none focus:border-[#105B38]"
@@ -1329,6 +1387,8 @@ export const RightDraftingSidebar: React.FC<RightDraftingSidebarProps> = ({
               </button>
             </div>
           </div>
+
+          <StyleMemoryDraftingPanel />
 
           {/* Export Pleading Document */}
           <div className="p-3.5 rounded-xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44] shadow-xs space-y-2.5">

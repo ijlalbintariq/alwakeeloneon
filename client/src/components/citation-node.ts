@@ -34,6 +34,10 @@ export const CitationNode = Node.create({
     return [{ tag: 'span[data-type="citation"]' }];
   },
 
+  renderText({ node }) {
+    return node.attrs.citation || "";
+  },
+
   renderHTML({ HTMLAttributes }) {
     return [
       "span",

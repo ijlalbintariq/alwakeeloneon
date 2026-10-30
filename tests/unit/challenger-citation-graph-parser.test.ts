@@ -10,7 +10,7 @@ import {
   findSeedJudgmentByCitation,
   searchSeedJudgments,
   SeedJudgmentRecord,
-} from "../../client/src/experimental/data/seedJudgmentsData";
+} from "../fixtures/seed-judgments";
 import { PrecedentCitationItem } from "../../client/src/experimental/components/judgments/OverruledAlertBanner";
 
 // ===========================================================================

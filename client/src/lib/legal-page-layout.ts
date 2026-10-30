@@ -44,7 +44,7 @@ export const LEGAL_PAGE_PROFILES: Record<LegalPageProfileId, LegalPageProfile> =
 };
 
 export function resolveLegalPageProfile(value?: string | null): LegalPageProfile {
-  if (value && value in LEGAL_PAGE_PROFILES) {
+  if (value && Object.prototype.hasOwnProperty.call(LEGAL_PAGE_PROFILES, value)) {
     return LEGAL_PAGE_PROFILES[value as LegalPageProfileId];
   }
   return LEGAL_PAGE_PROFILES[DEFAULT_LEGAL_PAGE_PROFILE_ID];

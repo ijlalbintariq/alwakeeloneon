@@ -7,7 +7,7 @@ import {
   getSeedJudgmentById,
   findSeedJudgmentByCitation,
   searchSeedJudgments,
-} from "../../client/src/experimental/data/seedJudgmentsData.js";
+} from "../fixtures/seed-judgments.js";
 import {
   parsePakistaniCitation,
   type ParsedCitationTokens,
@@ -1121,10 +1121,10 @@ describe("Tier 3: Cross-Feature Combinations & End-to-End Workflows", () => {
 });
 
 // ============================================================================
-// SUITE 9: TIER 4 - REAL-WORLD LANDMARK PAKISTANI AUTHORITIES
+// SUITE 9: SYNTHETIC FIXTURE METADATA CONTRACTS
 // ============================================================================
-describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
-  it("Test 9.1: Landmark 1: PLD 2023 SC 451 (Supreme Court Constitutional Art. 199/184(3), Isa CJ)", () => {
+describe("Tier 4: Synthetic judgment fixture metadata contracts", () => {
+  it("Test 9.1: Fixture 1: PLD 2023 SC 451 (Supreme Court Constitutional Art. 199/184(3), Isa CJ)", () => {
     const j = getSeedJudgmentById("pld-2023-sc-451")!;
     assert.ok(j, "PLD 2023 SC 451 must exist");
     assert.equal(j.court, "Supreme Court of Pakistan");
@@ -1138,7 +1138,7 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
     assert.ok(j.citationsMade.some((c) => c.linkedCitation === "PLD 2012 SC 553" && c.citationType === "referred_to"));
   });
 
-  it("Test 9.2: Landmark 2: 2024 SCMR 892 (Supreme Court Criminal Bail S. 497(2) CrPC)", () => {
+  it("Test 9.2: Fixture 2: 2024 SCMR 892 (Supreme Court Criminal Bail S. 497(2) CrPC)", () => {
     const j = getSeedJudgmentById("2024-scmr-892")!;
     assert.ok(j, "2024 SCMR 892 must exist");
     assert.equal(j.court, "Supreme Court of Pakistan");
@@ -1150,7 +1150,7 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
     assert.ok(j.ratioDecidendi.legalPrinciples.some((p) => p.includes("further inquiry")));
   });
 
-  it("Test 9.3: Landmark 3: 2023 CLC 1204 (Lahore High Court Civil Specific Relief S. 12)", () => {
+  it("Test 9.3: Fixture 3: 2023 CLC 1204 (Lahore High Court Civil Specific Relief S. 12)", () => {
     const j = getSeedJudgmentById("2023-clc-1204")!;
     assert.ok(j, "2023 CLC 1204 must exist");
     assert.equal(j.court, "Lahore High Court");
@@ -1161,7 +1161,7 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
     assert.ok(j.headnotes.includes("Specific Relief Act"));
   });
 
-  it("Test 9.4: Landmark 4: 2025 LHC 639 (Lahore High Court Civil Revision S. 115 CPC)", () => {
+  it("Test 9.4: Fixture 4: 2025 LHC 639 (Lahore High Court Civil Revision S. 115 CPC)", () => {
     const j = getSeedJudgmentById("2025-lhc-639")!;
     assert.ok(j, "2025 LHC 639 must exist");
     assert.equal(j.court, "Lahore High Court");
@@ -1172,7 +1172,7 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
     assert.ok(j.headnotes.includes("Section 115"));
   });
 
-  it("Test 9.5: Landmark 5: 2021 YLR 880 (Sindh High Court Family Guardians Act S. 17/25)", () => {
+  it("Test 9.5: Fixture 5: 2021 YLR 880 (Sindh High Court Family Guardians Act S. 17/25)", () => {
     const j = getSeedJudgmentById("2021-ylr-880")!;
     assert.ok(j, "2021 YLR 880 must exist");
     assert.equal(j.court, "Sindh High Court");
@@ -1183,7 +1183,7 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
     assert.ok(j.headnotes.includes("Guardians and Wards Act"));
   });
 
-  it("Test 9.6: Landmark 6: 2022 CLD 780 (Sindh High Court Banking Recovery FIO 2001 S. 9/10)", () => {
+  it("Test 9.6: Fixture 6: 2022 CLD 780 (Sindh High Court Banking Recovery FIO 2001 S. 9/10)", () => {
     const j = getSeedJudgmentById("2022-cld-780")!;
     assert.ok(j, "2022 CLD 780 must exist");
     assert.equal(j.court, "Sindh High Court");
@@ -1194,7 +1194,7 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
     assert.ok(j.headnotes.includes("Financial Institutions (Recovery of Finances) Ordinance"));
   });
 
-  it("Test 9.7: Landmark 7: 2023 PTD 1105 (Lahore High Court Tax Income Tax S. 122(5A))", () => {
+  it("Test 9.7: Fixture 7: 2023 PTD 1105 (Lahore High Court Tax Income Tax S. 122(5A))", () => {
     const j = getSeedJudgmentById("2023-ptd-1105")!;
     assert.ok(j, "2023 PTD 1105 must exist");
     assert.equal(j.court, "Lahore High Court");
@@ -1205,7 +1205,7 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
     assert.ok(j.headnotes.includes("Income Tax Ordinance") && j.headnotes.includes("122(5A)"));
   });
 
-  it("Test 9.8: Landmark 8: 2021 PLC 340 (Islamabad High Court Labor IRA 2012 S. 33)", () => {
+  it("Test 9.8: Fixture 8: 2021 PLC 340 (Islamabad High Court Labor IRA 2012 S. 33)", () => {
     const j = getSeedJudgmentById("2021-plc-340")!;
     assert.ok(j, "2021 PLC 340 must exist");
     assert.equal(j.court, "Islamabad High Court");
@@ -1216,7 +1216,7 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
     assert.ok(j.headnotes.includes("Industrial Relations Act"));
   });
 
-  it("Test 9.9: Landmark 9: PLD 1955 FC 240 (Federal Court Maulvi Tamizuddin Khan Overruled)", () => {
+  it("Test 9.9: Fixture 9: PLD 1955 FC 240 (Federal Court Maulvi Tamizuddin Khan Overruled)", () => {
     const j = getSeedJudgmentById("pld-1955-fc-240")!;
     assert.ok(j, "PLD 1955 FC 240 must exist");
     assert.equal(j.court, "Federal Court of Pakistan");
@@ -1229,7 +1229,7 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
     assert.ok(j.citationsReceived.some((c) => c.citationType === "overruled"));
   });
 
-  it("Test 9.10: Landmark 10: PLD 2012 SC 553 (Supreme Court Constitutional Dual Nationality / Article 63(1)(c))", () => {
+  it("Test 9.10: Fixture 10: PLD 2012 SC 553 (Supreme Court Constitutional Dual Nationality / Article 63(1)(c))", () => {
     const j = getSeedJudgmentById("pld-2012-sc-553")!;
     assert.ok(j, "PLD 2012 SC 553 must exist");
     assert.equal(j.court, "Supreme Court of Pakistan");
@@ -1245,28 +1245,35 @@ describe("Tier 4: Real-World Landmark Pakistani Authorities", () => {
 // SUITE 10: OFFICIAL JUDGMENT API CLIENT INTERFACE CONTRACT VERIFICATION
 // ============================================================================
 describe("Suite 10: Official judgmentApiClient Interface Contract Verification", () => {
-  it("Test 10.1: searchJudgments returns UnifiedJudgmentResult[] conforming to interface contract", async () => {
+  it("Test 10.1: searchJudgments returns live API records conforming to its interface", async (t) => {
+    t.mock.method(globalThis, "fetch", async () => Response.json([getSeedJudgmentById("pld-2023-sc-451")]));
     const results = await searchJudgments({ query: "Article 199 Writs", sort: "relevance" });
     assert.ok(Array.isArray(results), "searchJudgments must return an array");
     assert.ok(results.length > 0, "searchJudgments must return matching records");
 
     const akram = results.find((r) => r.citation === "PLD 2023 SC 451");
     assert.ok(akram, "Must contain PLD 2023 SC 451");
-    assert.equal(akram.source, "tier1_seed");
+    assert.equal(akram.source, "tier2_live_api");
     assert.equal(akram.court, "Supreme Court of Pakistan");
     assert.ok(akram.summary.length > 0);
   });
 
-  it("Test 10.2: lookupCitation resolves pinpoint citation to UnifiedJudgmentResult", async () => {
+  it("Test 10.2: lookupCitation resolves a pinpoint API response", async (t) => {
+    t.mock.method(globalThis, "fetch", async () => Response.json([getSeedJudgmentById("2024-scmr-892")]));
     const result = await lookupCitation({ year: 2024, journal: "SCMR", page: 892 });
     assert.ok(result, "lookupCitation must resolve 2024 SCMR 892");
     assert.equal(result.id, "2024-scmr-892");
     assert.equal(result.citation, "2024 SCMR 892");
     assert.equal(result.title, "TARIQ MEHMOOD Vs THE STATE");
-    assert.equal(result.category, "criminal");
+    assert.equal(result.source, "tier2_live_api");
   });
 
-  it("Test 10.3: getJudgmentDetail returns complete JudgmentDetailData or null", async () => {
+  it("Test 10.3: getJudgmentDetail returns API detail or null for a missing record", async (t) => {
+    t.mock.method(globalThis, "fetch", async (input: string) => {
+      if (!input.endsWith("/pld-2023-sc-451")) return Response.json({}, { status: 404 });
+      const record = getSeedJudgmentById("pld-2023-sc-451")!;
+      return Response.json({ ...record, citations: { made: record.citationsMade, received: record.citationsReceived } });
+    });
     const detail = await getJudgmentDetail("pld-2023-sc-451");
     assert.ok(detail, "getJudgmentDetail must return detail for pld-2023-sc-451");
     assert.equal(detail.id, "pld-2023-sc-451");
@@ -1286,9 +1293,9 @@ describe("Suite 10: Official judgmentApiClient Interface Contract Verification",
     assert.ok(formatted.includes("Constitutional Mandate: Cited as binding apex precedent pursuant to Article 189 / 201"));
   });
 
-  it("Test 10.5: hydrateCitationGraph provides fallback edges for isolated precedents", () => {
+  it("Test 10.5: hydrateCitationGraph keeps isolated precedents empty instead of inventing edges", () => {
     const edges = hydrateCitationGraph("Unreported Case 2026", [], []);
-    assert.ok(edges.made.length > 0, "Fallback graph must contain default made citations");
-    assert.ok(edges.received.length > 0, "Fallback graph must contain default received citations");
+    assert.deepEqual(edges.made, []);
+    assert.deepEqual(edges.received, []);
   });
 });

@@ -40,7 +40,7 @@ import {
 } from "../../client/src/experimental/components/judgments/PinpointCitationParser";
 import {
   SEED_JUDGMENTS,
-} from "../../client/src/experimental/data/seedJudgmentsData";
+} from "../fixtures/seed-judgments";
 
 // 4. Precedent Cache & Resolution
 import {

@@ -6,7 +6,7 @@ import type { Server } from "http";
 import { storage, findTextOwnerJudgment } from "./storage";
 import { isMetadataOnlySummary, extractSubstantiveSummary } from "./storage";
 import { api } from "@shared/routes";
-import { legalDraftWorkspaceStateSchema } from "@shared/legal-drafting";
+import { legalDraftWorkspaceStateSchema, legalDraftInputSchema, legalDraftBriefSchema } from "@shared/legal-drafting";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import calendarRouter from "./routes/calendar-routes";
@@ -27,6 +27,7 @@ import {
   courtsRef,
   lawJournals,
   threads,
+  messages as chatMessages,
   documents,
   documentFiles,
   adminKnowledge,
@@ -9234,35 +9235,25 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
         assistantMessage: z.string().trim().min(1),
       }).parse(req.body || {});
 
-      let thread = payload.threadId ? await storage.getThread(payload.threadId) : undefined;
-      if (thread && thread.userId !== userId) {
-        return res.status(404).json({ message: "Thread not found" });
-      }
-
-      if (!thread) {
-        const fallbackTitle = payload.userMessage.slice(0, 240) || "Al Wakeelo Consultation";
-        thread = await storage.createThread({
-          userId,
-          title: payload.title || fallbackTitle,
-        });
-      }
-
-      await storage.createMessage({
-        threadId: thread.id,
-        role: "user",
-        content: payload.userMessage,
+      const thread = await db.transaction(async (tx: typeof db) => {
+        const [existing] = payload.threadId ? await tx.select().from(threads)
+          .where(and(eq(threads.id, payload.threadId), eq(threads.userId, userId))).for("update") : [];
+        if (payload.threadId && !existing) return null;
+        const [target] = existing ? [existing] : await tx.insert(threads).values({
+          userId, title: payload.title || payload.userMessage.slice(0, 240),
+        }).returning();
+        await tx.insert(chatMessages).values([
+          { threadId: target.id, role: "user", content: payload.userMessage },
+          { threadId: target.id, role: "assistant", content: payload.assistantMessage },
+        ]);
+        const [updated] = await tx.update(threads).set({ updatedAt: new Date() }).where(eq(threads.id, target.id)).returning();
+        return updated;
       });
-      await storage.createMessage({
-        threadId: thread.id,
-        role: "assistant",
-        content: payload.assistantMessage,
-      });
-
-      const refreshed = await storage.getThread(thread.id);
+      if (!thread) return res.status(404).json({ message: "Thread not found" });
       return res.json({
         ok: true,
         threadId: thread.id,
-        thread: refreshed || thread,
+        thread,
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -11378,11 +11369,8 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
 
     try {
       const t0 = Date.now();
-      const allowed = await checkUsageLimit(userId, "chat", res);
-      if (!allowed) return;
-
       const parsed = z.object({
-        query: z.string().min(3),
+        query: z.string().trim().min(3),
         documentIds: z.array(z.number().int().positive()).optional(),
         caseFileId: z.number().int().positive().optional(),
         conversationHistory: z.array(z.object({
@@ -11396,11 +11384,13 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
       let effectiveDocumentIds = parsed.documentIds;
       if (parsed.caseFileId) {
         const cf = await storage.getCaseFile(parsed.caseFileId, userId);
-        if (cf) {
-          const caseDocIds = await storage.getCaseDocumentIds(parsed.caseFileId);
-          effectiveDocumentIds = caseDocIds.length > 0 ? caseDocIds : undefined;
-        }
+        if (!cf) return res.status(404).json({ message: "Case file not found" });
+        const caseDocIds = await storage.getCaseDocumentIds(parsed.caseFileId);
+        if (!caseDocIds.length) return res.status(422).json({ message: "This case file has no documents. Add a document or choose All Vault Documents." });
+        effectiveDocumentIds = caseDocIds;
       }
+      const allowed = await checkUsageLimit(userId, "chat", res);
+      if (!allowed) return;
 
       // Expand query with legal synonyms for better keyword search recall
       const intent = classifyQueryIntent(parsed.query, { module: parsed.module });
@@ -11420,17 +11410,17 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
 
           // Lazy indexing fallback: only for user docs that aren't indexed yet
           // Skip global admin re-indexing (saves 0-20s) — those are indexed separately
-          if (result.matches.length === 0 && parsed.documentIds?.length) {
+          if (result.matches.length === 0 && effectiveDocumentIds?.length) {
             const lazyResult = await ensureIndexedForUserDocuments({
               userId,
-              sourceDocumentIds: parsed.documentIds,
+              sourceDocumentIds: effectiveDocumentIds,
               maxToIndex: 3,
             });
             if (lazyResult.indexedNow > 0) {
               result = await retrieveForQuery({
                 userId,
                 query: parsed.query,
-                documentIds: parsed.documentIds,
+                documentIds: effectiveDocumentIds,
                 topK: Number(process.env.RAG_TOP_K || 5),
                 expandedQueryText: expandedQuery,
               });
@@ -11439,15 +11429,11 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
           return result;
         })(),
         // Judgment DB pipeline — 8s timeout (usually returns in 3s)
-        gatherKnowledgeContextV2(parsed.query, userId, undefined, { module: parsed.module })
+        raceToDeadline(gatherKnowledgeContextV2(parsed.query, userId, undefined, { module: parsed.module }), 8000, "", "Vault judgment context").then((result) => result.value)
           .catch((e) => {
             console.error("[RAG:ask] judgment pipeline error (non-fatal):", e);
             return "";
-          })
-          .then((ctx) => Promise.race([
-            Promise.resolve(ctx),
-            new Promise<string>((resolve) => setTimeout(() => resolve(""), 8000)),
-          ])),
+          }),
       ]);
 
       const strictContext = String(process.env.RAG_FORCE_CONTEXT || "true").toLowerCase() !== "false";
@@ -12659,20 +12645,6 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
   });
 
   // 2. Drafting Studio
-  const legalDraftInputSchema = z.object({
-    title: z.string().trim().min(1).max(240),
-    templateType: z.string().trim().max(120).nullish(),
-    content: z.string().min(1).max(500_000),
-    status: z.enum(["draft", "final", "archived"]).optional(),
-    metadata: z
-      .object({
-        textContent: z.string().max(250_000).optional(),
-        pageProfileId: z.string().max(60).optional(),
-        category: z.string().max(120).optional(),
-      })
-      .nullish(),
-  });
-
   app.get("/api/drafts", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -12689,8 +12661,8 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const draftId = parseInt(req.params.id);
-      if (isNaN(draftId)) return res.status(400).json({ message: "Invalid ID" });
+      const draftId = Number(req.params.id);
+      if (!Number.isSafeInteger(draftId) || draftId <= 0) return res.status(400).json({ message: "Invalid ID" });
       const draft = await db.select().from(legalDrafts).where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId))).limit(1);
       if (draft.length === 0) return res.status(404).json({ message: "Draft not found" });
       res.json(draft[0]);
@@ -12728,8 +12700,8 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const draftId = parseInt(req.params.id);
-      if (isNaN(draftId)) return res.status(400).json({ message: "Invalid ID" });
+      const draftId = Number(req.params.id);
+      if (!Number.isSafeInteger(draftId) || draftId <= 0) return res.status(400).json({ message: "Invalid ID" });
       const parsed = legalDraftInputSchema.partial().safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid draft payload" });
@@ -12757,8 +12729,8 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const draftId = parseInt(req.params.id);
-      if (isNaN(draftId)) return res.status(400).json({ message: "Invalid ID" });
+      const draftId = Number(req.params.id);
+      if (!Number.isSafeInteger(draftId) || draftId <= 0) return res.status(400).json({ message: "Invalid ID" });
       const [deleted] = await db.delete(legalDrafts)
         .where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId)))
         .returning();
@@ -17642,7 +17614,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
     });
     const releaseInteractiveChatRequest = beginInteractiveChatRequest();
     try {
-      let body = req.body;
+      let body = req.body || {};
       if (typeof body.messages === "string") {
         try {
           body = { ...body, messages: JSON.parse(body.messages) };
@@ -17650,6 +17622,11 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           return res.status(400).json({ message: "Invalid messages payload" });
         }
       }
+      const validMessages = z.array(z.object({ role: z.enum(["user", "assistant", "system"]), content: z.string().min(1) })).min(1).safeParse(body.messages);
+      if (!validMessages.success || validMessages.data.at(-1)?.role !== "user") {
+        return res.status(400).json({ message: "A conversation ending with a user message is required." });
+      }
+      body = { ...body, messages: validMessages.data };
       const moduleType: ModuleType = normalizeModuleType(body?.type);
       const limitFeature = moduleType === "draft"
         ? "draft"
@@ -18577,7 +18554,7 @@ The user has attached the following documents for your reference. Analyze them c
           if (sseHeadersFlushed) {
             try {
               res.write(`data: ${JSON.stringify({ text: citationCheckedCached.content })}\n\n`);
-              res.write(`data: ${JSON.stringify({ done: true, model: usedModel, fromCache: true, moduleProfile: moduleProfile.id, routingPath })}\n\n`);
+              res.write(`data: ${JSON.stringify({ done: true, model: usedModel, fromCache: true, moduleProfile: moduleProfile.id, routingPath, embeddedAttachmentContent: attachmentContext ? userMessages.at(-1)?.content : undefined })}\n\n`);
             } catch {}
             res.end();
             return;
@@ -18589,6 +18566,7 @@ The user has attached the following documents for your reference. Analyze them c
             moduleProfile: moduleProfile.id,
             routingPath,
             styleMemory: styleMemoryMeta || undefined,
+            embeddedAttachmentContent: attachmentContext ? userMessages.at(-1)?.content : undefined,
           });
         }
       } catch {}
@@ -19014,10 +18992,18 @@ The user has attached the following documents for your reference. Analyze them c
         moduleProfile: moduleProfile.id,
         routingPath,
         styleMemory: styleMemoryMeta || undefined,
+        embeddedAttachmentContent: attachmentContext ? userMessages.at(-1)?.content : undefined,
       });
     } catch (err) {
       const detail = getErrorMessage(err);
       console.error("Error in AI chat:", err);
+      if (res.headersSent) {
+        if (!res.writableEnded) {
+          res.write(`data: ${JSON.stringify({ error: "Failed to complete the chat response. Please try again." })}\n\n`);
+          res.end();
+        }
+        return;
+      }
       if (isExtractionQueueFullError(err)) {
         return sendExtractionBusy(res);
       }
@@ -19593,8 +19579,9 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-      const { brief } = req.body;
-      if (!brief) return res.status(400).json({ message: "Brief is required" });
+      const parsed = legalDraftBriefSchema.safeParse(req.body?.brief);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message || "A valid brief is required" });
+      const brief = parsed.data;
 
       const allowed = await checkUsageLimit(userId, brief.draftType === "contract" ? "contract-drafting" : "draft", res);
       if (!allowed) return;

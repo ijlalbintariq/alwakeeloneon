@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export interface CitationItem {
   citation: string;
@@ -68,6 +69,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
   activeQueryLatencyMs = 0,
   activeTurnTimestamp,
 }) => {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"citations" | "statutes" | "bookmarks">("citations");
   const [filterQuery, setFilterQuery] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -131,10 +133,14 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
       });
   }, [citations]);
 
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
+  const handleCopy = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      toast({ title: "Copy failed", description: "Select the reference and copy it directly.", variant: "destructive" });
+    }
   };
 
   const handleScroll = () => {
@@ -150,7 +156,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
   // Filtered citations
   const filteredCitations = useMemo(() => {
     if (!filterQuery.trim()) return citations;
-    const q = filterQuery.toLowerCase();
+    const q = filterQuery.trim().toLowerCase();
     return citations.filter(
       (c) =>
         c.citation.toLowerCase().includes(q) ||
@@ -163,7 +169,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
   // Filtered statutes
   const filteredStatutes = useMemo(() => {
     if (!filterQuery.trim()) return statutes;
-    const q = filterQuery.toLowerCase();
+    const q = filterQuery.trim().toLowerCase();
     return statutes.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
@@ -175,7 +181,7 @@ export const ChatInspectorDrawer: React.FC<ChatInspectorDrawerProps> = ({
   // Filtered bookmarks
   const filteredBookmarks = useMemo(() => {
     if (!filterQuery.trim()) return bookmarks;
-    const q = filterQuery.toLowerCase();
+    const q = filterQuery.trim().toLowerCase();
     return bookmarks.filter(
       (b) =>
         (b.title && b.title.toLowerCase().includes(q)) ||
