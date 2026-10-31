@@ -4,7 +4,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import ts from "typescript";
 import { jsPDF } from "jspdf";
-import { assessJudgmentIdentity, prepareJudgmentDetail } from "../../server/citation-verify";
+import { assessJudgmentIdentity, prepareJudgmentDetail, citationMatchesCourt } from "../../server/citation-verify";
 
 const routes = ts.createSourceFile("routes.ts", fs.readFileSync("server/routes.ts", "utf8"), ts.ScriptTarget.Latest, true);
 function compile(node: ts.Node, source: ts.SourceFile, deps: Record<string, any>) {
@@ -147,4 +147,33 @@ test("unverified plain text exports retain their warning", async () => {
   const h = pdfHarness({ ...record, textIntegrity: "unknown", contentFormat: "text", textWarning: "IDENTITY_UNVERIFIED" });
   await h.generator(record);
   assert.match(h.result().output, /IDENTITY_UNVERIFIED/);
+});
+
+const mcpDb = { update: () => ({ set: () => ({ where: () => Promise.resolve() }) }) };
+test("REST MCP detail keeps unconfirmed text without an unchecked title", async () => {
+  const plain = "Stored plain text without machine-readable identity fields. ".repeat(20);
+  const detail = { ...record, title: "Unchecked Person vs State", fullText: plain };
+  const res = response();
+  await handler("post", '"/api/mcp/get_judgment"', {
+    checkUsageLimit: async () => true, storage: { getJudgmentDetail: async () => detail, logUsage: async () => {} },
+    protectJudgmentDetail: async () => prepareJudgmentDetail(detail, { opening: plain, textStatus: "unknown" }),
+    db: mcpDb, apiKeys: {}, eq: () => "", judgmentSourceUrl: () => "link",
+  })({ mcpUserId: "test", body: { id } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.fullText, plain);
+  assert.equal(res.payload.title, undefined);
+  assert.equal(res.payload.courtName, undefined);
+  assert.equal(res.payload.textIntegrity, "unknown");
+});
+
+test("REST MCP search rejects a row from a different requested court", async () => {
+  const res = response();
+  await handler("post", '"/api/mcp/search_case_law"', {
+    checkUsageLimit: async () => true, retrieveLegalCaseLaw: async () => ({ rows: [{ citation: "1972 PLD 70" }] }),
+    storage: { logUsage: async () => {} }, db: mcpDb, apiKeys: {}, eq: () => "", judgments: {}, sql,
+    resolveJudgment: async () => ({ citation: "1972 PLD 70", court: "High Court of Azad Jammu and Kashmir" }),
+    citationMatchesCourt,
+  })({ mcpUserId: "test", body: { query: "PLD 1972 SC 70" } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.payload.judgments, []);
 });

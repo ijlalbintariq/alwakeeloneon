@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
-import { assessJudgmentIdentity, judgmentPdfUrl, prepareJudgmentDetail } from "../../server/citation-verify";
+import { assessJudgmentIdentity, judgmentPdfUrl, prepareJudgmentDetail, citationMatchesCourt } from "../../server/citation-verify";
 import { extractSubstantiveSummary } from "../../server/storage";
 
 const source = ts.createSourceFile("mcp-server.ts", fs.readFileSync("server/mcp-server.ts", "utf8"), ts.ScriptTarget.Latest, true);
@@ -22,7 +22,7 @@ const opening = `Court Name: Supreme Court\nTitle: Ahmad Khan vs State\nReported
 const row = { id: "record", citation: "2024 SCMR 1085", title: "Ahmad Khan vs State", court: "Supreme Court", textStatus: "own", opening };
 
 test("MCP search withholds mismatches and never uses index summaries", async () => {
-  const deps = { ...base, judgments: {}, sql: () => "", resolveJudgment: async () => row, judgmentSourceUrl: () => "link", assessJudgmentIdentity, judgmentPdfUrl, extractSubstantiveSummary, retrieveLegalCaseLaw: async () => ({ rows: [{ id: 1, citation: row.citation, summary: "WRONG INDEX SUMMARY" }] }) };
+  const deps = { ...base, judgments: {}, sql: () => "", resolveJudgment: async () => row, judgmentSourceUrl: () => "link", assessJudgmentIdentity, citationMatchesCourt, judgmentPdfUrl, extractSubstantiveSummary, retrieveLegalCaseLaw: async () => ({ rows: [{ id: 1, citation: row.citation, summary: "WRONG INDEX SUMMARY" }] }) };
   const search = handler("search_case_law", deps);
   const good = (await search({ query: "test", limit: 5, includeUnverified: false })).structuredContent;
   assert.equal(good.judgments[0].verified, true);
@@ -48,6 +48,18 @@ test("MCP detail returns PDF-only records without claiming readable or verified 
   assert.equal(result.pdfKind, "original");
   assert.equal(result.fullText, undefined);
   assert.equal(result.textIntegrity, "missing");
+  assert.equal(result.title, undefined);
+});
+
+test("unconfirmed text remains inspectable without attaching an unchecked case title", async () => {
+  const record = { id: "00000000-0000-4000-8000-000000000001", citation: "2024 SCMR 1085", title: "Unconfirmed Party vs State", court: "Supreme Court", fullText: "Stored text without usable identity headers. ".repeat(20), pdfUrl: null };
+  const get = handler("get_judgment", { ...base, storage: { getJudgmentDetail: async () => record }, protectJudgmentDetail: async () => prepareJudgmentDetail(record, { opening: record.fullText, textStatus: "unknown" }), judgmentSourceUrl: () => "link" });
+  const result = (await get({ id: record.id })).structuredContent;
+  assert.equal(result.textIntegrity, "unknown");
+  assert.equal(result.fullText, record.fullText);
+  assert.equal(result.title, undefined);
+  assert.equal(result.courtName, undefined);
+  assert.ok(result.textWarning);
 });
 
 test("MCP research never verifies arbitrary context through citation existence", async () => {
@@ -86,7 +98,7 @@ test("MCP search and detail reject malformed captions and accept wrapped citatio
   for (const item of cases) {
     const opening = `Court Name: Supreme Court\nTitle: ${item.header}\nReported As: ${item.report}\nResult: disposed\n${"Stored judgment body. ".repeat(30)}`;
     const record = { ...row, id: "00000000-0000-4000-8000-000000000001", citation: item.citation, title: item.title, opening, fullText: opening };
-    const search = handler("search_case_law", { ...base, judgments: {}, sql: () => "", resolveJudgment: async () => record, judgmentSourceUrl: () => "link", assessJudgmentIdentity, judgmentPdfUrl, extractSubstantiveSummary, retrieveLegalCaseLaw: async () => ({ rows: [{ id: 1, citation: item.citation }] }) });
+    const search = handler("search_case_law", { ...base, judgments: {}, sql: () => "", resolveJudgment: async () => record, judgmentSourceUrl: () => "link", assessJudgmentIdentity, citationMatchesCourt, judgmentPdfUrl, extractSubstantiveSummary, retrieveLegalCaseLaw: async () => ({ rows: [{ id: 1, citation: item.citation }] }) });
     const result = (await search({ query: item.citation, limit: 5, includeUnverified: false })).structuredContent;
     assert.equal(result.judgments.length, item.accepted ? 1 : 0);
     const get = handler("get_judgment", { ...base, storage: { getJudgmentDetail: async () => record }, protectJudgmentDetail: async () => prepareJudgmentDetail(record, record), judgmentSourceUrl: () => "link" });
@@ -95,4 +107,30 @@ test("MCP search and detail reject malformed captions and accept wrapped citatio
     assert.equal(detail.fullText, item.accepted ? opening : undefined);
     assert.equal(detail.title, item.accepted ? item.title : undefined);
   }
+});
+
+test("MCP search never substitutes another court for an explicitly qualified query", async () => {
+  const record = { ...row, citation: "1972 PLD 70", court: "High Court of Azad Jammu and Kashmir", opening: opening.replace("Supreme Court", "High Court of Azad Jammu and Kashmir").replace("2024 SCMR 1085", "PLD 1972 Azad J & K 70") };
+  const search = handler("search_case_law", { ...base, judgments: {}, sql: () => "", resolveJudgment: async () => record, judgmentSourceUrl: () => "link", assessJudgmentIdentity, citationMatchesCourt, judgmentPdfUrl, extractSubstantiveSummary, retrieveLegalCaseLaw: async () => ({ rows: [{ id: 1, citation: record.citation }] }) });
+  assert.equal((await search({ query: "PLD 1972 SC 70", limit: 5, includeUnverified: true })).structuredContent.judgments.length, 0);
+  assert.equal((await search({ query: "PLD 1972 Azad J & K 70", limit: 5, includeUnverified: false })).structuredContent.judgments[0].verified, true);
+});
+
+test("judge profiles withhold conflicting titles and bind matching titles to UUID links", async () => {
+  const good = { ...row, id: "00000000-0000-4000-8000-000000000001", year: 2024 };
+  const bad = { ...good, id: "00000000-0000-4000-8000-000000000002", title: "Different Person vs State" };
+  const profile = handler("get_judge_profile", {
+    ...base, judgments: {}, judgeCaseLinks: {}, count: () => 0, eq: () => "", desc: () => "", sql: () => ({ as() { return this; } }),
+    assessJudgmentIdentity, judgmentSourceUrl: (id: string) => `https://example.test/judgments/${id}`,
+    db: { select: () => ({ from: () => ({
+      where: () => ({ groupBy: async () => [{ name: "Example Judge", caseCount: 2, courts: [row.court] }] }),
+      innerJoin: () => ({ where: () => ({ orderBy: () => ({ limit: async () => [good, bad] }) }) }),
+    }) }) },
+  });
+  const cases = (await profile({ name: "Example Judge" })).structuredContent.judge.recentCases;
+  assert.equal(cases.length, 1);
+  assert.equal(cases[0].id, good.id);
+  assert.equal(cases[0].title, good.title);
+  assert.equal(cases[0].sourceUrl, `https://example.test/judgments/${good.id}`);
+  assert.doesNotMatch(JSON.stringify(cases), /Different Person/);
 });

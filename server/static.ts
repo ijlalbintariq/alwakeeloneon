@@ -4,8 +4,8 @@ import path from "path";
 import { injectSeoMeta, type SeoMeta } from "./seo-meta";
 import { db } from "./db";
 import { judgments, statuteDocuments } from "@shared/schema";
-import { findTextOwnerJudgment } from "./storage";
-import { eq, or, ilike, sql } from "drizzle-orm";
+import { prepareJudgmentDetail, resolveJudgment } from "./citation-verify";
+import { eq } from "drizzle-orm";
 import { BLOG_ARTICLES } from "../shared/blog-data";
 
 const KNOWN_SPA_ROUTES: RegExp[] = [
@@ -69,7 +69,7 @@ export function serveStatic(app: Express) {
   const indexHtmlPath = path.resolve(distPath, "index.html");
   const indexHtmlTemplate = fs.readFileSync(indexHtmlPath, "utf8");
 
-  // 24-hour cache for dynamic SEO metadata to keep Render/Neon DB load near zero
+  // Statute metadata is cached; judgment pages always read current identity.
   const seoCache = new Map<string, { meta: SeoMeta; preRenderBlock: string; expiresAt: number }>();
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
   const MAX_SEO_CACHE_SIZE = 500; // Limit cache to ~30MB to prevent Render out-of-memory (OOM) status 137/139
@@ -93,11 +93,7 @@ export function serveStatic(app: Express) {
   const SEO_QUERY_TIMEOUT_MS = 8_000;
 
   async function getJudgmentSeoData(id: string): Promise<{ meta: SeoMeta; preRenderBlock: string } | undefined> {
-    const now = Date.now();
-    const cached = seoCache.get(id);
-    if (cached && cached.expiresAt > now) {
-      return { meta: cached.meta, preRenderBlock: cached.preRenderBlock };
-    }
+    // Read current identity on each request; repairs can happen outside this process.
 
     // Drop if too many concurrent SEO queries — serve without custom meta instead of queueing
     if (seoActiveQueries >= SEO_MAX_CONCURRENT) {
@@ -119,6 +115,7 @@ export function serveStatic(app: Express) {
           respondent: judgments.respondent,
           headnotes: judgments.headnotes,
           fullText: judgments.fullText,
+          pdfUrl: judgments.pdfUrl,
           textStatus: judgments.textStatus,
           textTrueCitation: judgments.textTrueCitation,
         })
@@ -135,31 +132,29 @@ export function serveStatic(app: Express) {
       seoActiveQueries = Math.max(0, seoActiveQueries - 1);
 
       if (row) {
-        let rawTitle = row.title ? String(row.title).trim() : "";
-        let cleanTitle = rawTitle.replace(/(?:Honou?rable\s+Justice|Mr\.?\s+Justice|Justice\s+|Chief\s+Justice|Before\s+).*$/i, "").replace(/\s+/g, " ").trim();
-        cleanTitle = cleanTitle.replace(/[-–—,:;]+$/, "").trim() || rawTitle;
+        const safe = prepareJudgmentDetail({
+          id, citation: row.citationString || "", title: row.title || "", court: row.courtNameSnapshot || "",
+          fullText: row.fullText || "", pdfUrl: row.pdfUrl, petitioner: row.petitioner,
+          respondent: row.respondent, decisionDate: row.decisionDate, headnotes: row.headnotes,
+        }, { opening: row.fullText, textStatus: row.textStatus, textTrueCitation: row.textTrueCitation });
+        const own = safe.textIntegrity === "own";
+        const cleanTitle = own ? safe.title : "Judgment identity unverified";
 
         const citation = row.citationString ? String(row.citationString).trim() : "";
-        const courtName = row.courtNameSnapshot ? String(row.courtNameSnapshot).trim() : "Supreme Court / High Court of Pakistan";
-        const decisionDateStr = row.decisionDate ? new Date(row.decisionDate).toISOString().slice(0, 10) : "";
+        const courtName = own ? safe.court || "Court not recorded" : "Court identity unverified";
+        const decisionDateStr = own && safe.decisionDate ? new Date(safe.decisionDate).toISOString().slice(0, 10) : "";
         const yearStr = decisionDateStr ? decisionDateStr.slice(0, 4) : "";
         const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-        const petitioner = row.petitioner ? String(row.petitioner).trim() : "";
-        const respondent = row.respondent ? String(row.respondent).trim() : "";
-        const headnotes = row.headnotes ? String(row.headnotes).trim() : "";
-        // A mislabeled row's body is another case's judgment. Don't publish it
-        // under this citation, and keep the page out of search indexes so search
-        // engines and AI assistants stop recommending it. The owner stays indexed.
-        const isMislabeled = row.textStatus === "mislabeled";
-        const owner = isMislabeled ? await findTextOwnerJudgment(row.textTrueCitation).catch(() => null) : null;
-        const rawFullText = !isMislabeled && row.fullText ? String(row.fullText).trim() : "";
+        const petitioner = own && safe.petitioner ? String(safe.petitioner).trim() : "";
+        const respondent = own && safe.respondent ? String(safe.respondent).trim() : "";
+        const rawFullText: string = own ? safe.fullText : "";
         const courtSlug = courtName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
         const pageTitle = citation
           ? `${citation}: ${cleanTitle} — ${courtName} | Al Wakeelo`
           : `${cleanTitle} — ${courtName} | Al Wakeelo`;
 
-        const pageDescription = citation
+        const pageDescription = !own ? `Case identity for ${citation || "this record"} is unverified. Inspect available sources in the judgment reader.` : citation
           ? `Read Pakistani case law ${citation}: ${cleanTitle} decided by ${courtName}. Full text, ratio decidendi, and citations on Al Wakeelo.`
           : `Read Pakistani case law: ${cleanTitle} decided by ${courtName}. Full text, legal holding, and citations on Al Wakeelo.`;
 
@@ -196,24 +191,12 @@ export function serveStatic(app: Express) {
           }
         ];
         
-        const faqSchema = {
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": [{
-            "@type": "Question",
-            "name": `What was the legal principle decided in ${citation || cleanTitle}?`,
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": `This decision was rendered by the ${courtName}. In this matter between ${petitioner || "the Petitioner"} and ${respondent || "the Respondent"}, the court adjudicated key questions of statutory construction, procedural regularity, and legal precedent under Pakistani law. The honorable bench evaluated governing statutory provisions and judicial authorities to establish the rights of the parties.`
-            }
-          }]
-        };
-        const schemaMarkup = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>\n<script type="application/ld+json">\n${JSON.stringify(faqSchema, null, 2)}\n</script>`;
+        const schemaMarkup = own ? `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2).replace(/</g, "\\u003c")}\n</script>` : "";
 
         const meta: SeoMeta = {
           title: pageTitle,
           description: pageDescription,
-          index: !isMislabeled,
+          index: own,
           schemaMarkup,
         };
 
@@ -231,16 +214,10 @@ export function serveStatic(app: Express) {
               .filter(Boolean)
               .map(p => `<p style="margin-bottom:14px;line-height:1.75;font-size:15px;color:#1e293b;">${esc(p)}</p>`)
               .join("\n")
-          : isMislabeled
-            ? `<p style="padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#7c2d12;">The judgment text held under ${esc(citation || "this citation")} belongs to a different case${row.textTrueCitation ? ` (${esc(String(row.textTrueCitation))})` : ""}, so it is not shown here.${owner ? ` <a href="/judgment/${owner.id}" style="color:#b45309;font-weight:600;">Read ${esc(owner.citation || "that judgment")}</a>.` : ""}</p>`
-            : "<p>Judgment text available in database.</p>";
+          : `<p>${esc(safe.textWarning || "Judgment identity remains unverified. Inspect available sources in the judgment reader.")}</p>`;
 
         const partiesLine = petitioner && respondent
           ? `<p style="font-size:14px;color:#475569;margin-bottom:12px;"><strong>Petitioner:</strong> ${esc(petitioner)} <span style="margin:0 8px;">VS</span> <strong>Respondent:</strong> ${esc(respondent)}</p>`
-          : "";
-
-        const headnotesBlock = headnotes
-          ? `<div style="margin:24px 0;padding:20px 24px;background:#fdfcf9;border:1px solid #e2e8f0;border-radius:12px;"><h2 style="font-family:'Playfair Display',serif;font-size:18px;color:#0f172a;margin-top:0;margin-bottom:12px;">Headnotes</h2><p style="white-space:pre-wrap;line-height:1.75;font-size:14.5px;color:#334155;margin:0;">${esc(headnotes.slice(0, 3000))}</p></div>`
           : "";
 
         // Visible prerender block styled identically to Alwakeelo's Tailwind tokens
@@ -265,20 +242,6 @@ export function serveStatic(app: Express) {
     </div>
   </div>
 
-  <!-- RAG Grounding & AI Overview Citability Section (134-167 words) -->
-  <section style="margin:28px 0;padding:20px 24px;background:#faf8f5;border:1px solid #f3ebd8;border-left:4px solid #b45309;border-radius:8px;">
-    <h2 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#78350f;margin-top:0;margin-bottom:10px;">Legal Principle &amp; Question Decided</h2>
-    <p style="margin:0 0 12px 0;line-height:1.65;font-size:14.5px;color:#334155;">
-      <strong>Ruling Summary:</strong> This decision was rendered by the <strong>${esc(courtName)}</strong>${decisionDateStr ? ` on ${esc(decisionDateStr)}` : ''}, officially reported as <strong>${esc(citation || 'Verified Case Law')}</strong>. 
-      In this matter between <strong>${esc(petitioner || 'the Petitioner')}</strong> and <strong>${esc(respondent || 'the Respondent')}</strong>, the court adjudicated key questions of statutory construction, procedural regularity, and legal precedent under Pakistani law.
-    </p>
-    <p style="margin:0;line-height:1.65;font-size:14.5px;color:#334155;">
-      <strong>Core Holding:</strong> The honorable bench evaluated governing statutory provisions and judicial authorities to establish the rights of the parties, delivering the binding reasoning set out below.
-    </p>
-  </section>
-
-  ${headnotesBlock}
-
   <section style="margin:28px 0;padding:24px 28px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;">
     <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-top:0;margin-bottom:20px;">Full Judgment Text &amp; Judicial Ruling</h2>
     ${formattedParagraphs}
@@ -296,7 +259,6 @@ export function serveStatic(app: Express) {
   </section>
 </div>`;
 
-        setSeoCache(id, { meta, preRenderBlock, expiresAt: now + CACHE_TTL_MS });
         return { meta, preRenderBlock };
       }
     } catch (err: any) {
@@ -688,17 +650,7 @@ export function serveStatic(app: Express) {
           .replace(/\s+/g, " ")
           .trim();
         try {
-          const [found] = await db
-            .select({ id: judgments.id })
-            .from(judgments)
-            .where(
-              or(
-                ilike(judgments.citationString, cleanCitation),
-                ilike(judgments.citationString, judgmentId),
-                sql`REPLACE(LOWER(${judgments.citationString}), ' ', '') = REPLACE(LOWER(${cleanCitation}), ' ', '')`
-              )
-            )
-            .limit(1);
+          const found = await resolveJudgment(cleanCitation, { id: judgments.id });
 
           if (found) {
             const qs = raw.includes("?") ? raw.substring(raw.indexOf("?")) : "";
@@ -718,7 +670,7 @@ export function serveStatic(app: Express) {
           customMeta = {
             title: "Pakistani Case Law & Judgments | Al Wakeelo",
             description: "Read full text Pakistani court judgments, legal precedents, and verified citations on Al Wakeelo — Pakistan's AI legal assistant.",
-            index: true,
+            index: false,
           };
           preRenderBlock = `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
   <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Pakistani Case Law &amp; Judgments — Al Wakeelo</h1>
@@ -822,7 +774,7 @@ export function serveStatic(app: Express) {
     // "Soft 404" classification where pages return 200 but have no content.
     const finalStatus = notFound ? 404 : statusCode;
 
-    res.setHeader("Cache-Control", HTML_CACHE_HEADER);
+    res.setHeader("Cache-Control", judgmentMatch ? "no-store" : HTML_CACHE_HEADER);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(finalStatus).send(html);
   }

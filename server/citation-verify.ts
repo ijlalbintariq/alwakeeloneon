@@ -194,7 +194,7 @@ export function splitCitations(raw: string): string[] {
     // "&" separates citations only between digits ("1450 & 2023 PLJ 55").
     // Inside a journal's category name it is part of the name and must not
     // split ("K.L.R. 2001 Labour & Service Cases 52").
-    .split(/(?:\s*[,;]\s*|\s+and\s+|(?<=\d)\s*&\s*)/i)
+    .split(/(?:\s*[,;]\s*|(?<=\d)\s+and\s+|(?<=\d)\s*&\s*)/i)
     .map((p) => p.trim())
     .filter(Boolean);
 }
@@ -343,12 +343,14 @@ function reportedCitationHeader(header: string): string | undefined {
 function courtIdentity(value: string): string | null {
   const court = value.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
   if (/\bsupreme court\b/.test(court) || court === "sc") return /azad|kashmir|ajk/.test(court) ? "supreme:ajk" : "supreme:pakistan";
+  if (/^(?:sc\s*ajk|scajk)$/.test(court)) return "supreme:ajk";
   if (/federal shariat court/.test(court) || court === "fsc") return "shariat:federal";
-  const aliases: Record<string, string> = { lhc: "lahore", shc: "sindh", ihc: "islamabad", phc: "peshawar", bhc: "balochistan" };
+  if (/federal court/.test(court) || court === "fc") return "federal:pakistan";
+  const aliases: Record<string, string> = { lhc: "lahore", shc: "sindh", ihc: "islamabad", phc: "peshawar", bhc: "balochistan", ajkhc: "ajk" };
   if (aliases[court]) return `high:${aliases[court]}`;
   if (/high court/.test(court)) {
-    const seat = /lahore|sindh|karachi|islamabad|peshawar|balochistan|quetta|azad|kashmir/.exec(court)?.[0];
-    return `high:${seat === "karachi" ? "sindh" : seat === "quetta" ? "balochistan" : seat === "azad" || seat === "kashmir" ? "ajk" : seat || "unspecified"}`;
+    const seat = /lahore|sindh|karachi|islamabad|peshawar|balochistan|quetta|azad|kashmir|ajk|dacca|dhaka|east pakistan/.exec(court)?.[0];
+    return `high:${seat === "karachi" ? "sindh" : seat === "quetta" ? "balochistan" : ["azad", "kashmir", "ajk"].includes(seat || "") ? "ajk" : ["dacca", "dhaka", "east pakistan"].includes(seat || "") ? "dhaka" : seat || "unspecified"}`;
   }
   if (/tribunal|labou?r court/.test(court)) {
     const kind = /service|customs|labou?r|tax|banking|election/.exec(court)?.[0]?.replace("labor", "labour");
@@ -357,6 +359,51 @@ function courtIdentity(value: string): string | null {
     return `${kind}-${/tribunal/.test(court) ? "tribunal" : "court"}:${seat}`;
   }
   return null;
+}
+
+/** Preserve the court qualifier that year/journal/page parsing deliberately omits. */
+export function citationCourtQualifier(raw: string): string | null {
+  const parsed = parseCitation(raw, IDENTITY_JOURNALS);
+  if (!parsed) return null;
+  const neutralCourts: Record<string, string> = { LHC: "high:lahore", SHC: "high:sindh", IHC: "high:islamabad", PHC: "high:peshawar", BHC: "high:balochistan", AJKHC: "high:ajk", FSC: "shariat:federal", SCP: "supreme:pakistan" };
+  if (neutralCourts[parsed.journal]) return neutralCourts[parsed.journal];
+  const text = raw.toUpperCase().replace(/\./g, "").replace(/([A-Z])(\d)|(\d)([A-Z])/g, "$1$3 $2$4").replace(/[-_()[\],]/g, " ");
+  const year = new RegExp(`\\b${parsed.year}\\b`).exec(text);
+  if (!year) return null;
+  const afterYear = text.slice(year.index + year[0].length)
+    .replace(new RegExp(`\\b${parsed.journal.split("").join("\\s*")}\\b`, "g"), " ")
+    .replace(/\bA\s*J\s*&?\s*K\b/g, "AJK").replace(/\b([LISPB])\s*H\s*C\b/g, "$1HC")
+    .replace(/\bF\s*S\s*C\b/g, "FSC").replace(/\bF\s*C\b/g, "FC")
+    .replace(/\bS\s*C\b/g, "SC").replace(/\bSC\s*AJK\b/g, "SC AJK");
+  const page = new RegExp(`\\b${parsed.page}\\b`).exec(afterYear);
+  if (!page) return null;
+  const suffix = afterYear.slice(page.index + page[0].length).trim();
+  const suffixIsCourt = courtIdentity(suffix) || /^(?:AJK|LAHORE|LAH|SINDH|KARACHI|KAR|ISLAMABAD|PESHAWAR|PESH|BALOCHISTAN|QUETTA|DACCA|DHAKA)$/.test(suffix);
+  const qualifier = `${afterYear.slice(0, page.index)} ${suffixIsCourt ? suffix : ""}`;
+  const ajk = /\b(?:AJK|AZAD|KASHMIR)\b/.test(qualifier);
+  if (/\b(?:SUPREME\s+COURT|SC)\b/.test(qualifier)) return ajk ? "supreme:ajk" : "supreme:pakistan";
+  if (/\b(?:FEDERAL\s+SHARIAT|FSC)\b/.test(qualifier)) return "shariat:federal";
+  if (/\b(?:FEDERAL\s+COURT|FC)\b/.test(qualifier)) return "federal:pakistan";
+  if (ajk) return /\b(?:HIGH\s+COURT|AJKHC)\b/.test(qualifier) ? "high:ajk" : "region:ajk";
+  const seats: [RegExp, string][] = [
+    [/\b(?:LHC|LAHORE|LAH|MULTAN|RAWALPINDI|BAHAWALPUR)\b/, "lahore"],
+    [/\b(?:SHC|SINDH|SIND|KARACHI|KAR|HYDERABAD|SUKKUR)\b/, "sindh"],
+    [/\b(?:IHC|ISLAMABAD)\b/, "islamabad"],
+    [/\b(?:PHC|PESHAWAR|PESH|ABBOTTABAD)\b/, "peshawar"],
+    [/\b(?:BHC|BALOCHISTAN|QUETTA)\b/, "balochistan"],
+    [/\b(?:DACCA|DHAKA)\b/, "dhaka"],
+  ];
+  const seat = seats.find(([pattern]) => pattern.test(qualifier));
+  return seat ? `high:${seat[1]}` : /\bHIGH\s+COURT\b/.test(qualifier) ? "high:unspecified" : null;
+}
+
+export function citationMatchesCourt(raw: string, court: string | null | undefined): boolean {
+  const actual = courtIdentity(String(court || ""));
+  return splitCitations(raw).every(part => {
+    const requested = citationCourtQualifier(part);
+    return !requested || requested === actual || (requested === "region:ajk" && !!actual?.endsWith(":ajk"))
+      || (requested === "high:unspecified" && !!actual?.startsWith("high:"));
+  });
 }
 
 /** Check internal consistency only; source authenticity still requires independent verification. */
@@ -411,6 +458,11 @@ export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegr
   const bodyCourt = (header.match(/(?:^|\n)\s*(?:Court Name|COURT)\s*:\s*([^\r\n]+)/i)?.[1]
     || header.slice(0, 3500).match(/(?:^|\n)\s*\[([^\]\r\n]*(?:Court|Tribunal)[^\]\r\n]*)\]/i)?.[1]
     || "").toLowerCase().replace(/\s+/g, " ").trim();
+  if ((court || bodyCourt) && (!citationMatchesCourt(String(record.citation || ""), court || bodyCourt)
+    || !citationMatchesCourt(reported || "", court || bodyCourt))) return {
+    textIntegrity: "unknown", identityConflict: true,
+    textWarning: "The citation's court qualifier conflicts with the judgment's court.",
+  };
   if (court && bodyCourt && court !== bodyCourt) {
     const storedCourt = courtIdentity(court);
     const reportedCourt = courtIdentity(bodyCourt);
@@ -433,6 +485,12 @@ export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegr
 export async function resolveJudgment<T extends Record<string, any>>(raw: string, selection: T): Promise<any | undefined> {
   const codes = await getJournalCodes();
   const known = new Set(codes.keys());
+  const lookupSelection = { ...selection, __lookupCourt: judgments.courtNameSnapshot };
+  const accept = (row: any) => {
+    if (!row || !citationMatchesCourt(raw, row.__lookupCourt)) return undefined;
+    const { __lookupCourt, ...selected } = row;
+    return selected;
+  };
 
   // Exact stored citation first. About 4,940 judgments carry a citation_string
   // that is not a journal citation at all - case numbers such as
@@ -442,11 +500,11 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
   // string has to win before any parsing is attempted.
   const literal = String(raw || "").trim();
   if (literal) {
-    const [exact] = await db.select(selection)
+    const [exact] = await db.select(lookupSelection)
       .from(judgments)
       .where(eq(judgments.citationString, literal))
       .limit(1);
-    if (exact) return exact;
+    if (exact) return accept(exact);
   }
 
   for (const part of splitCitations(raw)) {
@@ -454,7 +512,7 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
     if (parsed) {
       const journalId = codes.get(parsed.journal);
       if (journalId !== undefined) {
-        const [hit] = await db.select(selection)
+        const [hit] = await db.select(lookupSelection)
           .from(judgments)
           .where(and(
             eq(judgments.year, parsed.year),
@@ -462,7 +520,7 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
             eq(judgments.page, parsed.page),
           ))
           .limit(1);
-        if (hit) return hit;
+        if (hit) return accept(hit);
       }
       // The parser already produced year/journal/page. The string fallback
       // below exists only for shapes the parser rejects, and it is an
@@ -472,11 +530,11 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
       continue;
     }
     for (const variant of normalizeCitation(part)) {
-      const [hit] = await db.select(selection)
+      const [hit] = await db.select(lookupSelection)
         .from(judgments)
         .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
         .limit(1);
-      if (hit) return hit;
+      if (hit) return accept(hit);
     }
   }
   return undefined;

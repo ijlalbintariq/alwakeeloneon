@@ -16,7 +16,7 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
 import {
   judgmentSourceUrl, resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, prepareJudgmentDetail, judgmentPdfUrl,
-  extractCitations, verifyCitations,
+  extractCitations, verifyCitations, citationMatchesCourt,
 } from "./citation-verify";
 import { judgeCaseLinks, citationLinks, caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
 import { eq, inArray, sql, and, gte, lte, desc, ilike, count, countDistinct, asc } from "drizzle-orm";
@@ -299,6 +299,7 @@ export function registerAllTools(server: McpServer) {
 
     const allRows = result.rows.map((j: any, i: number) => {
       const v = verified.get(i);
+      if (v && !citationMatchesCourt(query, v.court)) return null;
       if (v) {
         // The citation resolves to a real judgment, but that is only half the
         // question. If the judgment's stored body is not its own, then its
@@ -352,7 +353,7 @@ export function registerAllTools(server: McpServer) {
         verified: false,
         warning: "The citation and case identity could not be confirmed. Title and summary are withheld.",
       };
-    });
+    }).filter((row): row is NonNullable<typeof row> => row !== null);
 
     // Two case_law rows frequently carry the same citation, so the same
     // judgment can resolve twice. Returning it twice wastes a result slot and
@@ -468,7 +469,7 @@ export function registerAllTools(server: McpServer) {
 
   // 3. Get Judgment Detail
   server.registerTool("get_judgment", {
-    description: "Read a database judgment by UUID, citation or caseLaw:N ID. Supports text, PDF and combined records. contentFormat describes availability; textIntegrity describes verification independently. own means internal identity checks only. unknown text is available for inspection but must not be presented as verified. Known conflicting bodies are withheld. For PDF-only records, open pdfUrl; missing searchable text does not mean no PDF exists. pdfKind distinguishes a stored original from a PDF generated from database text. Never invent a body or holding when only a PDF link is returned.",
+    description: "Read a database judgment by UUID, citation or caseLaw:N ID. Supports text, PDF and combined records. contentFormat describes availability; textIntegrity describes verification independently. own means internal identity checks only. Unknown text is available for inspection, with unconfirmed title, court and date withheld. Known conflicting bodies are withheld. For PDF-only records, open pdfUrl; missing searchable text does not mean no PDF exists. pdfKind distinguishes a stored original from a PDF generated from database text. Never invent a body or holding when only a PDF link is returned.",
     inputSchema: {
       id: z.string().describe("The judgment UUID, citation string, or caseLaw:N ID from search results"),
     },
@@ -550,15 +551,16 @@ export function registerAllTools(server: McpServer) {
         await logToolUsage(userId, "search-judgments", `get_judgment:${judgmentRow.id}`);
         const detail = prepareJudgmentDetail({ ...judgmentRow, court: judgmentRow.courtNameSnapshot || "" }, { opening: judgmentRow.fullText, textStatus: judgmentRow.textStatus, textTrueCitation: judgmentRow.textTrueCitation });
         const safe = detail.contentFormat !== "unavailable";
+        const confirmed = detail.textIntegrity === "own";
         const textCheck = { textIntegrity: detail.textIntegrity, textWarning: detail.textWarning, belongsTo: detail.belongsTo };
         const payload = {
           version: VERSION,
           source: SOURCE,
           id: judgmentRow.id,
           citation: judgmentRow.citation,
-          title: safe ? detail.title : undefined,
-          courtName: safe ? detail.court || undefined : undefined,
-          decisionDate: safe && judgmentRow.decisionDate instanceof Date
+          title: confirmed ? detail.title : undefined,
+          courtName: confirmed ? detail.court || undefined : undefined,
+          decisionDate: confirmed && judgmentRow.decisionDate instanceof Date
             ? judgmentRow.decisionDate.toISOString().split("T")[0]
             : undefined,
           fullText: detail.fullText || undefined,
@@ -624,15 +626,16 @@ export function registerAllTools(server: McpServer) {
     const protectedDetail = await protectJudgmentDetail(detail);
     const textCheck = { textIntegrity: protectedDetail.textIntegrity, belongsTo: protectedDetail.belongsTo, textWarning: protectedDetail.textWarning };
     const safe = protectedDetail.contentFormat !== "unavailable";
+    const confirmed = protectedDetail.textIntegrity === "own";
 
     const payload = {
       version: VERSION,
       source: SOURCE,
       id: detail.id,
       citation: detail.citation,
-      title: safe ? protectedDetail.title : undefined,
-      courtName: safe ? protectedDetail.court || undefined : undefined,
-      decisionDate: !safe ? undefined : detail.decisionDate instanceof Date
+      title: confirmed ? protectedDetail.title : undefined,
+      courtName: confirmed ? protectedDetail.court || undefined : undefined,
+      decisionDate: !confirmed ? undefined : detail.decisionDate instanceof Date
         ? detail.decisionDate.toISOString().split("T")[0]
         : (detail.decisionDate ?? undefined),
       fullText: protectedDetail.fullText || undefined,
@@ -817,7 +820,7 @@ export function registerAllTools(server: McpServer) {
 
   // 6. Get Judge Profile
   server.registerTool("get_judge_profile", {
-    description: "Get detailed profile and statistics for a specific Pakistani judge, including their recent landmark cases and judgments.",
+    description: "Get a Pakistani judge's profile and statistics. Recent cases include only internally consistent judgment records; original sources remain unauthenticated. Open each sourceUrl or call get_judgment using its id.",
     inputSchema: {
       name: z.string().describe("Exact name of the judge (use search_judges to find exact names)"),
     },
@@ -834,6 +837,8 @@ export function registerAllTools(server: McpServer) {
           id: z.string(),
           citation: z.string(),
           title: z.string(),
+          sourceUrl: z.string(),
+          textIntegrity: z.literal("own"),
           court: z.string().nullable().optional(),
           year: z.number().nullable().optional()
         }))
@@ -863,7 +868,10 @@ export function registerAllTools(server: McpServer) {
       citation: judgments.citationString,
       title: judgments.title,
       court: judgments.courtNameSnapshot,
-      year: judgments.year
+      year: judgments.year,
+      textStatus: judgments.textStatus,
+      textTrueCitation: judgments.textTrueCitation,
+      opening: sql<string>`left(${judgments.fullText}, 16000)`,
     })
     .from(judgeCaseLinks)
     .innerJoin(judgments, eq(judgeCaseLinks.judgmentId, judgments.id))
@@ -880,10 +888,12 @@ export function registerAllTools(server: McpServer) {
         courts: judgeStats[0].courts || [],
         earliestYear: judgeStats[0].earliestYear,
         latestYear: judgeStats[0].latestYear,
-        recentCases: recentCases.map((c: any) => ({
+        recentCases: recentCases.filter((c: any) => assessJudgmentIdentity(c).textIntegrity === "own").map((c: any) => ({
           id: c.id,
           citation: c.citation,
           title: c.title,
+          sourceUrl: judgmentSourceUrl(c.id),
+          textIntegrity: "own" as const,
           court: c.court,
           year: c.year
         }))

@@ -1,5 +1,5 @@
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
-import { resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, judgmentPdfUrl, judgmentSourceUrl, extractCitations, verifyCitations } from "./citation-verify";
+import { resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, judgmentPdfUrl, judgmentSourceUrl, extractCitations, verifyCitations, citationMatchesCourt } from "./citation-verify";
 import { generateCourtJudgmentPdfBuffer } from "./judgment-pdf";
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
@@ -8505,17 +8505,7 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
       .trim();
 
     try {
-      const [found] = await db
-        .select({ id: judgments.id })
-        .from(judgments)
-        .where(
-          or(
-            ilike(judgments.citationString, cleanCitation),
-            ilike(judgments.citationString, slug),
-            sql`REPLACE(LOWER(${judgments.citationString}), ' ', '') = REPLACE(LOWER(${cleanCitation}), ' ', '')`
-          )
-        )
-        .limit(1);
+      const found = await resolveJudgment(cleanCitation, { id: judgments.id });
 
       if (found) {
         const qs = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
@@ -12883,18 +12873,7 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
       // If id is a citation string or slug (e.g. "1997-scmr-1203" or "PLD 1955 FC 240")
       const cleanQuery = id.replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/^extracted\s+/i, "").trim();
 
-      // Look up by citation string in judgments table
-      const [foundJudgment] = await db
-        .select({ id: judgments.id })
-        .from(judgments)
-        .where(
-          or(
-            ilike(judgments.citationString, cleanQuery),
-            ilike(judgments.citationString, id),
-            sql`REPLACE(LOWER(${judgments.citationString}), ' ', '') = REPLACE(LOWER(${cleanQuery}), ' ', '')`
-          )
-        )
-        .limit(1);
+      const foundJudgment = await resolveJudgment(cleanQuery, { id: judgments.id });
 
       if (foundJudgment) {
         const detail = await storage.getJudgmentDetail(foundJudgment.id);
@@ -13142,17 +13121,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
 
       if (!isUUID && !isNumeric) {
         const cleanQuery = id.replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/^extracted\s+/i, "").trim();
-        const [foundJudgment] = await db
-          .select({ id: judgments.id })
-          .from(judgments)
-          .where(
-            or(
-              ilike(judgments.citationString, cleanQuery),
-              ilike(judgments.citationString, id),
-              sql`REPLACE(LOWER(${judgments.citationString}), ' ', '') = REPLACE(LOWER(${cleanQuery}), ' ', '')`
-            )
-          )
-          .limit(1);
+        const foundJudgment = await resolveJudgment(cleanQuery, { id: judgments.id });
 
         if (foundJudgment) {
           targetId = foundJudgment.id;
@@ -24290,6 +24259,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const seenJudgmentIds = new Set<string>();
       for (const j of result.rows) {
         const v: any = j.citation ? await resolveJudgment(String(j.citation), groundTruth) : undefined;
+        if (v && !citationMatchesCourt(query, v.court)) continue;
         if (!v) {
           mapped.push({
             id: `caseLaw:${j.id}`,
@@ -24457,13 +24427,14 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       // Say so rather than returning it as this citation's judgment.
       const textCheck = await protectJudgmentDetail(detail);
       const safe = textCheck.contentFormat !== "unavailable";
+      const confirmed = textCheck.textIntegrity === "own";
 
       res.json({
         id: detail.id,
         citation: detail.citation,
-        title: safe ? textCheck.title : undefined,
-        courtName: safe ? textCheck.court || undefined : undefined,
-        decisionDate: safe ? detail.decisionDate : undefined,
+        title: confirmed ? textCheck.title : undefined,
+        courtName: confirmed ? textCheck.court || undefined : undefined,
+        decisionDate: confirmed ? detail.decisionDate : undefined,
         fullText: textCheck.fullText || undefined,
         pdfUrl: textCheck.pdfUrl || (textCheck.textIntegrity === "own" ? `${(process.env.PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "")}/api/public/judgments/${detail.id}/pdf` : undefined),
         pdfKind: textCheck.pdfUrl ? "original" : textCheck.textIntegrity === "own" ? "generated" : undefined,
