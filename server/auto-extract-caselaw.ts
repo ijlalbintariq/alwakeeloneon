@@ -391,25 +391,18 @@ function inferPrimaryCitation(
   preferredPrimaryCitation?: string | null,
 ): string | null {
   if (mentions.length === 0) return null;
-  const preferred = normalizeCitation(String(preferredPrimaryCitation || ""));
-  if (preferred) return preferred;
-
   const headWindow = text.slice(0, Math.min(text.length, 4000));
-
+  const reported = headWindow.match(/(?:^|\n)\s*(?:reported\s+as|citation)\s*:\s*([^\n]+)/i)?.[1];
   for (const mention of mentions) {
-    const escaped = escapeRegex(mention.citation);
-    const explicit = new RegExp(`(?:reported\\s+as|case\\s+reported\\s+at|citation\\s*[:\\-])\\s*${escaped}`, "i");
-    if (explicit.test(headWindow)) return mention.citation;
+    if (reported && extractCitationMentionsFromText(reported).some(item => normalizeCitationKey(item.citation) === normalizeCitationKey(mention.citation))) return mention.citation;
   }
-
-  const captionIdx = headWindow.search(/\b(?:vs?\.?|versus|v\.?)\b/i);
-  if (captionIdx >= 0) {
-    const nearCaption = mentions.find((m) => m.index <= captionIdx + 1200);
-    if (nearCaption) return nearCaption.citation;
+  // A standalone reporter heading is evidence; a citation in narrative is not.
+  for (const line of headWindow.split(/\r?\n/).slice(0, 10)) {
+    if (/^\s*(?:JUDGMENT|ORDER|HELD|HEADNOTES?)\b/i.test(line)) break;
+    const match = mentions.find(item => normalizeCitationKey(line) === normalizeCitationKey(item.citation));
+    if (match) return match.citation;
   }
-
-  const topMention = mentions.find((m) => m.index < 1600);
-  return topMention?.citation ?? mentions[0].citation;
+  return normalizeCitation(String(preferredPrimaryCitation || "")) || null;
 }
 
 function addPreferredPrimaryMention(
@@ -792,13 +785,14 @@ export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOp
     const citation = mention.citation;
     if (!citation || citation.trim().length < 6) continue; // skip empty/short
 
-    const court    = inferCourt(citation) || contextualCourt;
-    const title    = findTitleNearCitation(text, citation, mention.index);
-    const summary  = extractSummaryNearCitation(text, citation, mention.index);
-    const keywords = extractKeywords(text, citation, mention.index);
     const citKey   = normalizeCitationKey(citation);
     const isPrimary = !assignedPrimary && citKey === inferredPrimaryKey;
     if (isPrimary) assignedPrimary = true;
+    // Referenced cases must never inherit this document's parties, holding or topics.
+    const court = inferCourt(citation) || (isPrimary ? contextualCourt : "");
+    const title = isPrimary ? findTitleNearCitation(text, citation, mention.index) : "";
+    const summary = isPrimary ? extractSummaryNearCitation(text, citation, mention.index) : "";
+    const keywords = isPrimary ? extractKeywords(text, citation, mention.index) : [];
 
     // Build descriptive fallback title incorporating citation and case type
     let fallbackTitle: string;
@@ -828,9 +822,6 @@ export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOp
     });
   }
 
-  if (!assignedPrimary && cases.length > 0) {
-    cases[0].citationRole = "primary";
-  }
   return cases;
 }
 
@@ -860,14 +851,13 @@ export function assignCitationRolesToCases(
     return {
       citation,
       citationRole: isPrimary ? "primary" : "cited",
-      court: String(item.court || ""),
-      title: String(item.title || ""),
-      summary: String(item.summary || ""),
-      keywords: Array.isArray(item.keywords) ? item.keywords : [],
+      court: isPrimary ? String(item.court || "") : inferCourt(citation),
+      title: isPrimary ? String(item.title || "") : `Case cited as ${citation}`,
+      summary: isPrimary ? String(item.summary || "") : `Citation reference only: ${citation}. Retrieve its own judgment before attributing any holding.`,
+      keywords: isPrimary && Array.isArray(item.keywords) ? item.keywords : [],
     } as ExtractedCase;
   });
 
-  if (!assignedPrimary && mapped.length > 0) mapped[0].citationRole = "primary";
   return mapped;
 }
 

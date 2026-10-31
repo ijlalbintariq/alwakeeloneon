@@ -1505,11 +1505,8 @@ function capExtractedCaseRows(rows: NormalizedExtractedCase[], maxTotal: number)
 
   if (deduped.length === 0) return [];
 
-  let primaryIndex = deduped.findIndex((row) => row.citationRole === "primary");
-  if (primaryIndex < 0) {
-    deduped[0].citationRole = "primary";
-    primaryIndex = 0;
-  }
+  const primaryIndex = deduped.findIndex((row) => row.citationRole === "primary");
+  if (primaryIndex < 0) return deduped.slice(0, safeMax);
 
   const primary = deduped[primaryIndex];
   const others = deduped

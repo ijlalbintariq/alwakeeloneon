@@ -170,11 +170,8 @@ function capExtractedCases(rows: ExtractedCase[], maxTotal: number): ExtractedCa
 
   if (deduped.length === 0) return [];
 
-  let primaryIndex = deduped.findIndex((row) => row.citationRole === "primary");
-  if (primaryIndex < 0) {
-    deduped[0].citationRole = "primary";
-    primaryIndex = 0;
-  }
+  const primaryIndex = deduped.findIndex((row) => row.citationRole === "primary");
+  if (primaryIndex < 0) return deduped.slice(0, safeMax);
 
   const primary = deduped[primaryIndex];
   const others = deduped
@@ -423,8 +420,8 @@ async function main(): Promise<void> {
       });
     }
 
-    const preferredPrimary = extracted.find((row) => row.citationRole === "primary") || extracted[0];
-    const preferredKey = buildCaseLawDedupKey({ citation: preferredPrimary.citation });
+    const preferredPrimary = extracted.find((row) => row.citationRole === "primary");
+    const preferredKey = preferredPrimary ? buildCaseLawDedupKey({ citation: preferredPrimary.citation }) : null;
     const refreshedRows = await db.select({
       id: caseLaw.id,
       citation: caseLaw.citation,
@@ -435,14 +432,14 @@ async function main(): Promise<void> {
       .from(caseLaw)
       .where(and(eq(caseLaw.sourceDocId, target.sourceDocId), eq(caseLaw.sourceType, target.sourceType)));
 
-    const primaryCandidate = refreshedRows.find((row) =>
+    const primaryCandidate = preferredKey && refreshedRows.find((row) =>
       buildCaseLawDedupKey({
         citation: row.citation,
         citationYear: row.citationYear,
         citationReport: row.citationReport,
         citationPage: row.citationPage,
       }) === preferredKey,
-    ) || refreshedRows[0];
+    );
 
     if (primaryCandidate) {
       await db.update(caseLaw)
