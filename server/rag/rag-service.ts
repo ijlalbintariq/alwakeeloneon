@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { storage, getTextProvenance } from "../storage";
+import { storage, getValidatedJudgmentIntegrity } from "../storage";
 import { db, dbAvailable, pool } from "../db";
 import { judgments, courtsRef, lawJournals, adminKnowledge, statuteDocuments } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
@@ -686,16 +686,17 @@ export async function indexJudgmentDocument(judgmentId: string): Promise<RAGInde
 // wrong citation. The true owner's row holds the same text and is indexed too,
 // so dropping these loses no content, only the misattribution.
 export async function dropMislabeledJudgmentChunks(matches: RagMatch[]): Promise<RagMatch[]> {
+  matches = matches.filter((m) => String(m.metadata?.sourceType || "").toLowerCase() !== "judgment" || !!m.metadata?.judgmentId);
   const ids = matches
     .map((m) => String(m.metadata?.judgmentId || ""))
     .filter(Boolean);
   if (ids.length === 0) return matches;
   try {
-    const statuses = await getTextProvenance(ids);
+    const statuses = await getValidatedJudgmentIntegrity(ids);
     return matches
       .filter((m) => {
         const id = String(m.metadata?.judgmentId || "");
-        return !id || statuses.get(id) !== "mislabeled";
+        return !id || statuses.get(id) === "own";
       })
       .map((m) => {
         const id = String(m.metadata?.judgmentId || "");
@@ -704,9 +705,7 @@ export async function dropMislabeledJudgmentChunks(matches: RagMatch[]): Promise
       });
   } catch (err: any) {
     console.warn(`[TextIntegrity] chunk status lookup failed: ${err?.message || err}`);
-    return matches.map((m) => (m.metadata?.judgmentId
-      ? { ...m, metadata: { ...m.metadata, textIntegrity: "unverified" } }
-      : m));
+    return matches.filter((m) => !m.metadata?.judgmentId);
   }
 }
 

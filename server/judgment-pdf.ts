@@ -33,11 +33,12 @@ function sanitizeTextForPdf(text: string): string {
 }
 
 export function generateCourtJudgmentPdfBuffer(judgment: JudgmentPdfData): Buffer {
-  const fullText = judgment.fullText || judgment.headnotes || judgment.summary || "Full text of this judgment is being indexed in the National Precedent Corpus.";
-  const headnotes = judgment.headnotes || judgment.summary || "";
+  const fullText = judgment.fullText || "";
+  if (!fullText.trim()) throw new Error("No judgment text is available for PDF generation.");
+  const headnotes = judgment.headnotes || "";
   const title = judgment.title || "Reported Judicial Precedent";
   const citation = judgment.citation || "Pakistani Precedent";
-  const court = judgment.court || "Supreme Court of Pakistan";
+  const court = judgment.court || "Court not recorded";
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -163,7 +164,8 @@ export function generateCourtJudgmentPdfBuffer(judgment: JudgmentPdfData): Buffe
   // Full Judgment Order
   y += 2;
   addLine();
-  addText("FULL JUDGMENT & ORDER OF THE BENCH", 11, "bold");
+  addText("DATABASE JUDGMENT TEXT", 11, "bold");
+  addText("Generated from database text; not an original court PDF.", 9, "italic");
   y += 1;
   addText(fullText, 9.5);
 
@@ -174,7 +176,7 @@ export function generateCourtJudgmentPdfBuffer(judgment: JudgmentPdfData): Buffe
   doc.setTextColor(120, 120, 120);
   doc.setFont("times", "normal");
   doc.text(
-    "Authenticated from Al Wakeelo Legal Research Workstation - www.alwakeelo.com",
+    "Database text copy - Al Wakeelo Legal Research Workstation - www.alwakeelo.com",
     margin,
     y
   );
@@ -186,7 +188,7 @@ export function generateCourtJudgmentPdfBuffer(judgment: JudgmentPdfData): Buffe
     doc.setFontSize(8);
     doc.setTextColor(140, 140, 140);
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 20, pageHeight - 10);
-    doc.text(`${citation} - Court Record`, margin, pageHeight - 10);
+    doc.text(`${citation} - Database text copy`, margin, pageHeight - 10);
   }
 
   const arrayBuffer = doc.output("arraybuffer");

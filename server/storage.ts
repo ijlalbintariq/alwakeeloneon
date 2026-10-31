@@ -1,4 +1,5 @@
 import { db, pool, dbAvailable } from "./db";
+import { assessJudgmentIdentity, judgmentPdfUrl } from "./citation-verify";
 import { clearSitemapCache } from "./sitemap";
 import { triggerGoogleIndexing } from "./services/google-indexing";
 import {
@@ -5648,6 +5649,22 @@ export async function getTextProvenance(ids: string[]): Promise<Map<string, "own
   return out;
 }
 
+/** Validate only requested records; stored provenance alone does not verify identity. */
+export async function getValidatedJudgmentIntegrity(ids: string[]): Promise<Map<string, "own" | "mislabeled" | "unknown">> {
+  const unique = [...new Set(ids.filter((id) => UUID_RE.test(String(id || ""))))];
+  if (!unique.length) return new Map();
+  const rows = await db.select({
+    id: judgments.id, citation: judgments.citationString, title: judgments.title,
+    court: judgments.courtNameSnapshot, textStatus: judgments.textStatus,
+    textTrueCitation: judgments.textTrueCitation,
+    opening: sql<string>`left(${judgments.fullText}, 16000)`,
+  }).from(judgments).where(inArray(judgments.id, unique));
+  return new Map(rows.map((row: any) => {
+    const integrity = assessJudgmentIdentity(row).textIntegrity;
+    return [String(row.id), integrity === "own" ? "own" : integrity === "mislabeled" ? "mislabeled" : "unknown"];
+  }));
+}
+
 export async function getJudgmentTextStatuses(ids: string[]): Promise<Map<string, {
   textStatus: string | null;
   headnotes: string | null;
@@ -5708,42 +5725,36 @@ export async function findTextOwnerJudgment(trueCitation: string | null | undefi
 
 export async function applyJudgmentTextIntegrity<T extends Record<string, any>>(rows: T[]): Promise<T[]> {
   if (!rows.length) return rows;
-  let statuses: Awaited<ReturnType<typeof getJudgmentTextStatuses>>;
-  let provenance: Map<string, "own" | "mislabeled" | "unknown">;
+  const ids = [...new Set(rows.map((row) => String(row.judgmentId || "")).filter((id) => UUID_RE.test(id)))];
+  if (!ids.length) return rows.filter((row) => !row.judgmentId);
+  let sources: Map<string, any>;
   try {
-    provenance = await getTextProvenance(rows.map((r) => String(r.judgmentId || "")));
-    // Headnotes/title are fetched only for the few rows that need rewriting.
-    const needDetail = [...provenance].filter(([, st]) => st === "mislabeled").map(([id]) => id);
-    statuses = await getJudgmentTextStatuses(needDetail);
+    const records = await db.select({
+      id: judgments.id, citation: judgments.citationString, title: judgments.title, court: judgments.courtNameSnapshot,
+      textStatus: judgments.textStatus, textTrueCitation: judgments.textTrueCitation, pdfUrl: judgments.pdfUrl,
+      opening: sql<string>`left(${judgments.fullText}, 16000)`,
+    }).from(judgments).where(inArray(judgments.id, ids));
+    sources = new Map(records.map((record: any) => [String(record.id), record]));
   } catch (err) {
-    console.warn("[TextIntegrity] status lookup failed; marking rows unverified:", (err as Error)?.message);
-    return rows.map((r) => (r.judgmentId ? { ...r, textIntegrity: "unverified" as JudgmentTextIntegrity } : r));
+    console.warn("[TextIntegrity] identity lookup failed; withholding judgment rows:", (err as Error)?.message);
+    return rows.filter((r) => !r.judgmentId);
   }
   const out: T[] = [];
   for (const row of rows) {
     const id = row.judgmentId ? String(row.judgmentId) : "";
-    const status = id ? provenance.get(id) : undefined;
-    if (!status) { out.push(row); continue; }
-    if (status === "mislabeled") {
-      const info = statuses.get(id);
-      if (!info) continue;
-      const headnotes = String(info.headnotes || "").trim();
-      const usable = headnotes && !PLACEHOLDER_HEADNOTES_REGEX.test(headnotes) && !isMetadataOnlySummary(headnotes);
-      if (!usable) continue; // nothing trustworthy to show for this citation
-      const dbTitle = String(info.title || "").trim();
-      const parties = [info.petitioner, info.respondent].filter(Boolean).join(" vs ");
-      out.push({
-        ...row,
-        title: (dbTitle && looksLikeRealCaseTitle(dbTitle) ? dbTitle : parties) || `Case ${row.citation || ""}`.trim(),
-        court: String(info.court || "").trim(),
-        summary: headnotes.slice(0, 600).trim(),
-        textIntegrity: "headnote-only" as JudgmentTextIntegrity,
-      });
-      continue;
-    }
+    if (!id) { out.push(row); continue; }
+    const source = sources.get(id);
+    if (!source) continue;
+    const check = assessJudgmentIdentity(source);
+    const pdfUrl = judgmentPdfUrl(source.pdfUrl);
+    const hasText = String(source.opening || "").trim().length >= 200;
+    if (check.identityConflict || (!hasText && !pdfUrl)) continue;
     out.push({
       ...row,
-      textIntegrity: (status === "own" ? "own" : "unverified") as JudgmentTextIntegrity,
+      citation: source.citation, title: source.title, court: source.court || "",
+      summary: hasText ? extractSubstantiveSummary(source.opening) : "",
+      pdfUrl,
+      textIntegrity: (check.textIntegrity === "own" ? "own" : "unverified") as JudgmentTextIntegrity,
     });
   }
   return out;

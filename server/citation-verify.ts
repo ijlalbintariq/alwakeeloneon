@@ -141,8 +141,13 @@ export function extractCitations(text: string): string[] {
 export async function verifyCitations(raws: string[]): Promise<Map<string, string>> {
   const found = new Map<string, string>();
   for (const raw of raws) {
-    const match = await resolveJudgment(raw, { id: judgments.id });
-    if (match) found.set(raw, String(match.id));
+    const match = await resolveJudgment(raw, {
+      id: judgments.id, citation: judgments.citationString, title: judgments.title,
+      court: judgments.courtNameSnapshot, textStatus: judgments.textStatus,
+      textTrueCitation: judgments.textTrueCitation,
+      opening: sql<string>`left(${judgments.fullText}, 16000)`,
+    });
+    if (match && assessJudgmentIdentity(match).textIntegrity === "own") found.set(raw, String(match.id));
   }
   return found;
 }
@@ -197,6 +202,7 @@ export function splitCitations(raw: string): string[] {
 /** Parse a citation into (year, journal code, page). Returns null if not parseable. */
 export function parseCitation(raw: string, knownJournals: Set<string>): { year: number; journal: string; page: number } | null {
   let s = String(raw || "").toUpperCase();
+  s = s.replace(/PLC\s*\(\s*C\.?\s*S\.?\s*T\.?\s*\)/g, " PLCCST ");
 
   // Canonicalize dotted/spaced journal codes BEFORE punctuation is stripped.
   s = s.replace(/P\s*\.?\s*CR?\s*\.?\s*L\s*\.?\s*J\s*\.?\s*N(?:OTES?)?/g, " PCRLJN ");
@@ -279,6 +285,145 @@ export function parseCitation(raw: string, knownJournals: Set<string>): { year: 
   return { year: Number(tokens[yearIdx]), journal, page };
 }
 
+type JudgmentIdentity = {
+  citation?: string | null;
+  title?: string | null;
+  court?: string | null;
+  opening?: string | null;
+  textStatus?: string | null;
+  textTrueCitation?: string | null;
+};
+
+export type JudgmentIntegrity = {
+  textIntegrity: "missing" | "mislabeled" | "unknown" | "own";
+  belongsTo?: string;
+  textWarning?: string;
+  identityConflict?: boolean;
+};
+
+const IDENTITY_JOURNALS = new Set([
+  "PLD", "SCMR", "YLR", "YLRN", "MLD", "CLC", "CLCN", "PLJ", "NLR", "PCRLJ", "PCRLJN",
+  "PTCL", "PTD", "PLCCS", "PLCCSN", "PLCCST", "PLC", "PLCN", "PSC", "SCP", "ALD", "KLR", "SLS",
+  "GBLR", "CLD", "AIR", "LHC", "SHC", "IHC", "PHC", "BHC", "FSC", "AJKHC", "GBCC",
+]);
+
+function titleParties(value: string): string[][] | null {
+  let parts = value.split(/\s+(?:v(?:s)?\.?|versus)\s+/i);
+  if (parts.length === 1) {
+    const entity = value.match(/^\s*(?:in\s+the\s+matter\s+of|in\s+re)\s*:?\s*(.+)$/i)?.[1]
+      || value.match(/^(.+?):\s*in\s+the\s+matter\s+of\s*$/i)?.[1];
+    if (!entity) return null;
+    parts = [entity];
+  } else if (parts.length !== 2) return null;
+  const ignored = new Set(["the", "and", "another", "others", "other", "through", "legal", "heirs", "petitioner", "respondent", "appellant", "mr", "mrs", "mst", "matter", "not", "unknown", "nil", "none", "case", "company", "limited", "ltd", "messrs"]);
+  const tokens = parts.map((part) => [...new Set((part.toLowerCase().match(/[a-z0-9]+/g) || [])
+    .filter((word) => word.length >= 3 && !ignored.has(word)))]);
+  return tokens.every((part) => part.length > 0) ? tokens : null;
+}
+
+function reportedCitationHeader(header: string): string | undefined {
+  const match = /\bReported\s+As\s*:[ \t]*/i.exec(header);
+  if (!match) return undefined;
+  const lines = header.slice(match.index + match[0].length).split(/\r?\n/);
+  const parts: string[] = [];
+  const citationWords = new Set([...IDENTITY_JOURNALS, ..."SC SUPREME COURT FEDERAL SHARIAT LAHORE LAH KARACHI KAR SINDH PESHAWAR PESH BALOCHISTAN ISLAMABAD QUETTA MULTAN RAWALPINDI BAHAWALPUR ABBOTTABAD HYDERABAD SUKKUR TRIB TRIBUNAL CS CST CR C CIVIL CRIMINAL CASES CL LABOUR SERVICE NOTES NOTE".split(" ")]);
+  for (const line of lines.slice(0, 20)) {
+    const field = line.split(/\s*\b(?:Result|Case\s+No\.?|Date\s+of\s+Judgment|Court\s+Name|Title)\s*:/i)[0].trim();
+    if (!parts.length && !line.trim()) continue;
+    if (!field) break;
+    // Only citation vocabulary may continue the field; never absorb narrative authorities.
+    const words = field.replace(/\./g, "").toUpperCase().match(/[A-Z]+/g) || [];
+    if (parts.length && (!/\d/.test(field) || words.some(word => !citationWords.has(word) && word.length !== 1))) break;
+    parts.push(field);
+    if (field !== line.trim()) break;
+  }
+  return parts.join(" ") || undefined;
+}
+
+function courtIdentity(value: string): string | null {
+  const court = value.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+  if (/\bsupreme court\b/.test(court) || court === "sc") return /azad|kashmir|ajk/.test(court) ? "supreme:ajk" : "supreme:pakistan";
+  if (/federal shariat court/.test(court) || court === "fsc") return "shariat:federal";
+  const aliases: Record<string, string> = { lhc: "lahore", shc: "sindh", ihc: "islamabad", phc: "peshawar", bhc: "balochistan" };
+  if (aliases[court]) return `high:${aliases[court]}`;
+  if (/high court/.test(court)) {
+    const seat = /lahore|sindh|karachi|islamabad|peshawar|balochistan|quetta|azad|kashmir/.exec(court)?.[0];
+    return `high:${seat === "karachi" ? "sindh" : seat === "quetta" ? "balochistan" : seat === "azad" || seat === "kashmir" ? "ajk" : seat || "unspecified"}`;
+  }
+  if (/tribunal|labou?r court/.test(court)) {
+    const kind = /service|customs|labou?r|tax|banking|election/.exec(court)?.[0]?.replace("labor", "labour");
+    if (!kind) return null;
+    const seat = /federal|punjab|sindh|balochistan|khyber pakhtunkhwa/.exec(court)?.[0] || "unspecified";
+    return `${kind}-${/tribunal/.test(court) ? "tribunal" : "court"}:${seat}`;
+  }
+  return null;
+}
+
+/** Check internal consistency only; source authenticity still requires independent verification. */
+export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegrity {
+  const body = String(record.opening || "").trim();
+  if (record.textStatus === "mislabeled") return {
+    textIntegrity: "mislabeled", belongsTo: String(record.textTrueCitation || "").trim() || undefined,
+    identityConflict: true,
+    textWarning: "The stored text belongs to a different judgment and must not be attributed to this citation.",
+  };
+  if (body.length < 200) return { textIntegrity: "missing", textWarning: "No usable judgment text is stored for this record." };
+
+  const header = body.slice(0, 16000);
+  let title = header.match(/(?:^|\n)\s*Title\s*:\s*([\s\S]*?)(?=\s*(?:Case\s+No\.?|Date\s+of\s+Judgment|Reported\s+As|Result)\s*:)/i)?.[1]
+    ?.replace(/\bJUDGMENT\b[\s\S]*$/i, "").trim();
+  // Printed reporter pages often use a standalone Versus instead of labelled metadata.
+  if (!title) {
+    const opening = header.slice(0, 3500);
+    const versus = /\n\s*Versus\s*\n/i.exec(opening);
+    if (versus) {
+      const petitioner = opening.slice(0, versus.index).trim().split(/\n\s*\n/).at(-1)
+        ?.replace(/^Before[\s\S]*?\bMembers?\b\s*/i, "").trim();
+      const respondent = opening.slice(versus.index + versus[0].length).trim().split(/\n\s*\n/)[0];
+      if (petitioner && respondent) title = `${petitioner} vs ${respondent}`;
+    }
+  }
+  const reported = reportedCitationHeader(header)
+    || header.split(/\r?\n/).slice(0, 10).find((line) => line.trim().length <= 100
+      && /^(?:(?:19|20)\d{2}\s+|[A-Z. ]+\s+(?:19|20)\d{2}\b)/i.test(line.trim())
+      && parseCitation(line, IDENTITY_JOURNALS));
+  const storedParties = titleParties(String(record.title || ""));
+  const bodyParties = titleParties(title || "");
+  const malformedTitle = /\b(?:JUDGMENT|Reported\s+As|Case\s+No)\b|Honou?rable\s+Justice|(?:^|\s)(?:v(?:s)?\.?|versus)\s+(?:NOT|N\/A|NIL|NONE|UNKNOWN)\s*$|^(?:NOT|N\/A|NIL|NONE|UNKNOWN)\s+(?:v(?:s)?\.?|versus)\s/i;
+  if (malformedTitle.test(String(record.title || "")) || (title && malformedTitle.test(title))) return {
+    textIntegrity: "unknown", identityConflict: true,
+    textWarning: "The case title contains incomplete party names or extraction artifacts; it cannot identify this judgment reliably.",
+  };
+  const sameParties = storedParties && bodyParties && storedParties.length === bodyParties.length && storedParties.every((party, index) => {
+    const other = bodyParties[index];
+    const shorter = party.length <= other.length ? party : other;
+    const longer = party.length <= other.length ? other : party;
+    return shorter.every((token) => longer.includes(token));
+  });
+  if (storedParties && bodyParties && !sameParties) return { textIntegrity: "unknown", identityConflict: true, textWarning: "The stored case title conflicts with the parties named in the judgment text." };
+
+  const expected = parseCitation(String(record.citation || ""), IDENTITY_JOURNALS);
+  const reportedCitations = splitCitations(reported || "").map((part) => parseCitation(part, IDENTITY_JOURNALS)).filter(Boolean);
+  if (expected && reportedCitations.length && !reportedCitations.some((item) => item!.year === expected.year && item!.journal === expected.journal && item!.page === expected.page)) {
+    return { textIntegrity: "unknown", identityConflict: true, textWarning: "The stored citation does not match a citation in the judgment header." };
+  }
+  const court = String(record.court || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const bodyCourt = (header.match(/(?:^|\n)\s*(?:Court Name|COURT)\s*:\s*([^\r\n]+)/i)?.[1]
+    || header.slice(0, 3500).match(/(?:^|\n)\s*\[([^\]\r\n]*(?:Court|Tribunal)[^\]\r\n]*)\]/i)?.[1]
+    || "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (court && bodyCourt && court !== bodyCourt) {
+    const storedCourt = courtIdentity(court);
+    const reportedCourt = courtIdentity(bodyCourt);
+    if (!storedCourt || !reportedCourt || (storedCourt !== reportedCourt && storedCourt.split(":")[0] === reportedCourt.split(":")[0] && [storedCourt, reportedCourt].some((name) => name.endsWith(":unspecified")))) {
+      return { textIntegrity: "unknown", textWarning: "The court names could not be reconciled; case identity remains unverified." };
+    }
+    if (storedCourt !== reportedCourt) return { textIntegrity: "unknown", identityConflict: true, textWarning: "The stored court conflicts with the judgment header." };
+  }
+  if (!sameParties || !reported || !expected || !reportedCitations.length) return { textIntegrity: "unknown", textWarning: "The citation and case title cannot be confirmed from the judgment header." };
+  if (record.textStatus !== "own") return { textIntegrity: "unknown", textWarning: "The stored judgment text has not been verified for this citation." };
+  return { textIntegrity: "own" };
+}
+
 /**
  * Resolve a citation string to a real `judgments` row.
  * Structured (year, journal_id, page) lookup first, then the legacy exact
@@ -346,61 +491,64 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
  * deleted to fix that: script/judgment_text_label.ts records per row whether
  * the stored body is that row's own, and if not, which citation it belongs to.
  *
- * Rows classified before the labelling script has run fall back to an exact
- * sibling lookup, which is correct but scans, so run the script.
+ * A provenance label alone cannot establish identity. Compare the stored
+ * citation and parties against the body header before returning the text.
  */
 export async function assessJudgmentText(
   judgmentId: string,
   fullText: string | null | undefined,
   textStatus?: string | null,
   textTrueCitation?: string | null,
-): Promise<{
-  textIntegrity: "missing" | "mislabeled" | "unknown" | "own";
-  belongsTo?: string;
-  sharedWith?: string[];
-  textWarning?: string;
-}> {
-  const body = String(fullText || "").trim();
-  if (body.length < 200) {
-    return {
-      textIntegrity: "missing",
-      textWarning: "No usable judgment text is stored for this record. Do not summarise or quote a judgment body for this citation, and do not reconstruct it from memory.",
-    };
-  }
+  identity?: { citation?: string | null; title?: string | null; court?: string | null },
+): Promise<JudgmentIntegrity> {
+  return assessJudgmentIdentity({ ...identity, opening: fullText, textStatus, textTrueCitation });
+}
 
-  if (textStatus === "own") return { textIntegrity: "own" };
+export function judgmentPdfUrl(value: unknown): string | null {
+  const raw = String(value || "").trim();
+  if (raw.startsWith("/") && !raw.startsWith("//") && !/[\\\r\n]/.test(raw)) return raw;
+  try {
+    const url = new URL(raw);
+    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : null;
+  } catch { return null; }
+}
 
-  if (textStatus === "mislabeled") {
-    const belongsTo = String(textTrueCitation || "").trim();
-    return {
-      textIntegrity: "mislabeled",
-      belongsTo: belongsTo || undefined,
-      textWarning: belongsTo
-        ? `The text stored against this citation is the judgment reported as ${belongsTo}, not this case. Do not present it as this citation's judgment or attribute its holdings, facts or quotations to this citation. To read the case this text really is, call get_judgment with ${belongsTo}.`
-        : "The text stored against this citation belongs to a different judgment. Do not present it as this citation's judgment.",
-    };
-  }
-
-  if (textStatus === "unknown") {
-    return {
-      textIntegrity: "unknown",
-      textWarning: "This judgment body is stored identically under several citations and the true owner has not been established, so it is not reliably the text of the citation you asked for. Do not attribute holdings, facts or quotations from it to this citation without independent confirmation.",
-    };
-  }
-
-  // Not yet labelled: fall back to an exact sibling lookup.
-  const siblings = await db.select({ citation: judgments.citationString })
-    .from(judgments)
-    .where(and(eq(judgments.fullText, body), sql`${judgments.id} <> ${judgmentId}`))
-    .limit(5);
-
-  if (siblings.length === 0) return { textIntegrity: "own" };
-
-  const shared = siblings.map((r: { citation: string }) => String(r.citation)).filter(Boolean);
+/** Availability is separate from verification: plain text and PDF records remain readable. */
+export function prepareJudgmentDetail<T extends {
+  id: string; citation: string; title: string; court: string; fullText: string; pdfUrl?: string | null;
+}>(detail: T, stored: { opening?: string | null; textStatus?: string | null; textTrueCitation?: string | null } | undefined): T & JudgmentIntegrity & { contentFormat: string } {
+  const identity = { citation: detail.citation, title: detail.title, court: detail.court, ...stored };
+  const check: JudgmentIntegrity = stored ? assessJudgmentIdentity(identity) : { textIntegrity: "unknown", textWarning: "Judgment identity could not be checked." };
+  if (check.identityConflict || !stored) return {
+    ...detail, title: "Judgment identity unverified", court: "", petitioner: null, respondent: null,
+    decisionDate: null, headnotes: null, fullText: "", formattedText: null, pdfUrl: null,
+    citations: { made: [], received: [] }, ...check, contentFormat: "unavailable",
+  } as T & JudgmentIntegrity & { contentFormat: string };
+  // Prefer the stored body if formatting introduced a different or uncheckable header.
+  const renderedCheck = assessJudgmentIdentity({ ...identity, opening: detail.fullText });
+  const fullText = (renderedCheck.identityConflict || (check.textIntegrity === "own" && renderedCheck.textIntegrity !== "own"))
+    ? String(stored.opening || "") : String(detail.fullText || stored.opening || "");
+  const pdfUrl = judgmentPdfUrl(detail.pdfUrl);
+  const hasText = fullText.trim().length >= 200;
   return {
-    textIntegrity: "unknown",
-    sharedWith: shared,
-    textWarning: `This judgment body is stored identically under other citations (${shared.join("; ")}), so it is not uniquely bound to the citation you asked for. Treat the text as unverified: do not attribute holdings, facts, or quotations from it to this citation without independent confirmation.`,
-  };
+    ...detail, ...check, fullText: hasText ? fullText : "", pdfUrl, headnotes: null,
+    formattedText: hasText && (detail as any).formattedText === fullText ? fullText : null,
+    citations: check.textIntegrity === "own" ? (detail as any).citations : { made: [], received: [] },
+    contentFormat: hasText ? (pdfUrl ? "text_and_pdf" : "text") : (pdfUrl ? "pdf" : "unavailable"),
+    textWarning: check.textIntegrity === "own" ? undefined : pdfUrl && !hasText
+      ? "PDF available. Searchable text and case identity have not been verified. Open the PDF to read this record."
+      : check.textWarning,
+  } as T & JudgmentIntegrity & { contentFormat: string };
+}
+
+/** Validate stored identity while preserving available text and PDF sources. */
+export async function protectJudgmentDetail<T extends {
+  id: string; citation: string; title: string; court: string; fullText: string; pdfUrl?: string | null;
+}>(detail: T): Promise<T & JudgmentIntegrity & { contentFormat: string }> {
+  const [stored] = await db.select({
+    textStatus: judgments.textStatus, textTrueCitation: judgments.textTrueCitation,
+    opening: judgments.fullText,
+  }).from(judgments).where(eq(judgments.id, detail.id)).limit(1);
+  return prepareJudgmentDetail(detail, stored);
 }
 

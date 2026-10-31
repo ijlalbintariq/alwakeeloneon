@@ -28,26 +28,18 @@ test("inferCitationType returns expected treatment", () => {
 
 test("processJudgment creates resolved and unresolved citation records", async () => {
   const extractor = new CitationExtractor();
-  const originalSearch = (storage as any).searchJudgmentsByCitation;
+  const originalResolve = extractor.resolveCitations;
   const originalCreateLinks = (storage as any).createCitationLinks;
   const originalCreateUnresolved = (storage as any).createUnresolvedCitations;
 
   const resolvedLinks: any[] = [];
   const unresolvedRows: any[] = [];
 
-  (storage as any).searchJudgmentsByCitation = async ({ year, journalCode, page }: any) => {
-    if (year === 2022 && journalCode === "PLD" && page === 100) {
-      return [{
-        id: "target-judgment-id",
-        citation: "2022 PLD 100",
-        title: "Sample Judgment",
-        court: "Supreme Court of Pakistan",
-        decisionDate: null,
-        pdfUrl: null,
-      }];
-    }
-    return [];
-  };
+  extractor.resolveCitations = async (citations) => citations.map((citation) => ({
+    ...citation,
+    citedJudgmentId: citation.year === 2022 && citation.journalCode === "PLD" && citation.page === 100
+      ? "target-judgment-id" : null,
+  }));
 
   (storage as any).createCitationLinks = async (entries: any[]) => {
     resolvedLinks.push(...entries);
@@ -72,7 +64,7 @@ test("processJudgment creates resolved and unresolved citation records", async (
     assert.equal(unresolvedRows.length, 1);
     assert.equal(unresolvedRows[0].rawCitation, "2021 SCMR 77");
   } finally {
-    (storage as any).searchJudgmentsByCitation = originalSearch;
+    extractor.resolveCitations = originalResolve;
     (storage as any).createCitationLinks = originalCreateLinks;
     (storage as any).createUnresolvedCitations = originalCreateUnresolved;
   }

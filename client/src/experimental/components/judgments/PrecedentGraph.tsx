@@ -70,7 +70,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
     setIsDownloadingCurrentPdf(true);
     toast({
       title: "Generating Court PDF...",
-      description: `Preparing official precedent PDF for "${currentCitation}".`,
+      description: `Preparing judgment PDF for "${currentCitation}".`,
     });
     try {
       const result = await generateAndDownloadCourtPdf({
@@ -78,8 +78,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
         title: currentTitle,
       });
       toast({
-        title: "Court PDF Downloaded",
-        description: `Saved "${result.filename}" successfully.`,
+        title: result.openedOriginal ? "Original PDF opened" : "Text PDF downloaded",
+        description: result.openedOriginal ? "Read or save the original file in the PDF viewer." : `Saved "${result.filename}" successfully.`,
       });
     } catch (err: any) {
       console.error("Failed to generate Court PDF:", err);
@@ -99,7 +99,7 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
     setDownloadingNodeId(String(node.id));
     toast({
       title: "Generating Precedent PDF...",
-      description: `Preparing official Court PDF for authority "${citation}".`,
+      description: `Preparing judgment PDF for authority "${citation}".`,
     });
     try {
       const result = await generateAndDownloadCourtPdf({
@@ -108,8 +108,8 @@ export const PrecedentGraph: React.FC<PrecedentGraphProps> = ({
         court: node.court || "Pakistani Court",
       });
       toast({
-        title: "Court PDF Downloaded",
-        description: `Saved "${result.filename}" successfully.`,
+        title: result.openedOriginal ? "Original PDF opened" : "Text PDF downloaded",
+        description: result.openedOriginal ? "Read or save the original file in the PDF viewer." : `Saved "${result.filename}" successfully.`,
       });
     } catch (err: any) {
       console.error("Failed to generate Court PDF:", err);

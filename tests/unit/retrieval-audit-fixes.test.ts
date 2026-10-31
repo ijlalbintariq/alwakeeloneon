@@ -49,7 +49,7 @@ test("plain-text citations outside the pool are removed; pool citations stay", a
 });
 
 // ── Context labels ──────────────────────────────────────────────────────────
-test("only rows with their own text are labelled verified; each block appears once", () => {
+test("judgment leads disclose the limits of internal checks and appear once", () => {
   const intent: any = { type: "case-law", topics: [], needsCaseLaw: true, needsStatutes: false, statuteRef: undefined };
   const row = (citation: string, textIntegrity: string) => ({
     row: { citation, court: "Lahore High Court", title: "A vs B", summary: "Bail refused.", sourceType: "judgment", textIntegrity },
@@ -62,7 +62,9 @@ test("only rows with their own text are labelled verified; each block appears on
     diagnostics: {} as any,
   } as any);
   const s = ctx.contextString;
-  assert.match(s, /2020 SCMR 1 \| COURT: Lahore High Court.*SOURCE: Verified Judgment DB/);
+  assert.match(s, /2020 SCMR 1 \| COURT: Lahore High Court.*internal identity check only; source not authenticated/);
+  assert.match(s, /Independently check each citation/);
+  assert.doesNotMatch(s, /VERIFIED JUDGMENTS|SOURCE: Verified Judgment DB/);
   assert.match(s, /2021 SCMR 2 .*SOURCE: Headnote only/);
   assert.match(s, /2022 SCMR 3 .*SOURCE: Judgment DB \(text not verified\)/);
   assert.equal(s.split("2020 SCMR 1").length - 1, 1, "each judgment is listed exactly once");

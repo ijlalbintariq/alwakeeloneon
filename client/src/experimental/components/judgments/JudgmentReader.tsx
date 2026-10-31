@@ -82,14 +82,14 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
     if (isDownloadingPdf) return;
     setIsDownloadingPdf(true);
     toast({
-      title: "Generating Court PDF...",
-      description: `Preparing official precedent PDF for "${judgment.citation}".`,
+      title: "Generating PDF from text...",
+      description: `Preparing a copy of database text for "${judgment.citation}".`,
     });
     try {
       const result = await generateAndDownloadCourtPdf(judgment);
       toast({
-        title: "Court PDF Downloaded",
-        description: `Saved "${result.filename}" successfully.`,
+        title: result.openedOriginal ? "Original PDF opened" : "Text PDF downloaded",
+        description: result.openedOriginal ? "Read or save the original file in the PDF viewer." : `Saved "${result.filename}" successfully.`,
       });
     } catch (err: any) {
       console.error("Court PDF download error:", err);
@@ -321,21 +321,23 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
             </button>
           )}
 
-          {/* Download Court PDF */}
+          {/* Download a copy generated from the available text. */}
+          {judgment.fullText && (
           <button
             type="button"
             onClick={handleDownloadCourtPdf}
             disabled={isDownloadingPdf}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white font-bold text-xs transition-colors shadow-xs disabled:opacity-50"
-            title="Download Official Court-Standard Precedent PDF"
+            title="Download database text as PDF"
           >
             {isDownloadingPdf ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <Download className="w-3.5 h-3.5" />
             )}
-            <span>Court PDF</span>
+            <span>Text as PDF</span>
           </button>
+          )}
 
           {/* Original External PDF */}
           {judgment.pdfUrl && (
@@ -346,12 +348,13 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0B131E] hover:bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] text-xs font-bold border border-[#E2E8F0] dark:border-[#1E2D44] transition-colors shadow-xs"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>Gazette</span>
+              <span>Original PDF</span>
             </a>
           )}
         </div>
       </div>
 
+      {judgment.textWarning && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{judgment.textWarning}</div>}
       {/* Prominent Overruled / Distinguished Alert Banner */}
       <OverruledAlertBanner
         overrulingCases={overrulingCases}
@@ -490,7 +493,12 @@ export const JudgmentReader: React.FC<JudgmentReaderProps> = ({
               }}
             >
               {paragraphs.length === 0 ? (
-                <p>Full text not available.</p>
+                judgment.pdfUrl ? (
+                  <div className="space-y-3">
+                    <p>Searchable text unavailable. Read the original PDF below or open its link.</p>
+                    <iframe title="Judgment PDF" src={judgment.pdfUrl} className="h-[75vh] w-full rounded-lg border" sandbox="allow-scripts allow-downloads" referrerPolicy="no-referrer" />
+                  </div>
+                ) : <p>Full text not available.</p>
               ) : (
                 paragraphs.map((para, idx) => {
                   const paraNum = idx + 1;

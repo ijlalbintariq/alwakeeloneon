@@ -88,7 +88,7 @@ function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSect
       : integrity === "headnote-only"
         ? " | SOURCE: Headnote only (full text unavailable)"
         : integrity === "own"
-          ? " | SOURCE: Verified Judgment DB"
+          ? " | SOURCE: Judgment DB (internal identity check only; source not authenticated)"
           : " | SOURCE: Judgment DB (text not verified)";
     // Ordinal rank label — the LLM is instructed to prefer lower ranks (higher relevance)
     const rankLabel = rank === 0 ? "[1] HIGHEST RELEVANCE" : `[${rank + 1}] RELEVANCE RANK ${rank + 1}`;
@@ -99,11 +99,11 @@ function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSect
 
   return {
     id: "verified-judgments",
-    heading: "=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===",
+    heading: "=== JUDGMENT LEADS FROM INTERNAL DATABASE ===",
     lines: [
-      "Use ONLY these citations. Copy each CITATION string EXACTLY. Format: **[CITATION STRING]** — explanation.",
+      "These are research leads, not authenticated judgments. Independently check each citation and proposition against the original judgment before relying on it.",
       "STRICT RULE: Cite ONLY the formal citation string, copied from this list. DO NOT write party names, case titles, or 'vs' anywhere in your text.",
-      "SOURCE labels: 'Verified Judgment DB' = the excerpt is from that judgment's own text. 'Headnote only' = only the reporter headnote is available; do not quote or characterise the judgment beyond it. 'Text not verified' = provenance unconfirmed; state the proposition cautiously and do not quote.",
+      "Internal identity checks compare stored metadata and text headers only; they do not authenticate the source or validate the excerpt. Do not quote unverified text as a judgment.",
       "FORBIDDEN: Do NOT use [I] [II] [A] (1) (2) placeholder notation. Every citation must be a real string from this list.",
       ...lines,
     ],
@@ -207,7 +207,7 @@ export function buildContext(
 ### Issue
 Identify the core legal issue.
 ### Rule
-State the law and cite the highest-ranked judgments from the VERIFIED JUDGMENTS section below. For EVERY citation, you MUST include a direct 1-2 sentence quote from the provided judgment snippet to prove your point. If the snippet is too short or garbled to quote accurately, cite the case but note 'full text not available in context'. Do not pick cases lower in the list merely because they are more famous; the FIRST entries are computed as the most directly on point.${hasStatutes ? "\nSTATUTORY TEXT MANDATE: Under '### Rule', you MUST FIRST present the verbatim statutory text of the provision in a markdown blockquote (> ...) with the exact section and full statute title, BEFORE presenting any case law. Do not paraphrase or alter the statutory wording." : ""}
+Use the judgment leads below for research only. Independently verify citations, propositions, and quotations against original judgments before relying on them. Do not present snippets as authenticated quotations.${hasStatutes ? "\nSTATUTORY TEXT MANDATE: Under '### Rule', you MUST FIRST present the verbatim statutory text of the provision in a markdown blockquote (> ...) with the exact section and full statute title, BEFORE presenting any case law. Do not paraphrase or alter the statutory wording." : ""}
 ### Application
 Apply the rule to the user's specific facts.
 ### Conclusion
@@ -220,7 +220,7 @@ For EACH cited case, provide a FULL SHORT SUMMARY using this EXACT format:
 **[CITATION STRING]** — *Court Name*
 **Facts:** Brief facts of the case.
 **Issue:** The legal question the court addressed.
-**Held:** What the court decided and a direct quote establishing the principle.
+**Held:** The holding only if independently verified against the original judgment; otherwise state that verification is needed.
 **Relevance:** How this case applies to the user's specific question.`);
   } else if (intent.needsCaseLaw) {
     // No results — inject explicit instruction to prevent hallucination

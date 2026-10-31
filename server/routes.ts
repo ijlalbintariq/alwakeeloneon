@@ -1,5 +1,5 @@
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
-import { resolveJudgment, assessJudgmentText, judgmentSourceUrl, extractCitations, verifyCitations } from "./citation-verify";
+import { resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, judgmentPdfUrl, judgmentSourceUrl, extractCitations, verifyCitations } from "./citation-verify";
 import { generateCourtJudgmentPdfBuffer } from "./judgment-pdf";
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
@@ -12855,22 +12855,29 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
       if (isUUID) {
         const judgment = await storage.getJudgmentDetail(id);
         if (!judgment) return res.status(404).json({ message: "Judgment not found" });
-        return res.json(judgment);
+        return res.json(await protectJudgmentDetail(judgment));
       }
 
       if (isNumeric) {
         // Numeric ID → look up in case_law table and return compatible response
         const caseLawEntry = await storage.getCaseLawById(Number(id));
         if (!caseLawEntry) return res.status(404).json({ message: "Case law entry not found" });
+        const linked = caseLawEntry.citation ? await resolveJudgment(caseLawEntry.citation, { id: judgments.id }) : undefined;
+        if (linked) {
+          const detail = await storage.getJudgmentDetail(linked.id);
+          if (detail) return res.json(await protectJudgmentDetail(detail));
+        }
 
         return res.json({
           id: caseLawEntry.id,
           citation: caseLawEntry.citation || "",
-          title: caseLawEntry.title || "",
-          court: caseLawEntry.court || "",
+          title: "Judgment identity unverified",
+          court: "",
           decisionDate: null,
-          headnotes: caseLawEntry.summary || "",
-          fullText: caseLawEntry.summary || "",
+          headnotes: null,
+          fullText: "",
+          textIntegrity: "unknown",
+          textWarning: "The index entry could not be matched to a judgment.",
           petitioner: null,
           respondent: null,
         });
@@ -12894,7 +12901,7 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
 
       if (foundJudgment) {
         const detail = await storage.getJudgmentDetail(foundJudgment.id);
-        if (detail) return res.json(detail);
+        if (detail) return res.json(await protectJudgmentDetail(detail));
       }
 
       // Look up in case_law table by citation or title
@@ -12914,11 +12921,13 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
         return res.json({
           id: foundCaseLaw.id,
           citation: foundCaseLaw.citation || cleanQuery,
-          title: foundCaseLaw.title || "Reported Precedent Authority",
-          court: foundCaseLaw.court || "Pakistani Court",
+          title: "Judgment identity unverified",
+          court: "",
           decisionDate: null,
-          headnotes: foundCaseLaw.summary || "",
-          fullText: foundCaseLaw.summary || "",
+          headnotes: null,
+          fullText: "",
+          textIntegrity: "unknown",
+          textWarning: "The index entry could not be matched to a judgment.",
           petitioner: null,
           respondent: null,
         });
@@ -12949,17 +12958,25 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
       if (!isUUID) return res.status(400).json({ message: "Invalid judgment ID format" });
 
-      // Check for cached summary and fetch judgment text in one query
+      // Validate before reading a cache or sending text to the model.
       const rows = await db.execute(
-        sql`SELECT ai_summary, headnotes, LEFT(full_text, 3000) AS full_text_head FROM judgments WHERE id = ${id}`
+        sql`SELECT ai_summary, citation_string AS citation, title, court_name_snapshot AS court,
+          text_status AS "textStatus", text_true_citation AS "textTrueCitation",
+          LEFT(full_text, 16000) AS opening, md5(COALESCE(full_text, '')) AS body_hash
+          FROM judgments WHERE id = ${id}`
       );
       const row = (rows as any).rows?.[0] ?? (rows as any)[0] ?? null;
       if (!row) return res.status(404).json({ message: "Judgment not found" });
 
-      // If we already have a cached summary, return it immediately
+      const integrity = assessJudgmentIdentity(row);
+      if (integrity.textIntegrity !== "own") return res.status(409).json({ message: integrity.textWarning, ...integrity });
+      const sourceHash = crypto.createHash("sha256").update(JSON.stringify([row.citation, row.title, row.court, row.body_hash])).digest("hex");
+      // Old summaries have no source binding and must be regenerated.
       if (row.ai_summary) {
-        const cached = typeof row.ai_summary === "string" ? JSON.parse(row.ai_summary) : row.ai_summary;
-        return res.json(cached);
+        try {
+          const cached = typeof row.ai_summary === "string" ? JSON.parse(row.ai_summary) : row.ai_summary;
+          if (cached.version === 2 && cached.sourceHash === sourceHash && cached.summary) return res.json(cached.summary);
+        } catch { /* A malformed cache is regenerated from validated text. */ }
       }
 
       // Check if OpenRouter is configured
@@ -12972,12 +12989,7 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
       const summaryAllowed = await checkUsageLimit(userId, "summarize", res);
       if (!summaryAllowed) return;
 
-      // Build the prompt from headnotes + first 3000 chars of full text
-      const headnotes = row.headnotes || "";
-      const fullTextHead = row.full_text_head || "";
-      const contextText = headnotes
-        ? `Headnotes:\n${headnotes}\n\nJudgment Text (first 3000 chars):\n${fullTextHead}`
-        : `Judgment Text (first 3000 chars):\n${fullTextHead}`;
+      const contextText = `Judgment text excerpt:\n${String(row.opening || "").slice(0, 16000)}`;
 
       const systemPrompt = `You are a Pakistani legal research assistant. Analyze the following judgment and return a JSON object with exactly these four fields:
 {
@@ -12986,6 +12998,7 @@ const [totalLinksResult] = await db.select({ cnt: count(citationLinks.id) }).fro
   "keyFindings": ["Finding 1", "Finding 2"],
   "significance": "Why this judgment matters (1-2 sentences)"
 }
+Use only this excerpt. State when the outcome or holding is not available; do not infer missing conclusions.
 Return ONLY the JSON object, no markdown fences or extra text.`;
 
       const { chatWithOpenRouter } = await import("./openrouter");
@@ -13019,7 +13032,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       // Cache the result in the ai_summary column
       try {
         await db.execute(
-          sql`UPDATE judgments SET ai_summary = ${JSON.stringify(summaryJson)}::jsonb WHERE id = ${id}`
+          sql`UPDATE judgments SET ai_summary = ${JSON.stringify({ version: 2, sourceHash, summary: summaryJson })}::jsonb WHERE id = ${id}`
         );
       } catch (cacheErr) {
         // Non-fatal — summary was generated, just couldn't cache it
@@ -13125,29 +13138,12 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       if (isNumeric) {
         const caseLawEntry = await storage.getCaseLawById(Number(id));
         if (!caseLawEntry) return res.status(404).json({ message: "Case law entry not found" });
-        const summaryText = caseLawEntry.summary || "";
-        const words = summaryText ? summaryText.trim().split(/\s+/).filter(Boolean).length : 0;
-        return res.json({
-          id: caseLawEntry.id,
-          citation: caseLawEntry.citation || "",
-          title: caseLawEntry.title || "Pakistani Court Precedent",
-          petitioner: null,
-          respondent: null,
-          court: caseLawEntry.court || "Pakistani Court",
-          decisionDate: null,
-          headnotes: caseLawEntry.summary || "",
-          previewText: summaryText,
-          previewWordCount: words,
-          totalWordCount: words,
-          isPreview: false,
-          isTruncated: false,
-          citations: { made: [], received: [] },
-          textIntegrity: "own",
-          textBelongsTo: null,
-        });
+        const linked = caseLawEntry.citation ? await resolveJudgment(caseLawEntry.citation, { id: judgments.id }) : undefined;
+        if (linked) targetId = String(linked.id);
+        else return res.json({ id: caseLawEntry.id, citation: caseLawEntry.citation || "", title: "Judgment identity unverified", court: "", headnotes: null, previewText: "", previewWordCount: 0, totalWordCount: 0, isPreview: false, isTruncated: false, citations: { made: [], received: [] }, textIntegrity: "unknown", textWarning: "The index entry could not be matched to a judgment.", textBelongsTo: null });
       }
 
-      if (!isUUID) {
+      if (!isUUID && !isNumeric) {
         const cleanQuery = id.replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/^extracted\s+/i, "").trim();
         const [foundJudgment] = await db
           .select({ id: judgments.id })
@@ -13178,24 +13174,23 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
             .limit(1);
 
           if (foundCaseLaw) {
-            const summaryText = foundCaseLaw.summary || "";
-            const words = summaryText ? summaryText.trim().split(/\s+/).filter(Boolean).length : 0;
             return res.json({
               id: foundCaseLaw.id,
               citation: foundCaseLaw.citation || cleanQuery,
-              title: foundCaseLaw.title || "Reported Precedent Authority",
+              title: "Judgment identity unverified",
               petitioner: null,
               respondent: null,
-              court: foundCaseLaw.court || "Pakistani Court",
+              court: "",
               decisionDate: null,
-              headnotes: foundCaseLaw.summary || "",
-              previewText: summaryText,
-              previewWordCount: words,
-              totalWordCount: words,
+              headnotes: null,
+              previewText: "",
+              previewWordCount: 0,
+              totalWordCount: 0,
               isPreview: false,
               isTruncated: false,
               citations: { made: [], received: [] },
-              textIntegrity: "own",
+              textIntegrity: "unknown",
+              textWarning: "The index entry could not be matched to a judgment.",
               textBelongsTo: null,
             });
           }
@@ -13204,25 +13199,17 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         }
       }
 
-      const judgment = await storage.getJudgmentDetail(targetId);
-      if (!judgment) return res.status(404).json({ message: "Judgment not found" });
+      const rawJudgment = await storage.getJudgmentDetail(targetId);
+      if (!rawJudgment) return res.status(404).json({ message: "Judgment not found" });
+      const judgment = await protectJudgmentDetail(rawJudgment);
+      const isMislabeled = judgment.textIntegrity === "mislabeled";
+      const owner = isMislabeled ? await findTextOwnerJudgment(judgment.belongsTo).catch(() => null) : null;
 
-      // A 'mislabeled' row holds another case's judgment. Serving that text under
-      // this citation is exactly what sent ChatGPT users to a Lahore High Court
-      // order labelled "2025 SCMR 969". Withhold it and point to the real owner.
-      const [provenance] = await db
-        .select({ textStatus: judgments.textStatus, textTrueCitation: judgments.textTrueCitation })
-        .from(judgments)
-        .where(eq(judgments.id, targetId))
-        .limit(1);
-      const isMislabeled = provenance?.textStatus === "mislabeled";
-      const owner = isMislabeled ? await findTextOwnerJudgment(provenance?.textTrueCitation).catch(() => null) : null;
-
-      const sourceText = isMislabeled ? "" : (judgment.formattedText || judgment.fullText || "");
+      const sourceText = judgment.fullText || "";
       const totalWords = sourceText ? sourceText.trim().split(/\s+/).filter(Boolean).length : 0;
 
       // Cache at the edge so repeat crawls don't hit DB.
-      res.setHeader("Cache-Control", "public, max-age=300, s-maxage=21600");
+      res.setHeader("Cache-Control", "no-store");
       res.json({
         id: judgment.id,
         citation: judgment.citation,
@@ -13238,9 +13225,12 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         isPreview: false,
         isTruncated: false,
         citations: judgment.citations || { made: [], received: [] },
-        textIntegrity: provenance?.textStatus || "unknown",
+        textIntegrity: judgment.textIntegrity,
+        textWarning: judgment.textWarning,
+        pdfUrl: judgment.pdfUrl,
+        contentFormat: judgment.contentFormat,
         textBelongsTo: isMislabeled
-          ? { citation: provenance?.textTrueCitation || null, id: owner?.id || null }
+          ? { citation: judgment.belongsTo || null, id: owner?.id || null }
           : null,
       });
     } catch (err) {
@@ -13270,22 +13260,14 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
             .where(eq(caseLaw.id, Number(id)))
             .limit(1);
           if (caseLawRow) {
-            const buf = generateCourtJudgmentPdfBuffer({
-              citation: caseLawRow.citation || `CaseLaw ${id}`,
-              title: caseLawRow.title || "Reported Judicial Authority",
-              court: caseLawRow.court || "Pakistani Court",
-              headnotes: caseLawRow.summary || "",
-              fullText: caseLawRow.summary || "",
-            });
-            const safeName = (caseLawRow.citation || `case_${id}`).replace(/[^a-zA-Z0-9]/g, "_");
-            res.setHeader("Content-Type", "application/pdf");
-            res.setHeader("Content-Disposition", `inline; filename="${safeName}_Court_Judgment.pdf"`);
-            return res.send(buf);
+            const linked = await resolveJudgment(caseLawRow.citation || "", { id: judgments.id });
+            if (!linked) return res.status(409).json({ message: "Judgment identity could not be confirmed" });
+            targetId = String(linked.id);
           }
         }
 
         const cleanQuery = id.replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/^extracted\s+/i, "").trim();
-        const [foundJudgment] = await db
+        const [foundJudgment] = targetId !== id ? [{ id: targetId }] : await db
           .select({ id: judgments.id })
           .from(judgments)
           .where(
@@ -13313,24 +13295,17 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
             .limit(1);
 
           if (foundCaseLaw) {
-            const buf = generateCourtJudgmentPdfBuffer({
-              citation: foundCaseLaw.citation || cleanQuery,
-              title: foundCaseLaw.title || "Reported Precedent Authority",
-              court: foundCaseLaw.court || "Pakistani Court",
-              headnotes: foundCaseLaw.summary || "",
-              fullText: foundCaseLaw.summary || "",
-            });
-            const safeName = (foundCaseLaw.citation || cleanQuery).replace(/[^a-zA-Z0-9]/g, "_");
-            res.setHeader("Content-Type", "application/pdf");
-            res.setHeader("Content-Disposition", `inline; filename="${safeName}_Court_Judgment.pdf"`);
-            return res.send(buf);
+            return res.status(409).json({ message: "Judgment identity could not be confirmed" });
           }
           return res.status(404).json({ message: "Judgment not found" });
         }
       }
 
-      const judgment = await storage.getJudgmentDetail(targetId);
-      if (!judgment) return res.status(404).json({ message: "Judgment not found" });
+      const rawJudgment = await storage.getJudgmentDetail(targetId);
+      if (!rawJudgment) return res.status(404).json({ message: "Judgment not found" });
+      const judgment = await protectJudgmentDetail(rawJudgment);
+      if (judgment.pdfUrl) return res.redirect(302, judgment.pdfUrl);
+      if (judgment.textIntegrity !== "own") return res.status(409).json({ message: judgment.textWarning });
 
       const buf = generateCourtJudgmentPdfBuffer({
         citation: judgment.citation,
@@ -19155,51 +19130,21 @@ The user has attached the following documents for your reference. Analyze them c
       const citation = String(req.query.citation || "").trim();
       if (!citation) return res.status(400).json({ message: "Citation is required" });
 
-      let fullText = "";
-      let source: string | null = null;
-
-      // 1. Direct lookup in judgments table
-      try {
-        const matchedJudgment = await db
-          .select({ fullText: judgments.fullText })
-          .from(judgments)
-          .where(eq(judgments.citationString, citation))
-          .limit(1)
-          .then((rows: any[]) => rows[0]);
-
-        if (matchedJudgment?.fullText) {
-          fullText = matchedJudgment.fullText;
-          source = "knowledge_vault";
-        }
-      } catch {}
-
-      // 2. Fallback: case_law source text
-      if (!fullText) {
-        try {
-          const parsedCitation = parseCaseLawCitationQuery(citation);
-          const candidates = await storage.searchCaseLaw(citation, 3, {
-            year: parsedCitation?.year,
-            report: parsedCitation?.report,
-            page: parsedCitation?.page,
-            parsedCitation,
-            sort: "relevance",
-            includeSourceContentSearch: false,
-          }).catch(() => [] as CaseLaw[]);
-
-          for (const row of candidates) {
-            if (caseCitationMatches(citation, row.citation)) {
-              const text = await loadCaseLawSourceText(row, userId, { includeMetadataFallback: false });
-              if (text) {
-                fullText = text;
-                source = "knowledge_vault";
-                break;
-              }
-            }
-          }
-        } catch {}
+      const matched = await resolveJudgment(citation, { id: judgments.id });
+      if (!matched) return res.status(404).json({ message: "Judgment not found" });
+      const raw = await storage.getJudgmentDetail(String(matched.id));
+      if (!raw) return res.status(404).json({ message: "Judgment not found" });
+      const detail = await protectJudgmentDetail(raw);
+      if (detail.contentFormat === "unavailable") {
+        return res.status(409).json({ message: detail.textWarning, textIntegrity: detail.textIntegrity, fullText: null });
       }
-
-      res.json({ fullText: fullText || null, source });
+      res.json({
+        fullText: detail.fullText || null,
+        source: detail.fullText ? "knowledge_vault" : null,
+        citation: detail.citation, title: detail.title,
+        pdfUrl: detail.pdfUrl, contentFormat: detail.contentFormat,
+        textIntegrity: detail.textIntegrity, textWarning: detail.textWarning,
+      });
     } catch (err) {
       console.error("Error fetching judgment text:", err);
       res.status(500).json({ message: "Failed to fetch judgment text" });
@@ -19213,261 +19158,33 @@ The user has attached the following documents for your reference. Analyze them c
       const allowed = await checkUsageLimit(userId, "summarize", res);
       if (!allowed) return;
 
-      const { citation, title, court, summary: briefSummary, id } = req.body as {
-        citation: string;
-        title: string;
-        court?: string;
-        summary?: string;
-        id?: string | number;
-      };
-
-      if (!citation && !title && !id) {
-        return res.status(400).json({ message: "Citation, title, or ID is required" });
+      const { citation, id } = req.body as { citation?: string; id?: string | number };
+      let targetId = String(id || "").trim();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+      if (!isUuid) {
+        const indexRow = /^\d+$/.test(targetId) ? await storage.getCaseLawById(Number(targetId)) : null;
+        const resolved = await resolveJudgment(indexRow?.citation || citation || targetId, { id: judgments.id });
+        if (!resolved) return res.status(404).json({ message: "Judgment not found" });
+        targetId = String(resolved.id);
       }
+      const raw = await storage.getJudgmentDetail(targetId);
+      if (!raw) return res.status(404).json({ message: "Judgment not found" });
+      const detail = await protectJudgmentDetail(raw);
+      if (detail.textIntegrity !== "own") return res.status(409).json({ message: detail.textWarning, textIntegrity: detail.textIntegrity, pdfUrl: detail.pdfUrl });
 
-      const searchTerm = citation || title || String(id);
-
-      // Fast path: single DB lookup to find the matching case_law row.
-      // No RAG pipeline (gatherKnowledgeContextV2 added 2-5s for no benefit here).
-      // No fallback github/admin searches (sequential, slow).
-      const parsedLookupCitation = parseCaseLawCitationQuery(citation || searchTerm);
-      const candidateRows = await storage.searchCaseLaw(searchTerm, 5, {
-        year: parsedLookupCitation?.year,
-        report: parsedLookupCitation?.report,
-        page: parsedLookupCitation?.page,
-        parsedCitation: parsedLookupCitation,
-        sort: "relevance",
-        includeSourceContentSearch: false,
-      }).catch(() => [] as CaseLaw[]);
-
-      let fullText = "";
-      let isVerified = false;
-
-      // 1. Direct lookup in the primary judgments table by ID or citation string to base analysis on full text
-      if (id || citation) {
-        try {
-          let query;
-          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ""));
-          
-          if (isUUID) {
-            query = eq(judgments.id, String(id));
-          } else if (parsedLookupCitation?.year && parsedLookupCitation?.report && parsedLookupCitation?.page) {
-            // Reconstruct the standardized format stored in judgments (e.g. "2017 PLJ 172")
-            const stdCitation = `${parsedLookupCitation.year} ${parsedLookupCitation.report} ${parsedLookupCitation.page}`;
-            query = or(
-              eq(judgments.citationString, stdCitation),
-              eq(judgments.citationString, citation?.trim() || ""),
-              ilike(judgments.citationString, `%${parsedLookupCitation.year}%${parsedLookupCitation.report}%${parsedLookupCitation.page}%`)
-            );
-          } else {
-            query = eq(judgments.citationString, citation?.trim() || "");
-          }
-            
-          const matchedJudgment = await db
-            .select({ fullText: judgments.fullText })
-            .from(judgments)
-            .where(query)
-            .limit(1)
-            .then((rows: any[]) => rows[0]);
-          
-          if (matchedJudgment?.fullText) {
-            fullText = matchedJudgment.fullText;
-            isVerified = true;
-          }
-        } catch (e) {
-          console.error("Direct judgments lookup failed:", e);
-        }
-      }
-
-      // 2. Fallback to case_law lookup if full text not found in judgments table
-      if (!fullText) {
-        try {
-          const normalizedTitleForMatch = normalizeTextForMatch(title || "");
-          let bestRow: CaseLaw | null = null;
-          let bestScore = -1;
-          for (const row of candidateRows) {
-            let score = scoreCaseLawTextMatch(row, searchTerm);
-            if (citation && caseCitationMatches(citation, row.citation)) score += 120;
-            if (normalizedTitleForMatch) {
-              const rowTitleNorm = normalizeTextForMatch(row.title || "");
-              if (rowTitleNorm === normalizedTitleForMatch) score += 80;
-              else if (rowTitleNorm.includes(normalizedTitleForMatch) || normalizedTitleForMatch.includes(rowTitleNorm)) score += 40;
-            }
-            if (score > bestScore) {
-              bestScore = score;
-              bestRow = row;
-            }
-          }
-          const MIN_SOURCE_MATCH_SCORE = 30;
-          if (bestRow && bestScore >= MIN_SOURCE_MATCH_SCORE) {
-            fullText = await loadCaseLawSourceText(bestRow, userId, { includeMetadataFallback: false });
-            if (fullText) {
-              isVerified = true;
-            }
-          }
-        } catch {}
-      }
-
-      // Use headnote/summary from the best matching row as fallback context
-      const knowledgeContext = "";
-
-      const hasSourceText = !!fullText;
-      const uniqueKey = `${citation}::${title}::${court || ""}`;
-      const cacheKey = `judgment-summary-v4::${uniqueKey}`;
-      const { content: aiSummary, fromCache } = await getCachedOrCall("judgment-summary", cacheKey, async () => {
-        const contextInfo = briefSummary ? `\nBrief Summary: ${briefSummary}` : "";
-        const courtInfo = court ? `\nCourt: ${court}` : "";
-
-        let sysInstruction: string;
-        let userInput: string;
-
-        if (hasSourceText) {
-          sysInstruction = `You are Al Wakeelo, a Pakistani legal research assistant. Today's date is ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}.
-
-You have been provided with the ACTUAL FULL TEXT of a Pakistani court judgment from our verified Knowledge Vault. Your task is to analyze THIS SPECIFIC JUDGMENT based EXCLUSIVELY on the text provided below.
-
-CRITICAL RULES:
-- Base your entire analysis ONLY on the judgment text provided below
-- Do NOT invent, assume, or fabricate ANY details not present in the text
-- Do NOT confuse this case with any other case
-- If something is not mentioned in the provided text, say "Not mentioned in the judgment text"
-
-Provide a detailed analysis using this structure:
-
-### Case Overview
-- Citation, court, bench composition, date (ONLY from the text)
-
-### Facts of the Case
-- Facts as stated in the judgment text
-
-### Legal Issues
-- Issues as framed by the court in the text
-
-### Arguments Presented
-- Arguments as recorded in the judgment
-
-### Court's Analysis & Reasoning
-- The court's actual reasoning from the text, statutory provisions applied, precedents cited BY the court
-
-### Judgment & Order
-- The actual order/decision as stated in the text
-
-### Key Legal Principles
-- Ratio decidendi as established in this judgment
-
-### Practical Implications
-- What practitioners should note from this specific ruling
-
-NO EMOJIS. Be precise. Only state what the judgment text actually says.${knowledgeContext}`;
-
-          userInput = `Analyze this judgment based EXCLUSIVELY on the full text provided:\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}\n\n===== FULL JUDGMENT TEXT (VERIFIED SOURCE) =====\n${extractSmartJudgmentExcerpt(fullText!)}\n===== END OF JUDGMENT TEXT =====`;
-        } else if (briefSummary && briefSummary.trim().length > 50) {
-          // Tier 2: We have the headnote/summary from the database — use it as semi-verified source
-          sysInstruction = `You are Al Wakeelo, a Pakistani legal research assistant. Today's date is ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}.
-
-You have been provided with the HEADNOTE / SUMMARY of a Pakistani court judgment from our database. While the full judgment text is not available, the headnote contains the key legal points and holding of the case.
-
-YOUR TASK: Provide a focused legal analysis based on the headnote/summary provided below. You may supplement with your knowledge of Pakistani law, but clearly distinguish between what comes from the headnote and what is your supplementary analysis.
-
-RULES:
-- Start by analyzing the specific legal points from the provided headnote
-- Identify the applicable statutory provisions mentioned or implied
-- Discuss the legal principles established
-- You may add relevant context from established Pakistani law, but label it as "Supplementary Analysis"
-- Do NOT invent specific case facts, arguments, or reasoning not present in the headnote
-- Do NOT pretend you have the full judgment text
-- STAY STRICTLY within the relevant area of law
-
-Use this structure:
-
-### Case Summary (from Database Headnote)
-- Key legal points as stated in the headnote
-
-### Applicable Statutory Framework
-- Statutes and sections directly relevant to this case
-
-### Legal Principles Established
-- Ratio decidendi and legal principles from the headnote
-
-### Supplementary Analysis
-- Additional context from established Pakistani law on this topic
-- Related landmark judgments you are confident about
-
-### Practical Implications
-- What practitioners should note
-
-NO EMOJIS. Be precise.${knowledgeContext}`;
-
-          userInput = `Analyze this judgment based on its database headnote/summary:\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}\n\n===== CASE HEADNOTE (FROM DATABASE) =====\n${briefSummary}\n===== END OF HEADNOTE =====`;
-        } else {
-          // Tier 3: No source text and no meaningful headnote — general area-of-law analysis
-          sysInstruction = `You are Al Wakeelo, a Pakistani legal research assistant. Today's date is ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}.
-
-IMPORTANT: You do NOT have the actual text of this judgment. You only have the citation and title. You must be COMPLETELY HONEST about this limitation.
-
-YOUR TASK: Provide a legal context analysis around the TOPIC of this judgment. Do NOT fabricate or invent specific case facts, parties, arguments, or court reasoning that you do not actually know.
-
-WHAT YOU MUST DO:
-1. Start with a clear disclaimer that this is a general legal analysis based on the topic/citation, NOT an analysis of the actual judgment text
-2. Explain the relevant area of Pakistani law that this judgment relates to
-3. Discuss the applicable statutory provisions
-4. Mention well-known landmark judgments in this area of law (only ones you are confident about)
-5. Explain general legal principles that courts typically apply in such matters
-
-WHAT YOU MUST NOT DO:
-- Do NOT invent specific facts of this case
-- Do NOT fabricate party names, dates, or arguments
-- Do NOT make up what the court held or ordered
-- Do NOT pretend you have read this judgment
-- Do NOT mix in details from unrelated cases or different areas of law (e.g., do NOT reference family law cases when analyzing criminal law matters, do NOT reference murder cases when analyzing civil matters)
-- STAY STRICTLY within the relevant area of law indicated by the citation and title
-
-Use this structure:
-
-### Disclaimer
-- State clearly: "Full judgment text is not available in our Knowledge Vault. The following is a general legal analysis of the topic area this judgment relates to, based on established Pakistani law."
-
-### Relevant Area of Law
-- Identify the specific area of Pakistani law (criminal, civil, constitutional, family, etc.)
-- Explain the legal framework applicable to this specific topic ONLY
-
-### Applicable Statutory Provisions
-- List the specific statutes and sections relevant to THIS topic only
-- Brief explanation of each provision
-
-### Established Legal Principles
-- General principles Pakistani courts have established in THIS specific area of law
-- Only cite landmark cases you are genuinely confident about and that are directly relevant to this topic
-
-### General Legal Position
-- What is the settled legal position on this topic in Pakistani law
-- Any notable developments or trends
-
-NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference unrelated areas of law.${knowledgeContext}`;
-
-          userInput = `Provide a general legal analysis around the TOPIC of this judgment. Remember: you do NOT have the actual judgment text, so do NOT fabricate case-specific details. Stay strictly within the relevant area of law.\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}`;
-        }
-
-        // Use DeepSeek-chat directly — fastest model, skips the multi-model
-        // fallback chain in callStandardAI which adds latency trying slower models.
+      const sourceHash = crypto.createHash("sha256").update(JSON.stringify([detail.id, detail.citation, detail.title, detail.court, detail.fullText])).digest("hex");
+      const cacheKey = `judgment-summary-v5::${sourceHash}`;
+      const { content: aiSummary } = await getCachedOrCall("judgment-summary", cacheKey, async () => {
+        const sysInstruction = "Analyze only the supplied judgment excerpt. Describe its facts, issues, reasoning and outcome only when present. State when the excerpt is insufficient. Never supplement missing case facts or holdings from memory. Internal identity checks do not authenticate the original source.";
+        const userInput = `Citation: ${detail.citation}\nTitle: ${detail.title}\nCourt: ${detail.court}\n\nJudgment excerpt:\n${extractSmartJudgmentExcerpt(detail.fullText)}`;
         const aiResult = await chatWithDeepSeek({
-          messages: [
-            { role: "system", content: sysInstruction },
-            { role: "user", content: userInput },
-          ],
-          maxTokens: TOKEN_LIMITS["judgment-summary"],
-          temperature: 0.3,
+          messages: [{ role: "system", content: sysInstruction }, { role: "user", content: userInput }],
+          maxTokens: TOKEN_LIMITS["judgment-summary"], temperature: 0.3,
         });
-        await logUsageCost(userId, "summarize", aiResult.model, sysInstruction + userInput, aiResult.content, { userQuery: title || citation || "" });
+        await logUsageCost(userId, "summarize", aiResult.model, sysInstruction + userInput, aiResult.content, { userQuery: detail.citation });
         return aiResult.content;
       });
-
-      res.json({
-        summary: aiSummary,
-        fullText: fullText || null,
-        source: hasSourceText ? "knowledge_vault" : null,
-        verified: hasSourceText,
-      });
+      res.json({ summary: aiSummary, fullText: detail.fullText, source: "knowledge_vault", verified: true, verificationScope: "internal_identity_only", sourceVerified: false });
     } catch (err) {
       const detail = getErrorMessage(err);
       console.error("Error generating judgment summary:", detail, err);
@@ -24567,6 +24284,8 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         decisionDate: judgments.decisionDate,
         textStatus: judgments.textStatus,
         textTrueCitation: judgments.textTrueCitation,
+        opening: sql<string>`left(${judgments.fullText}, 16000)`,
+        pdfUrl: judgments.pdfUrl,
         textLen: sql<number>`length(${judgments.fullText})`,
       };
 
@@ -24578,10 +24297,6 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
           mapped.push({
             id: `caseLaw:${j.id}`,
             citation: j.citation,
-            court: j.court,
-            title: j.title,
-            summary: j.summary,
-            decisionYear: j.citationYear,
             verified: false,
             warning: "This citation could not be matched to any judgment record and may not exist. Do not cite it.",
           });
@@ -24590,44 +24305,43 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         if (seenJudgmentIds.has(String(v.id))) continue;
         seenJudgmentIds.add(String(v.id));
 
-        const hasBody = (v.textLen ?? 0) >= 200;
-        if (v.textStatus === "own" && hasBody) {
+        const check = assessJudgmentIdentity(v);
+        if (check.textIntegrity === "own") {
           mapped.push({
             id: v.id,
             citation: v.citation,
-            court: v.court || j.court,
-            title: v.title || j.title,
-            summary: j.summary,
-            decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : j.citationYear,
+            court: v.court || undefined,
+            title: v.title || undefined,
+            summary: extractSubstantiveSummary(v.opening || "") || undefined,
+            decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : undefined,
             verified: true,
+            verificationScope: "internal_identity_only",
+            sourceVerified: false,
             textIntegrity: "own",
+            contentFormat: judgmentPdfUrl(v.pdfUrl) ? "text_and_pdf" : "text",
+            pdfUrl: judgmentPdfUrl(v.pdfUrl) || `${(process.env.PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "")}/api/public/judgments/${v.id}/pdf`,
             sourceUrl: judgmentSourceUrl(String(v.id)),
           });
           continue;
         }
         // Citation is real, but the title and summary describe another case.
-        const belongsTo = String(v.textTrueCitation || "").trim();
         mapped.push({
           id: v.id,
           citation: v.citation,
-          court: v.court || undefined,
-          decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : undefined,
           verified: false,
-          textIntegrity: !hasBody ? "missing" : v.textStatus === "mislabeled" ? "mislabeled" : "unknown",
-          belongsTo: belongsTo || undefined,
-          warning: !hasBody
-            ? "This citation is real, but no judgment text is stored for it. Its title and summary are withheld. Do not cite it."
-            : belongsTo
-              ? `This citation is real, but the text stored under it is the judgment reported as ${belongsTo}. Its title and summary are withheld. Do not cite this record's holdings.`
-              : "This citation is real, but the text stored under it could not be confirmed to be its own. Its title and summary are withheld.",
+          textIntegrity: check.textIntegrity,
+          belongsTo: check.belongsTo,
+          warning: check.textWarning,
+          pdfUrl: !check.identityConflict ? judgmentPdfUrl(v.pdfUrl) || undefined : undefined,
+          contentFormat: check.identityConflict ? "unavailable" : (String(v.opening || "").trim().length >= 200 ? (judgmentPdfUrl(v.pdfUrl) ? "text_and_pdf" : "text") : (judgmentPdfUrl(v.pdfUrl) ? "pdf" : "unavailable")),
         });
       }
 
-      const includeUnverified = req.body?.includeUnverified === true;
+      const includeUnverified = req.body?.includeUnverified !== false;
       const kept = includeUnverified ? mapped : mapped.filter((r) => r.verified);
 
       res.json({
-        instruction: "To read the full text of any judgment, call /api/mcp/get_judgment with the judgment 'id'. Do not scrape sourceUrl with web tools.",
+        instruction: "Verified means internal identity consistency only; the original source has not been authenticated. Independently verify every citation and proposition. Read available text via /api/mcp/get_judgment.",
         verifiedOnly: !includeUnverified,
         droppedUnverified: mapped.length - kept.length,
         judgments: kept,
@@ -24723,12 +24437,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
               return res.json({
                 id: `caseLaw:${caseLawFallbackId}`,
                 citation: row.citation,
-                title: row.title,
-                courtName: row.court || "Pakistani Court",
-                headnotes: row.summary || undefined,
                 sourceTable: "case_law",
                 textIntegrity: "missing",
-                dataNote: "Full judgment text is not available for this record. The citation, title, court and summary shown are from the case_law index and could not be matched to a judgment record. Verify the citation independently before using it in a court filing.",
+                dataNote: "The index entry could not be matched to a judgment. Title and summary are withheld.",
               });
             }
           }
@@ -24747,29 +24458,24 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       // Around 20% of judgments hold a body that belongs to a different case.
       // Say so rather than returning it as this citation's judgment.
-      const [provenance] = await db.select({
-        textStatus: judgments.textStatus,
-        textTrueCitation: judgments.textTrueCitation,
-      })
-        .from(judgments)
-        .where(eq(judgments.id, detail.id))
-        .limit(1);
-
-      const textCheck = await assessJudgmentText(
-        detail.id, detail.fullText, provenance?.textStatus, provenance?.textTrueCitation);
+      const textCheck = await protectJudgmentDetail(detail);
+      const safe = textCheck.contentFormat !== "unavailable";
 
       res.json({
         id: detail.id,
         citation: detail.citation,
-        title: detail.title,
-        courtName: detail.court || "Pakistani Court",
-        decisionDate: detail.decisionDate,
-        headnotes: detail.headnotes,
-        fullText: detail.fullText,
-        pdfUrl: detail.pdfUrl || `${(process.env.PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "")}/api/public/judgments/${detail.id}/pdf`,
+        title: safe ? textCheck.title : undefined,
+        courtName: safe ? textCheck.court || undefined : undefined,
+        decisionDate: safe ? detail.decisionDate : undefined,
+        fullText: textCheck.fullText || undefined,
+        pdfUrl: textCheck.pdfUrl || (textCheck.textIntegrity === "own" ? `${(process.env.PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "")}/api/public/judgments/${detail.id}/pdf` : undefined),
+        pdfKind: textCheck.pdfUrl ? "original" : textCheck.textIntegrity === "own" ? "generated" : undefined,
+        contentFormat: textCheck.contentFormat,
         sourceUrl: judgmentSourceUrl(detail.id),
-        fileNote: "Downloadable court-formatted PDF is available at pdfUrl; sourceUrl opens the judgment on AlWakeelo.",
-        ...textCheck,
+        fileNote: safe ? "Check the original court source independently; sourceUrl opens the AlWakeelo reader." : undefined,
+        textIntegrity: textCheck.textIntegrity,
+        textWarning: textCheck.textWarning,
+        belongsTo: textCheck.belongsTo,
       });
     } catch (err) {
       console.error("[MCP] Get judgment failed:", err);
@@ -24799,16 +24505,14 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const verifiedMap = await verifyCitations(rawCitations);
       const citations = rawCitations.map((c) => ({
         citation: c,
-        verified: verifiedMap.has(c),
+        verified: false,
         judgmentId: verifiedMap.get(c),
       }));
       const unverified = citations.filter((c) => !c.verified).map((c) => c.citation);
 
       const banner = rawCitations.length === 0
         ? "[CITATION VERIFICATION] No citations detected in this context. Do not introduce any citation of your own."
-        : unverified.length === 0
-          ? `[CITATION VERIFICATION] All ${citations.length} citation(s) in this context were matched to real judgment records and are safe to cite.`
-          : `[CITATION VERIFICATION] ${unverified.length} of ${citations.length} citation(s) in this context could NOT be matched to any judgment record and may not exist: ${unverified.join("; ")}. DO NOT cite these. Use the material descriptively without a citation, or verify via search_case_law / get_judgment first.`;
+        : `[CITATION VERIFICATION] Context excerpts are unverified. Do not attribute facts or holdings from this context to any citation. Inspect the corresponding judgment and independently verify its source.`;
 
       // Update key last used
       db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});

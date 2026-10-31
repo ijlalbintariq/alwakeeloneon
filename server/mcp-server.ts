@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 
-import { storage } from "./storage";
+import { storage, extractSubstantiveSummary, getValidatedJudgmentIntegrity } from "./storage";
 import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
@@ -15,7 +15,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
 import {
-  judgmentSourceUrl, resolveJudgment, assessJudgmentText,
+  judgmentSourceUrl, resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, prepareJudgmentDetail, judgmentPdfUrl,
   extractCitations, verifyCitations,
 } from "./citation-verify";
 import { judgeCaseLinks, citationLinks, caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
@@ -160,11 +160,11 @@ async function callMcpDraftingAI(
 export function registerAllTools(server: McpServer) {
   // 1. Search Case Law
   server.registerTool("search_case_law", {
-    description: "Search Pakistani judgments and case law using the exact AlWakeelo hybrid search pipeline (Voyage Law-2, reranker, and court boosts). By default ONLY returns fully verified results: the citation is confirmed to exist in the judgments table AND that judgment's stored text is confirmed to be its own, so citation/title/court/year are authoritative. A hit whose citation is real but whose stored text belongs to a different case is returned with verified=false, textIntegrity='mislabeled', a belongsTo citation, and its title and summary withheld. ASSISTANT INSTRUCTION: Only cite records returned by this tool with verified=true. Never reconstruct, complete, or guess a citation yourself. Never present the title or holdings of a record whose textIntegrity is not 'own'. If droppedUnverified > 0, tell the user some hits were withheld and why. To retrieve the complete judgment full text, headnotes, and analysis for any record, call the 'get_judgment' tool using the judgment's 'id'. Never attempt to browse, scrape, or fetch 'sourceUrl' via web tools; 'sourceUrl' is exclusively a human-facing reference link for markdown output.",
+    description: "Search Pakistani case law. Verified results passed internal title, citation and body-header consistency checks; these checks do not authenticate the original judgment. Independently verify the source before relying on it. Unconfirmed titles and summaries are withheld. Use get_judgment for available text.",
     inputSchema: {
       query: z.string().describe("The search query containing legal topics or case details"),
       limit: z.number().optional().default(5).describe("Maximum number of records to return (default 5, max 10)"),
-      includeUnverified: z.boolean().optional().default(false).describe("Include index-only hits whose citation does NOT resolve to a real judgment. Default false. These are NOT safe to cite in court filings."),
+      includeUnverified: z.boolean().optional().default(true).describe("Include available PDF and text records with explicit verification warnings. Set false to require internal identity checks."),
     },
     outputSchema: {
       version: z.string(),
@@ -187,6 +187,9 @@ export function registerAllTools(server: McpServer) {
         decisionYear: z.number().optional(),
         sourceTable: z.string().optional(),
         verified: z.boolean(),
+        verificationScope: z.string().optional(),
+        sourceVerified: z.boolean().optional(),
+        contentFormat: z.string().optional(),
         textIntegrity: z.string().optional(),
         belongsTo: z.string().optional(),
         warning: z.string().optional(),
@@ -241,6 +244,7 @@ export function registerAllTools(server: McpServer) {
       pdfUrl: judgments.pdfUrl,
       textStatus: judgments.textStatus,
       textTrueCitation: judgments.textTrueCitation,
+      opening: sql<string>`left(${judgments.fullText}, 16000)`,
       // length only: computed server-side, so the body is never transferred
       textLen: sql<number>`length(${judgments.fullText})`,
     };
@@ -254,6 +258,7 @@ export function registerAllTools(server: McpServer) {
       textStatus: string | null;
       textTrueCitation: string | null;
       textLen: number | null;
+      opening: string | null;
     };
     const verified = new Map<number, VerifiedRow>();
 
@@ -303,28 +308,20 @@ export function registerAllTools(server: McpServer) {
         // residue such as repeated "CamScanner". Those were labelled 'own'
         // because nothing else shares their text, which is true but useless:
         // there is no judgment to read, so the record is not citable either.
-        const hasBody = (v.textLen ?? 0) >= 200;
-        const ownText = v.textStatus === "own" && hasBody;
+        const check = assessJudgmentIdentity(v);
+        const ownText = check.textIntegrity === "own";
         if (!ownText) {
-          const belongsTo = String(v.textTrueCitation || "").trim();
-          const integrity = !hasBody ? "missing"
-            : v.textStatus === "mislabeled" ? "mislabeled"
-            : "unknown";
-          const warning = integrity === "missing"
-            ? "This citation is real, but no judgment text is stored for it. Its title and summary are withheld. Do not cite it or describe its holdings, and do not reconstruct the judgment from memory."
-            : belongsTo
-              ? `This citation is real, but the text stored under it is the judgment reported as ${belongsTo}. Its title and summary describe that other case and are withheld here. Do not cite this record's holdings.`
-              : "This citation is real, but the text stored under it could not be confirmed to be its own. Its title and summary are withheld. Do not cite this record's holdings.";
+          const pdfUrl = !check.identityConflict ? judgmentPdfUrl(v.pdfUrl) : null;
           return {
             id: v.id,
             citation: v.citation || String(j.citation || ""),
-            court: v.court || undefined,
-            decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : undefined,
             sourceTable: "judgments",
             verified: false,
-            textIntegrity: integrity,
-            belongsTo: integrity === "missing" ? undefined : (belongsTo || undefined),
-            warning,
+            textIntegrity: check.textIntegrity,
+            belongsTo: check.belongsTo,
+            warning: check.textWarning,
+            pdfUrl: pdfUrl || undefined,
+            contentFormat: check.identityConflict ? "unavailable" : (v.opening && v.opening.trim().length >= 200 ? (pdfUrl ? "text_and_pdf" : "text") : (pdfUrl ? "pdf" : "unavailable")),
             sourceUrl: judgmentSourceUrl(v.id),
           };
         }
@@ -333,28 +330,27 @@ export function registerAllTools(server: McpServer) {
           // LLM-extracted case_law row.
           id: v.id,
           citation: v.citation || String(j.citation || ""),
-          court: v.court || j.court || undefined,
-          title: v.title || j.title || undefined,
-          summary: j.summary,
-          snippet: (j.summary || "").slice(0, 500),
-          decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : j.citationYear,
+          court: v.court || undefined,
+          title: v.title || undefined,
+          summary: extractSubstantiveSummary(v.opening || "") || undefined,
+          snippet: extractSubstantiveSummary(v.opening || "").slice(0, 500) || undefined,
+          decisionYear: v.decisionDate instanceof Date ? v.decisionDate.getFullYear() : undefined,
           sourceTable: "judgments",
           verified: true,
+          verificationScope: "internal_identity_only",
+          sourceVerified: false,
           textIntegrity: "own",
-          pdfUrl: v.pdfUrl || `${PUBLIC_SITE}/api/public/judgments/${v.id}/pdf`,
+          contentFormat: judgmentPdfUrl(v.pdfUrl) ? "text_and_pdf" : "text",
+          pdfUrl: judgmentPdfUrl(v.pdfUrl) || `${PUBLIC_SITE}/api/public/judgments/${v.id}/pdf`,
           sourceUrl: judgmentSourceUrl(v.id),
         };
       }
       return {
         id: `caseLaw:${j.id}`,
         citation: String(j.citation || ""),
-        court: j.court,
-        title: j.title,
-        summary: j.summary,
-        snippet: (j.summary || "").slice(0, 500),
-        decisionYear: j.citationYear,
         sourceTable: "case_law",
         verified: false,
+        warning: "The citation and case identity could not be confirmed. Title and summary are withheld.",
       };
     });
 
@@ -384,7 +380,7 @@ export function registerAllTools(server: McpServer) {
       note: droppedUnverified > 0
         ? `${droppedUnverified} hit(s) were withheld: either the citation could not be matched to a real judgment record, or the judgment's stored text is not its own and so its title and summary describe a different case. Do not cite them. Re-run with includeUnverified=true to inspect them as leads only.`
         : undefined,
-      instruction: "To read the complete text of any judgment, call the 'get_judgment' tool using its 'id'. Do not attempt to scrape or fetch 'sourceUrl' via web tools.",
+      instruction: "Verified means internal identity consistency only; the original source has not been authenticated. Independently verify every citation and proposition. To read available text, call get_judgment using its id.",
       judgments: keptRows,
     };
 
@@ -472,7 +468,7 @@ export function registerAllTools(server: McpServer) {
 
   // 3. Get Judgment Detail
   server.registerTool("get_judgment", {
-    description: "Retrieve the full text, headnotes, and court PDF download of a specific judgment by its unique UUID, citation string, or caseLaw:N ID from search results. When sourceTable is 'case_law', full text may not be available. ASSISTANT INSTRUCTION: Use ONLY the text this tool returns; never supply a judgment body, holding, or quotation from memory. textIntegrity is one of 'own' (safe), 'mislabeled', 'unknown' or 'missing'. If 'textIntegrity' is 'mislabeled', the stored body is a DIFFERENT case - the one named in 'belongsTo' - so do not present it as this citation's judgment; tell the user and offer to fetch 'belongsTo' instead. If 'textIntegrity' is 'unknown', the stored body is not uniquely bound to this citation - say so and do not attribute its contents to the citation. If 'textIntegrity' is 'missing', state that no judgment text is stored. To provide the official Court PDF file to the user, link to 'pdfUrl'. To open the interactive case page on AlWakeelo, link to 'sourceUrl'. If this tool errors, report that the judgment was not found rather than answering from memory.",
+    description: "Read a database judgment by UUID, citation or caseLaw:N ID. Supports text, PDF and combined records. contentFormat describes availability; textIntegrity describes verification independently. own means internal identity checks only. unknown text is available for inspection but must not be presented as verified. Known conflicting bodies are withheld. For PDF-only records, open pdfUrl; missing searchable text does not mean no PDF exists. pdfKind distinguishes a stored original from a PDF generated from database text. Never invent a body or holding when only a PDF link is returned.",
     inputSchema: {
       id: z.string().describe("The judgment UUID, citation string, or caseLaw:N ID from search results"),
     },
@@ -487,6 +483,8 @@ export function registerAllTools(server: McpServer) {
       headnotes: z.string().optional(),
       fullText: z.string().optional(),
       pdfUrl: z.string().optional(),
+      pdfKind: z.string().optional(),
+      contentFormat: z.string().optional(),
       sourceUrl: z.string().optional(),
       fileNote: z.string().optional(),
       textIntegrity: z.string().optional(),
@@ -550,24 +548,26 @@ export function registerAllTools(server: McpServer) {
       if (judgmentRow) {
         // Found a real judgment — return its full data
         await logToolUsage(userId, "search-judgments", `get_judgment:${judgmentRow.id}`);
-        const textCheck = await assessJudgmentText(
-          judgmentRow.id, judgmentRow.fullText, judgmentRow.textStatus, judgmentRow.textTrueCitation);
+        const detail = prepareJudgmentDetail({ ...judgmentRow, court: judgmentRow.courtNameSnapshot || "" }, { opening: judgmentRow.fullText, textStatus: judgmentRow.textStatus, textTrueCitation: judgmentRow.textTrueCitation });
+        const safe = detail.contentFormat !== "unavailable";
+        const textCheck = { textIntegrity: detail.textIntegrity, textWarning: detail.textWarning, belongsTo: detail.belongsTo };
         const payload = {
           version: VERSION,
           source: SOURCE,
           id: judgmentRow.id,
           citation: judgmentRow.citation,
-          title: judgmentRow.title,
-          courtName: judgmentRow.courtNameSnapshot || row.court || "Pakistani Court",
-          decisionDate: judgmentRow.decisionDate instanceof Date
+          title: safe ? detail.title : undefined,
+          courtName: safe ? detail.court || undefined : undefined,
+          decisionDate: safe && judgmentRow.decisionDate instanceof Date
             ? judgmentRow.decisionDate.toISOString().split("T")[0]
             : undefined,
-          headnotes: judgmentRow.headnotes ?? undefined,
-          fullText: judgmentRow.fullText ?? undefined,
-          pdfUrl: judgmentRow.pdfUrl || `${PUBLIC_SITE}/api/public/judgments/${judgmentRow.id}/pdf`,
+          fullText: detail.fullText || undefined,
+          pdfUrl: detail.pdfUrl || (detail.textIntegrity === "own" ? `${PUBLIC_SITE}/api/public/judgments/${detail.id}/pdf` : undefined),
+          pdfKind: detail.pdfUrl ? "original" : detail.textIntegrity === "own" ? "generated" : undefined,
+          contentFormat: detail.contentFormat,
           sourceUrl: judgmentSourceUrl(judgmentRow.id),
           ...textCheck,
-          fileNote: "Official court-formatted PDF is available at pdfUrl; sourceUrl opens the interactive reader on AlWakeelo.",
+          fileNote: safe ? "Check the original court source independently; sourceUrl opens the AlWakeelo reader." : undefined,
           sourceTable: "judgments" as const,
         };
         return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
@@ -580,11 +580,9 @@ export function registerAllTools(server: McpServer) {
         source: SOURCE,
         id: targetId,
         citation: row.citation,
-        title: row.title,
-        courtName: row.court || "Pakistani Court",
-        headnotes: row.summary || undefined,
         sourceTable: "case_law" as const,
-        dataNote: "Full judgment text is not available for this record. The citation, title, court, and summary shown are from the case_law index. Verify citation independently before using in court filings.",
+        textIntegrity: "missing",
+        dataNote: "The index entry could not be matched to a judgment. Title and summary are withheld.",
       };
       return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
     }
@@ -623,33 +621,27 @@ export function registerAllTools(server: McpServer) {
     // Track usage
     await logToolUsage(userId, "search-judgments", `get_judgment:${targetId}`);
 
-    const [provenance] = await db.select({
-      textStatus: judgments.textStatus,
-      textTrueCitation: judgments.textTrueCitation,
-    })
-      .from(judgments)
-      .where(eq(judgments.id, detail.id))
-      .limit(1);
-
-    const textCheck = await assessJudgmentText(
-      detail.id, detail.fullText, provenance?.textStatus, provenance?.textTrueCitation);
+    const protectedDetail = await protectJudgmentDetail(detail);
+    const textCheck = { textIntegrity: protectedDetail.textIntegrity, belongsTo: protectedDetail.belongsTo, textWarning: protectedDetail.textWarning };
+    const safe = protectedDetail.contentFormat !== "unavailable";
 
     const payload = {
       version: VERSION,
       source: SOURCE,
       id: detail.id,
       citation: detail.citation,
-      title: detail.title,
-      courtName: detail.court || "Pakistani Court",
-      decisionDate: detail.decisionDate instanceof Date
+      title: safe ? protectedDetail.title : undefined,
+      courtName: safe ? protectedDetail.court || undefined : undefined,
+      decisionDate: !safe ? undefined : detail.decisionDate instanceof Date
         ? detail.decisionDate.toISOString().split("T")[0]
         : (detail.decisionDate ?? undefined),
-      headnotes: detail.headnotes ?? undefined,
-      fullText: detail.fullText ?? undefined,
-      pdfUrl: detail.pdfUrl || `${PUBLIC_SITE}/api/public/judgments/${detail.id}/pdf`,
+      fullText: protectedDetail.fullText || undefined,
+      pdfUrl: protectedDetail.pdfUrl || (protectedDetail.textIntegrity === "own" ? `${PUBLIC_SITE}/api/public/judgments/${detail.id}/pdf` : undefined),
+      pdfKind: protectedDetail.pdfUrl ? "original" : protectedDetail.textIntegrity === "own" ? "generated" : undefined,
+      contentFormat: protectedDetail.contentFormat,
       sourceUrl: judgmentSourceUrl(detail.id),
       ...textCheck,
-      fileNote: "Official court-formatted PDF is available at pdfUrl; sourceUrl opens the interactive reader on AlWakeelo.",
+      fileNote: safe ? "Check the original court source independently; sourceUrl opens the AlWakeelo reader." : undefined,
       sourceTable: "judgments" as const,
     };
 
@@ -716,16 +708,14 @@ export function registerAllTools(server: McpServer) {
     const verifiedMap = await verifyCitations(rawCitations);
     const citations = rawCitations.map((c) => ({
       citation: c,
-      verified: verifiedMap.has(c),
+      verified: false,
       judgmentId: verifiedMap.get(c),
     }));
     const unverified = citations.filter((c) => !c.verified).map((c) => c.citation);
 
     const banner = citations.length === 0
       ? "[CITATION VERIFICATION] No citations detected in this context. Do not introduce any citation of your own."
-      : unverified.length === 0
-        ? `[CITATION VERIFICATION] All ${citations.length} citation(s) in this context were matched to real judgment records and are safe to cite.`
-        : `[CITATION VERIFICATION] ${unverified.length} of ${citations.length} citation(s) in this context could NOT be matched to any judgment record and may not exist: ${unverified.join("; ")}. DO NOT cite these. Use the material descriptively without a citation, or verify via search_case_law / get_judgment first.`;
+      : `[CITATION VERIFICATION] Context excerpts are unverified. Do not attribute facts or holdings from this context to any citation. Inspect the corresponding judgment and independently verify its source.`;
 
     const payload = {
       version: VERSION,
@@ -1012,6 +1002,9 @@ export function registerAllTools(server: McpServer) {
     const outgoingTotal = Number(outTotal?.n ?? outgoing.length);
     const incomingTotal = Number(inTotal?.n ?? incoming.length);
     const truncated = outgoingTotal > outgoing.length || incomingTotal > incoming.length;
+    const integrity = await getValidatedJudgmentIntegrity([
+      String(root.id), ...[...outgoing, ...incoming].map((row: any) => String(row.otherId)),
+    ]).catch(() => new Map<string, "own" | "mislabeled" | "unknown">());
 
     const nodes = new Map<string, any>();
     const edges: Array<{ source: string; target: string; treatment: string; reliable: boolean; unreliableReason?: string }> = [];
@@ -1020,10 +1013,10 @@ export function registerAllTools(server: McpServer) {
       nodes.set(String(r.otherId), {
         id: String(r.otherId),
         citation: String(r.otherCitation),
-        title: r.otherTitle ?? null,
+        title: integrity.get(String(r.otherId)) === "own" ? r.otherTitle ?? null : null,
         year: r.otherYear ?? null,
         court: r.otherCourt ?? null,
-        textIntegrity: r.otherStatus ?? undefined,
+        textIntegrity: integrity.get(String(r.otherId)) || "unknown",
       });
     };
 
@@ -1032,13 +1025,13 @@ export function registerAllTools(server: McpServer) {
     nodes.set(String(root.id), {
       id: String(root.id),
       citation: String(root.citation),
-      title: root.title ?? null,
+      title: integrity.get(String(root.id)) === "own" ? root.title ?? null : null,
       year: null,
       court: null,
-      textIntegrity: root.textStatus ?? undefined,
+      textIntegrity: integrity.get(String(root.id)) || "unknown",
     });
 
-    const rootTextIsOwn = root.textStatus === "own";
+    const rootTextIsOwn = integrity.get(String(root.id)) === "own";
     for (const r of outgoing as any[]) {
       addNode(r);
       edges.push({
@@ -1047,19 +1040,19 @@ export function registerAllTools(server: McpServer) {
         treatment: String(r.citationType || "referred_to"),
         reliable: rootTextIsOwn,
         unreliableReason: rootTextIsOwn ? undefined
-          : "This edge was extracted from text that is not this judgment's own, so it records what a different judgment cited.",
+          : "The source judgment identity could not be confirmed; do not rely on this edge.",
       });
     }
     for (const r of incoming as any[]) {
       addNode(r);
-      const sourceOwn = r.otherStatus === "own";
+      const sourceOwn = integrity.get(String(r.otherId)) === "own";
       edges.push({
         source: String(r.otherId),
         target: String(root.id),
         treatment: String(r.citationType || "referred_to"),
         reliable: sourceOwn,
         unreliableReason: sourceOwn ? undefined
-          : `The citing judgment ${r.otherCitation} holds text that is not its own, so this citation belongs to a different judgment.`,
+          : "The source judgment identity could not be confirmed; do not rely on this edge.",
       });
     }
 
@@ -1070,8 +1063,8 @@ export function registerAllTools(server: McpServer) {
       judgment: {
         id: String(root.id),
         citation: String(root.citation),
-        title: root.title ?? undefined,
-        textIntegrity: root.textStatus ?? undefined,
+        title: integrity.get(String(root.id)) === "own" ? root.title ?? undefined : undefined,
+        textIntegrity: integrity.get(String(root.id)) || "unknown",
       },
       nodes: [...nodes.values()],
       edges,
@@ -1081,7 +1074,7 @@ export function registerAllTools(server: McpServer) {
       truncated,
       note: [
         unreliableEdges > 0
-          ? `${unreliableEdges} of ${edges.length} edge(s) were extracted from a judgment whose stored text is not its own and are marked reliable=false. Do not use them to argue precedent.`
+          ? `${unreliableEdges} of ${edges.length} edge(s) come from judgments whose identity could not be confirmed and are marked reliable=false. Do not use them to argue precedent.`
           : null,
         truncated
           ? `Only ${outgoing.length} of ${outgoingTotal} outgoing and ${incoming.length} of ${incomingTotal} incoming citations are shown, ordered so overruled and distinguished appear first. This graph is INCOMPLETE: do not state that this judgment has never been overruled or distinguished on the strength of it. Raise limit to see more.`

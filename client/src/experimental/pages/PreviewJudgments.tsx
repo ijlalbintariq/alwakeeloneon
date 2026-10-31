@@ -128,13 +128,13 @@ export const PreviewJudgments: React.FC = () => {
     setIsDownloadingModalPdf(true);
     toast({
       title: "Generating Court PDF...",
-      description: `Preparing official precedent PDF for "${target.citation}".`,
+      description: `Preparing judgment PDF for "${target.citation}".`,
     });
     try {
       const result = await generateAndDownloadCourtPdf(target);
       toast({
-        title: "Court PDF Downloaded",
-        description: `Saved "${result.filename}" successfully.`,
+        title: result.openedOriginal ? "Original PDF opened" : "Text PDF downloaded",
+        description: result.openedOriginal ? "Read or save the original file in the PDF viewer." : `Saved "${result.filename}" successfully.`,
       });
     } catch (err: any) {
       console.error("Court PDF download error:", err);

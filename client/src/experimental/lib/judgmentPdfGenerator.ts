@@ -1,6 +1,8 @@
 import { jsPDF } from "jspdf";
+import { getJudgmentDetail } from "./judgmentApiClient";
 
 export interface JudgmentPdfPayload {
+  id?: string | number;
   citation: string;
   title: string;
   court?: string | null;
@@ -32,40 +34,28 @@ function sanitizeTextForPdf(text: string): string {
     .replace(/[^\x00-\x7F\u0600-\u06FF]/g, " "); // Keep ASCII and Urdu ranges, replace unknown control bytes
 }
 
-export async function generateAndDownloadCourtPdf(judgment: JudgmentPdfPayload): Promise<{ filename: string }> {
-  let fullText = judgment.fullText || "";
-  let headnotes = judgment.headnotes || judgment.summary || "";
-  let title = judgment.title || "Reported Judicial Precedent";
-  let citation = judgment.citation || "Pakistani Precedent";
-  let court = judgment.court || "Supreme Court of Pakistan";
-
-  // If full text is missing or extremely short, try to hydrate it on the fly
-  if (!fullText || fullText.trim().length < 100) {
-    try {
-      const cleanCitation = citation.trim();
-      const res = await fetch(`/api/judgments/${encodeURIComponent(cleanCitation)}`, { credentials: "include" });
-      if (res.ok) {
-        const detail = await res.json();
-        if (detail.fullText && detail.fullText.length > 50) fullText = detail.fullText;
-        if (detail.headnotes && !headnotes) headnotes = detail.headnotes;
-        if (detail.title && (!title || title === "Reported Judicial Precedent")) title = detail.title;
-        if (detail.court && (!court || court === "Supreme Court of Pakistan")) court = detail.court;
-      } else {
-        // Fallback to /api/judgment-text
-        const textRes = await fetch(`/api/judgment-text?citation=${encodeURIComponent(cleanCitation)}`, { credentials: "include" });
-        if (textRes.ok) {
-          const textData = await textRes.json();
-          if (textData.fullText) fullText = textData.fullText;
-        }
-      }
-    } catch {
-      // Non-fatal, use whatever text we have
+export async function generateAndDownloadCourtPdf(request: JudgmentPdfPayload): Promise<{ filename: string; openedOriginal?: boolean }> {
+  // Always refresh through the guarded reader; caller text and summaries may be stale.
+  const judgment = await getJudgmentDetail(request.id || request.citation);
+  if (!judgment) throw new Error("Judgment could not be loaded. No PDF was generated.");
+  if (judgment.textIntegrity === "mislabeled" || judgment.contentFormat === "unavailable" || !judgment.textIntegrity) {
+    throw new Error(judgment.textWarning || "Judgment identity could not be checked. No PDF was generated.");
+  }
+  const fullText = judgment.fullText || "";
+  if (!fullText.trim()) {
+    if (judgment.pdfUrl) {
+      const link = document.createElement("a");
+      link.href = judgment.pdfUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.click();
+      return { filename: "Original PDF", openedOriginal: true };
     }
+    throw new Error("No judgment text or original PDF is available.");
   }
-
-  if (!fullText) {
-    fullText = headnotes || "Full text of this judgment is being indexed in the National Precedent Corpus.";
-  }
+  const title = judgment.title;
+  const citation = judgment.citation;
+  const court = judgment.court || "Court not recorded";
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -157,37 +147,15 @@ export async function generateAndDownloadCourtPdf(judgment: JudgmentPdfPayload):
     );
   }
 
-  // Ratio Decidendi (if available)
-  if (judgment.ratioDecidendi) {
-    y += 2;
-    addLine();
-    addText("RATIO DECIDENDI & OPERATIVE HOLDING (ARTICLE 189/201)", 11, "bold");
-    y += 1;
-    if (judgment.ratioDecidendi.result) {
-      addText(judgment.ratioDecidendi.result, 9.5, "normal");
-    }
-    if (Array.isArray(judgment.ratioDecidendi.legalPrinciples) && judgment.ratioDecidendi.legalPrinciples.length > 0) {
-      y += 1;
-      addText("Legal Principles Enunciated:", 9.5, "bold");
-      judgment.ratioDecidendi.legalPrinciples.forEach((p: string, idx: number) => {
-        addText(`[${idx + 1}] ${p}`, 9, "normal");
-      });
-    }
-  }
-
-  // Official Headnotes
-  if (headnotes) {
-    y += 2;
-    addLine();
-    addText("OFFICIAL REPORTED HEADNOTES & STATUTORY PROPOSITIONS", 11, "bold");
-    y += 1;
-    addText(headnotes, 9);
+  addText("Generated from database text; not an original court PDF.", 9, "italic");
+  if (judgment.textIntegrity !== "own") {
+    addText(judgment.textWarning || "Case identity has not been verified.", 10, "bold");
   }
 
   // Full Judgment Order
   y += 2;
   addLine();
-  addText("FULL JUDGMENT & ORDER OF THE BENCH", 11, "bold");
+  addText("JUDGMENT TEXT", 11, "bold");
   y += 1;
   addText(fullText, 9.5);
 
@@ -198,7 +166,7 @@ export async function generateAndDownloadCourtPdf(judgment: JudgmentPdfPayload):
   doc.setTextColor(120, 120, 120);
   doc.setFont("times", "normal");
   doc.text(
-    "Authenticated from Al Wakeelo Legal Research Workstation - www.alwakeelo.com",
+    "Database text copy - Al Wakeelo Legal Research Workstation - www.alwakeelo.com",
     margin,
     y
   );
@@ -210,10 +178,10 @@ export async function generateAndDownloadCourtPdf(judgment: JudgmentPdfPayload):
     doc.setFontSize(8);
     doc.setTextColor(140, 140, 140);
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 20, pageHeight - 10);
-    doc.text(`${citation} - Court Record`, margin, pageHeight - 10);
+    doc.text(`${citation} - Database text copy`, margin, pageHeight - 10);
   }
 
-  const cleanFilename = `${citation.replace(/[^a-zA-Z0-9]/g, "_")}_Court_Judgment.pdf`;
+  const cleanFilename = `${citation.replace(/[^a-zA-Z0-9]/g, "_")}_Database_Text.pdf`;
   doc.save(cleanFilename);
 
   return { filename: cleanFilename };

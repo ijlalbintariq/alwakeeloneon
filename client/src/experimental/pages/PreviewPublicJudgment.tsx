@@ -23,6 +23,9 @@ interface PublicJudgmentData {
   isTruncated: boolean;
   citations: { made: any[], received: any[] };
   textIntegrity?: "own" | "mislabeled" | "unknown" | string;
+  textWarning?: string | null;
+  pdfUrl?: string | null;
+  contentFormat?: string;
   textBelongsTo?: { citation: string | null; id: string | null } | null;
 }
 
@@ -224,16 +227,16 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
                 <Button variant="ghost" size="sm" className="h-8 px-2 text-slate-500 hover:text-[#105B38]" onClick={() => window.print()}>
                   <Printer className="w-4 h-4 mr-1.5" /> Print
                 </Button>
-                {data?.id && (
+                {data?.id && (data.pdfUrl || data.textIntegrity === "own") && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-8 px-2 text-slate-500 hover:text-[#105B38]"
                     onClick={() => {
-                      window.open(`/api/public/judgments/${encodeURIComponent(data.id)}/pdf`, '_blank');
+                      window.open(data.pdfUrl || `/api/public/judgments/${encodeURIComponent(data.id)}/pdf`, '_blank', 'noopener,noreferrer');
                     }}
                   >
-                    <Download className="w-4 h-4 mr-1.5" /> Court PDF
+                    <Download className="w-4 h-4 mr-1.5" /> {data.pdfUrl ? "Original PDF" : "Download text as PDF"}
                   </Button>
                 )}
               </div>
@@ -293,6 +296,17 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
                           Read {data.textBelongsTo.citation || "that judgment"}
                         </Button>
                       )}
+                    </div>
+                  )}
+                  {data?.textWarning && data.textIntegrity !== "mislabeled" && (
+                    <div role="alert" className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
+                      {data.textWarning || "Judgment text unavailable because its identity could not be confirmed."}
+                    </div>
+                  )}
+                  {!data?.previewText && data?.pdfUrl && (
+                    <div className="mb-8 space-y-3">
+                      <a className="text-emerald-800 underline" href={data.pdfUrl} target="_blank" rel="noopener noreferrer">Open original PDF</a>
+                      <iframe title="Judgment PDF" src={data.pdfUrl} className="h-[75vh] w-full rounded-lg border" sandbox="allow-scripts allow-downloads" referrerPolicy="no-referrer" />
                     </div>
                   )}
 

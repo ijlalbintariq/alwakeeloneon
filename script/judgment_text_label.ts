@@ -350,8 +350,9 @@ async function main() {
   let unchanged = 0;
   const current = await c.query(`select id, text_status, text_true_citation from judgments`);
   for (const r of current.rows as any[]) {
-    // A row outside every shared group holds a body nothing else holds.
-    const want = desired.get(r.id) ?? { status: "own", cite: null };
+    // A unique body does not establish that it belongs to this citation.
+    const want = desired.get(r.id);
+    if (!want) { unchanged++; continue; }
     if (r.text_status === want.status && (r.text_true_citation ?? null) === want.cite) { unchanged++; continue; }
     if (want.status === "own") changed.own.push(r.id);
     else if (want.status === "unknown") changed.unknown.push(r.id);
