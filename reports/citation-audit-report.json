@@ -1,0 +1,140 @@
+{
+  "timestamp": "2026-11-02T22:12:59.748Z",
+  "auditVersion": "1.0.0",
+  "database": {
+    "totalJudgments": 235392,
+    "totalCitationLinks": 669327,
+    "totalUnresolvedCitations": 75922
+  },
+  "citationLinks": {
+    "total": 669327,
+    "validCrossLinks": 520446,
+    "selfReferentialLinks": 148881,
+    "orphanedLinks": 0,
+    "sampleSelfLinks": [
+      {
+        "id": 426254,
+        "sourceJudgmentId": "e8d816c9-8bfa-468f-a08a-968630284b79",
+        "citationText": "1971 SCMR 681"
+      },
+      {
+        "id": 426255,
+        "sourceJudgmentId": "763e38d7-d3e7-451e-af32-420bc54b3011",
+        "citationText": "2010 PCRLJ 575"
+      },
+      {
+        "id": 426256,
+        "sourceJudgmentId": "7c52ff8e-ecec-47d7-a860-ee93a2acbbe7",
+        "citationText": "2004 CLC 359"
+      },
+      {
+        "id": 426257,
+        "sourceJudgmentId": "451f3ec2-3373-49b1-9842-a782d667c739",
+        "citationText": "2008 SCMR 896"
+      },
+      {
+        "id": 426258,
+        "sourceJudgmentId": "cef2342d-5891-4dc3-a542-2fa59d8730a4",
+        "citationText": "1992 SCMR 876"
+      }
+    ]
+  },
+  "unresolvedCitations": {
+    "totalPending": 75922,
+    "selfCitations": 73500,
+    "resolvableCrossCitations": 5,
+    "externalOrMalformed": 2417,
+    "sampleResolvableCross": [
+      {
+        "id": 265562,
+        "sourceJudgmentId": "cb60c77a-b3b2-48b4-a8b8-359f0e0d4cb7",
+        "rawCitation": "2026 PLD 164",
+        "targetJudgmentId": "0c43244e-11fe-46dc-8e33-804951d3155c"
+      },
+      {
+        "id": 265579,
+        "sourceJudgmentId": "e87a288e-8644-4b80-a8be-b017f28fd7fd",
+        "rawCitation": "2026 PLD 304",
+        "targetJudgmentId": "c613da27-57d4-41c5-b3bd-2703004543fa"
+      },
+      {
+        "id": 265631,
+        "sourceJudgmentId": "1a8ddebc-2820-4939-b310-c54391914aca",
+        "rawCitation": "2026 PLD 333",
+        "targetJudgmentId": "d138ab76-2772-4078-9fcc-eb6b6e54372d"
+      },
+      {
+        "id": 265590,
+        "sourceJudgmentId": "46c9b20d-9149-4009-90d8-b144afd9413d",
+        "rawCitation": "2026 PLD 348",
+        "targetJudgmentId": "cf071ed2-1f46-4cb1-9e31-55258c1db547"
+      },
+      {
+        "id": 265613,
+        "sourceJudgmentId": "c4f3d8d5-b73d-4ba1-a9a3-88ed2283fb12",
+        "rawCitation": "2026 PLD 376",
+        "targetJudgmentId": "36d1a72a-961c-4c2a-be76-a67ec2ebc779"
+      }
+    ]
+  },
+  "textProvenance": {
+    "total": 235392,
+    "own": 206017,
+    "mislabeled": 28273,
+    "unknown": 547,
+    "unclassified": 555
+  },
+  "metadataQuality": {
+    "nullDecisionDates": 55071,
+    "nullCourts": 2105,
+    "nullPetitioners": 7554,
+    "nullRespondents": 19141,
+    "identicalParties": 1465,
+    "sampleIdenticalParties": [
+      {
+        "id": "796b72af-cc42-4cdf-8a66-a35baad0a504",
+        "citation": "1980 PTD 65",
+        "petitioner": "I. T. AS. NOS. 1080/KB, 1081/KB AND 1082/KB OF 1978-79, DECIDED ON 11TH FEBRUARY 1980.",
+        "respondent": "I. T. AS. NOS. 1080/KB, 1081/KB AND 1082/KB OF 1978-79, DECIDED ON 11TH FEBRUARY 1980."
+      },
+      {
+        "id": "d5b2eb98-75c2-4d68-98e2-001bde89e9ea",
+        "citation": "1996 PTD 25",
+        "petitioner": "I.T.AS. NOS.65(IB) TO 68(IB) OF 1992-93, DECIDED ON 16TH MAY, 1995.",
+        "respondent": "I.T.AS. NOS.65(IB) TO 68(IB) OF 1992-93, DECIDED ON 16TH MAY, 1995."
+      },
+      {
+        "id": "a3f859e8-bb43-4b5d-a4fb-cbbc7d52ae71",
+        "citation": "1995 PTD 797",
+        "petitioner": "ITA NO. 1129/LB AND 1130/LB OF 1987-88, DECIDED ON 23RD JANUARY, 1995.",
+        "respondent": "ITA NO. 1129/LB AND 1130/LB OF 1987-88, DECIDED ON 23RD JANUARY, 1995."
+      },
+      {
+        "id": "22ef5658-6dee-45b5-a51f-d4c53540e966",
+        "citation": "1990 PTD 988",
+        "petitioner": "I.T.A. NO.218/IB AND 219/IB OF 1989-90, DECIDED ON 16TH AUGUST, 1990.",
+        "respondent": "I.T.A. NO.218/IB AND 219/IB OF 1989-90, DECIDED ON 16TH AUGUST, 1990."
+      },
+      {
+        "id": "a386d9db-2fed-4625-93fd-cc69e13f13a2",
+        "citation": "1997 PTD 2190",
+        "petitioner": "I.T.AS. NOS.10328/LB OF 1991-92, 9643/LB OF 1992-93, 1911 /LB OF 1994 AND 6405/LB OF 1995",
+        "respondent": "I.T.AS. NOS.10328/LB OF 1991-92, 9643/LB OF 1992-93, 1911 /LB OF 1994 AND 6405/LB OF 1995"
+      }
+    ]
+  },
+  "healthScores": {
+    "citationGraphIntegrity": 77.8,
+    "unresolvedCleanliness": 3.2,
+    "provenanceClassification": 99.8,
+    "metadataCompleteness": 91.7,
+    "overallHealthScore": 66.7
+  },
+  "recommendations": [
+    "Prune 148,881 self-referential citation links from citation_links.",
+    "Prune 73,500 self-citations from unresolved_citations backlog.",
+    "Resolve 5 cross-citations into citation_links linking valid precedents.",
+    "Classify 555 unclassified judgments (text_status IS NULL) using header inspection.",
+    "Review and repair 1,465 judgments with identical parties (Petitioner = Respondent)."
+  ]
+}

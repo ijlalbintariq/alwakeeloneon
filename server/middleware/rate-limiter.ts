@@ -12,7 +12,7 @@ const verifiedCrawlerCache = new Map<string, { verified: boolean; expiresAt: num
 const VERIFICATION_TTL = 12 * 60 * 60 * 1000; // 12 hours
 
 export function isSearchCrawlerHeader(ua: string): boolean {
-  return /googlebot|bingbot|yandexbot|applebot|duckduckbot|slurp|baiduspider/i.test(ua);
+  return /googlebot|bingbot|yandexbot|applebot|duckduckbot|slurp|baiduspider|gptbot|oai-searchbot|chatgpt-user|perplexitybot|claudebot/i.test(ua);
 }
 
 export async function checkIsRealCrawler(ip: string, ua: string): Promise<boolean> {
@@ -23,6 +23,9 @@ export async function checkIsRealCrawler(ip: string, ua: string): Promise<boolea
   const isApple = /applebot/i.test(ua);
   const isYandex = /yandexbot/i.test(ua);
   const isDuckDuckGo = /duckduckbot/i.test(ua);
+  const isOpenAI = /gptbot|oai-searchbot|chatgpt-user/i.test(ua);
+  const isPerplexity = /perplexitybot/i.test(ua);
+  const isAnthropic = /claudebot/i.test(ua);
 
   // Check cache first
   const cached = verifiedCrawlerCache.get(ip);
@@ -43,6 +46,12 @@ export async function checkIsRealCrawler(ip: string, ua: string): Promise<boolea
       } else if (isYandex && (hostname.endsWith(".yandex.ru") || hostname.endsWith(".yandex.net") || hostname.endsWith(".yandex.com"))) {
         matchesDomain = true;
       } else if (isDuckDuckGo && hostname.endsWith(".duckduckgo.com")) {
+        matchesDomain = true;
+      } else if (isOpenAI && (hostname.endsWith(".openai.com") || hostname.endsWith(".search.openai.com"))) {
+        matchesDomain = true;
+      } else if (isPerplexity && (hostname.endsWith(".perplexity.ai") || hostname.endsWith(".perplexity.com"))) {
+        matchesDomain = true;
+      } else if (isAnthropic && (hostname.endsWith(".anthropic.com") || hostname.endsWith(".claude.ai"))) {
         matchesDomain = true;
       }
 

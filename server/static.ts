@@ -8,7 +8,7 @@ import { prepareJudgmentDetail, resolveJudgment } from "./citation-verify";
 import { eq } from "drizzle-orm";
 import { BLOG_ARTICLES } from "../shared/blog-data";
 
-const KNOWN_SPA_ROUTES: RegExp[] = [
+export const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/$/,
   /^\/about$/,
   /^\/contact$/,
@@ -35,10 +35,23 @@ const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/judgments\/[^/]+$/,
   /^\/statute-search$/,
   /^\/statute-view\/[^/]+$/,
+  /^\/statutes$/,
+  /^\/judges$/,
+  /^\/judges\/[^/]+$/,
+  /^\/most-cited$/,
+  /^\/precedents$/,
+  /^\/court-fee-calculator$/,
+  /^\/preview(\/.*)?$/,
   /^\/al-wakeelo$/,
   /^\/legal-drafting$/,
   /^\/contract-drafting$/,
+  /^\/contracts$/,
+  /^\/cases(\/.*)?$/,
+  /^\/case-files$/,
   /^\/case-documents$/,
+  /^\/diary$/,
+  /^\/daily-diary$/,
+  /^\/tax-return$/,
   /^\/bookmarks$/,
   /^\/history$/,
   /^\/knowledge-vault$/,
@@ -50,14 +63,46 @@ const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/checkout\/success$/,
 ];
 
-function isKnownSpaRoute(pathname: string): boolean {
+export function isKnownSpaRoute(pathname: string): boolean {
   return KNOWN_SPA_ROUTES.some((pattern) => pattern.test(pathname));
+}
+
+export function linkifyCitationsInHtml(escapedText: string, citationMap?: Map<string, string>): string {
+  if (!escapedText) return "";
+  const journals = "PLD|SCMR|YLR|MLD|CLC|PLJ|NLR|PCRLJ|PCrLJ|PTCL|PTD|PLCCS|PLC|PSC|ALD|KLR|SLS|GBLR|CLD|AIR";
+  const courts = "SC|FC|FSC|LHC|SHC|IHC|PHC|BHC|Supreme\\s+Court|High\\s+Court|Lahore|Karachi|Islamabad|Peshawar|Quetta|Multan|Rawalpindi|Bahawalpur|Abbottabad|Faisalabad|Hyderabad|Sukkur";
+
+  const citationPattern = new RegExp(
+    `\\b(?:(?:(?:19|20)\\d{2}\\s+(?:${journals})|(?:${journals})\\s+(?:19|20)\\d{2})(?:\\s+(?:${courts}))?\\s+\\d{1,5})\\b`,
+    "gi"
+  );
+
+  return escapedText.replace(citationPattern, (match) => {
+    const cleanMatch = match.trim().replace(/\s+/g, " ");
+    const normKey = cleanMatch.toUpperCase().replace(/\s+/g, "");
+
+    let targetUrl: string;
+    if (citationMap && citationMap.has(normKey)) {
+      targetUrl = `/judgment/${citationMap.get(normKey)}`;
+    } else {
+      targetUrl = `/citation-search?q=${encodeURIComponent(cleanMatch)}`;
+    }
+
+    return `<a href="${targetUrl}" class="citation-internal-link" style="color:#1d4ed8;text-decoration:underline;font-weight:500;">${match}</a>`;
+  });
 }
 
 const HTML_CACHE_HEADER = "public, max-age=0, must-revalidate, s-maxage=300";
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  const baseDir = typeof __dirname !== "undefined"
+    ? __dirname
+    : path.resolve(process.cwd(), "server");
+  const distPath = fs.existsSync(path.resolve(baseDir, "public"))
+    ? path.resolve(baseDir, "public")
+    : (fs.existsSync(path.resolve(process.cwd(), "dist/public"))
+        ? path.resolve(process.cwd(), "dist/public")
+        : path.resolve(baseDir, "public"));
   if (!fs.existsSync(distPath)) {
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
@@ -93,10 +138,54 @@ export function serveStatic(app: Express) {
   const SEO_QUERY_TIMEOUT_MS = 8_000;
 
   async function getJudgmentSeoData(id: string): Promise<{ meta: SeoMeta; preRenderBlock: string } | undefined> {
+    function parseBenchJudges(bench: string | null | undefined): Array<{ "@type": "Person"; name: string; jobTitle?: string }> {
+      if (!bench || typeof bench !== "string") return [];
+      const clean = bench.trim();
+      if (!clean) return [];
+
+      const rawParts = clean.split(/\s*;\s*|\r?\n|\s+and\s+/i);
+      const judges: Array<{ name: string; title: string }> = [];
+
+      for (const part of rawParts) {
+        const commaParts = part.split(/\s*,\s*/);
+        let currentJudge = "";
+        let currentTitle = "Judge";
+
+        for (let i = 0; i < commaParts.length; i++) {
+          const token = commaParts[i].trim();
+          if (!token) continue;
+
+          if (/^(?:C\.?J\.?|Chief Justice|J\.?|Judge|Senior Puisne Judge)$/i.test(token)) {
+            if (currentJudge) {
+              currentTitle = /C\.?J\.?|Chief Justice/i.test(token) ? "Chief Justice" : "Judge";
+            }
+          } else {
+            if (currentJudge) {
+              judges.push({ name: currentJudge, title: currentTitle });
+              currentTitle = "Judge";
+            }
+            currentJudge = token;
+            if (/Chief Justice/i.test(token) || /\bC\.?J\.?\b/i.test(token)) {
+              currentTitle = "Chief Justice";
+            }
+          }
+        }
+        if (currentJudge) {
+          judges.push({ name: currentJudge, title: currentTitle });
+        }
+      }
+
+      return judges.map((j) => ({
+        "@type": "Person" as const,
+        name: j.name,
+        jobTitle: j.title,
+      }));
+    }
+
     // Read current identity on each request; repairs can happen outside this process.
 
     // Drop if too many concurrent SEO queries — serve without custom meta instead of queueing
-    if (seoActiveQueries >= SEO_MAX_CONCURRENT) {
+    if (!db || seoActiveQueries >= SEO_MAX_CONCURRENT) {
       return undefined;
     }
 
@@ -113,6 +202,7 @@ export function serveStatic(app: Express) {
           decisionDate: judgments.decisionDate,
           petitioner: judgments.petitioner,
           respondent: judgments.respondent,
+          bench: judgments.bench,
           headnotes: judgments.headnotes,
           fullText: judgments.fullText,
           pdfUrl: judgments.pdfUrl,
@@ -158,38 +248,88 @@ export function serveStatic(app: Express) {
           ? `Read Pakistani case law ${citation}: ${cleanTitle} decided by ${courtName}. Full text, ratio decidendi, and citations on Al Wakeelo.`
           : `Read Pakistani case law: ${cleanTitle} decided by ${courtName}. Full text, legal holding, and citations on Al Wakeelo.`;
 
-        // Schema markup: CourtCase + BreadcrumbList for rich snippets & AI Grounding
-        const schema = [
-          {
-            "@context": "https://schema.org",
-            "@type": "CourtCase",
-            "name": cleanTitle,
-            "identifier": citation || id,
-            "caseNumber": citation || id,
-            "headline": pageTitle,
-            "court": {
-              "@type": "GovernmentOrganization",
-              "name": courtName
+        const benchStr = row.bench ? String(row.bench).trim() : "";
+        const benchAuthors = parseBenchJudges(benchStr);
+        const articleAuthors = benchAuthors.length > 0
+          ? benchAuthors
+          : [{ "@type": "Person" as const, "name": courtName || "Superior Judiciary of Pakistan", "jobTitle": "Judge" }];
+
+        const journalMatch = citation ? citation.match(/\b([A-Z]{3,6})\b/) : null;
+        const journalCode = journalMatch ? journalMatch[1] : "PLD";
+
+        // Schema markup: LegalArticle + CourtCase + BreadcrumbList in unified @graph
+        const schema = {
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "LegalArticle",
+              "@id": `https://www.alwakeelo.com/judgment/${id}#article`,
+              "isPartOf": {
+                "@type": "Periodical",
+                "name": "Pakistan Law Reports",
+                "issn": journalCode
+              },
+              "headline": pageTitle,
+              ...(citation ? { "alternativeHeadline": citation } : {}),
+              "name": cleanTitle,
+              "description": pageDescription,
+              "inLanguage": "en",
+              "mainEntityOfPage": `https://www.alwakeelo.com/judgment/${id}`,
+              "url": `https://www.alwakeelo.com/judgment/${id}`,
+              ...(decisionDateStr ? { "datePublished": decisionDateStr } : {}),
+              "author": articleAuthors,
+              "publisher": {
+                "@type": "Organization",
+                "@id": "https://www.alwakeelo.com/#organization",
+                "name": "Alwakeelo AI",
+                "url": "https://www.alwakeelo.com/"
+              },
+              "about": {
+                "@id": `https://www.alwakeelo.com/judgment/${id}#courtcase`
+              },
+              ...(safe.headnotes ? { "articleBody": safe.headnotes.slice(0, 3000) } : {})
             },
-            "inLanguage": "en",
-            "isAccessibleForFree": true,
-            "about": [
-              { "@type": "Thing", "name": "Pakistani Case Law" },
-              { "@type": "Thing", "name": "Judicial Precedent" }
-            ],
-            ...(decisionDateStr ? { "datePublished": decisionDateStr } : {})
-          },
-          {
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.alwakeelo.com/" },
-              { "@type": "ListItem", "position": 2, "name": "Judgments", "item": "https://www.alwakeelo.com/judgments" },
-              { "@type": "ListItem", "position": 3, "name": courtName, "item": `https://www.alwakeelo.com/judgments/browse?court=${encodeURIComponent(courtSlug)}` },
-              { "@type": "ListItem", "position": 4, "name": citation || cleanTitle, "item": `https://www.alwakeelo.com/judgment/${id}` }
-            ]
-          }
-        ];
+            {
+              "@type": "CourtCase",
+              "@id": `https://www.alwakeelo.com/judgment/${id}#courtcase`,
+              "name": cleanTitle,
+              "identifier": citation || id,
+              "caseNumber": citation || id,
+              "headline": pageTitle,
+              "court": {
+                "@type": "GovernmentOrganization",
+                "name": courtName,
+                "address": {
+                  "@type": "PostalAddress",
+                  "addressCountry": "PK"
+                }
+              },
+              "inLanguage": "en",
+              "isAccessibleForFree": true,
+              "about": [
+                { "@type": "Thing", "name": "Pakistani Case Law" },
+                { "@type": "Thing", "name": "Judicial Precedent" }
+              ],
+              ...(decisionDateStr ? { "datePublished": decisionDateStr } : {}),
+              ...((petitioner || respondent) ? {
+                "party": [
+                  ...(petitioner ? [{ "@type": "Person" as const, "name": petitioner, "roleName": "Petitioner / Appellant" }] : []),
+                  ...(respondent ? [{ "@type": "GovernmentOrganization" as const, "name": respondent, "roleName": "Respondent" }] : [])
+                ]
+              } : {})
+            },
+            {
+              "@type": "BreadcrumbList",
+              "@id": `https://www.alwakeelo.com/judgment/${id}#breadcrumbs`,
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.alwakeelo.com/" },
+                { "@type": "ListItem", "position": 2, "name": "Judgments", "item": "https://www.alwakeelo.com/judgments" },
+                { "@type": "ListItem", "position": 3, "name": courtName, "item": `https://www.alwakeelo.com/judgments/browse?court=${encodeURIComponent(courtSlug)}` },
+                { "@type": "ListItem", "position": 4, "name": citation || cleanTitle, "item": `https://www.alwakeelo.com/judgment/${id}` }
+              ]
+            }
+          ]
+        };
         
         const schemaMarkup = own ? `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2).replace(/</g, "\\u003c")}\n</script>` : "";
 
@@ -207,12 +347,26 @@ export function serveStatic(app: Express) {
           ? rawFullText.slice(0, MAX_JUDGMENT_CHARS).replace(/\s+\S*$/, "") + "…"
           : rawFullText;
 
+        function linkify(textToLink: string): string {
+          const journals = "PLD|SCMR|YLR|MLD|CLC|PLJ|NLR|PCRLJ|PCrLJ|PTCL|PTD|PLCCS|PLC|PSC|ALD|KLR|SLS|GBLR|CLD|AIR";
+          const courts = "SC|FC|FSC|LHC|SHC|IHC|PHC|BHC|Supreme\\s+Court|High\\s+Court|Lahore|Karachi|Islamabad|Peshawar|Quetta|Multan|Rawalpindi|Bahawalpur|Abbottabad|Faisalabad|Hyderabad|Sukkur";
+          const citationPattern = new RegExp(
+            `\\b(?:(?:(?:19|20)\\d{2}\\s+(?:${journals})|(?:${journals})\\s+(?:19|20)\\d{2})(?:\\s+(?:${courts}))?\\s+\\d{1,5})\\b`,
+            "gi"
+          );
+          return textToLink.replace(citationPattern, (match) => {
+            const cleanMatch = match.trim().replace(/\s+/g, " ");
+            const slug = cleanMatch.replace(/\s+/g, "-");
+            return `<a href="/judgment/${encodeURIComponent(slug)}" class="citation-internal-link" style="color:#1d4ed8;text-decoration:underline;font-weight:500;">${match}</a>`;
+          });
+        }
+
         const formattedParagraphs = fullTextContent
           ? fullTextContent
               .split(/\n\s*\n/)
               .map(p => p.trim())
               .filter(Boolean)
-              .map(p => `<p style="margin-bottom:14px;line-height:1.75;font-size:15px;color:#1e293b;">${esc(p)}</p>`)
+              .map(p => `<p style="margin-bottom:14px;line-height:1.75;font-size:15px;color:#1e293b;">${linkify(esc(p))}</p>`)
               .join("\n")
           : `<p>${esc(safe.textWarning || "Judgment identity remains unverified. Inspect available sources in the judgment reader.")}</p>`;
 
@@ -542,6 +696,47 @@ export function serveStatic(app: Express) {
     <li>Legal Prompt Engineering: How to Guide AI for Precise Drafting</li>
   </ul>
 </div>`,
+
+    "/court-fee-calculator": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Pakistani Court Fee &amp; Valuation Calculator</h1>
+  <p>Free, instant court fee calculation utility under the Court Fees Act 1870 and Suits Valuation Act 1887. Automatically computes ad valorem schedules (7.5%), statutory provincial ceilings (Punjab, Sindh, Islamabad, KP, Balochistan), fixed court fees for High Court Constitutional Writs (Article 199), Family Court suits (Khula, Maintenance, Custody), civil appeals, and revisions.</p>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Supported Suit Categories</h2>
+  <ul>
+    <li><strong>Money Suits</strong> — 7.5% ad valorem on subject matter valuation over Rs. 25,000, subject to provincial statutory maximums.</li>
+    <li><strong>Declaration with Consequential Relief</strong> — Valuation under Section 7(iv)(c) Court Fees Act 1870 and Section 8 Suits Valuation Act 1887.</li>
+    <li><strong>High Court Writ Petitions</strong> — Article 199 Constitutional Petitions (fixed fee Rs. 500).</li>
+    <li><strong>Family Court Proceedings</strong> — Fixed statutory fee Rs. 15 for suits under Family Courts Act 1964.</li>
+    <li><strong>Bail Applications &amp; Criminal Appeals</strong> — Fixed fees and exemptions under Court Fees Act 1870.</li>
+  </ul>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Court-Ready Valuation Paragraphs</h2>
+  <p>Generates ready-to-paste valuation clauses formatted for plaints and petitions to eliminate office objections and court fee deficiencies.</p>
+</div>`,
+
+    "/most-cited": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Most Cited Pakistani Legal Precedents &amp; Landmark Case Law</h1>
+  <p>Discover Pakistan's most influential judicial precedents from the Supreme Court and provincial High Courts. Ranked by citation frequency across 600,000+ judgments, complete with judicial treatment history (Relied Upon, Distinguished, Overruled).</p>
+  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Key Precedent Branches</h2>
+  <ul>
+    <li><strong>Constitutional Law</strong> — Landmark rulings on fundamental rights (Articles 9, 10A, 14, 199, 184(3)).</li>
+    <li><strong>Criminal Law &amp; Procedure</strong> — Pre-arrest bail, circumstantial evidence, benefit of doubt, Section 497 CrPC principles.</li>
+    <li><strong>Civil Procedure &amp; Property</strong> — Specific performance, temporary injunctions (Order XXXIX CPC), declaratory decrees.</li>
+  </ul>
+</div>`,
+
+    "/precedents": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Pakistani Landmark Precedents &amp; Citation Network</h1>
+  <p>Explore the relational precedent network of superior court rulings in Pakistan. Trace citation lineages, examine judicial treatments, and analyze binding ratios under Article 189 and Article 201 of the Constitution.</p>
+</div>`,
+
+    "/judges": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Pakistani Superior Court Judges Directory &amp; Bench Profiles</h1>
+  <p>Comprehensive directory and analytical profiles of Supreme Court of Pakistan and High Court judges (Lahore, Sindh, Peshawar, Islamabad, Balochistan). Browse authored judgments, bench combinations, and leading legal precedents.</p>
+</div>`,
+
+    "/statutes": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Digital Compendium of Pakistani Statutes &amp; Legislation</h1>
+  <p>Access the full text of primary Pakistani legislation including Constitution of Pakistan 1973, Pakistan Penal Code 1860, Code of Criminal Procedure 1898, Code of Civil Procedure 1908, Qanun-e-Shahadat Order 1984, and Muslim Family Laws Ordinance 1961.</p>
+</div>`,
   };
 
   // ── Statute pre-rendering (DB lookup, same pattern as judgments) ────────
@@ -553,7 +748,7 @@ export function serveStatic(app: Express) {
       return { meta: cached.meta, preRenderBlock: cached.preRenderBlock };
     }
 
-    if (seoActiveQueries >= SEO_MAX_CONCURRENT) return undefined;
+    if (!db || seoActiveQueries >= SEO_MAX_CONCURRENT) return undefined;
 
     try {
       const numId = Number(id);
@@ -831,9 +1026,17 @@ export function serveStatic(app: Express) {
     });
   }
 
+  // Enforce singular /judgment/:uuid canonical route with 301 redirect from /judgments/:uuid
+  app.get(/^\/judgments\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i, (req, res) => {
+    const id = req.params[0];
+    const qs = req.originalUrl.split("?")[1];
+    return res.redirect(301, qs ? `/judgment/${id}?${qs}` : `/judgment/${id}`);
+  });
+
   // SPA shell with per-route SEO meta injection.
   app.use("/{*path}", async (req, res) => {
-    const pathname = req.path || "/";
+    const rawUrl = req.originalUrl || req.url || req.path || "/";
+    const pathname = rawUrl.split("?")[0] || "/";
     const method = (req.method || "GET").toUpperCase();
     if (method !== "GET" && method !== "HEAD") {
       return res.status(404).end();

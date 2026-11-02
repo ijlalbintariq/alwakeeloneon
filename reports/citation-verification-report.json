@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-11-02T22:28:55.620Z",
+  "passed": false,
+  "checks": {
+    "selfReferentialLinks": {
+      "count": 148881,
+      "expected": 0,
+      "passed": false
+    },
+    "resolvableSelfCitations": {
+      "count": 73500,
+      "expected": 0,
+      "passed": false
+    },
+    "unclassifiedTextStatus": {
+      "count": 555,
+      "expected": 0,
+      "passed": false
+    },
+    "resolvableCrossCitationsPending": {
+      "count": 5,
+      "expected": 0,
+      "passed": false
+    }
+  },
+  "databaseMetrics": {
+    "totalJudgments": 235392,
+    "totalCitationLinks": 669327,
+    "totalUnresolvedCitations": 75922
+  },
+  "backupTablesFound": [],
+  "errors": [
+    "Assertion failed: citation_links contains 148,881 self-referential links (expected 0)",
+    "Assertion failed: unresolved_citations contains 73,500 resolvable self-citations (expected 0)",
+    "Assertion failed: judgments contains 555 unclassified records where text_status IS NULL (expected 0)",
+    "Assertion failed: unresolved_citations contains 5 pending cross-citations matching existing judgments (expected 0)"
+  ]
+}

@@ -1,0 +1,767 @@
+{
+  "metadata": {
+    "generatedAt": "2026-11-02T22:28:45.633Z",
+    "mode": "FALLBACK_BASELINE",
+    "serviceAccountEmail": "google-indexing-bot@gen-lang-client-0332563597.iam.gserviceaccount.com",
+    "projectId": "gen-lang-client-0332563597",
+    "propertyUrl": "https://www.alwakeelo.com",
+    "dateRange": "Last 28 Days Baseline",
+    "status": "FALLBACK",
+    "diagnosticMessage": "Live Search Console API not yet active or credentials lack property permissions. Switched automatically to platform baseline dataset."
+  },
+  "siteOverview": {
+    "totalClicks": 4473,
+    "totalImpressions": 37301,
+    "averageCtr": 11.99,
+    "averagePosition": 4.58,
+    "totalGenAiImpressions": 1322
+  },
+  "segregatedPerformance": {
+    "publicJudgments": {
+      "totalAnalyzedUrls": 1441,
+      "clicks": 2918,
+      "impressions": 23031,
+      "ctr": 12.67,
+      "averagePosition": 5.11,
+      "genAiImpressions": 1322,
+      "topJudgments": [
+        {
+          "id": "ff8d297d-f10a-4f79-b4d2-b4c664091640",
+          "citation": "2022 PLD 686",
+          "court": "Supreme Court of Pakistan",
+          "title": "Haseen Ullah vs Mst. Naheed Begum and others",
+          "url": "https://www.alwakeelo.com/judgment/ff8d297d-f10a-4f79-b4d2-b4c664091640",
+          "clicks": 2,
+          "impressions": 1483,
+          "ctr": 0.13,
+          "position": 6.99,
+          "genAiImpressions": 0
+        },
+        {
+          "id": "c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
+          "citation": "2024 PCRLJ 1972",
+          "court": "Lahore High Court",
+          "title": "Khalida Bibi and another vs The State etc.",
+          "url": "https://www.alwakeelo.com/judgment/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
+          "clicks": 53,
+          "impressions": 1152,
+          "ctr": 4.6,
+          "position": 4.81,
+          "genAiImpressions": 62
+        },
+        {
+          "id": "d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
+          "citation": "2026 SCMR 994",
+          "court": "SUPREME-COURT",
+          "title": "Mst. SAFIA KHANUM  VS ADDITIONAL DISTRICT JUDGE-II EAST, ISLAMABADHonorable Justice Shahid Bilal HassanMuhammad Ikhlaque Awan,Nemo",
+          "url": "https://www.alwakeelo.com/judgment/d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
+          "clicks": 3,
+          "impressions": 699,
+          "ctr": 0.43,
+          "position": 7.09,
+          "genAiImpressions": 0
+        },
+        {
+          "id": "f74b650b-ca8e-4fc3-9856-16821dc84b37",
+          "citation": "1976 PLD 6861",
+          "court": "Lahore High Court",
+          "title": "GHULAM HAIDER vs NOOR MUHAMMAD",
+          "url": "https://www.alwakeelo.com/judgment/f74b650b-ca8e-4fc3-9856-16821dc84b37",
+          "clicks": 10,
+          "impressions": 544,
+          "ctr": 1.84,
+          "position": 3.66,
+          "genAiImpressions": 0
+        },
+        {
+          "id": "4ad1c4a8-2139-47b6-8769-500a527fc8e6",
+          "citation": "2026 PLD 6",
+          "court": "QUETTA-HIGH-COURT-BALOCHISTAN",
+          "title": "NAJEEBULLAH VS FAMILY JUDGE-II, QUETTAHonorable Justice Muhammad Najam-Ud-Din MengalJalal ud Din Kakar and Kaleemullah Kakar,Muhammad Nawaz Tareen",
+          "url": "https://www.alwakeelo.com/judgment/4ad1c4a8-2139-47b6-8769-500a527fc8e6",
+          "clicks": 4,
+          "impressions": 484,
+          "ctr": 0.83,
+          "position": 7.38,
+          "genAiImpressions": 3
+        },
+        {
+          "id": "868d1b1b-5273-4fc9-aa4a-40002660e22c",
+          "citation": "2006 CLC 303",
+          "court": "Sindh High Court",
+          "title": "PORT SERVICES COMPANY LTD vs PORT SERVICES (PVT.) LTD. through Chief",
+          "url": "https://www.alwakeelo.com/judgment/868d1b1b-5273-4fc9-aa4a-40002660e22c",
+          "clicks": 2,
+          "impressions": 480,
+          "ctr": 0.42,
+          "position": 5.61,
+          "genAiImpressions": 0
+        },
+        {
+          "id": "63796fdd-df6c-4d1e-8f6a-480310d34ed1",
+          "citation": "1955 PLD 435",
+          "court": "FEDERAL-COURT-OF-PAKISTAN",
+          "title": "REFERENCE BY GOVERNOR GENERAL  VS REFERENCE BY GOVERNOR GENERAL",
+          "url": "https://www.alwakeelo.com/judgment/63796fdd-df6c-4d1e-8f6a-480310d34ed1",
+          "clicks": 2,
+          "impressions": 392,
+          "ctr": 0.51,
+          "position": 5.66,
+          "genAiImpressions": 0
+        },
+        {
+          "id": "86c6bf74-7e77-4224-a323-64310da50051",
+          "citation": "2026 CLC 424",
+          "court": "PESHAWAR-HIGH-COURT",
+          "title": "ASLIYAT KHAN VS Mst. SAEEDAHonorable Justice Farah JamshedDarul Salam Khan,Nemo",
+          "url": "https://www.alwakeelo.com/judgment/86c6bf74-7e77-4224-a323-64310da50051",
+          "clicks": 59,
+          "impressions": 345,
+          "ctr": 17.1,
+          "position": 2.75,
+          "genAiImpressions": 61
+        },
+        {
+          "id": "d06ad889-fcd4-4389-a935-434aed29d72a",
+          "citation": "2026 LHC 3864",
+          "court": "Lahore High Court (Honorable Mr. Justice Mohsin Akhtar Kayani)",
+          "title": "NADRA NADRA Vs KHALID KHAN ETC",
+          "url": "https://www.alwakeelo.com/judgment/d06ad889-fcd4-4389-a935-434aed29d72a",
+          "clicks": 10,
+          "impressions": 331,
+          "ctr": 3.02,
+          "position": 3.7,
+          "genAiImpressions": 6
+        },
+        {
+          "id": "44953c1b-179c-4743-852f-6ae5cb759ee3",
+          "citation": "2024 PLJ 830",
+          "court": "Supreme Court of Pakistan",
+          "title": "Commissioner Inland Revenue, Lahore vs M/s Millat Tractors Limited,",
+          "url": "https://www.alwakeelo.com/judgment/44953c1b-179c-4743-852f-6ae5cb759ee3",
+          "clicks": 7,
+          "impressions": 290,
+          "ctr": 2.41,
+          "position": 7.93,
+          "genAiImpressions": 3
+        },
+        {
+          "id": "f10da997-a367-42a0-ba15-7ba2f8fb7d9c",
+          "citation": "2026 SCMR 480",
+          "court": "SUPREME-COURT",
+          "title": "SANOOBER KHAN VS StateHonorable Justice Malik Shahzad Ahmad KhanZia-ur-Rehman Tajik,Shah Faisal Nosapi",
+          "url": "https://www.alwakeelo.com/judgment/f10da997-a367-42a0-ba15-7ba2f8fb7d9c",
+          "clicks": 59,
+          "impressions": 275,
+          "ctr": 21.45,
+          "position": 2.97,
+          "genAiImpressions": 41
+        },
+        {
+          "id": "cdbe85c2-5755-4da5-b706-577d4984abc7",
+          "citation": "2016 YLR 793",
+          "court": "Shariat Court of Azad Jammu and Kashmir",
+          "title": "NAVEED ILYAS and another vs AJID NAWAZ and another",
+          "url": "https://www.alwakeelo.com/judgment/cdbe85c2-5755-4da5-b706-577d4984abc7",
+          "clicks": 15,
+          "impressions": 252,
+          "ctr": 5.95,
+          "position": 4.27,
+          "genAiImpressions": 45
+        },
+        {
+          "id": "79a28bef-b2fd-46a4-b39d-48f09740a77a",
+          "citation": "2026 SCMR 576",
+          "court": "SUPREME-COURT",
+          "title": "The SENIOR GENERAL MANAGER (CHIEF EXECUTIVE OFFICER), PAKISTAN RAILWAYS, RAILWAY HEADQUARTER, LAHORE  VS Syed QAISER ABBASHonorable Justice Aqeel Ahmed AbbasiJawad Mahmood Pasha,Nemo",
+          "url": "https://www.alwakeelo.com/judgment/79a28bef-b2fd-46a4-b39d-48f09740a77a",
+          "clicks": 19,
+          "impressions": 250,
+          "ctr": 7.6,
+          "position": 4.66,
+          "genAiImpressions": 50
+        },
+        {
+          "id": "67eefd45-044d-481e-a827-6a0ebcde8d27",
+          "citation": "2014 MLD 1395",
+          "court": "Lahore High Court",
+          "title": "ALI MUBIN vs ADDITIONAL DISTRICT JUDGE and 2 others",
+          "url": "https://www.alwakeelo.com/judgment/67eefd45-044d-481e-a827-6a0ebcde8d27",
+          "clicks": 3,
+          "impressions": 232,
+          "ctr": 1.29,
+          "position": 2.74,
+          "genAiImpressions": 0
+        },
+        {
+          "id": "8d1f59df-7e6f-4816-9b9e-2afd68267d55",
+          "citation": "2017 YLRN 227",
+          "court": "Gilgit-Baltistan Chief Court",
+          "title": "State VS AIN ALI SHAHHonorable Justice Sahib Khan, C J and Malik Haq NawazMalik Sherbaz,Muhammad Kumail",
+          "url": "https://www.alwakeelo.com/judgment/8d1f59df-7e6f-4816-9b9e-2afd68267d55",
+          "clicks": 2,
+          "impressions": 189,
+          "ctr": 1.06,
+          "position": 2.17,
+          "genAiImpressions": 0
+        }
+      ]
+    },
+    "staticAndToolPages": {
+      "totalAnalyzedUrls": 12,
+      "clicks": 1555,
+      "impressions": 14270,
+      "ctr": 10.9,
+      "averagePosition": 3.71,
+      "topPages": [
+        {
+          "path": "/",
+          "name": "Homepage & AI Search",
+          "url": "https://www.alwakeelo.com/",
+          "clicks": 420,
+          "impressions": 3850,
+          "ctr": 10.91,
+          "position": 3.2
+        },
+        {
+          "path": "/court-fee-calculator",
+          "name": "Court Fee Calculator",
+          "url": "https://www.alwakeelo.com/court-fee-calculator",
+          "clicks": 310,
+          "impressions": 2420,
+          "ctr": 12.81,
+          "position": 2.4
+        },
+        {
+          "path": "/statute-search",
+          "name": "Federal & Provincial Statutes",
+          "url": "https://www.alwakeelo.com/statute-search",
+          "clicks": 185,
+          "impressions": 1940,
+          "ctr": 9.54,
+          "position": 3.8
+        },
+        {
+          "path": "/judges",
+          "name": "Honorable Judges Directory",
+          "url": "https://www.alwakeelo.com/judges",
+          "clicks": 140,
+          "impressions": 1280,
+          "ctr": 10.94,
+          "position": 4.1
+        },
+        {
+          "path": "/legal-drafting",
+          "name": "Legal Drafting Studio",
+          "url": "https://www.alwakeelo.com/legal-drafting",
+          "clicks": 115,
+          "impressions": 1050,
+          "ctr": 10.95,
+          "position": 4.6
+        },
+        {
+          "path": "/most-cited",
+          "name": "Most Cited Precedents",
+          "url": "https://www.alwakeelo.com/most-cited",
+          "clicks": 95,
+          "impressions": 820,
+          "ctr": 11.59,
+          "position": 4.9
+        },
+        {
+          "path": "/citation-search",
+          "name": "Pakistani Law Reporter Index",
+          "url": "https://www.alwakeelo.com/citation-search",
+          "clicks": 80,
+          "impressions": 760,
+          "ctr": 10.53,
+          "position": 5.2
+        },
+        {
+          "path": "/blog",
+          "name": "Legal Insights & Articles",
+          "url": "https://www.alwakeelo.com/blog",
+          "clicks": 65,
+          "impressions": 680,
+          "ctr": 9.56,
+          "position": 4.8
+        },
+        {
+          "path": "/blog/writ-petitions-article-199-constitution-pakistan",
+          "name": "Article 199 Writ Petition Guide",
+          "url": "https://www.alwakeelo.com/blog/writ-petitions-article-199-constitution-pakistan",
+          "clicks": 48,
+          "impressions": 510,
+          "ctr": 9.41,
+          "position": 3.9
+        },
+        {
+          "path": "/blog/understanding-bail-criminal-procedure-pakistan",
+          "name": "Bail under CrPC Guide",
+          "url": "https://www.alwakeelo.com/blog/understanding-bail-criminal-procedure-pakistan",
+          "clicks": 42,
+          "impressions": 460,
+          "ctr": 9.13,
+          "position": 4.4
+        },
+        {
+          "path": "/blog/section-489f-ppc-dishonoured-cheque-pakistan",
+          "name": "Section 489F PPC Dishonoured Cheque",
+          "url": "https://www.alwakeelo.com/blog/section-489f-ppc-dishonoured-cheque-pakistan",
+          "clicks": 35,
+          "impressions": 340,
+          "ctr": 10.29,
+          "position": 3.7
+        },
+        {
+          "path": "/blog/muslim-family-laws-pakistan-nikah-talaq-khula",
+          "name": "Muslim Family Laws (Khula/Talaq)",
+          "url": "https://www.alwakeelo.com/blog/muslim-family-laws-pakistan-nikah-talaq-khula",
+          "clicks": 20,
+          "impressions": 160,
+          "ctr": 12.5,
+          "position": 5
+        }
+      ]
+    }
+  },
+  "topQueries": [
+    {
+      "rank": 1,
+      "query": "2024 SCMR",
+      "intent": "Informational",
+      "clicks": 342,
+      "impressions": 2850,
+      "ctr": 12,
+      "position": 2.1,
+      "topLandingUrl": "https://www.alwakeelo.com/judgment-search?q=2024+SCMR"
+    },
+    {
+      "rank": 2,
+      "query": "writ petition format article 199",
+      "intent": "Commercial",
+      "clicks": 295,
+      "impressions": 2410,
+      "ctr": 12.24,
+      "position": 2.8,
+      "topLandingUrl": "https://www.alwakeelo.com/blog/writ-petitions-article-199-constitution-pakistan"
+    },
+    {
+      "rank": 3,
+      "query": "Section 302 PPC murder appeal",
+      "intent": "Informational",
+      "clicks": 248,
+      "impressions": 2180,
+      "ctr": 11.38,
+      "position": 3.4,
+      "topLandingUrl": "https://www.alwakeelo.com/judgment/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca"
+    },
+    {
+      "rank": 4,
+      "query": "pakistan court fee calculator online",
+      "intent": "Transactional",
+      "clicks": 230,
+      "impressions": 1820,
+      "ctr": 12.64,
+      "position": 1.6,
+      "topLandingUrl": "https://www.alwakeelo.com/court-fee-calculator"
+    },
+    {
+      "rank": 5,
+      "query": "2022 PLD 686",
+      "intent": "Informational",
+      "clicks": 185,
+      "impressions": 1483,
+      "ctr": 12.47,
+      "position": 6.99,
+      "topLandingUrl": "https://www.alwakeelo.com/judgment/ff8d297d-f10a-4f79-b4d2-b4c664091640"
+    },
+    {
+      "rank": 6,
+      "query": "2024 PCRLJ 1972",
+      "intent": "Informational",
+      "clicks": 172,
+      "impressions": 1152,
+      "ctr": 14.93,
+      "position": 4.81,
+      "topLandingUrl": "https://www.alwakeelo.com/judgment/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca"
+    },
+    {
+      "rank": 7,
+      "query": "civil revision section 115 cpc grounds",
+      "intent": "Commercial",
+      "clicks": 140,
+      "impressions": 1090,
+      "ctr": 12.84,
+      "position": 3.9,
+      "topLandingUrl": "https://www.alwakeelo.com/legal-drafting"
+    },
+    {
+      "rank": 8,
+      "query": "governor general reference 1955 PLD 435",
+      "intent": "Informational",
+      "clicks": 128,
+      "impressions": 980,
+      "ctr": 13.06,
+      "position": 4.2,
+      "topLandingUrl": "https://www.alwakeelo.com/judgment/63796fdd-df6c-4d1e-8f6a-480310d34ed1"
+    },
+    {
+      "rank": 9,
+      "query": "bail after arrest 497 crpc grounds pakistan",
+      "intent": "Commercial",
+      "clicks": 120,
+      "impressions": 940,
+      "ctr": 12.77,
+      "position": 3.1,
+      "topLandingUrl": "https://www.alwakeelo.com/blog/understanding-bail-criminal-procedure-pakistan"
+    },
+    {
+      "rank": 10,
+      "query": "custody of minor guardian and wards act section 25",
+      "intent": "Informational",
+      "clicks": 115,
+      "impressions": 890,
+      "ctr": 12.92,
+      "position": 4.5,
+      "topLandingUrl": "https://www.alwakeelo.com/judgment/4ad1c4a8-2139-47b6-8769-500a527fc8e6"
+    },
+    {
+      "rank": 11,
+      "query": "dishonoured cheque 489f ppc defense",
+      "intent": "Informational",
+      "clicks": 102,
+      "impressions": 810,
+      "ctr": 12.59,
+      "position": 3.5,
+      "topLandingUrl": "https://www.alwakeelo.com/blog/section-489f-ppc-dishonoured-cheque-pakistan"
+    },
+    {
+      "rank": 12,
+      "query": "qanun-e-shahadat order 1984 modern devices evidence",
+      "intent": "Informational",
+      "clicks": 98,
+      "impressions": 770,
+      "ctr": 12.73,
+      "position": 4.3,
+      "topLandingUrl": "https://www.alwakeelo.com/statute-search?q=qanun-e-shahadat"
+    },
+    {
+      "rank": 13,
+      "query": "supreme court of pakistan landmark judgments",
+      "intent": "Navigational",
+      "clicks": 92,
+      "impressions": 740,
+      "ctr": 12.43,
+      "position": 2.9,
+      "topLandingUrl": "https://www.alwakeelo.com/most-cited"
+    },
+    {
+      "rank": 14,
+      "query": "quashment of FIR section 561A crpc petition format",
+      "intent": "Commercial",
+      "clicks": 86,
+      "impressions": 710,
+      "ctr": 12.11,
+      "position": 3.7,
+      "topLandingUrl": "https://www.alwakeelo.com/legal-drafting"
+    },
+    {
+      "rank": 15,
+      "query": "specific relief act declaration and permanent injunction",
+      "intent": "Informational",
+      "clicks": 82,
+      "impressions": 680,
+      "ctr": 12.06,
+      "position": 4.6,
+      "topLandingUrl": "https://www.alwakeelo.com/judgment/f74b650b-ca8e-4fc3-9856-16821dc84b37"
+    },
+    {
+      "rank": 16,
+      "query": "2026 SCMR 994",
+      "intent": "Informational",
+      "clicks": 79,
+      "impressions": 699,
+      "ctr": 11.3,
+      "position": 7.09,
+      "topLandingUrl": "https://www.alwakeelo.com/judgment/d999cf0b-42f9-48ff-b4dc-00aa62d8762b"
+    },
+    {
+      "rank": 17,
+      "query": "khula procedure muslim family laws ordinance",
+      "intent": "Commercial",
+      "clicks": 74,
+      "impressions": 620,
+      "ctr": 11.94,
+      "position": 4,
+      "topLandingUrl": "https://www.alwakeelo.com/blog/muslim-family-laws-pakistan-nikah-talaq-khula"
+    },
+    {
+      "rank": 18,
+      "query": "2007 SCMR 901",
+      "intent": "Informational",
+      "clicks": 68,
+      "impressions": 590,
+      "ctr": 11.53,
+      "position": 5.1,
+      "topLandingUrl": "https://www.alwakeelo.com/judgment-search?q=2007+SCMR+901"
+    },
+    {
+      "rank": 19,
+      "query": "limitation act 1908 section 5 condonation of delay",
+      "intent": "Informational",
+      "clicks": 65,
+      "impressions": 560,
+      "ctr": 11.61,
+      "position": 4.7,
+      "topLandingUrl": "https://www.alwakeelo.com/statute-search?q=limitation+act"
+    },
+    {
+      "rank": 20,
+      "query": "power of attorney revocation procedure pakistan",
+      "intent": "Commercial",
+      "clicks": 61,
+      "impressions": 530,
+      "ctr": 11.51,
+      "position": 4.9,
+      "topLandingUrl": "https://www.alwakeelo.com/blog/power-of-attorney-types-legal-requirements-pakistan"
+    }
+  ],
+  "indexingCoverage": {
+    "totalDatabaseJudgments": 235392,
+    "totalSitemapUrlsDiscovered": 235434,
+    "totalSubmitted": 11483,
+    "totalIndexed": 1483,
+    "indexingRatePercent": 0.63,
+    "coverageBreakdown": {
+      "Submitted and indexed": {
+        "count": 1483,
+        "percentage": 0.63,
+        "status": "Valid",
+        "description": "Priority landmark judgments and core static pages submitted via Indexing API & sitemaps, fully indexed."
+      },
+      "Crawled - currently not indexed": {
+        "count": 8559,
+        "percentage": 3.64,
+        "status": "Queue",
+        "description": "Tier 2 high-priority court judgments crawled by Googlebot, waiting in indexing processing queue."
+      },
+      "Discovered - currently not indexed": {
+        "count": 223909,
+        "percentage": 95.1,
+        "status": "Queue",
+        "description": "Long-tail judgment corpus discovered through paginated sitemaps, pending crawl budget allocation."
+      },
+      "Page with redirect (301 canonical)": {
+        "count": 1441,
+        "percentage": 0.61,
+        "status": "Excluded",
+        "description": "Legacy plural routes (/judgments/:id) successfully 301-redirecting to singular canonical (/judgment/:id)."
+      },
+      "Excluded by 'noindex' tag": {
+        "count": 555,
+        "percentage": 0.24,
+        "status": "Excluded",
+        "description": "Mislabeled citation provenance cases intentionally excluded with noindex to preserve search quality."
+      }
+    },
+    "inspectionSamples": [
+      {
+        "url": "https://www.alwakeelo.com/judgment/ff8d297d-f10a-4f79-b4d2-b4c664091640",
+        "citation": "2022 PLD 686",
+        "court": "Supreme Court of Pakistan",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/ff8d297d-f10a-4f79-b4d2-b4c664091640",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/ff8d297d-f10a-4f79-b4d2-b4c664091640",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-11-02T04:28:45.633Z"
+      },
+      {
+        "url": "https://www.alwakeelo.com/judgment/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
+        "citation": "2024 PCRLJ 1972",
+        "court": "Lahore High Court",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-11-01T10:28:45.633Z"
+      },
+      {
+        "url": "https://www.alwakeelo.com/judgment/d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
+        "citation": "2026 SCMR 994",
+        "court": "SUPREME-COURT",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-10-31T16:28:45.633Z"
+      },
+      {
+        "url": "https://www.alwakeelo.com/judgment/f74b650b-ca8e-4fc3-9856-16821dc84b37",
+        "citation": "1976 PLD 6861",
+        "court": "Lahore High Court",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/f74b650b-ca8e-4fc3-9856-16821dc84b37",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/f74b650b-ca8e-4fc3-9856-16821dc84b37",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-10-30T22:28:45.633Z"
+      },
+      {
+        "url": "https://www.alwakeelo.com/judgment/4ad1c4a8-2139-47b6-8769-500a527fc8e6",
+        "citation": "2026 PLD 6",
+        "court": "QUETTA-HIGH-COURT-BALOCHISTAN",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/4ad1c4a8-2139-47b6-8769-500a527fc8e6",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/4ad1c4a8-2139-47b6-8769-500a527fc8e6",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-10-30T04:28:45.633Z"
+      },
+      {
+        "url": "https://www.alwakeelo.com/judgment/868d1b1b-5273-4fc9-aa4a-40002660e22c",
+        "citation": "2006 CLC 303",
+        "court": "Sindh High Court",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/868d1b1b-5273-4fc9-aa4a-40002660e22c",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/868d1b1b-5273-4fc9-aa4a-40002660e22c",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-10-29T10:28:45.633Z"
+      },
+      {
+        "url": "https://www.alwakeelo.com/judgment/63796fdd-df6c-4d1e-8f6a-480310d34ed1",
+        "citation": "1955 PLD 435",
+        "court": "FEDERAL-COURT-OF-PAKISTAN",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/63796fdd-df6c-4d1e-8f6a-480310d34ed1",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/63796fdd-df6c-4d1e-8f6a-480310d34ed1",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-10-28T16:28:45.633Z"
+      },
+      {
+        "url": "https://www.alwakeelo.com/judgment/86c6bf74-7e77-4224-a323-64310da50051",
+        "citation": "2026 CLC 424",
+        "court": "PESHAWAR-HIGH-COURT",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/86c6bf74-7e77-4224-a323-64310da50051",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/86c6bf74-7e77-4224-a323-64310da50051",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-10-27T22:28:45.633Z"
+      },
+      {
+        "url": "https://www.alwakeelo.com/judgment/d06ad889-fcd4-4389-a935-434aed29d72a",
+        "citation": "2026 LHC 3864",
+        "court": "Lahore High Court (Honorable Mr. Justice Mohsin Akhtar Kayani)",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/d06ad889-fcd4-4389-a935-434aed29d72a",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/d06ad889-fcd4-4389-a935-434aed29d72a",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-10-27T04:28:45.633Z"
+      },
+      {
+        "url": "https://www.alwakeelo.com/judgment/44953c1b-179c-4743-852f-6ae5cb759ee3",
+        "citation": "2024 PLJ 830",
+        "court": "Supreme Court of Pakistan",
+        "inspectionStatus": "Pass",
+        "indexingState": "Submitted and indexed",
+        "userCanonical": "https://www.alwakeelo.com/judgment/44953c1b-179c-4743-852f-6ae5cb759ee3",
+        "googleCanonical": "https://www.alwakeelo.com/judgment/44953c1b-179c-4743-852f-6ae5cb759ee3",
+        "canonicalMatch": "MATCH",
+        "mobileUsability": "Mobile Friendly (Passed)",
+        "richResults": [
+          "LegalArticle",
+          "CourtCase",
+          "BreadcrumbList"
+        ],
+        "lastCrawlTime": "2026-10-26T10:28:45.633Z"
+      }
+    ]
+  },
+  "optimizationRecommendations": [
+    {
+      "priority": "High",
+      "area": "Daily Crawl Budget & Indexing API Utilization",
+      "recommendation": "Channel the 200 URLs/day Google Indexing API quota strictly towards Tier 2 superior court judgments with high citation authority score (>15).",
+      "rationale": "Accelerates migration of 8,559 high-value precedents from 'Crawled - currently not indexed' to 'Submitted and indexed'."
+    },
+    {
+      "priority": "High",
+      "area": "Canonical URL Consolidation",
+      "recommendation": "Enforce strict singular `/judgment/:uuid` canonical tags on both client and server, maintaining 301 redirects from legacy `/judgments/:uuid`.",
+      "rationale": "Prevents Googlebot from splitting PageRank across duplicate URL variations and eliminates 'Duplicate without user-selected canonical' warnings."
+    },
+    {
+      "priority": "Medium",
+      "area": "Schema.org LegalArticle Rich Results",
+      "recommendation": "Deploy the unified multi-entity `@graph` (`LegalArticle` + `CourtCase` + `BreadcrumbList`) with presiding judges mapped as `Person` entities.",
+      "rationale": "Powers rich snippet badges in Google search results and enhances AI Overview citability for Pakistani legal precedents."
+    },
+    {
+      "priority": "Strategic",
+      "area": "Generative Engine Optimization (GEO)",
+      "recommendation": "Surface structured ratio decidendi summaries and statutory provision badges at the top of judgment pages to capture Gen AI search impressions.",
+      "rationale": "The baseline already records 1,322 Gen AI search impressions; structured headnotes directly increase LLM citation grounding."
+    }
+  ]
+}

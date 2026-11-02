@@ -1,0 +1,588 @@
+{
+  "timestamp": "2026-11-02T22:28:18.078Z",
+  "serverUrl": "http://127.0.0.1:57802",
+  "totalRoutesChecked": 53,
+  "summary": {
+    "totalChecked": 53,
+    "passed": 53,
+    "failed": 0,
+    "status200Count": 45,
+    "status301Count": 5,
+    "status404Count": 3,
+    "status500Count": 0
+  },
+  "categories": {
+    "knownSpaRoutes": {
+      "total": 35,
+      "passed": 35,
+      "failed": 0
+    },
+    "judgmentPermalinks": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0
+    },
+    "pluralRedirectRoutes": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0
+    },
+    "citationLinks": {
+      "total": 7,
+      "passed": 7,
+      "failed": 0
+    },
+    "negativeChecks": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0
+    }
+  },
+  "inTextCitationExtraction": {
+    "sampleTested": "In the landmark precedent of 2021 SCMR 201, the apex bench reiterated the principles first settled in PLD 2020 SC 1 and 1997 SCMR 1203 regarding constitutional remedies.",
+    "citationsFound": 3,
+    "hyperlinkedHtml": "In the landmark precedent of <a href=\"/citation-search?q=2021%20SCMR%20201\" class=\"citation-internal-link\" style=\"color:#1d4ed8;text-decoration:underline;font-weight:500;\">2021 SCMR 201</a>, the apex bench reiterated the principles first settled in <a href=\"/citation-search?q=PLD%202020%20SC%201\" class=\"citation-internal-link\" style=\"color:#1d4ed8;text-decoration:underline;font-weight:500;\">PLD 2020 SC 1</a> and <a href=\"/citation-search?q=1997%20SCMR%201203\" class=\"citation-internal-link\" style=\"color:#1d4ed8;text-decoration:underline;font-weight:500;\">1997 SCMR 1203</a> regarding constitutional remedies.",
+    "allExtractedLinksValid": true
+  },
+  "results": [
+    {
+      "url": "/",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 25,
+      "passed": true
+    },
+    {
+      "url": "/about",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 5,
+      "passed": true
+    },
+    {
+      "url": "/contact",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 7,
+      "passed": true
+    },
+    {
+      "url": "/faq",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/blog",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/privacy",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/terms",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/cancellation-return-refund-policy",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/ownership-statement",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/install",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/word-addin-guide",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/judgments",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/judgments/browse",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/judgment-search",
+      "category": "known_spa",
+      "expectedStatus": 301,
+      "actualStatus": 301,
+      "statusText": "Moved Permanently",
+      "redirectLocation": "/judgments",
+      "responseTimeMs": 2,
+      "passed": true
+    },
+    {
+      "url": "/citation-search",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/statute-search",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/statutes",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/judges",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/judges/qazi-faez-isa",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/most-cited",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/precedents",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/court-fee-calculator",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/legal-drafting",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/contract-drafting",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 2,
+      "passed": true
+    },
+    {
+      "url": "/contracts",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/cases",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/case-files",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/diary",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/tax-return",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/preview",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/preview/judgments",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/preview/most-cited",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/preview/judges",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/preview/statutes",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/preview/court-fee-calculator",
+      "category": "known_spa",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/judgment/00000000-0000-4000-8000-000000000001",
+      "category": "judgment_permalink",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/judgment/ff8d297d-f10a-4f79-b4d2-b4c664091640",
+      "category": "judgment_permalink",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/judgment/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
+      "category": "judgment_permalink",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/judgment/d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
+      "category": "judgment_permalink",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/judgments/00000000-0000-4000-8000-000000000001",
+      "category": "plural_redirect",
+      "expectedStatus": 301,
+      "actualStatus": 301,
+      "statusText": "Moved Permanently",
+      "redirectLocation": "/judgment/00000000-0000-4000-8000-000000000001",
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/judgments/ff8d297d-f10a-4f79-b4d2-b4c664091640",
+      "category": "plural_redirect",
+      "expectedStatus": 301,
+      "actualStatus": 301,
+      "statusText": "Moved Permanently",
+      "redirectLocation": "/judgment/ff8d297d-f10a-4f79-b4d2-b4c664091640",
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/judgments/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
+      "category": "plural_redirect",
+      "expectedStatus": 301,
+      "actualStatus": 301,
+      "statusText": "Moved Permanently",
+      "redirectLocation": "/judgment/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/judgments/d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
+      "category": "plural_redirect",
+      "expectedStatus": 301,
+      "actualStatus": 301,
+      "statusText": "Moved Permanently",
+      "redirectLocation": "/judgment/d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/citation-search?q=2020%20CLC%201910",
+      "category": "citation_link",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/citation-search?q=2021%20SCMR%20201",
+      "category": "citation_link",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/citation-search?q=PLD%202020%20SC%201",
+      "category": "citation_link",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/citation-search?q=1997%20SCMR%201203",
+      "category": "citation_link",
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/non-existent-unmapped-route-xyz-404-probe",
+      "category": "negative_check",
+      "expectedStatus": 404,
+      "actualStatus": 404,
+      "statusText": "Not Found",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/unknown-category/probe-404",
+      "category": "negative_check",
+      "expectedStatus": 404,
+      "actualStatus": 404,
+      "statusText": "Not Found",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/judgment/unresolvable-nonexistent-citation-slug-404",
+      "category": "negative_check",
+      "expectedStatus": 404,
+      "actualStatus": 404,
+      "statusText": "Not Found",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/citation-search?q=2021%20SCMR%20201",
+      "category": "citation_link",
+      "expectedStatus": [
+        200,
+        301
+      ],
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    },
+    {
+      "url": "/citation-search?q=PLD%202020%20SC%201",
+      "category": "citation_link",
+      "expectedStatus": [
+        200,
+        301
+      ],
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 1,
+      "passed": true
+    },
+    {
+      "url": "/citation-search?q=1997%20SCMR%201203",
+      "category": "citation_link",
+      "expectedStatus": [
+        200,
+        301
+      ],
+      "actualStatus": 200,
+      "statusText": "OK",
+      "redirectLocation": null,
+      "responseTimeMs": 0,
+      "passed": true
+    }
+  ]
+}

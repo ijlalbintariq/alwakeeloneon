@@ -190,6 +190,7 @@ export type JudgmentDetail = {
   title: string;
   petitioner: string | null;
   respondent: string | null;
+  bench: string | null;
   court: string;
   decisionDate: Date | null;
   headnotes: string | null;
@@ -2956,6 +2957,7 @@ export class DatabaseStorage implements IStorage {
       title: judgments.title,
       petitioner: judgments.petitioner,
       respondent: judgments.respondent,
+      bench: judgments.bench,
       courtName: courtsRef.name,
       courtSnapshot: judgments.courtNameSnapshot,
       decisionDate: judgments.decisionDate,
@@ -3051,6 +3053,7 @@ export class DatabaseStorage implements IStorage {
       title: cleanCaseTitle(row.title),
       petitioner: row.petitioner,
       respondent: row.respondent,
+      bench: row.bench || null,
       court: row.courtName || row.courtSnapshot || "",
       decisionDate: row.decisionDate,
       headnotes: row.headnotes,

@@ -39,7 +39,11 @@ test("record checks reject a reporting court qualifier even without a Court Name
   assert.equal(assessJudgmentIdentity(record).identityConflict, true);
 });
 
-test("actual resolver refuses wrong-court rows and removes private lookup fields", async () => {
+test("actual resolver refuses wrong-court rows and removes private lookup fields", async (t) => {
+  if (!db) {
+    t.skip("Database is not configured in this test environment.");
+    return;
+  }
   const original = db.select;
   let candidate: any = { id: "ajk-record", __lookupCourt: "High Court of Azad Jammu and Kashmir" };
   (db as any).select = () => ({ from: (table: any) => table === lawJournals

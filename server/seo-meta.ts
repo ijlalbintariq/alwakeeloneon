@@ -273,6 +273,63 @@ ${JSON.stringify(
       index: false,
     },
   },
+  {
+    match: /^\/court-fee-calculator$/,
+    meta: {
+      title: "Court Fee Calculator — Court Fees Act 1870 & Suits Valuation | Al Wakeelo",
+      description: "Free Pakistani court fee calculator under Court Fees Act 1870 and Suits Valuation Act 1887. Compute ad valorem 7.5% fees, High Court writ fees, and plaint valuation clauses.",
+      index: true,
+      schemaMarkup: `<script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"WebApplication","name":"Pakistani Court Fee Calculator","applicationCategory":"LegalApplication","operatingSystem":"All","url":"https://www.alwakeelo.com/court-fee-calculator","description":"Calculates court fees and generates plaint valuation clauses pursuant to Court Fees Act 1870 and Suits Valuation Act 1887."})}</script>`,
+    },
+  },
+  {
+    match: /^\/most-cited$/,
+    meta: {
+      title: "Most Cited Pakistani Legal Precedents & Apex Case Law | Al Wakeelo",
+      description: "Discover Pakistan's top 100 most cited Supreme Court and High Court precedents. Ranked by citation frequency with precedent treatment history.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/precedents$/,
+    meta: {
+      title: "Pakistani Precedent Network & Citation Treatment Index | Al Wakeelo",
+      description: "Explore the relational citation graph of Pakistani case law. Trace relied upon, distinguished, and overruled authorities across Pakistani courts.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/judges$/,
+    meta: {
+      title: "Pakistani Superior Court Judges Directory & Bench Analytics | Al Wakeelo",
+      description: "Directory of Supreme Court and High Court judges of Pakistan. Analytical profiles of judicial rulings, authored judgments, and bench compositions.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/judges\/[^/]+$/,
+    meta: {
+      title: "Judicial Profile — Superior Courts of Pakistan | Al Wakeelo",
+      description: "Detailed judicial profile, authored judgments, and bench analytics on Al Wakeelo.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/statutes$/,
+    meta: {
+      title: "Digital Compendium of Pakistani Statutes & Legislation | Al Wakeelo",
+      description: "Full text digital navigation of Pakistani statutes including Constitution 1973, PPC 1860, CrPC 1898, CPC 1908, and Qanun-e-Shahadat 1984.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/preview(\/.*)?$/,
+    meta: {
+      title: "Chambers Workspace Preview | Al Wakeelo",
+      description: "Preview the Al Wakeelo Chambers workspace, legal intelligence tools, and precedent search.",
+      index: true,
+    },
+  },
   // Authenticated app routes — set noindex so Google doesn't try to crawl them.
   { match: /^\/dashboard$/,        meta: { title: "Dashboard | Al Wakeelo",        description: "Your Al Wakeelo workspace.",        index: false } },
   { match: /^\/judgment-view$/,    meta: { title: "View Judgment | Al Wakeelo",     description: "Judgment viewer.",                  index: false } },
@@ -311,8 +368,13 @@ function escapeHtmlText(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
-function buildCanonicalUrl(pathname: string): string {
+export function buildCanonicalUrl(pathname: string): string {
   const normalized = pathname === "/" ? "/" : pathname.replace(/\/+$/, "");
+  // Standardize any judgment permalink route to https://www.alwakeelo.com/judgment/:uuid
+  const judgmentUuidMatch = normalized.match(/^(?:\/preview\/(?:public\/judgments|p)|\/judgments?)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
+  if (judgmentUuidMatch) {
+    return `${SITE_ORIGIN}/judgment/${judgmentUuidMatch[1]}`;
+  }
   return `${SITE_ORIGIN}${normalized || "/"}`;
 }
 

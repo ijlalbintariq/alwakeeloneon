@@ -17,6 +17,8 @@
  */
 
 import type { Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import { eq, asc, desc, and } from "drizzle-orm";
 import { db } from "./db";
 import { judgments, statuteDocuments } from "@shared/schema";
@@ -270,7 +272,10 @@ export async function handleSitemapJudgmentsPriority(req: Request, res: Response
     const origin = siteOrigin(req);
     const today = new Date().toISOString().slice(0, 10);
     // 988 verified performing judgments from Search Console Performance report
-    const priorityJudgments: Array<{ id: string; clicks: number; impressions: number }> = require("../shared/priority-judgments.json");
+    const filePath = path.resolve(process.cwd(), "shared/priority-judgments.json");
+    const priorityJudgments: Array<{ id: string; clicks: number; impressions: number }> = JSON.parse(
+      fs.readFileSync(filePath, "utf8")
+    );
 
     const provenance = await getTextProvenance(priorityJudgments.map((r) => r.id)).catch(() => new Map());
     const blocks = priorityJudgments
@@ -295,7 +300,10 @@ export async function handleSitemapJudgmentsTier2(req: Request, res: Response): 
     const origin = siteOrigin(req);
     const today = new Date().toISOString().slice(0, 10);
     // 10,000 verified high-value Supreme Court & High Court cases (2023-2026)
-    const tier2Judgments: Array<{ id: string; date?: string }> = require("../shared/tier2-judgments.json");
+    const filePath = path.resolve(process.cwd(), "shared/tier2-judgments.json");
+    const tier2Judgments: Array<{ id: string; date?: string }> = JSON.parse(
+      fs.readFileSync(filePath, "utf8")
+    );
 
     const provenance = await getTextProvenance(tier2Judgments.map((r) => r.id)).catch(() => new Map());
     const blocks = tier2Judgments

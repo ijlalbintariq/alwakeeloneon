@@ -52,6 +52,7 @@ const PreviewStatutes = lazy(() => import("./pages/PreviewStatutes"));
 const PreviewJudges = lazy(() => import("./pages/PreviewJudges"));
 const PreviewJudgeProfile = lazy(() => import("./pages/PreviewJudgeProfile"));
 const PreviewMostCited = lazy(() => import("./pages/PreviewMostCited"));
+const PreviewCourtFeeCalculator = lazy(() => import("./pages/PreviewCourtFeeCalculator"));
 
 const FallbackLoader = () => (
   <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center text-[#0F172A] font-mono text-xs gap-3">
@@ -235,6 +236,8 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/preview/judges/:name" component={PreviewJudgeProfile} />
         <Route path="/most-cited" component={PreviewMostCited} />
         <Route path="/preview/most-cited" component={PreviewMostCited} />
+        <Route path="/court-fee-calculator" component={PreviewCourtFeeCalculator} />
+        <Route path="/preview/court-fee-calculator" component={PreviewCourtFeeCalculator} />
         <Route path="/diary" component={PreviewDailyDiary} />
         <Route path="/daily-diary" component={PreviewDailyDiary} />
         <ProtectedRoute path="/preview/diary" component={PreviewDailyDiary} />

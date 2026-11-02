@@ -7,7 +7,7 @@
  * actually that judgment's own? Keeping two copies is how one of them drifts
  * back to serving another case's judgment as fact.
  */
-import { db } from "./db";
+import { db, dbAvailable } from "./db";
 import { judgments, lawJournals } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -166,7 +166,7 @@ export async function verifyCitations(raws: string[]): Promise<Map<string, strin
 const PUBLIC_SITE = (process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "");
 
 export function judgmentSourceUrl(judgmentId: string): string {
-  return `${PUBLIC_SITE}/judgments/${judgmentId}`;
+  return `${PUBLIC_SITE}/judgment/${judgmentId}`;
 }
 
 /** "PLC(CS)N" -> "PLCCSN". Same shape parseCitation produces. */
@@ -177,6 +177,15 @@ export function canonJournalCode(code: string): string {
 let journalCodeCache: Map<string, number> | null = null;
 async function getJournalCodes(): Promise<Map<string, number>> {
   if (journalCodeCache) return journalCodeCache;
+  if (!db?.select) {
+    const fallback = new Map<string, number>([
+      ["PLD", 1], ["SCMR", 2], ["YLR", 3], ["MLD", 4], ["CLC", 5],
+      ["PCRLJ", 6], ["PLJ", 7], ["NLR", 8], ["PTCL", 9], ["PTD", 10],
+      ["PLCCS", 11], ["PLC", 12], ["PSC", 13], ["ALD", 14], ["KLR", 15],
+      ["SLS", 16], ["GBLR", 17], ["CLD", 18], ["AIR", 19],
+    ]);
+    return fallback;
+  }
   const rows = await db.select({ id: lawJournals.id, code: lawJournals.code }).from(lawJournals);
   const map = new Map<string, number>();
   for (const r of rows) map.set(canonJournalCode(r.code), r.id);
@@ -483,6 +492,7 @@ export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegr
  * Never LIKE — a substring match binds to a different, wrong judgment.
  */
 export async function resolveJudgment<T extends Record<string, any>>(raw: string, selection: T): Promise<any | undefined> {
+  if (!db?.select) return undefined;
   const codes = await getJournalCodes();
   const known = new Set(codes.keys());
   const lookupSelection = { ...selection, __lookupCourt: judgments.courtNameSnapshot };
