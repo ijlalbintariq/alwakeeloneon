@@ -133,6 +133,9 @@ export async function handleSitemapIndex(req: Request, res: Response): Promise<v
     entries.push(sitemapIndexEntry(`${origin}/sitemap-static.xml`, today));
     entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-priority.xml`, today));
     entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-tier2.xml`, today));
+    for (let n = 1; n <= judgmentPages; n += 1) {
+      entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-${n}.xml`, today));
+    }
     for (let n = 1; n <= statutePages; n += 1) {
       entries.push(sitemapIndexEntry(`${origin}/sitemap-statutes-${n}.xml`, today));
     }

@@ -1,0 +1,33 @@
+{
+  "mode": "apply",
+  "timestamp": "2026-11-02T22:41:56.702Z",
+  "actions": {
+    "pruneSelfReferentialLinks": {
+      "plannedCount": 148881,
+      "executedCount": 148881
+    },
+    "pruneSelfUnresolvedCitations": {
+      "plannedCount": 73500,
+      "executedCount": 73500
+    },
+    "resolveCrossCitations": {
+      "plannedCount": 5,
+      "executedCount": 0
+    },
+    "classifyUnclassifiedJudgments": {
+      "plannedCount": 555,
+      "breakdown": {
+        "own": 552,
+        "mislabeled": 0,
+        "unknown": 3
+      },
+      "executedCount": 555
+    }
+  },
+  "status": "applied",
+  "backupTables": {
+    "citationLinks": "citation_links_backup_20261102224156",
+    "unresolvedCitations": "unresolved_citations_backup_20261102224156"
+  },
+  "committedAt": "2026-11-02T22:44:53.455Z"
+}
