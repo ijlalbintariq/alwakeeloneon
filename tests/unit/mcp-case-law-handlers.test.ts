@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
-import { assessJudgmentIdentity, judgmentPdfUrl, prepareJudgmentDetail, citationMatchesCourt } from "../../server/citation-verify";
+import { assessJudgmentIdentity, judgmentPdfUrl, judgmentSourceUrl, prepareJudgmentDetail, citationMatchesCourt } from "../../server/citation-verify";
 import { extractSubstantiveSummary } from "../../server/storage";
 
 const source = ts.createSourceFile("mcp-server.ts", fs.readFileSync("server/mcp-server.ts", "utf8"), ts.ScriptTarget.Latest, true);
@@ -20,6 +20,31 @@ function handler(name: string, deps: Record<string, any>): (input: any) => Promi
 const base = { VERSION: "test", SOURCE: "test", RETRIEVAL_VERSION: "test", PUBLIC_SITE: "https://example.test", getAuthenticatedUserId: () => "test", enforceQuota: async () => {}, logToolUsage: async () => {} };
 const opening = `Court Name: Supreme Court\nTitle: Ahmad Khan vs State\nReported As: 2024 SCMR 1085\nResult: allowed\n${"Judgment body. ".repeat(40)}`;
 const row = { id: "record", citation: "2024 SCMR 1085", title: "Ahmad Khan vs State", court: "Supreme Court", textStatus: "own", opening };
+
+test("MCP search title, source link and detail remain bound to the same judgment across both retrieval paths", async () => {
+  const record = { ...row, id: "00000000-0000-4000-8000-000000000001", fullText: opening };
+  for (const judgmentId of [record.id, undefined]) {
+    const search = handler("search_case_law", {
+      ...base, judgments: {}, sql: () => "", inArray: () => "", judgmentSourceUrl,
+      assessJudgmentIdentity, citationMatchesCourt, judgmentPdfUrl, extractSubstantiveSummary,
+      db: { select: () => ({ from: () => ({ where: async () => [record] }) }) },
+      resolveJudgment: async () => record,
+      retrieveLegalCaseLaw: async () => ({ rows: [{ id: 123, judgmentId, citation: record.citation,
+        title: "WRONG INDEX TITLE", summary: "WRONG INDEX SUMMARY", sourceUrl: "https://example.test/wrong-case" }] }),
+    });
+    const result = (await search({ query: record.citation, limit: 5, includeUnverified: false })).structuredContent.judgments[0];
+    const get = handler("get_judgment", { ...base, storage: { getJudgmentDetail: async (id: string) => id === record.id ? record : undefined },
+      protectJudgmentDetail: async () => prepareJudgmentDetail(record, record), judgmentSourceUrl });
+    const detail = (await get({ id: result.sourceUrl.split("/").at(-1) })).structuredContent;
+    assert.equal(result.sourceUrl, judgmentSourceUrl(record.id));
+    assert.equal(result.title, record.title);
+    assert.equal(result.title, detail.title);
+    assert.equal(result.citation, detail.citation);
+    assert.equal(result.sourceUrl, detail.sourceUrl);
+    assert.equal(detail.fullText, opening);
+    assert.doesNotMatch(JSON.stringify(result), /WRONG INDEX|wrong-case/);
+  }
+});
 
 test("MCP search withholds mismatches and never uses index summaries", async () => {
   const deps = { ...base, judgments: {}, sql: () => "", resolveJudgment: async () => row, judgmentSourceUrl: () => "link", assessJudgmentIdentity, citationMatchesCourt, judgmentPdfUrl, extractSubstantiveSummary, retrieveLegalCaseLaw: async () => ({ rows: [{ id: 1, citation: row.citation, summary: "WRONG INDEX SUMMARY" }] }) };

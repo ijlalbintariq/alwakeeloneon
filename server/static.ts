@@ -7,6 +7,7 @@ import { judgments, statuteDocuments } from "@shared/schema";
 import { prepareJudgmentDetail, resolveJudgment } from "./citation-verify";
 import { eq } from "drizzle-orm";
 import { BLOG_ARTICLES } from "../shared/blog-data";
+import { judgmentCitationHref, PAKISTANI_CITATION_REGEX } from "../shared/judgment-links";
 
 export const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/$/,
@@ -69,24 +70,8 @@ export function isKnownSpaRoute(pathname: string): boolean {
 
 export function linkifyCitationsInHtml(escapedText: string, citationMap?: Map<string, string>): string {
   if (!escapedText) return "";
-  const journals = "PLD|SCMR|YLR|MLD|CLC|PLJ|NLR|PCRLJ|PCrLJ|PTCL|PTD|PLCCS|PLC|PSC|ALD|KLR|SLS|GBLR|CLD|AIR";
-  const courts = "SC|FC|FSC|LHC|SHC|IHC|PHC|BHC|Supreme\\s+Court|High\\s+Court|Lahore|Karachi|Islamabad|Peshawar|Quetta|Multan|Rawalpindi|Bahawalpur|Abbottabad|Faisalabad|Hyderabad|Sukkur";
-
-  const citationPattern = new RegExp(
-    `\\b(?:(?:(?:19|20)\\d{2}\\s+(?:${journals})|(?:${journals})\\s+(?:19|20)\\d{2})(?:\\s+(?:${courts}))?\\s+\\d{1,5})\\b`,
-    "gi"
-  );
-
-  return escapedText.replace(citationPattern, (match) => {
-    const cleanMatch = match.trim().replace(/\s+/g, " ");
-    const normKey = cleanMatch.toUpperCase().replace(/\s+/g, "");
-
-    let targetUrl: string;
-    if (citationMap && citationMap.has(normKey)) {
-      targetUrl = `/judgment/${citationMap.get(normKey)}`;
-    } else {
-      targetUrl = `/citation-search?q=${encodeURIComponent(cleanMatch)}`;
-    }
+  return escapedText.replace(PAKISTANI_CITATION_REGEX, (match) => {
+    const targetUrl = judgmentCitationHref(match, citationMap);
 
     return `<a href="${targetUrl}" class="citation-internal-link" style="color:#1d4ed8;text-decoration:underline;font-weight:500;">${match}</a>`;
   });
@@ -347,26 +332,12 @@ export function serveStatic(app: Express) {
           ? rawFullText.slice(0, MAX_JUDGMENT_CHARS).replace(/\s+\S*$/, "") + "…"
           : rawFullText;
 
-        function linkify(textToLink: string): string {
-          const journals = "PLD|SCMR|YLR|MLD|CLC|PLJ|NLR|PCRLJ|PCrLJ|PTCL|PTD|PLCCS|PLC|PSC|ALD|KLR|SLS|GBLR|CLD|AIR";
-          const courts = "SC|FC|FSC|LHC|SHC|IHC|PHC|BHC|Supreme\\s+Court|High\\s+Court|Lahore|Karachi|Islamabad|Peshawar|Quetta|Multan|Rawalpindi|Bahawalpur|Abbottabad|Faisalabad|Hyderabad|Sukkur";
-          const citationPattern = new RegExp(
-            `\\b(?:(?:(?:19|20)\\d{2}\\s+(?:${journals})|(?:${journals})\\s+(?:19|20)\\d{2})(?:\\s+(?:${courts}))?\\s+\\d{1,5})\\b`,
-            "gi"
-          );
-          return textToLink.replace(citationPattern, (match) => {
-            const cleanMatch = match.trim().replace(/\s+/g, " ");
-            const slug = cleanMatch.replace(/\s+/g, "-");
-            return `<a href="/judgment/${encodeURIComponent(slug)}" class="citation-internal-link" style="color:#1d4ed8;text-decoration:underline;font-weight:500;">${match}</a>`;
-          });
-        }
-
         const formattedParagraphs = fullTextContent
           ? fullTextContent
               .split(/\n\s*\n/)
               .map(p => p.trim())
               .filter(Boolean)
-              .map(p => `<p style="margin-bottom:14px;line-height:1.75;font-size:15px;color:#1e293b;">${linkify(esc(p))}</p>`)
+              .map(p => `<p style="margin-bottom:14px;line-height:1.75;font-size:15px;color:#1e293b;">${linkifyCitationsInHtml(esc(p))}</p>`)
               .join("\n")
           : `<p>${esc(safe.textWarning || "Judgment identity remains unverified. Inspect available sources in the judgment reader.")}</p>`;
 

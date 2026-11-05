@@ -1,32 +1,12 @@
 import React, { useMemo } from "react";
 import { Link } from "wouter";
-
-export interface CitationItem {
-  id?: string | number;
-  citationText?: string;
-  linkedCitation?: string;
-  linkedJudgmentId?: string | number | null;
-  citationType?: string;
-}
+import { buildJudgmentCitationMap, judgmentCitationHref, PAKISTANI_CITATION_REGEX, type JudgmentCitations } from "@shared/judgment-links";
+export { buildJudgmentCitationMap, normalizeCitationToken, PAKISTANI_CITATION_REGEX, type CitationItem } from "@shared/judgment-links";
 
 export interface FormattedJudgmentTextProps {
   text: string;
-  citations?: CitationItem[] | { made?: CitationItem[]; received?: CitationItem[] };
+  citations?: JudgmentCitations;
   className?: string;
-}
-
-const JOURNALS = "PLD|SCMR|YLR|MLD|CLC|PLJ|NLR|PCRLJ|PCrLJ|PTCL|PTD|PLCCS|PLC|PSC|ALD|KLR|SLS|GBLR|CLD|AIR";
-const COURTS = "SC|FC|FSC|LHC|SHC|IHC|PHC|BHC|Supreme\\s+Court|High\\s+Court|Lahore|Karachi|Islamabad|Peshawar|Quetta|Multan|Rawalpindi|Bahawalpur|Abbottabad|Faisalabad|Hyderabad|Sukkur";
-
-export const PAKISTANI_CITATION_REGEX = new RegExp(
-  `\\b(?:(?:(?:19|20)\\d{2}\\s+(?:${JOURNALS})|(?:${JOURNALS})\\s+(?:19|20)\\d{2})(?:\\s+(?:${COURTS}))?\\s+\\d{1,5})\\b`,
-  "gi"
-);
-
-export function normalizeCitationToken(raw: string): string {
-  return String(raw || "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
 }
 
 /**
@@ -52,14 +32,7 @@ export function renderTextWithCitationLinks(
     }
 
     const clean = matchText.trim().replace(/\s+/g, " ");
-    const normKey = normalizeCitationToken(clean);
-
-    let targetUrl: string;
-    if (citationMap && citationMap.has(normKey)) {
-      targetUrl = `/judgment/${citationMap.get(normKey)}`;
-    } else {
-      targetUrl = `/citation-search?q=${encodeURIComponent(clean)}`;
-    }
+    const targetUrl = judgmentCitationHref(clean, citationMap);
 
     elements.push(
       <Link
@@ -84,33 +57,10 @@ export function renderTextWithCitationLinks(
 }
 
 export function FormattedJudgmentText({ text, citations, className }: FormattedJudgmentTextProps) {
-  if (!text) {
-    return <p className="text-muted-foreground">Text is not available.</p>;
-  }
-
-  const citationMap = useMemo(() => {
-    const map = new Map<string, string>();
-    if (!citations) return map;
-
-    const list: CitationItem[] = Array.isArray(citations)
-      ? citations
-      : [...(citations.made || []), ...(citations.received || [])];
-
-    for (const item of list) {
-      const targetId = item.linkedJudgmentId ? String(item.linkedJudgmentId).trim() : null;
-      if (!targetId || /^extracted-/i.test(targetId)) continue;
-
-      if (item.citationText) {
-        map.set(normalizeCitationToken(item.citationText), targetId);
-      }
-      if (item.linkedCitation) {
-        map.set(normalizeCitationToken(item.linkedCitation), targetId);
-      }
-    }
-    return map;
-  }, [citations]);
+  const citationMap = useMemo(() => buildJudgmentCitationMap(citations), [citations]);
 
   const paragraphs = useMemo(() => {
+    if (!text) return [];
     // 1. Normalize line endings
     let t = text.replace(/\r\n/g, "\n");
 
@@ -155,6 +105,10 @@ export function FormattedJudgmentText({ text, citations, className }: FormattedJ
     // Split by our restored newlines to generate clean paragraphs
     return result.split("\n").map((p) => p.trim()).filter(Boolean);
   }, [text]);
+
+  if (!text) {
+    return <p className="text-muted-foreground">Text is not available.</p>;
+  }
 
   return (
     <div

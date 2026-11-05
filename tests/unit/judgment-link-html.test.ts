@@ -4,6 +4,7 @@ import fs from "node:fs";
 import ts from "typescript";
 import { prepareJudgmentDetail, citationMatchesCourt } from "../../server/citation-verify";
 import { injectSeoMeta } from "../../server/seo-meta";
+import { linkifyCitationsInHtml } from "../../server/static";
 
 const source = ts.createSourceFile("static.ts", fs.readFileSync("server/static.ts", "utf8"), ts.ScriptTarget.Latest, true);
 function compile(name: string, deps: Record<string, any>): (...args: any[]) => Promise<any> {
@@ -25,7 +26,7 @@ function harness(initial: any) {
   let row = initial;
   const get = compile("getJudgmentSeoData", {
     db: { select: () => ({ from: () => ({ where: () => ({ limit: async () => [row] }) }) }) },
-    judgments: {}, eq: () => "", prepareJudgmentDetail,
+    judgments: {}, eq: () => "", prepareJudgmentDetail, linkifyCitationsInHtml,
     seoActiveQueries: 0, SEO_MAX_CONCURRENT: 50, SEO_QUERY_TIMEOUT_MS: 8000, setTimeout: () => 0,
   });
   const send = compile("sendIndexWithSeo", {
@@ -93,4 +94,10 @@ test("citation links fail closed on court conflicts and resolve matching court a
   const match = await h.page("/judgment/PLD-2022-Sindh-565");
   assert.equal(match.statusCode, 301);
   assert.equal(match.location, `/judgment/${id}`);
+});
+
+test("rendered judgment HTML uses citation search for references without a confirmed target", async () => {
+  const result = await harness({ ...good, fullText: `${text}\n\nThe court considered 2024 SCMR 1085.` }).page(`/judgment/${id}`);
+  assert.match(result.html, /href="\/citation-search\?q=2024%20SCMR%201085"/);
+  assert.doesNotMatch(result.html, /href="\/judgment\/2024-SCMR-1085"/);
 });

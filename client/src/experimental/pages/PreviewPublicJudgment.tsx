@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Scale, ChevronRight, FileText, Share2, Printer, Download, Sparkles, Building2, Calendar, User, Gavel } from 'lucide-react';
 import { useDocumentHead } from '@/hooks/use-document-head';
-import { renderTextWithCitationLinks, normalizeCitationToken } from '@/components/formatted-judgment-text';
+import { renderTextWithCitationLinks, buildJudgmentCitationMap } from '@/components/formatted-judgment-text';
 
 interface PublicJudgmentData {
   id: string;
@@ -122,29 +122,33 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
   const { toast } = useToast();
 
   useEffect(() => {
+    const controller = new AbortController();
+    setData(null);
+    setError(null);
+    setLoading(Boolean(targetId));
     if (!targetId) return;
 
     const fetchJudgment = async () => {
-      setLoading(true);
-      setError(null);
       try {
-        const res = await fetch(`/api/public/judgments/${encodeURIComponent(targetId)}`);
+        const res = await fetch(`/api/public/judgments/${encodeURIComponent(targetId)}`, { signal: controller.signal });
         if (!res.ok) {
           if (res.status === 404) throw new Error("Judgment not found");
           if (res.status === 429) throw new Error("Too many requests. Please try again later.");
           throw new Error("Failed to load judgment");
         }
         const json = await res.json();
-        setData(json);
+        if (!controller.signal.aborted) setData(json);
       } catch (err: any) {
+        if (controller.signal.aborted) return;
         console.error("Public judgment fetch error:", err);
         setError(err.message);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchJudgment();
+    return () => controller.abort();
   }, [targetId]);
 
   // Client-side SEO Document Head
@@ -159,8 +163,8 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
   useDocumentHead({
     title: pageTitle,
     description: pageDescription,
-    path: targetId ? `/judgment/${targetId}` : undefined,
-    index: true,
+    path: data?.id ? `/judgment/${data.id}` : targetId ? `/judgment/${targetId}` : undefined,
+    index: data?.textIntegrity === "own",
   });
 
   const parsedHeadnotes = useMemo(() => {
@@ -168,7 +172,7 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
   }, [data?.headnotes]);
 
   const schemaGraph = useMemo(() => {
-    if (!data) return null;
+    if (!data || data.textIntegrity !== "own") return null;
     const id = data.id;
     const citation = data.citation || "";
     const title = data.title || "Pakistani Court Judgment";
@@ -338,18 +342,7 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
     return result.split("\n").map(p => p.trim()).filter(Boolean);
   }, [data?.previewText]);
 
-  const citationMap = useMemo(() => {
-    const map = new Map<string, string>();
-    if (!data?.citations) return map;
-    const list = [...(data.citations.made || []), ...(data.citations.received || [])];
-    for (const item of list) {
-      const targetId = item?.linkedJudgmentId ? String(item.linkedJudgmentId).trim() : null;
-      if (!targetId || /^extracted-/i.test(targetId)) continue;
-      if (item.citationText) map.set(normalizeCitationToken(item.citationText), targetId);
-      if (item.linkedCitation) map.set(normalizeCitationToken(item.linkedCitation), targetId);
-    }
-    return map;
-  }, [data?.citations]);
+  const citationMap = useMemo(() => buildJudgmentCitationMap(data?.citations), [data?.citations]);
 
   const handleSignup = () => {
     setLocation('/preview/register?mode=register');
