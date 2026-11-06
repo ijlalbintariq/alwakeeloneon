@@ -129,6 +129,19 @@ test("generic captions and extraction artifacts never verify a case identity", (
   assert.equal(assessJudgmentIdentity({ ...valid, title: "Company vs State", opening: body("Continental Insurance Company vs State", valid.citation) }).textIntegrity, "unknown");
 });
 
+test("judicial prose containing matching parties cannot become a verified case title", () => {
+  const clean = "Khalid Hussain and 6 others vs Asif Iqbal and 2 others";
+  const narrative = "call for further investigation. Reliance is placed on the dictum laid down by this Court in the case of Khalid Hussain and 6 others v. Asif Iqbal and 2 others";
+  for (const [title, header] of [[narrative, clean], [clean, narrative], [narrative, narrative]]) {
+    const opening = body(header, "2021 PCRLJ 242", "Sindh High Court");
+    const result = assessJudgmentIdentity({ citation: "2021 PCRLJ 242", title, court: "Sindh High Court", textStatus: "own", opening });
+    assert.equal(result.identityConflict, true);
+    assert.equal(result.textIntegrity, "unknown");
+  }
+  const title = "Reliance Industries vs State";
+  assert.equal(assessJudgmentIdentity({ ...valid, title, opening: body(title, valid.citation) }).textIntegrity, "own");
+});
+
 test("non-adversarial captions require the named entity and no invented opposing party", () => {
   const opening = body("CONTINENTAL INSURANCE COMPANY LIMITED: In the matter of", valid.citation);
   assert.equal(assessJudgmentIdentity({ ...valid, title: "In the matter of Continental Insurance Company Limited", opening }).textIntegrity, "own");

@@ -446,7 +446,9 @@ export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegr
   const storedParties = titleParties(String(record.title || ""));
   const bodyParties = titleParties(title || "");
   const malformedTitle = /\b(?:JUDGMENT|Reported\s+As|Case\s+No)\b|Honou?rable\s+Justice|(?:^|\s)(?:v(?:s)?\.?|versus)\s+(?:NOT|N\/A|NIL|NONE|UNKNOWN)\s*$|^(?:NOT|N\/A|NIL|NONE|UNKNOWN)\s+(?:v(?:s)?\.?|versus)\s/i;
-  if (malformedTitle.test(String(record.title || "")) || (title && malformedTitle.test(title))) return {
+  // Party-name overlap must not validate a paragraph quoting another case.
+  const narrativeTitle = /\b(?:reliance\s+(?:is|was)\s+placed|dictum\s+laid\s+down|(?:this|the)\s+court\s+(?:held|observed)|(?:held|observed)\s+that)\b/i;
+  if ([String(record.title || ""), title || ""].some(value => malformedTitle.test(value) || narrativeTitle.test(value))) return {
     textIntegrity: "unknown", identityConflict: true,
     textWarning: "The case title contains incomplete party names or extraction artifacts; it cannot identify this judgment reliably.",
   };

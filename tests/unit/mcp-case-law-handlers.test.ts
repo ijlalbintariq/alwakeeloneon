@@ -118,6 +118,7 @@ test("search storage preserves PDF-only and plain-text leads while dropping conf
 test("MCP search and detail reject malformed captions and accept wrapped citations", async () => {
   const cases = [
     { citation: "2014 CLD 755", title: "In the matter of vs NOT Case No", header: "CONTINENTAL INSURANCE COMPANY LIMITED: In the matter of vs NOT", report: "2014 CLD 755, 2014 CLD 686", accepted: false },
+    { citation: "2021 PCRLJ 242", title: "call for further investigation. Reliance is placed on the dictum laid down by this Court in the case of Khalid Hussain and 6 others v. Asif Iqbal and 2 others", header: "Khalid Hussain and 6 others vs Asif Iqbal and 2 others", report: "2021 P Cr. L J 242", accepted: false },
     { citation: "2019 PSC 631", title: "Dr. Tariq Iqbal vs Government of KPK", header: "Dr. Tariq Iqbal vs Government of KPK", report: "2019 SCMR 859, 2019 SCP\n260, 2019 P.S.C. 631", accepted: true },
   ];
   for (const item of cases) {
