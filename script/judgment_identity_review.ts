@@ -23,31 +23,49 @@ async function main() {
   assert.ok(!cursor || /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(cursor), "--after must be a UUID");
   assert.ok(process.env.DATABASE_URL, "DATABASE_URL is required");
   const file = await open(output, "wx", 0o600);
-  const client = new Client({ connectionString: process.env.DATABASE_URL, options: "-c default_transaction_read_only=on", connectionTimeoutMillis: 15000, statement_timeout: 30000 });
-  const summary = { startedAt: new Date().toISOString(), scanned: 0, queued: 0, internallyConsistent: 0, after: cursor, lastId: cursor, complete: false };
+  const client = new Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 15000, query_timeout: 35000 });
+  const summary = { startedAt: new Date().toISOString(), expectedRecords: 0, scanned: 0, queued: 0, internallyConsistent: 0,
+    identityConflicts: 0, labelledMislabeled: 0, missingText: 0, unconfirmed: 0, ownLabelConflicts: 0,
+    reasons: {} as Record<string, number>, after: cursor, lastId: cursor, complete: false, scopeExhausted: false };
   try {
     await client.connect();
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    await client.query("SET LOCAL statement_timeout=30000");
     assert.equal((await client.query("SHOW transaction_read_only")).rows[0].transaction_read_only, "on");
+    summary.expectedRecords = Number((await client.query("SELECT count(*)::int AS total FROM judgments WHERE ($1::uuid IS NULL OR id > $1::uuid)", [cursor])).rows[0].total);
     while (summary.scanned < limit) {
       const result = await client.query(`SELECT id, citation_string AS citation, title, court_name_snapshot AS court,
         text_status AS "textStatus", text_true_citation AS "textTrueCitation", pdf_url AS "pdfUrl",
-        updated_at AS "updatedAt", md5(full_text) AS "bodyHash", left(full_text,16000) AS opening
-        FROM judgments WHERE ($1::uuid IS NULL OR id > $1::uuid) ORDER BY id LIMIT $2`, [cursor, Math.min(100, limit - summary.scanned)]);
+        updated_at AS "updatedAt", length(full_text) AS "bodyLength", md5(full_text) AS "bodyHash", left(full_text,16000) AS opening
+        FROM judgments WHERE ($1::uuid IS NULL OR id > $1::uuid) ORDER BY id LIMIT $2`, [cursor, Math.min(500, limit - summary.scanned)]);
       if (!result.rows.length) break;
       for (const row of result.rows) {
         const check = assessJudgmentIdentity(row);
         summary.scanned++;
         if (check.textIntegrity === "own") summary.internallyConsistent++;
         else {
-          await file.write(JSON.stringify({ ...row, check, action: "source_review_required", sourceAuthenticated: false }) + "\n");
+          // Keep Unicode line separators inside a record for line-based review tools.
+          await file.write(JSON.stringify({ ...row, check, action: "source_review_required", sourceAuthenticated: false }).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029") + "\n");
           summary.queued++;
+          if (check.textIntegrity === "mislabeled") summary.labelledMislabeled++;
+          else if (check.identityConflict) summary.identityConflicts++;
+          else if (check.textIntegrity === "missing") summary.missingText++;
+          else summary.unconfirmed++;
+          if (row.textStatus === "own" && check.identityConflict) summary.ownLabelConflicts++;
+          const reason = check.textWarning || check.textIntegrity;
+          summary.reasons[reason] = (summary.reasons[reason] || 0) + 1;
         }
         cursor = row.id;
       }
       summary.lastId = cursor;
-      console.log(`Scanned ${summary.scanned}; queued ${summary.queued}`);
+      if (summary.scanned % 5000 === 0 || summary.scanned === summary.expectedRecords || summary.scanned === limit) console.log(`Scanned ${summary.scanned}/${summary.expectedRecords}; queued ${summary.queued}`);
     }
     assert.equal(summary.scanned, summary.queued + summary.internallyConsistent);
+    assert.equal(summary.queued, summary.identityConflicts + summary.labelledMislabeled + summary.missingText + summary.unconfirmed);
+    assert.ok(summary.scanned <= summary.expectedRecords);
+    summary.scopeExhausted = summary.scanned === summary.expectedRecords;
+    await client.query("ROLLBACK");
+    await file.sync();
     summary.complete = true;
   } finally {
     await file.close();

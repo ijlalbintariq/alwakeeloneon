@@ -20,6 +20,10 @@ The exporter enforces PostgreSQL read-only mode, reads records in UUID order, an
 
 The first run on 31 October 2026 scanned 1,000 records and queued 399. These are review candidates, not 399 confirmed errors. The other 601 passed internal checks; they are not authenticated judgments. The evidence is in `/tmp/alwakeelo-source-review-2026-10-31.jsonl` and its summary file.
 
+For a complete scan of the current corpus, use `--limit 250000` and a new output path. The exporter uses a repeatable-read snapshot and reports `expectedRecords` and `scopeExhausted`; `complete` alone does not mean every record was scanned. Queue classifications are automated screening results, not authenticated error counts. Unicode line separators in source strings are escaped for line-based consumers without changing their decoded text.
+
+The [6 November full review and repair report](audits/judgment-record-repair-2026-11-06.md) records 235,392 screened judgments, 93,842 source-review flags, four court-source canonical repairs, two restored source copies, and authenticated production validation. Four resolved entries leave 93,838 entries from that snapshot; this does not establish the number of genuinely inaccurate judgments.
+
 ## Source repair workflow
 
 1. Prioritize the ten confirmed mismatches in the accuracy audit, then malformed captions and remaining queue entries.
@@ -32,7 +36,7 @@ The first run on 31 October 2026 scanned 1,000 records and queued 399. These are
 ## Confirmed upstream problems still requiring repair
 
 - The local SQLite source for `2025 MLD 1290` already combines GulSher metadata with a body headed `2025 MLD 1574`, Ameer Bux v. Maqsood. Reimporting it unchanged cannot fix the database.
-- The local source for `2020 SCMR 420` contains a reporter heading naming Commissioner Inland Revenue v. Wi-Tribe. This supports a targeted caption review; the source metadata also appends judge/counsel text and must not be copied wholesale.
+- The caption for `2020 SCMR 420`, Commissioner Inland Revenue v. Wi-Tribe, was corrected in the earlier targeted review. Its local source metadata also appends judge/counsel text and must not be copied wholesale; complete-body source authentication remains separate.
 - `scripts/export-sqlite-missing.py` invents journal/year/page defaults and increments colliding pages. `scripts/prepare_missing_payload.py` also fabricates or changes page values. Do not run either legacy importer for the repair until these behaviors are removed and uncertain identities are queued instead.
 
-No production data correction or bulk reindex was performed in this first stage. Existing malformed or conflicting records remain withheld until their source evidence is reviewed.
+The first stage performed no production data correction or bulk reindex. Subsequent source-backed production repairs and their remaining limits are documented in the reports linked above. Existing malformed or conflicting records remain withheld until their source evidence is reviewed.
