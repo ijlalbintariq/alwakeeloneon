@@ -3154,8 +3154,6 @@ function CaseLawSection() {
   const CASELAW_CLIENT_EXTRACT_MAX_BYTES = 8 * 1024 * 1024;
   const CASELAW_CLIENT_PARALLEL_BATCH = 2;
   const CASELAW_SAVE_BULK_BATCH = 120;
-  const CASELAW_PDF_FAST_PATH_ENABLED = String(import.meta.env.VITE_CASELAW_PDF_FAST_PATH || "true").toLowerCase() !== "false";
-  const CASELAW_PDF_FAST_PATH_MAX_PAGES = Math.max(1, Number(import.meta.env.VITE_CASELAW_PDF_FAST_PATH_MAX_PAGES || 20));
   const CASELAW_CLIENT_MIN_CONFIDENCE = Math.max(0, Number(import.meta.env.VITE_CASELAW_CLIENT_MIN_CONFIDENCE || 0.45));
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -3468,11 +3466,7 @@ function CaseLawSection() {
       autoSavedToCaseLaw: boolean;
     }> => {
       try {
-        const clientExtract = await extractCaseLawInBrowser(file, CASELAW_CLIENT_EXTRACT_MAX_BYTES, {
-          enablePdfFastPath: CASELAW_PDF_FAST_PATH_ENABLED,
-          pdfMaxPages: CASELAW_PDF_FAST_PATH_MAX_PAGES,
-          pdfMinConfidence: CASELAW_CLIENT_MIN_CONFIDENCE,
-        });
+        const clientExtract = await extractCaseLawInBrowser(file, CASELAW_CLIENT_EXTRACT_MAX_BYTES);
         const confidence = typeof clientExtract.confidence === "number" ? clientExtract.confidence : 1;
         const confidentEnough = confidence >= CASELAW_CLIENT_MIN_CONFIDENCE;
         if (clientExtract.supported && confidentEnough && clientExtract.content && clientExtract.cases.length > 0) {

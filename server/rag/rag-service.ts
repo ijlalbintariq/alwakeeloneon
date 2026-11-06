@@ -18,6 +18,7 @@ import {
   type RagMatch,
 } from "./vector-store";
 import { getR2ObjectText } from "../r2-storage";
+import { retrieveRepairedMatches, mergeRepairResults, repairSearchScopes } from "./repaired-index";
 
 export type RAGIndexResult = {
   ragDocumentId: number;
@@ -730,7 +731,7 @@ export async function getCachedQueryEmbedding(text: string): Promise<number[]> {
   return promise;
 }
 
-export async function retrieveForQuery(args: {
+export type RAGRetrievalArgs = {
   userId: string;
   query: string;
   documentIds?: number[];
@@ -746,7 +747,9 @@ export async function retrieveForQuery(args: {
   globalUserIds?: readonly string[];
   /** Skip the user's own document index. Focused sub-queries do not need it. */
   skipUserScope?: boolean;
-}): Promise<RAGRetrievalResult> {
+};
+
+async function retrieveLegacyForQuery(args: RAGRetrievalArgs): Promise<RAGRetrievalResult> {
   await ensureRagSchema();
 
   const queryText = cleanLegalDocumentText(args.query || "");
@@ -869,6 +872,28 @@ export async function retrieveForQuery(args: {
   const reranked = await rerankAndDiversify(diverseResults, queryText, requestedTopK);
   const confidence = resolveConfidence(reranked.map((m) => m.score));
   return { matches: reranked, confidence };
+}
+
+export async function retrieveForQuery(args: RAGRetrievalArgs): Promise<RAGRetrievalResult> {
+  const started = Date.now();
+  const legacySearch = retrieveLegacyForQuery(args).catch(error => {
+    console.warn(`[RAG] Legacy source search unavailable: ${error?.message || error}`);
+    return { matches: [] as RagMatch[], confidence: "low" as const };
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const repaired = Promise.race([
+    retrieveRepairedMatches({ userIds: repairSearchScopes(args, GLOBAL_ADMIN_RAG_USER_IDS), query: args.query, sourceDocumentIds: args.documentIds, metadataFilters: args.metadataFilters, topK: Math.max(1, args.topK || TOP_K) }),
+    new Promise<RagMatch[]>(resolve => { timer = setTimeout(() => resolve([]), 6000); }),
+  ]).finally(() => clearTimeout(timer));
+  const additions = await repaired.catch(() => [] as RagMatch[]);
+  // Return repaired hits before the pipeline's 8s deadline even if the old corpus stalls.
+  const oldResult = additions.length ? await Promise.race([
+    legacySearch,
+    new Promise<RAGRetrievalResult>(resolve => { timer = setTimeout(() => resolve({ matches: [], confidence: "low" }), Math.max(0, 6500 - (Date.now() - started))); }),
+  ]).finally(() => clearTimeout(timer)) : await legacySearch;
+  // Repaired text is ranked locally, never sent to the legacy Voyage reranker.
+  const matches = mergeRepairResults(oldResult.matches, additions, Math.max(1, args.topK || TOP_K));
+  return { matches, confidence: resolveConfidence(matches.map(match => match.score)) };
 }
 
 export async function ensureIndexedForUserDocuments(args: {
@@ -1123,10 +1148,13 @@ export function buildRagContext(matches: RagMatch[], maxChunks: number = Number(
 
   const blocks = selected.map((m, idx) => {
     const excerpt = m.chunkText.length > 1400 ? `${m.chunkText.slice(0, 1400)}...` : m.chunkText;
+    const judgmentId = String(m.metadata?.judgmentId || "");
+    const adminId = m.metadata?.adminKnowledgeId;
     return [
       `[Source ${idx + 1}]`,
       `Document: ${m.title}`,
-      `Document ID: ${m.sourceDocumentId}`,
+      judgmentId ? `Judgment ID: ${judgmentId}` : adminId ? `Source document ID: admin:${adminId}` : `Document ID: ${m.sourceDocumentId}`,
+      ...(judgmentId ? [`Citation: ${m.metadata?.citationString || "unconfirmed"}`, `Reference URL: ${m.metadata?.sourceUrl || "Use get_judgment with the judgment ID"}`] : adminId ? ["Case identity: unconfirmed source document. Citations within it may refer to other cases."] : []),
       `Chunk: ${m.chunkIndex}`,
       `Score: ${m.score.toFixed(3)}`,
       `Text: ${excerpt}`,

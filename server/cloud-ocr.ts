@@ -1,4 +1,5 @@
 import type { OcrPdfResult } from "./ocr";
+import { assertCompletePdfPages, getPdfPageCount } from "./pdf-completeness";
 
 const CLOUD_OCR_PROVIDER = String(process.env.CLOUD_OCR_PROVIDER || "ocrspace").trim().toLowerCase();
 const OCRSPACE_API_KEY = String(process.env.OCRSPACE_API_KEY || "").trim();
@@ -59,7 +60,6 @@ export async function ocrPdfWithCloud(
     filename?: string;
     language?: string;
     timeoutMs?: number;
-    maxPages?: number;
   } = {},
 ): Promise<OcrPdfResult> {
   if (CLOUD_OCR_PROVIDER !== "ocrspace") {
@@ -69,16 +69,13 @@ export async function ocrPdfWithCloud(
     throw new Error("OCRSPACE_API_KEY is not configured.");
   }
 
+  const totalPages = await getPdfPageCount(pdfBuffer);
   const timeoutMs = Math.min(Math.max(5000, Number(options.timeoutMs || process.env.CLOUD_OCR_TIMEOUT_MS || 120000)), 600000);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const languageCandidates = resolveLanguageCandidates(options.language);
-    const requestedMaxPages = Number(options.maxPages || process.env.CLOUD_OCR_MAX_PAGES || 0);
-    const maxPages = Number.isFinite(requestedMaxPages) && requestedMaxPages > 0
-      ? Math.min(Math.floor(requestedMaxPages), 1000)
-      : 0;
     const configuredEngine = cleanText(OCRSPACE_ENGINE);
     const engineCandidates = Array.from(
       new Set(
@@ -124,12 +121,16 @@ export async function ocrPdfWithCloud(
           continue;
         }
 
-        const pageTextsRaw = Array.isArray(parsed?.ParsedResults)
-          ? parsed.ParsedResults.map((item: any) => cleanText(String(item?.ParsedText || ""))).filter(Boolean)
-          : [];
-        // OCR.space endpoint currently rejects "pages" parameter on this route.
-        // Keep local maxPages limiting by trimming parsed page results.
-        const pageTexts = maxPages > 0 ? pageTextsRaw.slice(0, maxPages) : pageTextsRaw;
+        const results = Array.isArray(parsed?.ParsedResults) ? parsed.ParsedResults : [];
+        if (parsed?.IsErroredOnProcessing ||
+            (parsed?.OCRExitCode !== undefined && Number(parsed.OCRExitCode) !== 1) ||
+            results.some((item: any) => item.FileParseExitCode !== undefined && Number(item.FileParseExitCode) !== 1)) {
+          errors.push(`${language}/engine-${engine}: provider reported incomplete OCR`);
+          continue;
+        }
+        const pageTexts = results.map((item: any) => cleanText(String(item?.ParsedText || "")));
+        try { assertCompletePdfPages(totalPages, pageTexts.length); }
+        catch (error) { errors.push(`${language}/engine-${engine}: ${(error as Error).message}`); continue; }
         const text = cleanText(pageTexts.join("\n\n"));
 
         if (text) {

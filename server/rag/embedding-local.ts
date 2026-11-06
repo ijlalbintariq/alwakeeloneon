@@ -19,6 +19,13 @@ const OPENAI_EMBED_MODEL    = process.env.RAG_OPENAI_EMBED_MODEL || "openai/text
 const OPENAI_EMBED_BASE_URL = process.env.RAG_OPENAI_BASE_URL    || "https://openrouter.ai/api/v1";
 const OPENAI_EMBED_API_KEY  = process.env.OPENROUTER_API_KEY     || process.env.OPENAI_API_KEY || "";
 
+export const REPAIRED_EMBEDDING_MODEL = "openai/text-embedding-3-small";
+export const REPAIRED_EMBEDDING_DIM = 1024;
+export async function embedRepairedTexts(texts: string[]): Promise<number[][]> {
+  if (texts.some(text => text.length > 8000)) throw new Error("Repair embedding input exceeds chunk limit");
+  return requestOpenAIEmbeddings(texts, REPAIRED_EMBEDDING_DIM, { model: REPAIRED_EMBEDDING_MODEL, baseUrl: "https://openrouter.ai/api/v1", key: process.env.OPENROUTER_API_KEY || "" });
+}
+
 // Voyage AI settings (used when EMBEDDING_PROVIDER=voyage)
 const VOYAGE_API_KEY        = process.env.VOYAGE_API_KEY || "";
 const VOYAGE_API_KEY_BACKUP = process.env.VOYAGE_API_KEY_BACKUP || "";
@@ -80,45 +87,20 @@ function embedTextHashing(text: string, dim: number = DEFAULT_DIM): number[] {
   return normalizeVector(vector);
 }
 
-// ─── OpenAI / OpenRouter Embedder ────────────────────────────────────────────
-// Used when RAG_EMBEDDING_PROVIDER=openai.
-// Query vectors use the SAME model as stored judgment vectors (text-embedding-3-small).
-// Cost: ~$0.000002 per search query — essentially free.
+// OpenAI-compatible vectors require an index built with the same model and dimension.
+export function validateEmbeddingBatch(items: unknown, count: number, dim: number): number[][] {
+  if (!Array.isArray(items) || items.length !== count) throw new Error("Embedding response count mismatch");
+  return [...items].sort((a, b) => a.index - b.index).map((item, index) => {
+    const vector = item.embedding;
+    if (item.index !== index || !Array.isArray(vector) || vector.length !== dim ||
+        vector.some(value => typeof value !== "number" || !Number.isFinite(value)) ||
+        !vector.some(value => value !== 0)) throw new Error("Invalid embedding response: index, dimensions or values");
+    return normalizeVector(vector);
+  });
+}
 
 async function embedTextOpenAI(text: string, dim: number = DEFAULT_DIM): Promise<number[]> {
-  if (!OPENAI_EMBED_API_KEY) {
-    console.warn("[RAG] OPENROUTER_API_KEY not set — falling back to hashing");
-    return embedTextHashing(text, dim);
-  }
-  try {
-    const resp = await fetch(`${OPENAI_EMBED_BASE_URL}/embeddings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_EMBED_API_KEY}`,
-        "HTTP-Referer": "https://alwakeelo.com",
-        "X-Title": "AlWakeelo Legal AI",
-      },
-      body: JSON.stringify({
-        model: OPENAI_EMBED_MODEL,
-        input: text.slice(0, 8000),
-        dimensions: dim,
-      }),
-    });
-    if (!resp.ok) {
-      const err = await resp.text();
-      console.warn(`[RAG] OpenAI embed API error ${resp.status}: ${err.slice(0, 200)}`);
-      return embedTextHashing(text, dim);
-    }
-    const json = await resp.json() as any;
-    const embedding = json?.data?.[0]?.embedding as number[] | undefined;
-    if (!embedding || embedding.length === 0) return embedTextHashing(text, dim);
-    return fitToDimension(embedding, dim);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn(`[RAG] OpenAI embed fetch failed (${message}) — falling back to hashing`);
-    return embedTextHashing(text, dim);
-  }
+  return (await embedTextsOpenAI([text], dim))[0];
 }
 
 /**
@@ -235,32 +217,31 @@ export async function rerankVoyage(query: string, documents: string[], topN?: nu
 }
 
 async function embedTextsOpenAI(texts: string[], dim: number = DEFAULT_DIM): Promise<number[][]> {
-  if (!OPENAI_EMBED_API_KEY) return texts.map((t) => embedTextHashing(t, dim));
-  try {
-    const resp = await fetch(`${OPENAI_EMBED_BASE_URL}/embeddings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_EMBED_API_KEY}`,
-        "HTTP-Referer": "https://alwakeelo.com",
-        "X-Title": "AlWakeelo Legal AI",
-      },
-      body: JSON.stringify({
-        model: OPENAI_EMBED_MODEL,
-        input: texts.map((t) => t.slice(0, 8000)),
-        dimensions: dim,
-      }),
-    });
-    if (!resp.ok) return texts.map((t) => embedTextHashing(t, dim));
-    const json = await resp.json() as any;
-    const items = json?.data as Array<{ index: number; embedding: number[] }> | undefined;
-    if (!items) return texts.map((t) => embedTextHashing(t, dim));
-    return items
-      .sort((a, b) => a.index - b.index)
-      .map((item) => fitToDimension(item.embedding, dim));
-  } catch {
-    return texts.map((t) => embedTextHashing(t, dim));
+  return requestOpenAIEmbeddings(texts, dim, { model: OPENAI_EMBED_MODEL, baseUrl: OPENAI_EMBED_BASE_URL, key: OPENAI_EMBED_API_KEY });
+}
+
+async function requestOpenAIEmbeddings(texts: string[], dim: number, settings: { model: string; baseUrl: string; key: string }): Promise<number[][]> {
+  if (!texts.length) return [];
+  if (!settings.key) throw new Error("OpenAI-compatible embedding API key is not configured");
+  const response = await fetch(`${settings.baseUrl}/embeddings`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${settings.key}`,
+      "HTTP-Referer": "https://alwakeelo.com",
+      "X-Title": "AlWakeelo Legal AI",
+    },
+    body: JSON.stringify({ model: settings.model, input: texts.map(text => text.slice(0, 8000)), dimensions: dim }),
+    signal: AbortSignal.timeout(30000),
+  });
+  // Hashing on failure would permanently mix unrelated vector spaces in the index.
+  if (!response.ok) throw new Error(`OpenAI-compatible embedding API HTTP ${response.status}`);
+  const result = await response.json() as { data?: unknown; model?: string };
+  const vectors = validateEmbeddingBatch(result.data, texts.length, dim);
+  if (typeof result.model !== "string" || result.model.split("/").at(-1) !== settings.model.split("/").at(-1)) {
+    throw new Error("Embedding model mismatch");
   }
+  return vectors;
 }
 
 // ─── MiniLM Local Embedder ───────────────────────────────────────────────────
@@ -326,7 +307,7 @@ export async function embedTextLocal(text: string, dim: number = DEFAULT_DIM): P
   if (EMBEDDING_PROVIDER === "voyage") {
     return embedTextVoyage(text, dim, "query");
   }
-  // OpenAI/OpenRouter — same model as stored judgment vectors (text-embedding-3-small)
+  // OpenAI/OpenRouter — only for an index rebuilt with the configured model.
   if (EMBEDDING_PROVIDER === "openai") {
     return embedTextOpenAI(text, dim);
   }
@@ -356,7 +337,7 @@ export async function embedTextsLocal(
   if (EMBEDDING_PROVIDER === "voyage") {
     return embedTextsVoyage(texts, dim, inputType);
   }
-  // OpenAI/OpenRouter — same model as stored judgment vectors
+  // OpenAI/OpenRouter — only for an index rebuilt with the configured model.
   if (EMBEDDING_PROVIDER === "openai") {
     return embedTextsOpenAI(texts, dim);
   }

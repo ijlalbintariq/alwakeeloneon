@@ -1,6 +1,8 @@
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
 import { resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, judgmentPdfUrl, judgmentSourceUrl, extractCitations, verifyCitations, citationMatchesCourt } from "./citation-verify";
 import { generateCourtJudgmentPdfBuffer } from "./judgment-pdf";
+import { sourceFileFormat } from "../shared/source-file-format";
+import { assertCompletePdfPages, getPdfPageCount } from "./pdf-completeness";
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
 import { storage, findTextOwnerJudgment } from "./storage";
@@ -899,10 +901,15 @@ async function uploadAdminKnowledgeFileToR2(args: {
   source: string;
   extractedTextKey?: string | null;
 }) {
+  const hasPdfHeader = args.buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+  const mimeType = hasPdfHeader ? "application/pdf" : args.mimeType;
+  const format = sourceFileFormat(args.fileName, mimeType);
+  if (format.isPdf && !hasPdfHeader) throw new Error("Original PDF bytes are missing.");
+  const filename = format.filename;
   const r2Upload = await uploadBufferToR2({
     buffer: args.buffer,
-    fileName: args.fileName,
-    contentType: args.mimeType,
+    fileName: filename,
+    contentType: mimeType,
     prefix: `admin-knowledge/${args.userId}`,
     metadata: {
       user_id: args.userId,
@@ -911,7 +918,10 @@ async function uploadAdminKnowledgeFileToR2(args: {
     },
   });
 
-  if (!r2Upload) return;
+  if (!r2Upload) {
+    if (format.isPdf) throw new Error("Original PDF could not be stored. Retry the file upload.");
+    return;
+  }
 
   try {
     await storage.upsertAdminKnowledgeFile({
@@ -921,13 +931,14 @@ async function uploadAdminKnowledgeFileToR2(args: {
       bucket: r2Upload.bucket,
       objectKey: r2Upload.objectKey,
       extractedTextKey: args.extractedTextKey ?? null,
-      originalFilename: args.fileName,
-      mimeType: args.mimeType || null,
+      originalFilename: filename,
+      mimeType: mimeType || null,
       sizeBytes: args.sizeBytes ?? null,
       etag: r2Upload.etag,
       publicUrl: r2Upload.publicUrl,
     });
   } catch (r2MetaErr: any) {
+    if (format.isPdf) throw r2MetaErr;
     console.warn("[R2] Failed to persist admin knowledge file metadata:", r2MetaErr?.message || r2MetaErr);
   }
 }
@@ -9425,7 +9436,7 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
         const binary = await getR2ObjectBinary(fileMeta.objectKey);
         if (!binary) return res.status(404).json({ message: "File not found" });
         const contentType = binary.contentType || fileMeta.mimeType || "application/octet-stream";
-        const safeFilename = (fileMeta.originalFilename || doc.title || `document-${id}`).replace(/[^a-zA-Z0-9._-]+/g, "_");
+        const safeFilename = sourceFileFormat(fileMeta.originalFilename || doc.title || `document-${id}`, contentType).filename.replace(/[^a-zA-Z0-9._-]+/g, "_");
         res.setHeader("X-Frame-Options", "SAMEORIGIN");
         res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
         res.setHeader("Content-Type", contentType);
@@ -11680,7 +11691,7 @@ RAG POLICY (STRICT):
         const binary = await getR2ObjectBinary(fileMeta.objectKey);
         if (!binary) return res.status(404).json({ message: "File not found" });
         const contentType = binary.contentType || fileMeta.mimeType || "application/octet-stream";
-        const safeFilename = (fileMeta.originalFilename || `statute-${id}`).replace(/[^a-zA-Z0-9._-]+/g, "_");
+        const safeFilename = sourceFileFormat(fileMeta.originalFilename || `statute-${id}`, contentType).filename.replace(/[^a-zA-Z0-9._-]+/g, "_");
         // Allow same-origin PDF embedding for in-app statute viewer mode.
         res.setHeader("X-Frame-Options", "SAMEORIGIN");
         res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
@@ -11713,7 +11724,7 @@ RAG POLICY (STRICT):
       const fullContent = fileMeta?.extractedTextKey ? await getR2ObjectText(fileMeta.extractedTextKey) : null;
       const lowerName = (fileMeta?.originalFilename || doc.filename || "").toLowerCase();
       const mime = (fileMeta?.mimeType || "").toLowerCase();
-      const isPdf = mime.includes("pdf") || lowerName.endsWith(".pdf");
+      const isPdf = sourceFileFormat(lowerName, mime).isPdf;
       res.json({
         ...doc,
         content: fullContent || doc.content,
@@ -12206,7 +12217,7 @@ RAG POLICY (STRICT):
         const binary = await getR2ObjectBinary(fileMeta.objectKey);
         if (!binary) return res.status(404).json({ message: "File not found" });
         const contentType = binary.contentType || fileMeta.mimeType || "application/octet-stream";
-        const safeFilename = (fileMeta.originalFilename || `case-law-source-${id}`).replace(/[^a-zA-Z0-9._-]+/g, "_");
+        const safeFilename = sourceFileFormat(fileMeta.originalFilename || `case-law-source-${id}`, contentType).filename.replace(/[^a-zA-Z0-9._-]+/g, "_");
         res.setHeader("X-Frame-Options", "SAMEORIGIN");
         res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
         res.setHeader("Content-Type", contentType);
@@ -13333,7 +13344,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
               available: true,
               mimeType: fileMeta.mimeType || null,
               originalFilename: fileMeta.originalFilename || null,
-              isPdf: (fileMeta.mimeType || "").toLowerCase().includes("pdf") || (fileMeta.originalFilename || "").toLowerCase().endsWith(".pdf"),
+              isPdf: sourceFileFormat(fileMeta.originalFilename || "", fileMeta.mimeType).isPdf,
               viewUrl: null,
             }
           : {
@@ -19668,46 +19679,6 @@ RULES:
     return stripNullBytes(text);
   }
 
-  async function refineChatOcrTextWithStandardAI(rawText: string, filename: string): Promise<string> {
-    const cleanedRaw = stripNullBytes(rawText || "").trim();
-    if (!cleanedRaw) return "";
-
-    const enabled = !/^(0|false|no|off)$/i.test(String(process.env.CHAT_OCR_STANDARD_AI_ENABLED || "true"));
-    if (!enabled) return cleanedRaw;
-
-    try {
-      const boundedRaw = trimTextToTokenBudget(cleanedRaw, 3500);
-      const systemPrompt = `${getLegalSystemPrompt()}
-
-You are an OCR cleanup assistant for legal text.
-- Clean OCR noise and obvious recognition artifacts.
-- Preserve legal meaning, citations, section numbers, party names, and dates exactly.
-- Do not summarize, add, or remove substantive content.
-- Return plain text only (no markdown).`;
-
-      const userPrompt = `Filename: ${filename}
-
-Clean this OCR text while preserving legal content exactly:
-${boundedRaw}`;
-
-      const result = await callStandardAISimple(systemPrompt, userPrompt, 3500, {
-        timeoutProfile: "analysis",
-        temperature: 0,
-      });
-
-      const refined = stripNullBytes((result.text || "").trim());
-      if (!refined) return cleanedRaw;
-      // Guardrail: if model output is suspiciously short, keep original OCR text.
-      if (refined.length < Math.max(120, Math.floor(cleanedRaw.length * 0.45))) {
-        return cleanedRaw;
-      }
-      return refined;
-    } catch (err) {
-      console.warn(`[OCR][chat-attachment] Standard AI cleanup failed for ${filename}: ${getErrorMessage(err)}`);
-      return cleanedRaw;
-    }
-  }
-
   async function extractDocxTextSafe(sourceBuffer: Buffer, context: string = "docx-parse"): Promise<string> {
     const text = await extractDocxTextGuarded(sourceBuffer, {
       timeoutMs: EXTRACTION_TIMEOUT_MS,
@@ -19722,6 +19693,7 @@ ${boundedRaw}`;
     ocrPageTracker?: { pagesUsed: number } | null,
   ): Promise<string> {
     const sourceBuffer = getUploadBufferOrThrow(file);
+    const totalPdfPages = await getPdfPageCount(sourceBuffer);
     const requestedLanguage = process.env.TESSERACT_OCR_LANG || process.env.TESSERACT_LANG || "eng+urd";
     let lastOcrError: unknown = null;
 
@@ -19729,7 +19701,7 @@ ${boundedRaw}`;
     if (localOcrAvailable) {
       try {
         const result = await extractPdfOcrGuarded(sourceBuffer, {
-          maxPages: Number(process.env.PDF_OCR_MAX_PAGES || 8),
+          maxPages: totalPdfPages,
           dpi: Number(process.env.PDF_OCR_DPI || 220),
           language: requestedLanguage,
           timeoutMs: Number(process.env.PDF_OCR_TIMEOUT_MS || 120000),
@@ -19741,10 +19713,6 @@ ${boundedRaw}`;
             `[OCR][${context}] Extracted ${text.length} chars from ${file.originalname} using ${result.pageCount} page(s), language ${result.language}.`,
           );
           if (ocrPageTracker) ocrPageTracker.pagesUsed += result.pageCount;
-          if (context === "chat-attachment") {
-            const refined = await refineChatOcrTextWithStandardAI(text, file.originalname);
-            return stripNullBytes(refined);
-          }
           return text;
         }
         lastOcrError = new Error("Local OCR returned empty text.");
@@ -19766,18 +19734,14 @@ ${boundedRaw}`;
         filename: file.originalname,
         language: requestedLanguage,
         timeoutMs: Number(process.env.CLOUD_OCR_TIMEOUT_MS || process.env.PDF_OCR_TIMEOUT_MS || 120000),
-        maxPages: Number(process.env.CLOUD_OCR_MAX_PAGES || 3),
       });
+      assertCompletePdfPages(totalPdfPages, cloudResult.pageCount);
       const text = stripNullBytes((cloudResult.text || "").trim());
       if (text) {
         console.log(
           `[OCR][${context}] Cloud OCR extracted ${text.length} chars from ${file.originalname} using ${cloudResult.pageCount} page(s), language ${cloudResult.language}.`,
         );
         if (ocrPageTracker) ocrPageTracker.pagesUsed += cloudResult.pageCount;
-        if (context === "chat-attachment") {
-          const refined = await refineChatOcrTextWithStandardAI(text, file.originalname);
-          return stripNullBytes(refined);
-        }
       } else {
         lastOcrError = new Error("Cloud OCR returned empty text.");
       }
@@ -21052,8 +21016,8 @@ ${boundedRaw}`;
 
       const filename = sanitizeInputText(body.filename || "browser-upload.txt", 180);
       const ext = filename.split(".").pop()?.toLowerCase() || "txt";
-      if (!["txt", "text", "md", "json", "csv", "pdf"].includes(ext)) {
-        return res.status(400).json({ message: "Client extraction supports TXT, MD, JSON, CSV, and PDF text-only payloads." });
+      if (!["txt", "text", "md", "json", "csv"].includes(ext)) {
+        return res.status(400).json({ message: "Upload the original PDF through the file upload endpoint. Text-only imports support TXT, MD, JSON, and CSV." });
       }
 
       const content = stripNullBytes(String(body.content || "").trim());
@@ -22005,7 +21969,7 @@ ${boundedRaw}`;
           uploadedBy: userId,
         });
         savedDocId = savedDoc.id;
-        runInBackground(`case-law-r2:${savedDoc.id}`, async () => {
+        const persistSource = async () => {
           await uploadAdminKnowledgeFileToR2({
             docId: savedDoc.id,
             userId,
@@ -22020,7 +21984,9 @@ ${boundedRaw}`;
             adminKnowledgeId: savedDoc.id,
             category: "case-law",
           });
-        });
+        };
+        if (ext === "pdf") await persistSource();
+        else runInBackground(`case-law-r2:${savedDoc.id}`, persistSource);
         console.log(`[Case Law Extract] Saved document as admin_knowledge id=${savedDocId}: "${docTitle}"`);
         runInBackground(`case-law-audit:${savedDoc.id}`, async () => {
           await logAuditEvent("admin.caseLaw.extract", userId, null, {
@@ -22031,6 +21997,7 @@ ${boundedRaw}`;
         });
       } catch (saveErr) {
         console.error("[Case Law Extract] Failed to save document to knowledge base:", saveErr);
+        if (ext === "pdf") return res.status(503).json({ message: "Original PDF could not be stored. Retry the file upload." });
       }
 
       const extracted = nlpExtractCases(content, { sourceFilename: file.originalname });
@@ -23719,6 +23686,10 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     try {
       const file = req.file;
       const buffer = getUploadBufferOrThrow(file);
+      if ((file.mimetype === "application/pdf" || /\.pdf$/i.test(file.originalname)) &&
+          !hasSafeDocumentSignature({ ...file, buffer }, ".pdf")) {
+        return res.status(400).json({ message: "File signature does not match PDF format." });
+      }
       const label = String(req.body.label || session.label || file.originalname).trim();
       const ext = path.extname(file.originalname).toLowerCase();
       const isImage = file.mimetype.startsWith("image/");

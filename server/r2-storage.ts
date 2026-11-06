@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import path from "node:path";
+import { sourceFileFormat } from "../shared/source-file-format";
 
 type UploadArgs = {
   buffer: Buffer;
@@ -190,7 +191,7 @@ async function signedR2Request(args: {
 export async function uploadBufferToR2(args: UploadArgs): Promise<UploadedObject | null> {
   if (!isR2StorageEnabled()) return null;
 
-  const objectKey = buildObjectKey(args.prefix, args.fileName);
+  const objectKey = buildObjectKey(args.prefix, sourceFileFormat(args.fileName, args.contentType).filename);
   try {
     const res = await signedR2Request({
       method: "PUT",

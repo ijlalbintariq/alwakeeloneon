@@ -390,6 +390,7 @@ function scoreCaseLawRowForCitationLookup(row: CaseLaw, intent: QueryIntent): nu
 
 async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, focusedQueries?: string[]): Promise<RetrievedCaseLaw[]> {
   const expandedQuery = intent.expandedQuery || intent.normalized;
+  let usedRepairedIndex = false;
 
 
 
@@ -446,6 +447,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
           const seenJudgmentIds = new Set<string>();
 
           for (const match of retrieval.matches) {
+            if (match.metadata?.repairedEmbeddingModel) usedRepairedIndex = true;
             const sType = String((match.metadata || {}).sourceType || "").toLowerCase();
 
             if (sType === "admin-case-law") {
@@ -546,6 +548,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
           const seenJudgmentIds = new Set<string>();
 
           for (const match of allMatches) {
+            if (match.metadata?.repairedEmbeddingModel) usedRepairedIndex = true;
             const sType = String((match.metadata || {}).sourceType || "").toLowerCase();
             if (sType === "admin-case-law") {
               const docId = Number(match.sourceDocumentId);
@@ -784,7 +787,8 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
     }
   }
 
-  if (!isCitationLookup && topCandidates.length > 0 && isVoyageProvider()) {
+  // Keep repaired excerpts with their selected provider instead of forwarding them to Voyage.
+  if (!usedRepairedIndex && !isCitationLookup && topCandidates.length > 0 && isVoyageProvider()) {
     try {
       const { rerankVoyage } = await import("../rag/embedding-local");
       const docsToRerank = topCandidates.map(

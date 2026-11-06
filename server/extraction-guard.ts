@@ -6,7 +6,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { Worker } from "node:worker_threads";
 import mammoth from "mammoth";
-import { extractText } from "unpdf";
+import { extractText, getDocumentProxy, getResolvedPDFJS } from "unpdf";
+import { assertCompletePdfPages, getPdfPageCount } from "./pdf-completeness";
 import { ocrPdfWithTesseract, type OcrPdfOptions, type OcrPdfResult } from "./ocr";
 
 const execFileAsync = promisify(execFile);
@@ -108,11 +109,22 @@ function htmlToText(value: string): string {
 async function parsePdfInline(buffer: Buffer): Promise<string> {
   const parseBuffer = Buffer.from(buffer);
   const uint8 = new Uint8Array(parseBuffer.buffer, parseBuffer.byteOffset, parseBuffer.byteLength);
-  const parsed = await extractText(uint8, { mergePages: true });
-  const rawText = Array.isArray((parsed as any)?.text)
-    ? (parsed as any).text.join("\n")
-    : ((parsed as any)?.text || "");
-  return cleanText(String(rawText));
+  const document = await getDocumentProxy(uint8);
+  try {
+    const parsed = await extractText(document, { mergePages: false });
+    const { OPS } = await getResolvedPDFJS();
+    for (let index = 0; index < parsed.text.length; index++) {
+      // A scanner watermark alone does not make the page searchable.
+      if (parsed.text[index].trim().length >= 100) continue;
+      const page = await document.getPage(index + 1);
+      const operators = await page.getOperatorList();
+      if (operators.fnArray.some(op => [OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject].includes(op))) {
+        throw new Error(`PDF page ${index + 1} requires OCR; partial text was not accepted.`);
+      }
+    }
+    return cleanText(parsed.text.join("\n\n"));
+  } finally { await document.destroy(); }
+
 }
 
 async function parseDocxInline(buffer: Buffer): Promise<string> {
@@ -146,12 +158,25 @@ function cleanText(value) {
 }
 
 async function parsePdf(filePath) {
-  const { extractText } = require("unpdf");
+  const { extractText, getDocumentProxy, getResolvedPDFJS } = require("unpdf");
   const source = await fs.readFile(filePath);
   const uint8 = new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
-  const parsed = await extractText(uint8, { mergePages: true });
-  const rawText = Array.isArray(parsed?.text) ? parsed.text.join("\n") : (parsed?.text || "");
-  return cleanText(rawText);
+  const document = await getDocumentProxy(uint8);
+  try {
+    const parsed = await extractText(document, { mergePages: false });
+    const { OPS } = await getResolvedPDFJS();
+    for (let index = 0; index < parsed.text.length; index++) {
+      // A scanner watermark alone does not make the page searchable.
+      if (parsed.text[index].trim().length >= 100) continue;
+      const page = await document.getPage(index + 1);
+      const operators = await page.getOperatorList();
+      if (operators.fnArray.some(op => [OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject].includes(op))) {
+        throw new Error("PDF page " + (index + 1) + " requires OCR; partial text was not accepted.");
+      }
+    }
+    return cleanText(parsed.text.join("\n\n"));
+  } finally { await document.destroy(); }
+
 }
 
 async function parseDocx(filePath) {
@@ -330,28 +355,27 @@ export async function extractPdfOcrGuarded(
   const timeoutMs = Math.min(Math.max(3000, Number(options.timeoutMs || EXTRACTION_TIMEOUT_MS_DEFAULT)), 600000);
   const label = `pdf-ocr:${options.context || "default"}`;
   return await enqueueExtractionTask(label, async () => {
+    let result: OcrPdfResult | undefined;
     if (EXTRACTION_WORKER_ENABLED) {
       try {
-        const result = await runWorkerTask<OcrPdfResult>("pdf-ocr", buffer, timeoutMs, {
+        result = await runWorkerTask<OcrPdfResult>("pdf-ocr", buffer, timeoutMs, {
           maxPages: options.maxPages,
           dpi: options.dpi,
           language: options.language,
           timeoutMs,
         });
-        return {
-          text: cleanText(result.text || ""),
-          pageCount: Number(result.pageCount || 0),
-          language: result.language || String(options.language || "eng+urd"),
-        };
       } catch (workerErr) {
         console.warn(`[ExtractionWorker][pdf-ocr] ${options.context || "default"} failed, using inline OCR:`, workerErr);
       }
     }
-    return await ocrPdfWithTesseract(buffer, {
+    result ??= await ocrPdfWithTesseract(buffer, {
       maxPages: options.maxPages,
       dpi: options.dpi,
       language: options.language,
       timeoutMs,
     });
+    assertCompletePdfPages(await getPdfPageCount(buffer), result.pageCount);
+    return { ...result, text: cleanText(result.text || "") };
+
   });
 }

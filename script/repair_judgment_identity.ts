@@ -69,24 +69,33 @@ async function main() {
   const plan = JSON.parse(await readFile(planPath, "utf8")) as { repairs: Repair[] };
   assert.ok(plan.repairs.length > 0 && plan.repairs.length <= 100, "Review at most 100 repairs per transaction");
   assert.equal(new Set(plan.repairs.map(repair => repair.id)).size, plan.repairs.length, "Duplicate repair IDs");
-  const client = new Client({ connectionString: process.env.DATABASE_URL, options: `-c default_transaction_read_only=${apply ? "off" : "on"}`, connectionTimeoutMillis: 15000, statement_timeout: 30000 });
+  const client = new Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 15000, query_timeout: 35000 });
   let transaction = false;
+  let phase = "connect";
   try {
     await client.connect();
-    await client.query("BEGIN"); transaction = true;
+    await client.query(apply ? "BEGIN" : "BEGIN READ ONLY"); transaction = true;
+    await client.query("SET LOCAL statement_timeout=30000");
     const lock = apply ? " FOR UPDATE" : "";
     const before = (await client.query(`SELECT * FROM judgments WHERE id=ANY($1::uuid[]) ORDER BY id${lock}`, [plan.repairs.map(repair => repair.id)])).rows;
     assert.equal(before.length, plan.repairs.length, "Missing judgment record");
     const corrected = await Promise.all(before.map(row => prepareRepair(row, plan.repairs.find(repair => repair.id === row.id)!)));
     const variants = corrected.flatMap(row => normalizeCitation(row.citation_string));
     const indexWhere = "upper(regexp_replace(citation, '[^A-Za-z0-9]', '', 'g'))=ANY($1::text[])";
+    phase = "read matching search rows";
     const indexRows = (await client.query(`SELECT * FROM case_law WHERE ${indexWhere}${lock}`, [variants])).rows;
     const ids = before.map(row => row.id);
-    const ragChunks = (await client.query(`SELECT * FROM rag_chunks WHERE metadata->>'judgmentId'=ANY($1::text[])${lock}`, [ids])).rows;
+    phase = "read stale judgment chunks";
+    // Judgment indexing uses this source ID and the existing tenant/source index.
+    const sourceIds = ids.map(id => Math.abs(parseInt(id.replace(/-/g, "").slice(0, 8), 16)));
+    const candidates = (await client.query(`SELECT * FROM rag_documents WHERE user_id='global-admin-judgments' AND source_document_id=ANY($1::bigint[])${lock}`, [sourceIds])).rows;
+    const candidateIds = candidates.map(row => row.id);
+    const ragChunks = candidateIds.length ? (await client.query(`SELECT * FROM rag_chunks WHERE rag_document_id=ANY($1::bigint[]) AND metadata->>'judgmentId'=ANY($2::text[])${lock}`, [candidateIds, ids])).rows : [];
     const ragIds = [...new Set(ragChunks.map(row => row.rag_document_id))];
-    const ragDocuments = ragIds.length ? (await client.query(`SELECT * FROM rag_documents WHERE id=ANY($1::bigint[])${lock}`, [ragIds])).rows : [];
+    const ragDocuments = candidates.filter(row => ragIds.includes(row.id));
     const cachePatterns = before.flatMap(row => [row.id, row.citation_string, row.title].map(value => `%${value.replace(/[\\%_]/g, "\\$&")}%`));
     const cacheWhere = "query_text ILIKE ANY($1::text[]) OR response ILIKE ANY($1::text[])";
+    phase = "read stale cached responses";
     const caches = (await client.query(`SELECT * FROM query_cache WHERE ${cacheWhere}${lock}`, [cachePatterns])).rows;
     const preview = { mode: apply ? "apply" : "preview", repairs: corrected.map(row => ({ id: row.id, citation: row.citation_string, title: row.title, decisionDate: row.decision_date, textHash: sha256(row.full_text) })), searchRows: indexRows.length, staleChunks: ragChunks.length, staleCaches: caches.length };
     if (!apply) {
@@ -113,7 +122,7 @@ async function main() {
     await client.query("COMMIT"); transaction = false;
     await writeFile(`${backupPath}.result.json`, JSON.stringify({ ...preview, committedAt: new Date().toISOString() }, null, 2), { flag: "wx", mode: 0o600 });
     console.log(JSON.stringify(preview, null, 2));
-  } finally {
+  } catch (error) { console.error(`Judgment repair phase: ${phase}`); throw error; } finally {
     if (transaction) await client.query("ROLLBACK").catch(() => {});
     await client.end();
   }
