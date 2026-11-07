@@ -77,3 +77,18 @@ test("complete Markdown evidence supports labels and captions while preserving u
   assert.equal(courtRepair.court_name_snapshot, "Supreme Court");
   await assert.rejects(prepareRepair(row, { ...markdown, evidence: [{ ...markdown.evidence[0], reviewedLines: [] }] }), /pages or lines/);
 }));
+
+test("source-backed citation correction keeps the case body and requires existing party/court agreement", async () => fixture(async repair => {
+  const original = { ...row, title: "Ahmad Khan vs State", citation_string: "1991 PLD 2910", text_status: "mislabeled" };
+  const plan: Repair = { ...repair, citation: original.citation_string, expectedFingerprint: recordFingerprint(original),
+    evidence: [{ ...repair.evidence[0], scope: "full_judgment" }],
+    changes: { ...repair.changes, citation: "2024 SCMR 1085", fullTextPath: repair.evidence[0].path, fullTextSha256: sha256(body) } };
+  const result = await prepareRepair(original, plan);
+  assert.equal(result.citation_string, "2024 SCMR 1085");
+  assert.equal(result.full_text, original.full_text);
+  assert.equal(original.citation_string, "1991 PLD 2910");
+  await assert.rejects(prepareRepair(original, { ...plan, changes: { ...plan.changes, citation: "2024 SCMR 999" } }), /printed in the source header/);
+  const differentCase = { ...original, title: "Another Person vs Another Party" };
+  await assert.rejects(prepareRepair(differentCase, { ...plan, expectedFingerprint: recordFingerprint(differentCase) }), /Stored parties and court/);
+  await assert.rejects(prepareRepair({ ...original, canonical_judgment_id: row.id }, { ...plan, expectedFingerprint: recordFingerprint({ ...original, canonical_judgment_id: row.id }) }), /archived duplicate/);
+}));

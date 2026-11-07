@@ -148,3 +148,5 @@ test("resolveCitationBacklog successfully processes, maps, inserts, and deletes 
   // Validate deletes were initiated
   assert.equal(deleteCalls.length, 1);
 });
+
+test('legacy native backlog matching cannot write unverified citation links',async()=>{let called=false;const db:any={execute:async()=>{called=true;return{rows:[]};}};await assert.rejects(resolveCitationBacklog(db),/Unsafe legacy backlog join disabled/);assert.equal(called,false);});

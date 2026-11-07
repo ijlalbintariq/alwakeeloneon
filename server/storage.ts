@@ -1,5 +1,5 @@
 import { db, pool, dbAvailable } from "./db";
-import { assessJudgmentIdentity, judgmentPdfUrl, citationIdentifiesJudgment } from "./citation-verify";
+import { assessJudgmentIdentity, judgmentPdfUrl, citationIdentifiesJudgment, citationCanLinkDirectly, citationSection, resolveJudgment, splitCitations } from "./citation-verify";
 import { clearSitemapCache } from "./sitemap";
 import { triggerGoogleIndexing } from "./services/google-indexing";
 import {
@@ -2946,9 +2946,11 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getJudgmentDetail(id: string): Promise<JudgmentDetail | undefined> {
+  async getJudgmentDetail(id: string, followCanonical = true): Promise<JudgmentDetail | undefined> {
     const [row] = await db.select({
       id: judgments.id,
+      canonicalJudgmentId: judgments.canonicalJudgmentId,
+      isActive: judgments.isActive,
       year: judgments.year,
       page: judgments.page,
       journalCode: lawJournals.code,
@@ -2973,6 +2975,11 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     if (!row) return undefined;
+    if (row.canonicalJudgmentId) {
+      if (!followCanonical || row.canonicalJudgmentId === id) return undefined;
+      return this.getJudgmentDetail(row.canonicalJudgmentId, false);
+    }
+    if (row.isActive === false) return undefined;
 
     const madeBase = await db.select({
       id: citationLinks.id,
@@ -3026,7 +3033,7 @@ export class DatabaseStorage implements IStorage {
 
     const made = madeBase.map((item: typeof madeBase[number]) => {
       const candidate = item.linkedJudgmentId ? linkedMap.get(item.linkedJudgmentId) : undefined;
-      const linked = candidate && citationIdentifiesJudgment(item.citationText, candidate) ? candidate : undefined;
+      const linked = candidate && citationCanLinkDirectly(item.citationText) && citationIdentifiesJudgment(item.citationText, candidate) ? candidate : undefined;
       return {
         id: item.id,
         citationType: item.citationType,
@@ -3039,7 +3046,7 @@ export class DatabaseStorage implements IStorage {
     });
 
     const received = receivedBase.filter((item: typeof receivedBase[number]) => linkedMap.has(item.linkedJudgmentId)
-      && citationIdentifiesJudgment(item.citationText, { citation: row.citation, court: row.courtName || row.courtSnapshot })).map((item: typeof receivedBase[number]) => {
+      && citationCanLinkDirectly(item.citationText) && citationIdentifiesJudgment(item.citationText, { citation: row.citation, court: row.courtName || row.courtSnapshot })).map((item: typeof receivedBase[number]) => {
       const linked = item.linkedJudgmentId ? linkedMap.get(item.linkedJudgmentId) : undefined;
       return {
         id: item.id,
@@ -3074,7 +3081,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createJudgment(entry: InsertJudgment): Promise<Judgment> {
-    const [created] = await db.insert(judgments).values(entry).returning();
+    const [created] = await db.insert(judgments).values({ ...entry, citationSection: citationSection(entry.citationString) || "" }).returning();
     
     // Auto-populate judge_case_links flat pivot table for the Judges Directory
     if (created.bench && created.bench.trim() !== '') {
@@ -5106,7 +5113,10 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "law_journals_code_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS law_journals_code_unique ON law_journals (code)` },
     { label: "courts_ref_code_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS courts_ref_code_unique ON courts_ref (code)` },
     { label: "idx_judgments_citation_parts", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_citation_parts ON judgments (year, journal_id, page)` },
-    { label: "judgments_year_journal_page_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS judgments_year_journal_page_unique ON judgments (year, journal_id, page)` },
+    { label: "judgments_canonical_owner_column", stmt: sql`ALTER TABLE judgments ADD COLUMN IF NOT EXISTS canonical_judgment_id UUID REFERENCES judgments(id)` },
+    { label: "judgments_canonical_owner_idx", stmt: sql`CREATE INDEX IF NOT EXISTS judgments_canonical_owner_idx ON judgments(canonical_judgment_id) WHERE canonical_judgment_id IS NOT NULL` },
+    { label: "judgments_citation_section_column", stmt: sql`ALTER TABLE judgments ADD COLUMN IF NOT EXISTS citation_section TEXT NOT NULL DEFAULT ''` },
+    { label: "judgments_reported_citation_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS judgments_reported_citation_unique ON judgments (year,journal_id,page,coalesce('id:' || court_id::text,'court:' || lower(regexp_replace(coalesce(court_name_snapshot,''),'[^[:alnum:]]','','g'))),citation_section) WHERE canonical_judgment_id IS NULL` },
     { label: "idx_judgments_citation_string_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_citation_string_trgm ON judgments USING gin (citation_string gin_trgm_ops)` },
     {
       label: "idx_judgments_full_text_tsv",
@@ -5662,24 +5672,44 @@ export async function getTextProvenance(ids: string[]): Promise<Map<string, "own
 }
 
 /** Validate only requested records; stored provenance alone does not verify identity. */
-export type ValidatedJudgmentMetadata = { citation: string; title: string; court: string; bodyHash: string; body: string };
+export type ValidatedJudgmentMetadata = { citation: string; title: string; court: string; bodyHash: string; body: string; canonicalId?: string };
 export async function getValidatedJudgmentIntegrity(ids: string[], metadata?: Map<string, ValidatedJudgmentMetadata>, hashIds: string[] = []): Promise<Map<string, "own" | "mislabeled" | "unknown">> {
   const unique = [...new Set(ids.filter((id) => UUID_RE.test(String(id || ""))))];
   if (!unique.length) return new Map();
   const hashSet = new Set(hashIds), verifiedHashIds = unique.filter(id => hashSet.has(id));
-  const rows = await db.select({
+  const selectRows = (lookupIds: string[], lookupHashIds: string[]) => db.select({
     id: judgments.id, citation: judgments.citationString, title: judgments.title,
+    canonicalId: judgments.canonicalJudgmentId, isActive: judgments.isActive,
     court: sql<string>`coalesce(${courtsRef.name},${judgments.courtNameSnapshot},'')`, textStatus: judgments.textStatus,
     textTrueCitation: judgments.textTrueCitation,
-    opening: sql<string>`left(${judgments.fullText}, 16000)`,
-    body: metadata ? judgments.fullText : sql<string>`NULL::text`,
-    bodyHash: metadata && verifiedHashIds.length ? sql<string>`CASE WHEN ${inArray(judgments.id, verifiedHashIds)} THEN md5(${judgments.fullText}) ELSE NULL END` : sql<string>`NULL::text`,
-  }).from(judgments).leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id)).where(inArray(judgments.id, unique));
-  return new Map(rows.map((row: any) => {
-    const integrity = assessJudgmentIdentity(row).textIntegrity;
-    metadata?.set(String(row.id), { citation: row.citation, title: cleanCaseTitle(row.title), court: row.court, bodyHash: row.bodyHash || "", body: row.body || "" });
-    return [String(row.id), integrity === "own" ? "own" : integrity === "mislabeled" ? "mislabeled" : "unknown"];
-  }));
+    opening: sql<string>`CASE WHEN ${judgments.canonicalJudgmentId} IS NULL THEN left(${judgments.fullText}, 16000) ELSE '' END`,
+    body: metadata ? sql<string>`CASE WHEN ${judgments.canonicalJudgmentId} IS NULL THEN ${judgments.fullText} ELSE NULL END` : sql<string>`NULL::text`,
+    bodyHash: metadata && lookupHashIds.length ? sql<string>`CASE WHEN ${inArray(judgments.id, lookupHashIds)} THEN md5(${judgments.fullText}) ELSE NULL END` : sql<string>`NULL::text`,
+  }).from(judgments).leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id)).where(inArray(judgments.id, lookupIds));
+  const rows = await selectRows(unique, verifiedHashIds);
+  const statuses = new Map<string, "own" | "mislabeled" | "unknown">();
+  const record = (row: any) => {
+    const integrity = row.canonicalId || row.isActive === false ? "mislabeled" : assessJudgmentIdentity(row).textIntegrity;
+    statuses.set(String(row.id), integrity === "own" ? "own" : integrity === "mislabeled" ? "mislabeled" : "unknown");
+    if (!row.canonicalId) metadata?.set(String(row.id), { canonicalId: String(row.id), citation: row.citation, title: cleanCaseTitle(row.title), court: row.court, bodyHash: row.bodyHash || "", body: row.body || "" });
+  };
+  rows.forEach(record);
+  if (metadata) {
+    const aliases = rows.filter((row: any) => row.canonicalId && row.isActive === false);
+    const ownerIds = [...new Set<string>(aliases.map((row: any) => String(row.canonicalId)))];
+    if (ownerIds.length) {
+      const ownerHashIds = [...new Set<string>(aliases.filter((row: any) => hashSet.has(String(row.id))).map((row: any) => String(row.canonicalId)))];
+      const owners = await selectRows(ownerIds, ownerHashIds);
+      owners.forEach(record);
+      for (const alias of aliases) {
+        const owner = owners.find((row: any) => row.id === alias.canonicalId);
+        if (owner && !owner.canonicalId && owner.isActive !== false && statuses.get(String(owner.id)) === "own") {
+          metadata.set(String(alias.id), metadata.get(String(owner.id))!);
+        }
+      }
+    }
+  }
+  return statuses;
 }
 
 export async function getJudgmentTextStatuses(ids: string[]): Promise<Map<string, {
@@ -5715,27 +5745,11 @@ export async function getJudgmentTextStatuses(ids: string[]): Promise<Map<string
  * text_true_citation can list parallel citations ("2023 SHC 303, 2024 PCRLJ 693").
  */
 export async function findTextOwnerJudgment(trueCitation: string | null | undefined): Promise<{ id: string; citation: string } | null> {
-  for (const part of String(trueCitation || "").split(/\s*[,;&]\s*/).map((p) => p.trim()).filter(Boolean)) {
-    const exact = await db
-      .select({ id: judgments.id, citation: judgments.citationString })
-      .from(judgments)
-      .where(and(eq(judgments.citationString, part), eq(judgments.textStatus, "own")))
-      .limit(1);
-    if (exact[0]) return exact[0];
-    const parsed = parseCaseLawCitationParts(part);
-    if (!parsed || !parsed.page) continue;
-    const rows = await db
-      .select({ id: judgments.id, citation: judgments.citationString })
-      .from(judgments)
-      .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
-      .where(and(
-        eq(judgments.year, parsed.year),
-        eq(sql`lower(${lawJournals.code})`, parsed.report.toLowerCase()),
-        eq(judgments.page, parsed.page),
-        eq(judgments.textStatus, "own"),
-      ))
-      .limit(1);
-    if (rows[0]) return rows[0];
+  for (const part of splitCitations(String(trueCitation || ""))) {
+    const owner = await resolveJudgment(part, { id: judgments.id, citation: judgments.citationString,
+      title: judgments.title, court: judgments.courtNameSnapshot, textStatus: judgments.textStatus,
+      textTrueCitation: judgments.textTrueCitation, opening: sql<string>`left(${judgments.fullText},16000)` });
+    if (owner && assessJudgmentIdentity(owner).textIntegrity === "own") return { id: owner.id, citation: owner.citation };
   }
   return null;
 }

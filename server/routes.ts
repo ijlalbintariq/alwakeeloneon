@@ -5182,10 +5182,12 @@ async function syncCaseLawEntriesToJudgments(
         continue;
       }
 
+      const courtId = resolveCourtId(entry.court, courts);
       const alreadyExists = await storage.searchJudgmentsByCitation({
         year: parsed.year,
         journalCode: parsed.journalCode,
         page: parsed.page,
+        court: courts.find(court => court.id === courtId)?.name || entry.court || undefined,
       });
       if (alreadyExists.length > 0) {
         existing += 1;
@@ -5198,7 +5200,6 @@ async function syncCaseLawEntriesToJudgments(
         continue;
       }
 
-      const courtId = resolveCourtId(entry.court, courts);
       const citationString = `${parsed.year} ${parsed.journalCode} ${parsed.page}`;
       const created = await storage.createJudgment({
         year: parsed.year,
@@ -13874,7 +13875,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         return res.status(400).json({ message: err.errors[0]?.message || "Invalid judgment payload" });
       }
       if (String(err?.code || "") === "23505") {
-        return res.status(409).json({ message: "A judgment with the same year, journal, and page already exists" });
+        return res.status(409).json({ message: "A judgment with the same year, journal, page, and court already exists" });
       }
       console.error("Error creating judgment:", err);
       res.status(500).json({ message: "Failed to create judgment" });

@@ -7,7 +7,7 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import { judgments, courtsRef } from "../../shared/schema";
 import { judgmentContainsExcerpt } from "../../server/rag/text-cleaner";
 import { partitionSupportedRepairChunks } from "../../script/repair_judgment_identity";
-import { assessJudgmentIdentity, citationIdentifiesJudgment, judgmentSourceUrl } from "../../server/citation-verify";
+import { assessJudgmentIdentity, citationIdentifiesJudgment, citationCanLinkDirectly, judgmentSourceUrl } from "../../server/citation-verify";
 
 const id = "11111111-1111-4111-8111-111111111111";
 const body = `Court Name: Supreme Court\nTitle: Ahmad Khan vs State\nReported As: 2024 SCMR 1085\nResult: allowed\n${"Actual legal findings from this judgment. ".repeat(30)}`;
@@ -75,7 +75,7 @@ test("linked authorities match citation, court and verified identity before expo
   ]];
   let query = 0;
   const db = { select: () => { const rows = values[query++]; const chain: any = { then: (resolve: any, reject: any) => Promise.resolve(rows).then(resolve, reject) }; for (const name of ["from", "leftJoin", "innerJoin", "where", "limit", "orderBy"]) chain[name] = () => chain; return chain; } };
-  const dependencies = { db, judgments: {}, courtsRef: {}, lawJournals: {}, citationLinks: {}, eq() {}, desc() {}, inArray() {}, sql: () => ({}), assessJudgmentIdentity, citationIdentifiesJudgment, cleanCaseTitle: (value: string) => value };
+  const dependencies = { db, judgments: {}, courtsRef: {}, lawJournals: {}, citationLinks: {}, eq() {}, desc() {}, inArray() {}, sql: () => ({}), assessJudgmentIdentity, citationIdentifiesJudgment, citationCanLinkDirectly, cleanCaseTitle: (value: string) => value };
   const code = ts.transpileModule(`(${method.getText(source).replace(/^async\s+getJudgmentDetail/, "async function")})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const detail = await new Function(...Object.keys(dependencies), `return ${code}`)(...Object.values(dependencies))(id);
   assert.equal(detail.citations.made[0].linkedJudgmentId, good);

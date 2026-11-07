@@ -8,8 +8,8 @@ import { readFile, open, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { gzipSync } from "node:zlib";
 import { Client } from "pg";
-import { assessJudgmentIdentity, judgmentPdfUrl, normalizeCitation, courtIdentity, readJudgmentHeader, extractCitations, parseCitation, splitCitations, canonJournalCode, citationMatchesCourt, citationCourtQualifier, citationIdentifiesJudgment } from "../server/citation-verify";
-import { extractSubstantiveSummary } from "../server/storage";
+import { assessJudgmentIdentity, judgmentPdfUrl, normalizeCitation, courtIdentity, readJudgmentHeader, extractCitations, parseCitation, splitCitations, canonJournalCode, citationMatchesCourt, citationCourtQualifier, citationIdentifiesJudgment, citationSection } from "../server/citation-verify";
+import { extractSubstantiveSummary, cleanCaseTitle } from "../server/storage";
 import { citationExtractor } from "../server/services/citation-extractor";
 import { cleanLegalDocumentText } from "../server/rag/text-cleaner";
 
@@ -19,32 +19,49 @@ export type Repair = {
   evidence: { path: string; sha256: string; url: string; scope: "full_judgment" | "identity_reference"; reviewedPages?: number[]; reviewedLines?: number[] }[];
   caseLawIds?: number[];
   sourceFile?: { id: number; sourceId: number; objectKey: string };
-  changes: { title: string; petitioner: string; respondent: string | null; courtName?: string; courtId?: number | null; bench?: string | null; decisionDate?: string | null; pdfUrl?: string | null; fullTextPath?: string; fullTextSha256?: string };
+  changes: { citation?: string; title: string; petitioner: string; respondent: string | null; courtName?: string; courtId?: number | null; bench?: string | null; decisionDate?: string | null; pdfUrl?: string | null; fullTextPath?: string; fullTextSha256?: string };
 };
 export const sha256 = (value: string | Buffer) => crypto.createHash("sha256").update(value).digest("hex");
+export const judgmentCourtScope = (row: RecordRow) => row.court_id !== null && row.court_id !== undefined
+  ? `id:${row.court_id}` : `court:${String(row.court_name_snapshot || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "")}`;
 
 export function recordFingerprint(row: RecordRow): string {
-  return sha256(JSON.stringify([row.id, row.citation_string, row.title, row.petitioner, row.respondent,
+  return sha256(JSON.stringify([row.id, row.year, row.journal_id, row.page, row.is_active, row.canonical_judgment_id, row.citation_section, row.citation_string, row.title, row.petitioner, row.respondent,
     row.court_name_snapshot, row.court_id, row.bench, row.decision_date, row.pdf_url, row.text_status, row.text_true_citation,
     row.full_text, row.formatted_text, row.headnotes]));
 }
 
-export async function prepareRepair(row: RecordRow, repair: Repair): Promise<RecordRow> {
-  assert.equal(row.id, repair.id, "Record ID changed");
-  assert.equal(row.citation_string, repair.citation, "Citation changed");
-  assert.equal(recordFingerprint(row), repair.expectedFingerprint, "Record changed since source review");
-  assert.ok(repair.evidence.length, "Source evidence is required");
-  for (const source of repair.evidence) {
+export async function verifySourceEvidence(evidence: Repair["evidence"]): Promise<void> {
+  assert.ok(evidence.length, "Source evidence is required");
+  for (const source of evidence) {
     assert.equal(new URL(source.url).protocol, "https:", "Source URL must use HTTPS");
     const locations = source.reviewedPages || source.reviewedLines;
     assert.ok(locations?.length && locations.every(location => Number.isInteger(location) && location > 0), "Reviewed source pages or lines are required");
     assert.equal(sha256(await readFile(source.path)), source.sha256, "Source evidence changed");
   }
+}
+
+export async function prepareRepair(row: RecordRow, repair: Repair): Promise<RecordRow> {
+  assert.equal(row.id, repair.id, "Record ID changed");
+  assert.ok(row.is_active !== false && !row.canonical_judgment_id, "A canonical repair cannot rewrite an archived duplicate");
+  assert.equal(row.citation_string, repair.citation, "Citation changed");
+  assert.equal(recordFingerprint(row), repair.expectedFingerprint, "Record changed since source review");
+  await verifySourceEvidence(repair.evidence);
   const changes = repair.changes;
   const body = changes.fullTextPath ? await readFile(changes.fullTextPath, "utf8") : row.full_text;
   if (changes.fullTextPath) {
     assert.ok(repair.evidence.some(source => source.scope === "full_judgment"), "Replacing judgment text requires a complete source judgment");
     assert.equal(sha256(body), changes.fullTextSha256, "Replacement text changed");
+  }
+  if (changes.citation !== undefined) {
+    assert.ok(changes.fullTextPath && repair.evidence.some(source => source.scope === "full_judgment"), "Citation corrections require the complete original source");
+    assert.equal(body, row.full_text, "Citation reassignment cannot replace the case body");
+    if (changes.citation !== row.citation_string) {
+      assert.ok(splitCitations(readJudgmentHeader(body).reported || "").some(part => part.trim() === changes.citation!.trim()), "Corrected citation must be printed in the source header");
+      const oldTitle = cleanCaseTitle(String(row.title).replace(/\b(?:JUDGMENT|Reported\s+As|Case\s+No)\b[\s\S]*$/i, "").trim());
+      assert.equal(assessJudgmentIdentity({ citation: changes.citation, title: oldTitle, court: row.court_name_snapshot, opening: body, textStatus: "own" }).textIntegrity,
+        "own", "Stored parties and court do not establish the same case under the source citation");
+    }
   }
   assert.ok(row.text_status === "own" || changes.fullTextPath, "Unverified text requires a complete replacement source");
   if (changes.courtName !== undefined || changes.courtId !== undefined) {
@@ -63,7 +80,7 @@ export async function prepareRepair(row: RecordRow, repair: Repair): Promise<Rec
     }
   }
   if (changes.pdfUrl) assert.equal(judgmentPdfUrl(changes.pdfUrl), changes.pdfUrl);
-  const corrected = { ...row, title: changes.title, petitioner: changes.petitioner, respondent: changes.respondent,
+  const corrected = { ...row, citation_section: citationSection(changes.citation || row.citation_string) || "", citation_string: changes.citation === undefined ? row.citation_string : changes.citation, title: changes.title, petitioner: changes.petitioner, respondent: changes.respondent,
     court_name_snapshot: changes.courtName === undefined ? row.court_name_snapshot : changes.courtName,
     court_id: changes.courtId === undefined ? row.court_id : changes.courtId,
     bench: changes.bench === undefined ? row.bench : changes.bench,
@@ -83,7 +100,7 @@ export function repairCitationReferences(row: RecordRow, journals: Set<string>) 
   return [...extractCitations(row.full_text), ...citationExtractor.extractFromText(row.full_text, row.id).map(item => item.rawCitation)].flatMap(raw => {
     const parsed = parseCitation(raw, journals);
     if (!parsed || own.has(key(parsed))) return [];
-    const identity = `${key(parsed)}|${citationCourtQualifier(raw) || ""}`;
+    const identity = `${key(parsed)}|${citationCourtQualifier(raw) || ""}|${citationSection(raw) || ""}`;
     if (seen.has(identity)) return [];
     seen.add(identity);
     const offset = row.full_text.indexOf(raw);
@@ -134,15 +151,35 @@ async function main() {
     const journalIds = new Map<string, number>(journalRows.map(row => [canonJournalCode(row.code), row.id]));
     for (const row of before) {
       const parsed = parseCitation(row.citation_string, new Set(journalIds.keys()));
-      assert.ok(parsed && row.year === parsed.year && row.page === parsed.page && row.journal_id === journalIds.get(parsed.journal), "Canonical numeric key conflicts with the stored citation");
+      if (plan.repairs.find(repair => repair.id === row.id)!.changes.citation === undefined) assert.ok(parsed && row.year === parsed.year && row.page === parsed.page && row.journal_id === journalIds.get(parsed.journal), "Canonical numeric key conflicts with the stored citation");
     }
     const corrected = await Promise.all(before.map(row => prepareRepair(row, plan.repairs.find(repair => repair.id === row.id)!)));
+    for (const row of corrected) if (plan.repairs.find(repair => repair.id === row.id)!.changes.citation !== undefined) {
+      const key = parseCitation(row.citation_string, new Set(journalIds.keys()));
+      assert.ok(key && journalIds.has(key.journal), "Unknown corrected citation key");
+      row.year = key.year; row.journal_id = journalIds.get(key.journal); row.page = key.page;
+    }
     const courts = (await client.query("SELECT id,name FROM courts_ref WHERE id=ANY($1::int[])", [[...new Set(corrected.map(row => row.court_id).filter(id => id !== null && id !== undefined))]])).rows;
     for (const row of corrected) if (row.court_id !== null && row.court_id !== undefined) {
       const court = courts.find(court => court.id === row.court_id);
       const identity = courtIdentity(String(row.court_name_snapshot || ""));
       assert.ok(court && (court.name.toLowerCase().trim() === String(row.court_name_snapshot).toLowerCase().trim()
         || (identity && courtIdentity(court.name) === identity)), "Court reference conflicts with the corrected source");
+    }
+    const rekeys = corrected.filter(row => plan.repairs.find(repair => repair.id === row.id)!.changes.citation !== undefined);
+    if (rekeys.length) {
+      const wanted = rekeys.map(row => ({year:row.year,journal_id:row.journal_id,page:row.page}));
+      const occupied = (await client.query(`SELECT j.id,j.year,j.journal_id,j.page,j.court_id,j.court_name_snapshot,j.is_active,j.citation_section
+        FROM judgments j JOIN jsonb_to_recordset($1::jsonb) AS p(year int,journal_id int,page int)
+        ON j.year=p.year AND j.journal_id=p.journal_id AND j.page=p.page WHERE j.canonical_judgment_id IS NULL`,[JSON.stringify(wanted)])).rows;
+      const planned = new Set<string>();
+      for (const row of rekeys) {
+        const key = `${row.year}|${row.journal_id}|${row.page}|${judgmentCourtScope(row)}|${row.citation_section}`;
+        assert.ok(!planned.has(key), "Two repairs claim the same court citation"); planned.add(key);
+        const others = occupied.filter(other => other.id !== row.id && other.year === row.year && other.journal_id === row.journal_id && other.page === row.page);
+        assert.ok(!others.some(other => (judgmentCourtScope(other) === judgmentCourtScope(row) || (courtIdentity(other.court_name_snapshot) && courtIdentity(other.court_name_snapshot) === courtIdentity(row.court_name_snapshot))) && other.citation_section === row.citation_section), "Corrected court citation is already occupied");
+        assert.ok(!others.some(other => other.is_active) || (citationCourtQualifier(row.citation_string) || citationSection(row.citation_string)), "A colliding citation requires an explicit source court or reporter section");
+      }
     }
     const variants = corrected.flatMap(row => normalizeCitation(row.citation_string));
     const indexWhere = "upper(regexp_replace(citation, '[^A-Za-z0-9]', '', 'g'))=ANY($1::text[])";
@@ -158,7 +195,15 @@ async function main() {
     }
     const ids = before.map(row => row.id);
     const changedBodies = corrected.filter(row => row.full_text !== before.find(original => original.id === row.id)!.full_text);
-    const changedIds = changedBodies.map(row => row.id);
+    const citationChanged = corrected.filter(row => row.citation_string !== before.find(original => original.id === row.id)!.citation_string);
+    const rebuiltBodies = corrected.filter(row => changedBodies.includes(row) || citationChanged.includes(row));
+    const changedIds = rebuiltBodies.map(row => row.id);
+    const incomingLinks = citationChanged.length ? (await client.query(`SELECT * FROM citation_links WHERE target_judgment_id=ANY($1::uuid[]) AND NOT(source_judgment_id=ANY($2::uuid[]))${lock}`, [citationChanged.map(row => row.id), changedIds])).rows : [];
+    const invalidIncoming = incomingLinks.filter(link => {
+      const target = corrected.find(row => row.id === link.target_judgment_id)!;
+      return !citationIdentifiesJudgment(link.citation_text, { citation: target.citation_string, court: target.court_name_snapshot });
+    });
+    const judgeLinks = (await client.query(`SELECT * FROM judge_case_links WHERE judgment_id=ANY($1::uuid[])${lock}`, [ids])).rows;
     const oldLinks = changedIds.length ? (await client.query(`SELECT * FROM citation_links WHERE source_judgment_id=ANY($1::uuid[])${lock}`, [changedIds])).rows : [];
     const oldUnresolved = changedIds.length ? (await client.query(`SELECT * FROM unresolved_citations WHERE source_judgment_id=ANY($1::uuid[])${lock}`, [changedIds])).rows : [];
     phase = "read stale judgment chunks";
@@ -172,13 +217,13 @@ async function main() {
     const dependentChunks = removedChunkIds.length ? (await client.query(`SELECT * FROM rag_chunks WHERE parent_chunk_id=ANY($1::bigint[])${lock}`, [removedChunkIds])).rows : [];
     const ragIds = [...new Set(ragChunks.map(row => row.rag_document_id))];
     const ragDocuments = candidates.filter(row => ragIds.includes(row.id));
-    const cachePatterns = before.flatMap(row => [row.id, row.citation_string].map(value => `%${value.replace(/[\\%_]/g, "\\$&")}%`));
+    const cachePatterns = [...before, ...corrected].flatMap(row => [row.id, row.citation_string].map(value => `%${value.replace(/[\\%_]/g, "\\$&")}%`));
     const cacheWhere = "query_text ILIKE ANY($1::text[]) OR response ILIKE ANY($1::text[])";
     phase = "read stale cached responses";
     const caches = (await client.query(`SELECT * FROM query_cache WHERE ${cacheWhere}${lock}`, [cachePatterns])).rows;
     const preview = { mode: apply ? "apply" : "preview", keywordOnly, repairs: corrected.map(row => ({ id: row.id, citation: row.citation_string, title: row.title, decisionDate: row.decision_date, textHash: sha256(row.full_text) })), searchRows: indexRows.length,
       reusedChunks: supported.keep.length, reusedVectors: supported.keep.filter(row => row.embedding !== null).length,
-      staleChunks: supported.remove.length, staleCaches: caches.length, changedBodies: changedIds.length,
+      staleChunks: supported.remove.length, staleCaches: caches.length, changedBodies: changedBodies.length, citationChanges: citationChanged.length, rebuiltCitationSources: changedIds.length, invalidIncomingLinks: invalidIncoming.length,
       staleCitationLinks: oldLinks.length, staleUnresolvedCitations: oldUnresolved.length, embeddingApiCalls: 0 };
     if (!apply) {
       await client.query("ROLLBACK"); transaction = false;
@@ -188,25 +233,27 @@ async function main() {
     // Save and sync complete originals before the first mutation; never overwrite a backup.
     const backup = await open(backupPath, "wx", 0o600);
     try {
-      const original = JSON.stringify({ savedAt: new Date().toISOString(), plan, judgments: before, caseLaw: indexRows, sourceFiles: currentFiles, citationLinks: oldLinks, unresolvedCitations: oldUnresolved, ragChunks, dependentChunks, ragDocuments, queryCache: caches });
+      const original = JSON.stringify({ savedAt: new Date().toISOString(), plan, judgments: before, judgeCaseLinks: judgeLinks, caseLaw: indexRows, sourceFiles: currentFiles, citationLinks: oldLinks, incomingLinks, unresolvedCitations: oldUnresolved, ragChunks, dependentChunks, ragDocuments, queryCache: caches });
       await backup.writeFile(backupPath.endsWith(".gz") ? gzipSync(original) : original);
       await backup.sync();
     }
     finally { await backup.close(); }
     const updates = corrected.map(row => {
       const dateChanged = plan.repairs.find(repair => repair.id === row.id)!.changes.decisionDate !== undefined;
-      return { id: row.id, title: row.title, petitioner: row.petitioner, respondent: row.respondent,
+      return { id: row.id, year: row.year, journal_id: row.journal_id, page: row.page, citation_section: row.citation_section, citation: row.citation_string, title: row.title, petitioner: row.petitioner, respondent: row.respondent,
         court: row.court_name_snapshot, court_id: row.court_id, bench: row.bench, full_text: row.full_text, pdf_url: row.pdf_url,
+        body_changed: row.full_text !== before.find(original => original.id === row.id)!.full_text,
         date_changed: dateChanged, decision_date: dateChanged ? row.decision_date : null };
     });
     phase = "update canonical judgments";
-    const result = await client.query(`UPDATE judgments j SET title=p.title,petitioner=p.petitioner,respondent=p.respondent,
+    const result = await client.query(`UPDATE judgments j SET year=p.year,journal_id=p.journal_id,page=p.page,citation_section=p.citation_section,citation_string=p.citation,title=p.title,petitioner=p.petitioner,respondent=p.respondent,
       court_name_snapshot=p.court,court_id=p.court_id,bench=p.bench,
       decision_date=CASE WHEN p.date_changed THEN p.decision_date ELSE j.decision_date END,
-      full_text=p.full_text,formatted_text=NULL,headnotes=NULL,ai_summary=NULL,pdf_url=p.pdf_url,text_status='own',text_true_citation=NULL,updated_at=now()
-      FROM jsonb_to_recordset($1::jsonb) AS p(id uuid,title text,petitioner text,respondent text,court text,court_id int,bench text,date_changed boolean,decision_date timestamp,full_text text,pdf_url text)
+      full_text=CASE WHEN p.body_changed THEN p.full_text ELSE j.full_text END,formatted_text=NULL,headnotes=NULL,ai_summary=NULL,pdf_url=p.pdf_url,text_status='own',text_true_citation=NULL,updated_at=now()
+      FROM jsonb_to_recordset($1::jsonb) AS p(id uuid,year int,journal_id int,page int,citation_section text,citation text,title text,petitioner text,respondent text,court text,court_id int,bench text,body_changed boolean,date_changed boolean,decision_date timestamp,full_text text,pdf_url text)
       WHERE j.id=p.id RETURNING j.id`, [JSON.stringify(updates)]);
     assert.equal(result.rowCount, corrected.length);
+    await client.query(`UPDATE judge_case_links l SET year=p.year,court_name=p.court FROM jsonb_to_recordset($1::jsonb) AS p(id uuid,year int,court text) WHERE l.judgment_id=p.id`, [JSON.stringify(updates)]);
     const searchUpdates = indexRows.flatMap(indexRow => {
       const owner = corrected.find(row => {
         const repair = plan.repairs.find(repair => repair.id === row.id)!;
@@ -220,7 +267,7 @@ async function main() {
       FROM jsonb_to_recordset($1::jsonb) AS p(id int,title text,court text,summary text) WHERE c.id=p.id`, [JSON.stringify(searchUpdates)]);
     if (changedIds.length) {
       phase = "rebuild citation references";
-      const references = changedBodies.flatMap(row => repairCitationReferences(row, new Set(journalIds.keys())));
+      const references = rebuiltBodies.flatMap(row => repairCitationReferences(row, new Set(journalIds.keys())));
       const keys = [...new Map(references.map(reference => [`${reference.year}|${reference.journal}|${reference.page}`,
         { year: reference.year, journal_id: journalIds.get(reference.journal), page: reference.page }])).values()];
       const targets = keys.length ? (await client.query(`SELECT j.id,j.year,j.journal_id,j.page,j.citation_string,j.title,j.court_name_snapshot,j.text_status,j.text_true_citation,left(j.full_text,16000) AS opening
@@ -228,11 +275,13 @@ async function main() {
         ON j.year=p.year AND j.journal_id=p.journal_id AND j.page=p.page WHERE j.is_active=true`, [JSON.stringify(keys)])).rows : [];
       const links: any[] = [], pending: any[] = [];
       for (const reference of references) {
-        const target = targets.find(target => target.year === reference.year && target.journal_id === journalIds.get(reference.journal) && target.page === reference.page);
-        const valid = target && target.id !== reference.source_id && !(reference.journal === "PLD" && !citationCourtQualifier(reference.raw))
+        const matches = targets.filter(target => target.year === reference.year && target.journal_id === journalIds.get(reference.journal) && target.page === reference.page
+          && target.id !== reference.source_id && !(reference.journal === "PLD" && !citationCourtQualifier(reference.raw))
           && citationIdentifiesJudgment(reference.raw, { citation: target.citation_string, court: target.court_name_snapshot })
           && assessJudgmentIdentity({ citation: target.citation_string, title: target.title, court: target.court_name_snapshot,
-            opening: target.opening, textStatus: target.text_status, textTrueCitation: target.text_true_citation }).textIntegrity === "own";
+            opening: target.opening, textStatus: target.text_status, textTrueCitation: target.text_true_citation }).textIntegrity === "own");
+        const target = matches.length === 1 ? matches[0] : undefined;
+        const valid = Boolean(target);
         (valid ? links : pending).push({ ...reference, target_id: valid ? target.id : null });
       }
       await client.query("DELETE FROM citation_links WHERE source_judgment_id=ANY($1::uuid[])", [changedIds]);
@@ -241,6 +290,17 @@ async function main() {
         SELECT source_id,target_id,'referred_to','cited',context,raw,offset_value FROM jsonb_to_recordset($1::jsonb)
         AS p(source_id uuid,target_id uuid,context text,raw text,offset_value int) ON CONFLICT DO NOTHING`, [JSON.stringify(links.map(row => ({ ...row, offset_value: row.offset })))]);
       if (pending.length) await client.query(`INSERT INTO unresolved_citations(source_judgment_id,raw_citation,year,journal_code,page,context_excerpt,status)
+        SELECT source_id,raw,year,journal,page,context,'pending' FROM jsonb_to_recordset($1::jsonb)
+        AS p(source_id uuid,raw text,year int,journal text,page int,context text)`, [JSON.stringify(pending)]);
+    }
+    if (invalidIncoming.length) {
+      phase = "quarantine obsolete incoming references";
+      await client.query("DELETE FROM citation_links WHERE id=ANY($1::int[])", [invalidIncoming.map(row => row.id)]);
+      const pending = invalidIncoming.map(row => {
+        const parsed = parseCitation(row.citation_text, new Set(journalIds.keys()));
+        return { source_id: row.source_judgment_id, raw: row.citation_text, year: parsed?.year || null, journal: parsed?.journal || null, page: parsed?.page || null, context: row.context_excerpt };
+      });
+      await client.query(`INSERT INTO unresolved_citations(source_judgment_id,raw_citation,year,journal_code,page,context_excerpt,status)
         SELECT source_id,raw,year,journal,page,context,'pending' FROM jsonb_to_recordset($1::jsonb)
         AS p(source_id uuid,raw text,year int,journal text,page int,context text)`, [JSON.stringify(pending)]);
     }

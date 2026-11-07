@@ -1,5 +1,5 @@
 
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, index, jsonb, customType, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, index, jsonb, customType, doublePrecision, check, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -194,10 +194,12 @@ export const judgments = pgTable(
   "judgments",
   {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    canonicalJudgmentId: uuid("canonical_judgment_id").references((): AnyPgColumn => judgments.id),
     year: integer("year").notNull(),
     journalId: integer("journal_id").references(() => lawJournals.id).notNull(),
     page: integer("page").notNull(),
     citationString: text("citation_string").notNull(),
+    citationSection: text("citation_section").notNull().default(""),
     title: text("title").notNull(),
     petitioner: text("petitioner"),
     respondent: text("respondent"),
@@ -226,7 +228,12 @@ export const judgments = pgTable(
     ),
   },
   (table) => ({
-    uniqueCitationParts: uniqueIndex("judgments_year_journal_page_unique").on(table.year, table.journalId, table.page),
+    citationParts: index("idx_judgments_citation_parts").on(table.year, table.journalId, table.page),
+    canonicalOwner: index("judgments_canonical_owner_idx").on(table.canonicalJudgmentId).where(sql`${table.canonicalJudgmentId} IS NOT NULL`),
+    uniqueCourtCitation: uniqueIndex("judgments_reported_citation_unique").on(table.year, table.journalId, table.page,
+      sql`coalesce('id:' || ${table.courtId}::text, 'court:' || lower(regexp_replace(coalesce(${table.courtNameSnapshot}, ''), '[^[:alnum:]]', '', 'g')))`, table.citationSection)
+      .where(sql`${table.canonicalJudgmentId} IS NULL`),
+    canonicalLinkValid: check("judgments_canonical_link_valid", sql`${table.canonicalJudgmentId} IS NULL OR (${table.canonicalJudgmentId} <> ${table.id} AND ${table.isActive} = false)`),
   }),
 );
 
@@ -1159,7 +1166,7 @@ export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true 
 export const insertCaseLawSchema = createInsertSchema(caseLaw).omit({ id: true });
 export const insertLawJournalSchema = createInsertSchema(lawJournals).omit({ id: true, createdAt: true });
 export const insertCourtRefSchema = createInsertSchema(courtsRef).omit({ id: true, createdAt: true });
-export const insertJudgmentSchema = createInsertSchema(judgments).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertJudgmentSchema = createInsertSchema(judgments).omit({ id: true, canonicalJudgmentId: true, citationSection: true, createdAt: true, updatedAt: true });
 export const insertCitationLinkSchema = createInsertSchema(citationLinks).omit({ id: true, createdAt: true });
 export const insertUnresolvedCitationSchema = createInsertSchema(unresolvedCitations).omit({ id: true, createdAt: true });
 export const insertQueryCacheSchema = createInsertSchema(queryCache).omit({ id: true, createdAt: true, hitCount: true });

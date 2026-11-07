@@ -1,3 +1,4 @@
+import { citationSection } from "../server/citation-verify";
 /**
  * Targeted sync — push ONLY missing 2026 cases to Neon.
  * Reads from the pre-filtered 2026_only.jsonl (1,253 records).
@@ -102,22 +103,22 @@ async function main() {
 
   const insertBatch = async (rows: any[]) => {
     if (!IS_LIVE || rows.length === 0) return;
-    const fields = 11;
+    const fields = 12;
     const valuePlaceholders = rows
       .map((_, i) =>
-        `($${i * fields + 1},$${i * fields + 2},$${i * fields + 3},$${i * fields + 4},$${i * fields + 5},$${i * fields + 6},$${i * fields + 7},$${i * fields + 8},$${i * fields + 9},$${i * fields + 10},$${i * fields + 11})`
+        `($${i * fields + 1},$${i * fields + 2},$${i * fields + 3},$${i * fields + 4},$${i * fields + 5},$${i * fields + 6},$${i * fields + 7},$${i * fields + 8},$${i * fields + 9},$${i * fields + 10},$${i * fields + 11},$${i * fields + 12})`
       )
       .join(",");
     const params = rows.flatMap((r) => [
       r.year, r.journalId, r.page, r.citationString,
       r.title, r.petitioner, r.respondent,
-      r.fullText, r.courtId, r.courtNameSnapshot, true,
+      r.fullText, r.courtId, r.courtNameSnapshot, true, citationSection(r.citationString) || "",
     ]);
     const queryText = `
       INSERT INTO judgments
-        (year, journal_id, page, citation_string, title, petitioner, respondent, full_text, court_id, court_name_snapshot, is_active)
+        (year, journal_id, page, citation_string, title, petitioner, respondent, full_text, court_id, court_name_snapshot, is_active, citation_section)
       VALUES ${valuePlaceholders}
-      ON CONFLICT (year, journal_id, page) DO NOTHING
+      ON CONFLICT DO NOTHING
     `;
     try {
       await pool.query(queryText, params);
@@ -127,11 +128,11 @@ async function main() {
         try {
           await pool.query(
             `INSERT INTO judgments
-              (year, journal_id, page, citation_string, title, petitioner, respondent, full_text, court_id, court_name_snapshot, is_active)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-             ON CONFLICT (year, journal_id, page) DO NOTHING`,
+              (year, journal_id, page, citation_string, title, petitioner, respondent, full_text, court_id, court_name_snapshot, is_active, citation_section)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+             ON CONFLICT DO NOTHING`,
             [r.year, r.journalId, r.page, r.citationString, r.title, r.petitioner, r.respondent,
-             r.fullText, r.courtId, r.courtNameSnapshot, true]
+             r.fullText, r.courtId, r.courtNameSnapshot, true, citationSection(r.citationString) || ""]
           );
         } catch (rowErr: any) {
           totalErrors++;

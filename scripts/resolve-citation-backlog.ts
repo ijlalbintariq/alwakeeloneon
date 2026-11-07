@@ -46,69 +46,9 @@ export async function resolveCitationBacklog(
   dbInstance: typeof db,
   chunkSize = 5000
 ): Promise<{ totalProcessed: number; totalResolved: number }> {
-  // If it's a live database connection (supports .execute), run ultra-fast SQL bulk operation
+  // The old raw-string join ignored court sections and case identity.
   if (typeof (dbInstance as any).execute === "function") {
-    console.log("Detected live database. Running high-performance SQL bulk citation resolver...");
-    
-    // 1. Get the count of pending matching citations to report as resolved
-    const countQuery = await (dbInstance as any).execute(sql`
-      SELECT COUNT(*)::integer AS count
-      FROM unresolved_citations AS u
-      JOIN judgments AS j ON LOWER(TRIM(j.citation_string)) = LOWER(TRIM(u.raw_citation))
-      WHERE u.status = 'pending'
-    `);
-    const totalResolved = countQuery.rows[0]?.count || 0;
-
-    // Get total processed count (all pending unresolved citations)
-    const processedQuery = await (dbInstance as any).execute(sql`
-      SELECT COUNT(*)::integer AS count
-      FROM unresolved_citations
-      WHERE status = 'pending'
-    `);
-    const totalProcessed = processedQuery.rows[0]?.count || 0;
-
-    if (totalResolved > 0) {
-      console.log(`Resolving and inserting ${totalResolved} matched citations in bulk...`);
-      // 2. Perform bulk insert
-      await (dbInstance as any).execute(sql`
-        INSERT INTO citation_links (source_judgment_id, target_judgment_id, citation_text, context_excerpt, citation_type, created_at)
-        SELECT 
-          u.source_judgment_id,
-          j.id AS target_judgment_id,
-          u.raw_citation,
-          u.context_excerpt,
-          CASE 
-            WHEN LOWER(u.context_excerpt) LIKE '%relied on%' OR 
-                 LOWER(u.context_excerpt) LIKE '%relied upon%' OR 
-                 LOWER(u.context_excerpt) LIKE '%following%' OR 
-                 LOWER(u.context_excerpt) LIKE '%followed%' THEN 'relied_upon'
-            WHEN LOWER(u.context_excerpt) LIKE '%distinguish%' OR 
-                 LOWER(u.context_excerpt) LIKE '%distinguished%' THEN 'distinguished'
-            WHEN LOWER(u.context_excerpt) LIKE '%overrule%' OR 
-                 LOWER(u.context_excerpt) LIKE '%overruled%' THEN 'overruled'
-            ELSE 'referred_to'
-          END AS citation_type,
-          NOW()
-        FROM unresolved_citations AS u
-        JOIN judgments AS j ON LOWER(TRIM(j.citation_string)) = LOWER(TRIM(u.raw_citation))
-        WHERE u.status = 'pending'
-        ON CONFLICT (source_judgment_id, target_judgment_id, citation_type, citation_text) DO NOTHING
-      `);
-
-      console.log("Deleting resolved citations from backlog...");
-      // 3. Delete resolved unresolved_citations
-      await (dbInstance as any).execute(sql`
-        DELETE FROM unresolved_citations
-        WHERE id IN (
-          SELECT u.id
-          FROM unresolved_citations AS u
-          JOIN judgments AS j ON LOWER(TRIM(j.citation_string)) = LOWER(TRIM(u.raw_citation))
-          WHERE u.status = 'pending'
-        )
-      `);
-    }
-
-    return { totalProcessed, totalResolved };
+    throw new Error("Unsafe legacy backlog join disabled; use source-checked citation extraction.");
   }
 
   // Fallback to sequential Drizzle queries for unit test runner mocks

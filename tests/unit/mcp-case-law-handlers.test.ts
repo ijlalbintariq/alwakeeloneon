@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
-import { assessJudgmentIdentity, judgmentPdfUrl, judgmentSourceUrl, prepareJudgmentDetail, citationMatchesCourt } from "../../server/citation-verify";
+import { assessJudgmentIdentity, judgmentPdfUrl, judgmentSourceUrl, prepareJudgmentDetail, citationMatchesCourt, citationIdentifiesJudgment, citationCanLinkDirectly } from "../../server/citation-verify";
 import { extractSubstantiveSummary } from "../../server/storage";
 
 const source = ts.createSourceFile("mcp-server.ts", fs.readFileSync("server/mcp-server.ts", "utf8"), ts.ScriptTarget.Latest, true);
@@ -159,4 +159,16 @@ test("judge profiles withhold conflicting titles and bind matching titles to UUI
   assert.equal(cases[0].title, good.title);
   assert.equal(cases[0].sourceUrl, `https://example.test/judgments/${good.id}`);
   assert.doesNotMatch(JSON.stringify(cases), /Different Person/);
+});
+
+
+test("precedent edges require a matching citation as well as both case identities", async () => {
+  const root={id:'11111111-1111-4111-8111-111111111111',citation:'2024 SCMR 1085',title:'Ahmad vs State',court:'Supreme Court',isActive:true};
+  const other={otherId:'22222222-2222-4222-8222-222222222222',otherCitation:'2025 SCMR 10',otherCourt:'Supreme Court',otherTitle:'Ali vs State',citationType:'referred_to'};
+  const values=[[root],[{...other,citationText:'2025 SCMR 10'},{...other,citationText:'2025 SCMR 11'}],[{...other,citationText:root.citation},{...other,citationText:'2024 SCMR 999'}],[{n:2}],[{n:2}]];
+  const db={select:()=>{const rows=values.shift()||[];const chain:any={then:(resolve:any,reject:any)=>Promise.resolve(rows).then(resolve,reject)};for(const name of ['from','innerJoin','where','orderBy','limit'])chain[name]=()=>chain;return chain;}};
+  const graph=handler('get_precedent_graph',{...base,db,judgments:{},citationLinks:{},eq(){},count(){},sql:()=>'',getValidatedJudgmentIntegrity:async()=>new Map([[root.id,'own'],[other.otherId,'own']]),citationIdentifiesJudgment,citationCanLinkDirectly});
+  const result=(await graph({judgment:root.id,limit:10})).structuredContent;
+  assert.deepEqual(result.edges.map((edge:any)=>edge.reliable),[true,false,true,false]);
+  assert.equal(result.unreliableEdges,2);
 });

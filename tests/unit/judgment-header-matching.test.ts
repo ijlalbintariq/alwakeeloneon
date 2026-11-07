@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
-import { readJudgmentHeader, assessJudgmentIdentity, parseCitation, splitCitations, citationMatchesCourt, citationIdentifiesJudgment, normalizeCitation } from "../../server/citation-verify";
+import { readJudgmentHeader, assessJudgmentIdentity, parseCitation, splitCitations, citationSection, isReportedCitation, citationMatchesCourt, citationIdentifiesJudgment, normalizeCitation } from "../../server/citation-verify";
 
 test("citation lookup rejects conflicting numeric keys but preserves exact docket identities", async () => {
   const source = ts.createSourceFile("verify.ts", fs.readFileSync("server/citation-verify.ts", "utf8"), ts.ScriptTarget.Latest, true);
@@ -10,12 +10,16 @@ test("citation lookup rejects conflicting numeric keys but preserves exact docke
   const code = ts.transpileModule(`(${declaration.getText(source).replace(/^export\s+/, "")})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const run = async (raw: string, rows: any[]) => {
     const db = { select: () => ({ from: () => ({ where: () => ({ limit: async () => rows.shift() || [] }) }) }) };
-    const deps = { db, getJournalCodes: async () => new Map([["SCMR", 1], ["PLD", 2]]), judgments: {}, citationMatchesCourt, citationIdentifiesJudgment, normalizeCitation, parseCitation, splitCitations, eq: () => ({}), and: () => ({}), sql: () => ({}) };
+    const deps = { db, getJournalCodes: async () => new Map([["SCMR", 1], ["PLD", 2]]), judgments: {}, citationSection, isReportedCitation, citationMatchesCourt, citationIdentifiesJudgment, normalizeCitation, parseCitation, splitCitations, eq: () => ({}), and: () => ({}), isNull: () => ({}), sql: () => ({}) };
     return new Function(...Object.keys(deps), `return ${code}`)(...Object.values(deps))(raw, { id: true });
   };
   const row = (citation: string) => ({ id: "case", __lookupCitation: citation, __lookupCourt: "Supreme Court" });
-  assert.equal(await run("2020 SCMR 10", [[], [row("2020 SCMR 11")]]), undefined);
-  assert.deepEqual(await run("SCMR 2020 10", [[], [row("2020 SCMR 10")]]), { id: "case" });
+  assert.equal(await run("2020 SCMR 10", [[row("2020 SCMR 11")]]), undefined);
+  assert.deepEqual(await run("SCMR 2020 10", [[row("2020 SCMR 10")]]), { id: "case" });
+  const sc={id:'sc',__lookupCitation:'2022 PLD 565',__lookupCourt:'Supreme Court of Pakistan'};
+  const shc={id:'shc',__lookupCitation:'2022 PLD 565',__lookupCourt:'Sindh High Court'};
+  assert.equal(await run('2022 PLD 565',[[sc,shc]]),undefined);
+  assert.deepEqual(await run('PLD 2022 SC 565',[[sc,shc]]),{id:'sc'});
   assert.deepEqual(await run("Const. P. 11/2026 (SHC)", [[{ ...row("Const. P. 11/2026 (SHC)"), __lookupCourt: "Sindh High Court" }]]), { id: "case" });
 });
 
@@ -42,6 +46,20 @@ test("an SCMR header cannot verify a body explicitly identified as a High Court 
   assert.equal(citationMatchesCourt("2020 SCMR 2000", "Sindh High Court"), false);
   assert.equal(citationMatchesCourt("2020 SCMR 2000", "Supreme Court of Pakistan"), true);
   assert.equal(assessJudgmentIdentity({ citation: "2020 SCMR 2000", title: "Ahmad Khan vs State", court: "Sindh High Court", opening: highCourt, textStatus: "own" }).identityConflict, true);
+});
+
+test("publisher sections remain distinct even when court, year and page coincide", () => {
+  const civil = `Court Name: Lahore High Court\nTitle: Ahmad Khan vs State\nReported As: NLR 2014 Civil 369\nResult: allowed\n${"Original judicial findings. ".repeat(30)}`;
+  assert.equal(citationSection("NLR 2014 Civil 369"), "civil");
+  assert.equal(citationSection("NLR 2014 Criminal 369"), "criminal");
+  assert.equal(citationIdentifiesJudgment("NLR 2014 Criminal 369", { citation: "NLR 2014 Civil 369", court: "Lahore High Court", opening: civil, title: "Ahmad Khan vs State" }), false);
+  assert.equal(assessJudgmentIdentity({ citation: "NLR 2014 Criminal 369", title: "Ahmad Khan vs State", court: "Lahore High Court", opening: civil, textStatus: "own" }).identityConflict, true);
+  assert.equal(assessJudgmentIdentity({ citation: "NLR 2014 Civil 369", title: "Ahmad Khan vs State", court: "Lahore High Court", opening: civil, textStatus: "own" }).textIntegrity, "own");
+  assert.equal(citationMatchesCourt("2020 PTD (Trib.) 1703", "Sindh High Court"), false);
+  assert.equal(citationMatchesCourt("2020 PTD (Trib.) 1703", "Customs Appellate Tribunal"), true);
+  assert.equal(citationSection("2020 PTD (Trib.) 1703"), "tribunal");
+  assert.equal(citationSection("2020 PTD (Unknown) 1703"), "literal:unknown");
+  assert.equal(citationIdentifiesJudgment("2020 PTD (Unknown) 1703", { citation: "2020 PTD (Trib.) 1703", court: "Customs Appellate Tribunal" }), false);
 });
 
 test("the labeling CLI uses complete shared headers and keeps unrelated citations mislabeled", async () => {

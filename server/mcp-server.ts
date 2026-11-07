@@ -16,7 +16,7 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
 import {
   judgmentSourceUrl, resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, prepareJudgmentDetail, judgmentPdfUrl,
-  extractCitations, verifyCitations, citationMatchesCourt,
+  extractCitations, verifyCitations, citationMatchesCourt, citationIdentifiesJudgment, citationCanLinkDirectly,
 } from "./citation-verify";
 import { judgeCaseLinks, citationLinks, caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
 import { eq, inArray, sql, and, gte, lte, desc, ilike, count, countDistinct, asc } from "drizzle-orm";
@@ -956,11 +956,18 @@ export function registerAllTools(server: McpServer) {
       id: judgments.id,
       citation: judgments.citationString,
       title: judgments.title,
+      court: judgments.courtNameSnapshot,
+      canonicalId: judgments.canonicalJudgmentId,
+      isActive: judgments.isActive,
       textStatus: judgments.textStatus,
     };
-    const root = isUuid
+    let root = isUuid
       ? (await db.select(rootSelect).from(judgments).where(eq(judgments.id, target)).limit(1))[0]
       : await resolveJudgment(target, rootSelect);
+    if (root?.canonicalId) {
+      root = (await db.select(rootSelect).from(judgments).where(eq(judgments.id, root.canonicalId)).limit(1))[0];
+      if (root?.canonicalId || root?.isActive === false) root = undefined;
+    }
 
     if (!root) {
       throw new McpError(ErrorCode.InvalidRequest, `Judgment not found for '${target}' (no exact citation match).`);
@@ -974,6 +981,7 @@ export function registerAllTools(server: McpServer) {
     // cannot be used to argue what THIS case cited.
     const edgeRow = {
       citationType: citationLinks.citationType,
+      citationText: citationLinks.citationText,
       otherId: judgments.id,
       otherCitation: judgments.citationString,
       otherTitle: judgments.title,
@@ -1044,18 +1052,23 @@ export function registerAllTools(server: McpServer) {
     const rootTextIsOwn = integrity.get(String(root.id)) === "own";
     for (const r of outgoing as any[]) {
       addNode(r);
+      const reliable = rootTextIsOwn && integrity.get(String(r.otherId)) === "own"
+        && citationCanLinkDirectly(String(r.citationText || ""))
+        && citationIdentifiesJudgment(String(r.citationText || ""), { citation: r.otherCitation, court: r.otherCourt });
       edges.push({
         source: String(root.id),
         target: String(r.otherId),
         treatment: String(r.citationType || "referred_to"),
-        reliable: rootTextIsOwn,
-        unreliableReason: rootTextIsOwn ? undefined
-          : "The source judgment identity could not be confirmed; do not rely on this edge.",
+        reliable,
+        unreliableReason: reliable ? undefined
+          : "The citation link or a judgment identity could not be confirmed; do not rely on this edge.",
       });
     }
     for (const r of incoming as any[]) {
       addNode(r);
-      const sourceOwn = integrity.get(String(r.otherId)) === "own";
+      const sourceOwn = rootTextIsOwn && integrity.get(String(r.otherId)) === "own"
+        && citationCanLinkDirectly(String(r.citationText || ""))
+        && citationIdentifiesJudgment(String(r.citationText || ""), { citation: root.citation, court: root.court });
       edges.push({
         source: String(r.otherId),
         target: String(root.id),

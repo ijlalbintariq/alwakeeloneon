@@ -9,7 +9,7 @@
  */
 import { db, dbAvailable } from "./db";
 import { judgments, lawJournals } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNull } from "drizzle-orm";
 
 /**
  * Universal Pakistani citation normalizer.
@@ -155,13 +155,9 @@ export async function verifyCitations(raws: string[]): Promise<Map<string, strin
 /**
  * Structured citation resolution.
  *
- * `judgments` has a UNIQUE index on (year, journal_id, page) and its
- * citation_string is uniformly "YEAR JOURNAL PAGE" (e.g. "1968 PLD 281") with
- * no court-seat token. String normalization was therefore fragile: a citation
- * written "PLD1968 SC 281" produced only the variant "PLD1968281" and never
- * matched the stored "1968 PLD 281". Parsing the citation into its three parts
- * and hitting the unique index is exact, index-backed, and immune to spacing,
- * punctuation, journal/year order, and seat tokens.
+ * Numeric components select candidates through an index. Court and publisher
+ * qualifiers disambiguate them; an unqualified citation with several owners
+ * remains unresolved. Never choose a different case by row order.
  */
 const PUBLIC_SITE = (process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "");
 
@@ -381,6 +377,7 @@ export function citationCourtQualifier(raw: string): string | null {
   const neutralCourts: Record<string, string> = { LHC: "high:lahore", SHC: "high:sindh", IHC: "high:islamabad", PHC: "high:peshawar", BHC: "high:balochistan", AJKHC: "high:ajk", FSC: "shariat:federal", SCP: "supreme:pakistan" };
   if (neutralCourts[parsed.journal]) return neutralCourts[parsed.journal];
   const text = raw.toUpperCase().replace(/\./g, "").replace(/([A-Z])(\d)|(\d)([A-Z])/g, "$1$3 $2$4").replace(/[-_()[\],]/g, " ");
+  if (/\bTRIB(?:UNAL)?\b/.test(text)) return "tribunal:unspecified";
   const year = new RegExp(`\\b${parsed.year}\\b`).exec(text);
   if (!year) return null;
   const afterYear = text.slice(year.index + year[0].length)
@@ -416,14 +413,59 @@ export function citationMatchesCourt(raw: string, court: string | null | undefin
     if (parseCitation(part, IDENTITY_JOURNALS)?.journal === "SCMR" && actual && !actual.startsWith("supreme:")) return false;
     const requested = citationCourtQualifier(part);
     return !requested || requested === actual || (requested === "region:ajk" && !!actual?.endsWith(":ajk"))
-      || (requested === "high:unspecified" && !!actual?.startsWith("high:"));
+      || (requested === "high:unspecified" && !!actual?.startsWith("high:"))
+      || (requested === "tribunal:unspecified" && /\btribunal\b/i.test(String(court || "")));
   });
 }
 
-export function citationIdentifiesJudgment(raw: string, record: { citation: string; court?: string | null }): boolean {
+/** Preserve publisher sections. Unknown labels match literally, never by guessed meaning. */
+export function citationSection(raw: string): string | null {
+  const part = splitCitations(String(raw || ""))[0] || "";
+  const parsed = parseCitation(part, IDENTITY_JOURNALS);
+  if (!parsed) return null;
+  let text = part.toUpperCase().replace(/\./g, "").replace(/[()[\],]/g, " ")
+    .replace(/([A-Z])(\d)|(\d)([A-Z])/g, "$1$3 $2$4");
+  for (const token of ["AJK", "AJKHC", "DACCA", "DHAKA", "FSC", "FC", "LHC", "SHC", "IHC", "PHC", "BHC", "SCP"]) {
+    if (token !== parsed.journal) text = text.replace(new RegExp(`\\b${token}\\b`, "g"), " ");
+  }
+  text = text.replace(/\b(?:AZAD\s+(?:JAMMU\s+AND\s+)?KASHMIR|EAST\s+PAKISTAN)\b/g, " ");
+  let normalized = normalizeCitation(text)[0].replace(/[^A-Z0-9]/g, "");
+  normalized = normalized.replace(String(parsed.year), "");
+  if (!normalized.startsWith(parsed.journal)) return null;
+  const qualifier = normalized.slice(parsed.journal.length).replace(new RegExp(`0*${parsed.page}(?!\\d)`), "");
+  if (!qualifier || ["DB", "SB"].includes(qualifier)) return "";
+  if (["CIV", "CIVIL", "CIVILCASES"].includes(qualifier)) return "civil";
+  if (["CR", "CRL", "CRC", "CRIM", "CRIMINAL", "CRIMINALCASES"].includes(qualifier)) return "criminal";
+  if (["TRIB", "TRIBUNAL"].includes(qualifier)) return "tribunal";
+  return /^[A-Z]+$/.test(qualifier) ? `literal:${qualifier.toLowerCase()}` : null;
+}
+
+export function isReportedCitation(raw: string, known = IDENTITY_JOURNALS): boolean {
+  const part = splitCitations(String(raw || ""))[0] || "";
+  const parsed = parseCitation(part, known);
+  const compact = part.toUpperCase().replace(/\([^)]*\)/g, "").replace(/[^A-Z0-9]/g, "");
+  return Boolean(parsed && [String(parsed.year) + parsed.journal, parsed.journal + parsed.year].some(prefix => compact.startsWith(prefix)));
+}
+
+export function citationIdentifiesJudgment(raw: string, record: { citation: string; court?: string | null; opening?: string | null; title?: string; textStatus?: string | null }): boolean {
   const expected = parseCitation(raw, IDENTITY_JOURNALS), actual = parseCitation(record.citation, IDENTITY_JOURNALS);
-  return Boolean(expected && actual && expected.year === actual.year && expected.journal === actual.journal
-    && expected.page === actual.page && citationMatchesCourt(raw, record.court));
+  if (!(expected && actual && expected.year === actual.year && expected.journal === actual.journal
+    && expected.page === actual.page && citationMatchesCourt(raw, record.court))) return false;
+  const requested = citationSection(raw), stored = citationSection(record.citation);
+  if (requested === null) return false;
+  if (!requested || requested === stored) return true;
+  if (!record.opening) return false;
+  if (record.title && assessJudgmentIdentity({ ...record, textStatus: record.textStatus || "own" }).identityConflict) return false;
+  return splitCitations(readJudgmentHeader(record.opening).reported || "").some(part => {
+    const parsed = parseCitation(part, IDENTITY_JOURNALS);
+    return parsed && parsed.year === expected.year && parsed.journal === expected.journal && parsed.page === expected.page
+      && citationSection(part) === requested && citationMatchesCourt(part, record.court);
+  });
+}
+
+/** PLD page numbers repeat between court sections. */
+export function citationCanLinkDirectly(raw: string): boolean {
+  return citationSection(raw) !== null && (parseCitation(raw, IDENTITY_JOURNALS)?.journal !== "PLD" || Boolean(citationCourtQualifier(raw)));
 }
 
 /** Read identity fields from text/Markdown without changing the stored judgment. */
@@ -481,8 +523,16 @@ export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegr
   if (storedParties && bodyParties && !sameParties) return { textIntegrity: "unknown", identityConflict: true, textWarning: "The stored case title conflicts with the parties named in the judgment text." };
 
   const expected = parseCitation(String(record.citation || ""), IDENTITY_JOURNALS);
-  const reportedCitations = splitCitations(reported || "").map((part) => parseCitation(part, IDENTITY_JOURNALS)).filter(Boolean);
-  if (expected && reportedCitations.length && !reportedCitations.some((item) => item!.year === expected.year && item!.journal === expected.journal && item!.page === expected.page)) {
+  const declaredParts = splitCitations(String(record.citation || ""));
+  if (declaredParts.some(part => isReportedCitation(part) && citationSection(part) === null)) return {
+    textIntegrity: "unknown", textWarning: "A publisher qualifier in this citation is not supported; case identity remains unverified.",
+  };
+  const reportedCitations = splitCitations(reported || "").map(part => ({ parsed: parseCitation(part, IDENTITY_JOURNALS), section: citationSection(part) })).filter(item => item.parsed);
+  if (expected && reportedCitations.length && declaredParts.some(part => {
+    const parsed = parseCitation(part, IDENTITY_JOURNALS), section = citationSection(part);
+    return parsed && !reportedCitations.some(item => item.parsed!.year === parsed.year && item.parsed!.journal === parsed.journal
+      && item.parsed!.page === parsed.page && (!section || item.section === section));
+  })) {
     return { textIntegrity: "unknown", identityConflict: true, textWarning: "The stored citation does not match a citation in the judgment header." };
   }
   const court = String(record.court || "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -507,36 +557,41 @@ export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegr
 
 /**
  * Resolve a citation string to a real `judgments` row.
- * Structured (year, journal_id, page) lookup first, then the legacy exact
- * normalized-string match as a fallback for shapes the parser rejects.
+ * Resolve reported citations across court sections; ambiguous matches stay
+ * unresolved. Literal docket identifiers retain their exact-match precedence.
  * Never LIKE — a substring match binds to a different, wrong judgment.
  */
 export async function resolveJudgment<T extends Record<string, any>>(raw: string, selection: T): Promise<any | undefined> {
   if (!db?.select) return undefined;
   const codes = await getJournalCodes();
   const known = new Set(codes.keys());
-  const lookupSelection = { ...selection, __lookupCourt: judgments.courtNameSnapshot, __lookupCitation: judgments.citationString };
+  const lookupSelection = { ...selection, __lookupCourt: judgments.courtNameSnapshot, __lookupCitation: judgments.citationString,
+    __lookupTitle: judgments.title, __lookupStatus: judgments.textStatus,
+    __lookupOpening: citationSection(raw) ? sql<string>`left(${judgments.fullText},16000)` : sql<string>`NULL::text` };
   const accept = (row: any, requested: string, exact = false) => {
     if (!row || !citationMatchesCourt(requested, row.__lookupCourt)) return undefined;
     if (exact ? String(row.__lookupCitation || "").trim() !== requested.trim()
-      : !citationIdentifiesJudgment(requested, { citation: row.__lookupCitation, court: row.__lookupCourt })) return undefined;
-    const { __lookupCourt, __lookupCitation, ...selected } = row;
+      : !citationIdentifiesJudgment(requested, { citation: row.__lookupCitation, court: row.__lookupCourt,
+        title: row.__lookupTitle, textStatus: row.__lookupStatus, opening: row.__lookupOpening })) return undefined;
+    const { __lookupCourt, __lookupCitation, __lookupTitle, __lookupStatus, __lookupOpening, ...selected } = row;
     return selected;
   };
-
-  // Exact stored citation first. About 4,940 judgments carry a citation_string
-  // that is not a journal citation at all - case numbers such as
-  // "Const. P. 11/2026 (SHC)", or a citation with a seat appended - and those
-  // rows hold a synthetic page number. Parsing their text yields a (year,
-  // journal, page) triple that belongs to a DIFFERENT judgment, so the literal
-  // string has to win before any parsing is attempted.
+  const unique = (rows: any[], requested: string, exact = false) => {
+    if (rows.length >= 64) return undefined;
+    const accepted = rows.map(row => accept(row, requested, exact)).filter(Boolean);
+    return accepted.length === 1 ? accepted[0] : undefined;
+  };
+  const active = () => and(eq(judgments.isActive, true), isNull(judgments.canonicalJudgmentId));
   const literal = String(raw || "").trim();
-  if (literal) {
-    const [exact] = await db.select(lookupSelection)
+  const reportedShape = isReportedCitation(literal, known);
+  // A docket number can parse into another case's journal key. Only exact
+  // docket identities take precedence; reported citations require court checks.
+  if (literal && !reportedShape) {
+    const exact = await db.select(lookupSelection)
       .from(judgments)
-      .where(eq(judgments.citationString, literal))
-      .limit(1);
-    if (exact) return accept(exact, literal, true);
+      .where(and(active(), eq(judgments.citationString, literal)))
+      .limit(64);
+    if (exact.length) return unique(exact, literal, true);
   }
 
   for (const part of splitCitations(raw)) {
@@ -544,15 +599,16 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
     if (parsed) {
       const journalId = codes.get(parsed.journal);
       if (journalId !== undefined) {
-        const [hit] = await db.select(lookupSelection)
+        const hits = await db.select(lookupSelection)
           .from(judgments)
           .where(and(
+            active(),
             eq(judgments.year, parsed.year),
             eq(judgments.journalId, journalId),
             eq(judgments.page, parsed.page),
           ))
-          .limit(1);
-        const accepted = accept(hit, part);
+          .limit(64);
+        const accepted = unique(hits, part);
         if (accepted) return accepted;
       }
       // The parser already produced year/journal/page. The string fallback
@@ -563,11 +619,11 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
       continue;
     }
     for (const variant of normalizeCitation(part)) {
-      const [hit] = await db.select(lookupSelection)
+      const hits = await db.select(lookupSelection)
         .from(judgments)
-        .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
-        .limit(1);
-      const accepted = accept(hit, part);
+        .where(and(active(), sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`))
+        .limit(64);
+      const accepted = unique(hits, part);
       if (accepted) return accepted;
     }
   }
@@ -623,7 +679,8 @@ export function prepareJudgmentDetail<T extends {
   const pdfUrl = judgmentPdfUrl(detail.pdfUrl);
   const hasText = fullText.trim().length >= 200;
   return {
-    ...detail, ...check, fullText: hasText ? fullText : "", pdfUrl, headnotes: null,
+    ...detail, ...check, ...(check.textIntegrity !== "own" ? { title: "Judgment identity unverified", court: "", petitioner: null, respondent: null, decisionDate: null } : {}),
+    fullText: hasText ? fullText : "", pdfUrl, headnotes: null,
     formattedText: hasText && (detail as any).formattedText === fullText ? fullText : null,
     citations: check.textIntegrity === "own" ? (detail as any).citations : { made: [], received: [] },
     contentFormat: hasText ? (pdfUrl ? "text_and_pdf" : "text") : (pdfUrl ? "pdf" : "unavailable"),

@@ -42,6 +42,7 @@ def parse_title_parts(title):
     return sanitize(title), ""
 
 def main():
+    raise SystemExit("Unsafe legacy export disabled: this exporter invents citation keys. Use source-backed judgment repair plans.")
     print("🔍 Loading production keys...")
     with open(PROD_META_PATH) as f:
         prod = json.load(f)

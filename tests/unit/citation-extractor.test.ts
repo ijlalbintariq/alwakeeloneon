@@ -69,3 +69,21 @@ test("processJudgment creates resolved and unresolved citation records", async (
     (storage as any).createUnresolvedCitations = originalCreateUnresolved;
   }
 });
+
+test("extraction preserves distinct PLD court qualifiers and exact source positions", () => {
+  const extractor = new CitationExtractor();
+  const text = 'PLD 2022 SC 565 differs from PLD 2022 Sindh 565.';
+  const citations = extractor.extractFromText(text, 'source');
+  assert.equal(citations.length, 2);
+  assert.equal(citations[0].rawCitation, 'PLD 2022 SC 565');
+  assert.equal(citations[1].rawCitation, 'PLD 2022 Sindh 565');
+  assert.equal(citations[1].startOffset, text.indexOf('PLD 2022 Sindh'));
+});
+
+test("extraction retains civil, criminal and tribunal publisher sections", () => {
+  const extractor = new CitationExtractor();
+  const text = "NLR 2014 Civil 369 and NLR 2014 Criminal 369; 2020 PTD (Trib.) 1703.";
+  const citations = extractor.extractFromText(text, "source");
+  assert.equal(citations.length, 3);
+  assert.deepEqual(new Set(citations.map(c => c.rawCitation)), new Set(["NLR 2014 Civil 369", "NLR 2014 Criminal 369", "2020 PTD (Trib.) 1703"]));
+});

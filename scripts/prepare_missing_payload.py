@@ -34,6 +34,7 @@ def split_title(title):
     return title.strip()[:300], None
 
 def main():
+    raise SystemExit("Unsafe legacy export disabled: this exporter invents citation keys. Use source-backed judgment repair plans.")
     with open(MISSING_CASES_JSON) as f:
         cases = json.load(f)
 

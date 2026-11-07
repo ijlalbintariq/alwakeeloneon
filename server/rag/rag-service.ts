@@ -698,10 +698,17 @@ export async function dropMislabeledJudgmentChunks(matches: RagMatch[]): Promise
     const hashIds = matches.filter(match => match.metadata?.judgmentBodyHash).map(match => String(match.metadata.judgmentId || ""));
     const statuses = await getValidatedJudgmentIntegrity(ids, identities, hashIds);
     return matches
+      .map(m => {
+        const identity = identities.get(String(m.metadata?.judgmentId || ""));
+        // Parent expansion may contain obsolete metadata or another case.
+        // Return the actual matched child only when its words remain supported.
+        return identity && m.matchedText && !judgmentContainsExcerpt(identity.body, m.chunkText)
+          && judgmentContainsExcerpt(identity.body, m.matchedText) ? { ...m, chunkText: m.matchedText } : m;
+      })
       .filter((m) => {
         const id = String(m.metadata?.judgmentId || "");
         const identity = identities.get(id);
-        return !id || (statuses.get(id) === "own" && identity
+        return !id || (identity && statuses.get(identity.canonicalId || id) === "own"
           && (!m.metadata?.judgmentBodyHash || m.metadata.judgmentBodyHash === identity.bodyHash)
           && judgmentContainsExcerpt(identity.body, m.chunkText)
           && (!m.matchedText || judgmentContainsExcerpt(identity.body, m.matchedText)));
@@ -710,9 +717,10 @@ export async function dropMislabeledJudgmentChunks(matches: RagMatch[]): Promise
         const id = String(m.metadata?.judgmentId || "");
         if (!id) return m;
         const identity = identities.get(id);
+        const canonicalId = identity?.canonicalId || id;
         return { ...m, title: identity ? `${identity.citation} — ${identity.title}` : m.title,
-          metadata: { ...m.metadata, ...(identity ? { title: identity.title, citationString: identity.citation, court: identity.court, sourceUrl: judgmentSourceUrl(id) } : {}),
-            textIntegrity: statuses.get(id) === "own" ? "own" : "unverified" } };
+          metadata: { ...m.metadata, ...(identity ? { judgmentId: canonicalId, title: identity.title, citation: identity.citation, citationString: identity.citation, court: identity.court, sourceUrl: judgmentSourceUrl(canonicalId) } : {}),
+            textIntegrity: statuses.get(canonicalId) === "own" ? "own" : "unverified" } };
       });
   } catch (err: any) {
     console.warn(`[TextIntegrity] chunk status lookup failed: ${err?.message || err}`);

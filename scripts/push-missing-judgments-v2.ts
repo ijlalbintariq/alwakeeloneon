@@ -1,3 +1,4 @@
+import { citationSection } from "../server/citation-verify";
 /**
  * push-missing-judgments-v2.ts
  *
@@ -77,11 +78,11 @@ async function main() {
             INSERT INTO judgments (
               id, year, journal_id, page, citation_string, title,
               petitioner, respondent, court_id, court_name_snapshot,
-              full_text, is_active, created_at, updated_at
+              full_text, is_active, created_at, updated_at, citation_section
             ) VALUES (
-              gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, NOW(), NOW()
+              gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, NOW(), NOW(), $11
             )
-            ON CONFLICT (year, journal_id, page) DO NOTHING
+            ON CONFLICT DO NOTHING
           `,
             [
               doc.year,
@@ -94,6 +95,7 @@ async function main() {
               doc.courtId,
               doc.courtNameSnapshot,
               doc.fullText,
+              citationSection(doc.citationString) || "",
             ]
           );
 
