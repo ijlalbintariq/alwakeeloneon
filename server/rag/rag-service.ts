@@ -1,5 +1,6 @@
 import crypto from "crypto";
-import { storage, getValidatedJudgmentIntegrity } from "../storage";
+import { storage, getValidatedJudgmentIntegrity, type ValidatedJudgmentMetadata } from "../storage";
+import { judgmentSourceUrl } from "../citation-verify";
 import { db, dbAvailable, pool } from "../db";
 import { judgments, courtsRef, lawJournals, adminKnowledge, statuteDocuments } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
@@ -693,16 +694,21 @@ export async function dropMislabeledJudgmentChunks(matches: RagMatch[]): Promise
     .filter(Boolean);
   if (ids.length === 0) return matches;
   try {
-    const statuses = await getValidatedJudgmentIntegrity(ids);
+    const identities = new Map<string, ValidatedJudgmentMetadata>();
+    const hashIds = matches.filter(match => match.metadata?.judgmentBodyHash).map(match => String(match.metadata.judgmentId || ""));
+    const statuses = await getValidatedJudgmentIntegrity(ids, identities, hashIds);
     return matches
       .filter((m) => {
         const id = String(m.metadata?.judgmentId || "");
-        return !id || statuses.get(id) === "own";
+        return !id || (statuses.get(id) === "own" && (!m.metadata?.judgmentBodyHash || m.metadata.judgmentBodyHash === identities.get(id)?.bodyHash));
       })
       .map((m) => {
         const id = String(m.metadata?.judgmentId || "");
         if (!id) return m;
-        return { ...m, metadata: { ...m.metadata, textIntegrity: statuses.get(id) === "own" ? "own" : "unverified" } };
+        const identity = identities.get(id);
+        return { ...m, title: identity ? `${identity.citation} — ${identity.title}` : m.title,
+          metadata: { ...m.metadata, ...(identity ? { title: identity.title, citationString: identity.citation, court: identity.court, sourceUrl: judgmentSourceUrl(id) } : {}),
+            textIntegrity: statuses.get(id) === "own" ? "own" : "unverified" } };
       });
   } catch (err: any) {
     console.warn(`[TextIntegrity] chunk status lookup failed: ${err?.message || err}`);

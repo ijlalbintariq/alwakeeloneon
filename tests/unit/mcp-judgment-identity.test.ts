@@ -97,7 +97,7 @@ test("court checks reject tribunals under Supreme Court metadata and reconcile H
   const tribunal = assessJudgmentIdentity({ ...valid, opening: body(valid.title, valid.citation, "Federal Service Tribunal") });
   assert.equal(tribunal.identityConflict, true);
   assert.equal(tribunal.textIntegrity, "unknown");
-  assert.equal(assessJudgmentIdentity({ ...valid, court: "Sindh High Court", opening: body(valid.title, valid.citation, "High Court of Sindh") }).textIntegrity, "own");
+  assert.equal(assessJudgmentIdentity({ ...valid, citation: "2024 PLD 565", court: "Sindh High Court", opening: body(valid.title, "2024 PLD 565", "High Court of Sindh") }).textIntegrity, "own");
   assert.equal(assessJudgmentIdentity({ ...valid, opening: body(valid.title, valid.citation, "Unrecognized Judicial Forum") }).textIntegrity, "unknown");
 });
 

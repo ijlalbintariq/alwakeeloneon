@@ -1,5 +1,5 @@
 import { db, pool, dbAvailable } from "./db";
-import { assessJudgmentIdentity, judgmentPdfUrl } from "./citation-verify";
+import { assessJudgmentIdentity, judgmentPdfUrl, citationIdentifiesJudgment } from "./citation-verify";
 import { clearSitemapCache } from "./sitemap";
 import { triggerGoogleIndexing } from "./services/google-indexing";
 import {
@@ -3004,33 +3004,42 @@ export class DatabaseStorage implements IStorage {
       ),
     );
 
-    const linkedJudgments: Array<{ id: string; citation: string; title: string }> = linkedIds.length > 0
+    const linkedJudgments: Array<{ id: string; citation: string; title: string; court: string; textStatus: string | null;
+      textTrueCitation: string | null; opening: string; isActive: boolean }> = linkedIds.length > 0
       ? await db.select({
         id: judgments.id,
         citation: judgments.citationString,
         title: judgments.title,
+        court: sql<string>`coalesce(${courtsRef.name},${judgments.courtNameSnapshot},'')`,
+        textStatus: judgments.textStatus,
+        textTrueCitation: judgments.textTrueCitation,
+        opening: sql<string>`left(${judgments.fullText},16000)`,
+        isActive: judgments.isActive,
       })
         .from(judgments)
+        .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
         .where(inArray(judgments.id, linkedIds))
       : [];
-    const linkedMap = new Map<string, { id: string; citation: string; title: string }>(
-      linkedJudgments.map((j: { id: string; citation: string; title: string }) => [j.id, j]),
+    const linkedMap = new Map<string, typeof linkedJudgments[number]>(
+      linkedJudgments.filter(j => j.isActive && assessJudgmentIdentity(j).textIntegrity === "own").map(j => [j.id, j] as const),
     );
 
     const made = madeBase.map((item: typeof madeBase[number]) => {
-      const linked = item.linkedJudgmentId ? linkedMap.get(item.linkedJudgmentId) : undefined;
+      const candidate = item.linkedJudgmentId ? linkedMap.get(item.linkedJudgmentId) : undefined;
+      const linked = candidate && citationIdentifiesJudgment(item.citationText, candidate) ? candidate : undefined;
       return {
         id: item.id,
         citationType: item.citationType,
         contextExcerpt: item.contextExcerpt,
         citationText: item.citationText,
-        linkedJudgmentId: item.linkedJudgmentId,
+        linkedJudgmentId: linked?.id || null,
         linkedCitation: linked?.citation || null,
         linkedTitle: linked?.title || null,
       };
     });
 
-    const received = receivedBase.map((item: typeof receivedBase[number]) => {
+    const received = receivedBase.filter((item: typeof receivedBase[number]) => linkedMap.has(item.linkedJudgmentId)
+      && citationIdentifiesJudgment(item.citationText, { citation: row.citation, court: row.courtName || row.courtSnapshot })).map((item: typeof receivedBase[number]) => {
       const linked = item.linkedJudgmentId ? linkedMap.get(item.linkedJudgmentId) : undefined;
       return {
         id: item.id,
@@ -5653,17 +5662,21 @@ export async function getTextProvenance(ids: string[]): Promise<Map<string, "own
 }
 
 /** Validate only requested records; stored provenance alone does not verify identity. */
-export async function getValidatedJudgmentIntegrity(ids: string[]): Promise<Map<string, "own" | "mislabeled" | "unknown">> {
+export type ValidatedJudgmentMetadata = { citation: string; title: string; court: string; bodyHash: string };
+export async function getValidatedJudgmentIntegrity(ids: string[], metadata?: Map<string, ValidatedJudgmentMetadata>, hashIds: string[] = []): Promise<Map<string, "own" | "mislabeled" | "unknown">> {
   const unique = [...new Set(ids.filter((id) => UUID_RE.test(String(id || ""))))];
   if (!unique.length) return new Map();
+  const hashSet = new Set(hashIds), verifiedHashIds = unique.filter(id => hashSet.has(id));
   const rows = await db.select({
     id: judgments.id, citation: judgments.citationString, title: judgments.title,
-    court: judgments.courtNameSnapshot, textStatus: judgments.textStatus,
+    court: sql<string>`coalesce(${courtsRef.name},${judgments.courtNameSnapshot},'')`, textStatus: judgments.textStatus,
     textTrueCitation: judgments.textTrueCitation,
     opening: sql<string>`left(${judgments.fullText}, 16000)`,
-  }).from(judgments).where(inArray(judgments.id, unique));
+    bodyHash: metadata && verifiedHashIds.length ? sql<string>`CASE WHEN ${judgments.id}=ANY(${verifiedHashIds}::uuid[]) THEN md5(${judgments.fullText}) ELSE NULL END` : sql<string>`NULL::text`,
+  }).from(judgments).leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id)).where(inArray(judgments.id, unique));
   return new Map(rows.map((row: any) => {
     const integrity = assessJudgmentIdentity(row).textIntegrity;
+    metadata?.set(String(row.id), { citation: row.citation, title: cleanCaseTitle(row.title), court: row.court, bodyHash: row.bodyHash || "" });
     return [String(row.id), integrity === "own" ? "own" : integrity === "mislabeled" ? "mislabeled" : "unknown"];
   }));
 }

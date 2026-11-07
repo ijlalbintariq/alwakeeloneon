@@ -343,13 +343,17 @@ function reportedCitationHeader(header: string): string | undefined {
     // Only citation vocabulary may continue the field; never absorb narrative authorities.
     const words = field.replace(/\./g, "").toUpperCase().match(/[A-Z]+/g) || [];
     if (parts.length && (!/\d/.test(field) || words.some(word => !citationWords.has(word) && word.length !== 1))) break;
+    // A complete citation on a new line starts another parallel citation.
+    const separator = parts.length && parseCitation(field, IDENTITY_JOURNALS)
+      && !/(?:[,;&]|\band)\s*$/i.test(parts.at(-1)!) ? "," : "";
+    if (separator) parts[parts.length - 1] += separator;
     parts.push(field);
     if (field !== line.trim()) break;
   }
   return parts.join(" ") || undefined;
 }
 
-function courtIdentity(value: string): string | null {
+export function courtIdentity(value: string): string | null {
   const court = value.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
   if (/\bsupreme court\b/.test(court) || court === "sc") return /azad|kashmir|ajk/.test(court) ? "supreme:ajk" : "supreme:pakistan";
   if (/^(?:sc\s*ajk|scajk)$/.test(court)) return "supreme:ajk";
@@ -409,23 +413,23 @@ export function citationCourtQualifier(raw: string): string | null {
 export function citationMatchesCourt(raw: string, court: string | null | undefined): boolean {
   const actual = courtIdentity(String(court || ""));
   return splitCitations(raw).every(part => {
+    if (parseCitation(part, IDENTITY_JOURNALS)?.journal === "SCMR" && actual && !actual.startsWith("supreme:")) return false;
     const requested = citationCourtQualifier(part);
     return !requested || requested === actual || (requested === "region:ajk" && !!actual?.endsWith(":ajk"))
       || (requested === "high:unspecified" && !!actual?.startsWith("high:"));
   });
 }
 
-/** Check internal consistency only; source authenticity still requires independent verification. */
-export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegrity {
-  const body = String(record.opening || "").trim();
-  if (record.textStatus === "mislabeled") return {
-    textIntegrity: "mislabeled", belongsTo: String(record.textTrueCitation || "").trim() || undefined,
-    identityConflict: true,
-    textWarning: "The stored text belongs to a different judgment and must not be attributed to this citation.",
-  };
-  if (body.length < 200) return { textIntegrity: "missing", textWarning: "No usable judgment text is stored for this record." };
+export function citationIdentifiesJudgment(raw: string, record: { citation: string; court?: string | null }): boolean {
+  const expected = parseCitation(raw, IDENTITY_JOURNALS), actual = parseCitation(record.citation, IDENTITY_JOURNALS);
+  return Boolean(expected && actual && expected.year === actual.year && expected.journal === actual.journal
+    && expected.page === actual.page && citationMatchesCourt(raw, record.court));
+}
 
-  const header = body.slice(0, 16000);
+/** Read identity fields from text/Markdown without changing the stored judgment. */
+export function readJudgmentHeader(text: string): { title?: string; reported?: string; court?: string } {
+  const header = String(text || "").trim().slice(0, 16000)
+    .replace(/^[ \t]*#{1,6}[ \t]+/gm, "").replace(/\*\*/g, "");
   let title = header.match(/(?:^|\n)\s*Title\s*:\s*([\s\S]*?)(?=\s*(?:Case\s+No\.?|Date\s+of\s+Judgment|Reported\s+As|Result)\s*:)/i)?.[1]
     ?.replace(/\bJUDGMENT\b[\s\S]*$/i, "").trim();
   // Printed reporter pages often use a standalone Versus instead of labelled metadata.
@@ -443,6 +447,22 @@ export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegr
     || header.split(/\r?\n/).slice(0, 10).find((line) => line.trim().length <= 100
       && /^(?:(?:19|20)\d{2}\s+|[A-Z. ]+\s+(?:19|20)\d{2}\b)/i.test(line.trim())
       && parseCitation(line, IDENTITY_JOURNALS));
+  const court = header.match(/(?:^|\n)\s*(?:Court Name|COURT)\s*:\s*([^\r\n]+)/i)?.[1]
+    || header.slice(0, 3500).match(/(?:^|\n)\s*\[([^\]\r\n]*(?:Court|Tribunal)[^\]\r\n]*)\]/i)?.[1];
+  return { title, reported, court: court?.trim() };
+}
+
+/** Check internal consistency only; source authenticity still requires independent verification. */
+export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegrity {
+  const body = String(record.opening || "").trim();
+  if (record.textStatus === "mislabeled") return {
+    textIntegrity: "mislabeled", belongsTo: String(record.textTrueCitation || "").trim() || undefined,
+    identityConflict: true,
+    textWarning: "The stored text belongs to a different judgment and must not be attributed to this citation.",
+  };
+  if (body.length < 200) return { textIntegrity: "missing", textWarning: "No usable judgment text is stored for this record." };
+
+  const { title, reported, court: headerCourt } = readJudgmentHeader(body);
   const storedParties = titleParties(String(record.title || ""));
   const bodyParties = titleParties(title || "");
   const malformedTitle = /\b(?:JUDGMENT|Reported\s+As|Case\s+No)\b|Honou?rable\s+Justice|(?:^|\s)(?:v(?:s)?\.?|versus)\s+(?:NOT|N\/A|NIL|NONE|UNKNOWN)\s*$|^(?:NOT|N\/A|NIL|NONE|UNKNOWN)\s+(?:v(?:s)?\.?|versus)\s/i;
@@ -466,9 +486,7 @@ export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegr
     return { textIntegrity: "unknown", identityConflict: true, textWarning: "The stored citation does not match a citation in the judgment header." };
   }
   const court = String(record.court || "").toLowerCase().replace(/\s+/g, " ").trim();
-  const bodyCourt = (header.match(/(?:^|\n)\s*(?:Court Name|COURT)\s*:\s*([^\r\n]+)/i)?.[1]
-    || header.slice(0, 3500).match(/(?:^|\n)\s*\[([^\]\r\n]*(?:Court|Tribunal)[^\]\r\n]*)\]/i)?.[1]
-    || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const bodyCourt = String(headerCourt || "").toLowerCase().replace(/\s+/g, " ").trim();
   if ((court || bodyCourt) && (!citationMatchesCourt(String(record.citation || ""), court || bodyCourt)
     || !citationMatchesCourt(reported || "", court || bodyCourt))) return {
     textIntegrity: "unknown", identityConflict: true,
@@ -497,10 +515,12 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
   if (!db?.select) return undefined;
   const codes = await getJournalCodes();
   const known = new Set(codes.keys());
-  const lookupSelection = { ...selection, __lookupCourt: judgments.courtNameSnapshot };
-  const accept = (row: any) => {
-    if (!row || !citationMatchesCourt(raw, row.__lookupCourt)) return undefined;
-    const { __lookupCourt, ...selected } = row;
+  const lookupSelection = { ...selection, __lookupCourt: judgments.courtNameSnapshot, __lookupCitation: judgments.citationString };
+  const accept = (row: any, requested: string, exact = false) => {
+    if (!row || !citationMatchesCourt(requested, row.__lookupCourt)) return undefined;
+    if (exact ? String(row.__lookupCitation || "").trim() !== requested.trim()
+      : !citationIdentifiesJudgment(requested, { citation: row.__lookupCitation, court: row.__lookupCourt })) return undefined;
+    const { __lookupCourt, __lookupCitation, ...selected } = row;
     return selected;
   };
 
@@ -516,7 +536,7 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
       .from(judgments)
       .where(eq(judgments.citationString, literal))
       .limit(1);
-    if (exact) return accept(exact);
+    if (exact) return accept(exact, literal, true);
   }
 
   for (const part of splitCitations(raw)) {
@@ -532,7 +552,8 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
             eq(judgments.page, parsed.page),
           ))
           .limit(1);
-        if (hit) return accept(hit);
+        const accepted = accept(hit, part);
+        if (accepted) return accepted;
       }
       // The parser already produced year/journal/page. The string fallback
       // below exists only for shapes the parser rejects, and it is an
@@ -546,7 +567,8 @@ export async function resolveJudgment<T extends Record<string, any>>(raw: string
         .from(judgments)
         .where(sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', '')) = ${variant}`)
         .limit(1);
-      if (hit) return accept(hit);
+      const accepted = accept(hit, part);
+      if (accepted) return accepted;
     }
   }
   return undefined;

@@ -38,6 +38,8 @@
  *   npx tsx script/judgment_text_label.ts --apply  # write the labels
  *   npx tsx script/judgment_text_label.ts --reset  # clear all labels
  */
+import "../server/load-env";
+import { parseCitation, splitCitations, readJudgmentHeader, citationMatchesCourt } from "../server/citation-verify";
 import { readFileSync, writeFileSync } from "node:fs";
 import { Client } from "pg";
 
@@ -47,68 +49,6 @@ const PLAN_FILE = "judgment_text_label_plan.csv";
 
 function canonJournalCode(code: string): string {
   return String(code || "").toUpperCase().replace(/[^A-Z]/g, "");
-}
-
-function splitCitations(raw: string): string[] {
-  return String(raw || "")
-    // "&" separates citations only between digits ("1450 & 2023 PLJ 55").
-    // Inside a journal's category name it is part of the name and must not
-    // split ("K.L.R. 2001 Labour & Service Cases 52").
-    .split(/(?:\s*[,;]\s*|\s+and\s+|(?<=\d)\s*&\s*)/i)
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
-
-function parseCitation(raw: string, knownJournals: Set<string>): { year: number; journal: string; page: number } | null {
-  let s = String(raw || "").toUpperCase();
-
-  // Canonicalize dotted/spaced journal codes BEFORE punctuation is stripped.
-  s = s.replace(/P\s*\.?\s*CR?\s*\.?\s*L\s*\.?\s*J\s*\.?\s*N(?:OTES?)?/g, " PCRLJN ");
-  s = s.replace(/P\s*\.?\s*CR?\s*\.?\s*L\s*\.?\s*J/g, " PCRLJ ");
-  s = s.replace(/PLC\s*\(?\s*C\.?\s*S\.?\s*\)?\s*N(?:OTES?)?/g, " PLCCSN ");
-  s = s.replace(/PLC\s*\(?\s*C\.?\s*S\.?\s*\)?/g, " PLCCS ");
-  s = s.replace(/Y\s*\.?\s*L\s*\.?\s*R\s*\.?\s*N(?:OTES?)?/g, " YLRN ");
-  s = s.replace(/C\s*\.?\s*L\s*\.?\s*C\s*\.?\s*N(?:OTES?)?/g, " CLCN ");
-  s = s.replace(/\bPLC\s*N(?:OTES?)?\b/g, " PLCN ");
-  s = s.replace(/S\s*\.?\s*C\s*\.?\s*M\s*\.?\s*R\s*\.?/g, " SCMR ");
-  s = s.replace(/P\s*\.?\s*L\s*\.?\s*D\s*\.?/g, " PLD ");
-  s = s.replace(/G\s*\.?\s*B\s*\.?\s*L\s*\.?\s*R\s*\.?/g, " GBLR ");
-
-  // Strip remaining punctuation.
-  s = s.replace(/[.,()\[\]\/-]/g, " ");
-
-  // KEY FIX: split letter/digit boundaries so "PLD1968281" becomes "PLD 1968 281".
-  s = s.replace(/([A-Z])(\d)/g, "$1 $2").replace(/(\d)([A-Z])/g, "$1 $2");
-
-  const rawTokens = s.split(/\s+/).filter(Boolean);
-
-  // Merge runs of single letters so a spaced-out journal code such as
-  // "1990 C L C 1439" collapses to "CLC" and matches law_journals.
-  const tokens: string[] = [];
-  for (const t of rawTokens) {
-    const prev = tokens[tokens.length - 1];
-    if (t.length === 1 && /^[A-Z]$/.test(t) && prev && /^[A-Z]+$/.test(prev) && prev.length <= 5) {
-      tokens[tokens.length - 1] = prev + t;
-    } else {
-      tokens.push(t);
-    }
-  }
-
-  const yearIdx = tokens.findIndex((t) => /^(?:1[89]|20)\d{2}$/.test(t));
-  if (yearIdx === -1) return null;
-
-  const journal = tokens.find((t) => knownJournals.has(t));
-  if (!journal) return null;
-
-  // Page is the last standalone number that is not the year token.
-  let page = -1;
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    if (i === yearIdx) continue;
-    if (/^\d{1,5}$/.test(tokens[i])) { page = Number(tokens[i]); break; }
-  }
-  if (page < 0) return null;
-
-  return { year: Number(tokens[yearIdx]), journal, page };
 }
 
 function loadDatabaseUrl(): string {
@@ -204,8 +144,7 @@ async function main() {
       having count(*) > 1)
     select md5(j.full_text) as h, j.id, j.year, j.journal_id, j.page, j.citation_string,
            upper(l.code) as journal_code,
-           substring(j.full_text from 'Reported As:[^\n]{0,160}') as header,
-           left(j.full_text, 800) as head
+           left(j.full_text, 16000) as head
     from judgments j
     join shared on md5(j.full_text) = shared.h
     left join law_journals l on l.id = j.journal_id`);
@@ -218,7 +157,7 @@ async function main() {
     const m: Member = {
       id: r.id, year: r.year, journalId: r.journal_id, page: r.page,
       citation: r.citation_string, journalCode: String(r.journal_code || ""),
-      header: r.header, head: String(r.head || ""),
+      header: readJudgmentHeader(String(r.head || "")).reported || null, head: String(r.head || ""),
     };
     const list = groups.get(r.h);
     if (list) list.push(m); else groups.set(r.h, [m]);
@@ -267,9 +206,19 @@ async function main() {
       continue;
     }
 
-    const reportedAs = header.replace(/^Reported As:\s*/, "").trim();
+    const reportedAs = header.trim();
     const wanted = new Set(keysOf(reportedAs));
-    const correct = members.filter((m) => wanted.has(`${m.year}|${m.journalId}|${m.page}`));
+    const named = members.filter((m) => wanted.has(`${m.year}|${m.journalId}|${m.page}`));
+    const correct = named.filter(m => citationMatchesCourt(m.citation, readJudgmentHeader(m.head).court)
+      && citationMatchesCourt(reportedAs, readJudgmentHeader(m.head).court));
+    if (named.length && !correct.length) {
+      unreadableGroups++;
+      for (const m of members) {
+        unknown.push(m.id);
+        plan.push(`${groupNo},unknown,"${m.citation}","${reportedAs}",`);
+      }
+      continue;
+    }
 
     // The header names none of this group's members. The body still states
     // whose judgment it is, so every member is holding someone else's text.
