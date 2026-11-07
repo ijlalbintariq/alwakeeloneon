@@ -5672,7 +5672,7 @@ export async function getValidatedJudgmentIntegrity(ids: string[], metadata?: Ma
     court: sql<string>`coalesce(${courtsRef.name},${judgments.courtNameSnapshot},'')`, textStatus: judgments.textStatus,
     textTrueCitation: judgments.textTrueCitation,
     opening: sql<string>`left(${judgments.fullText}, 16000)`,
-    bodyHash: metadata && verifiedHashIds.length ? sql<string>`CASE WHEN ${judgments.id}=ANY(${verifiedHashIds}::uuid[]) THEN md5(${judgments.fullText}) ELSE NULL END` : sql<string>`NULL::text`,
+    bodyHash: metadata && verifiedHashIds.length ? sql<string>`CASE WHEN ${inArray(judgments.id, verifiedHashIds)} THEN md5(${judgments.fullText}) ELSE NULL END` : sql<string>`NULL::text`,
   }).from(judgments).leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id)).where(inArray(judgments.id, unique));
   return new Map(rows.map((row: any) => {
     const integrity = assessJudgmentIdentity(row).textIntegrity;

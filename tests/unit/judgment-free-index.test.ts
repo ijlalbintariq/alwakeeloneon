@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
+import { sql, eq, inArray } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
+import { judgments, courtsRef } from "../../shared/schema";
 import { partitionSupportedRepairChunks } from "../../script/repair_judgment_identity";
 import { assessJudgmentIdentity, citationIdentifiesJudgment, judgmentSourceUrl } from "../../server/citation-verify";
 
@@ -25,6 +28,18 @@ function compileFunction(file: string, name: string, dependencies: Record<string
   const code = ts.transpileModule(`(${declaration.getText(source).replace(/^export\s+/, "")})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   return new Function(...Object.keys(dependencies), `return ${code}`)(...Object.values(dependencies));
 }
+
+test("body-hash checks bind multiple judgment IDs as valid PostgreSQL parameters", async () => {
+  let projection: any;
+  const db = { select: (fields: any) => { projection = fields; return { from: () => ({ leftJoin: () => ({ where: async () => [] }) }) }; } };
+  const get = compileFunction("server/storage.ts", "getValidatedJudgmentIntegrity", { db, sql, eq, inArray, judgments, courtsRef,
+    UUID_RE: /^[a-f0-9-]{36}$/, assessJudgmentIdentity, cleanCaseTitle: (s: string) => s });
+  const ids = [id, "22222222-2222-4222-8222-222222222222"];
+  await get(ids, new Map(), ids);
+  const query = new PgDialect().sqlToQuery(projection.bodyHash);
+  assert.match(query.sql, / in \(\$1, \$2\)/);
+  assert.deepEqual(query.params, ids);
+});
 
 test("RAG uses the canonical case title and withholds reused vectors after a body change", async () => {
   let currentHash = "current-body";

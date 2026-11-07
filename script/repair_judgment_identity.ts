@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { readFile, open, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
+import { gzipSync } from "node:zlib";
 import { Client } from "pg";
 import { assessJudgmentIdentity, judgmentPdfUrl, normalizeCitation, courtIdentity, readJudgmentHeader, extractCitations, parseCitation, splitCitations, canonJournalCode, citationMatchesCourt, citationCourtQualifier, citationIdentifiesJudgment } from "../server/citation-verify";
 import { extractSubstantiveSummary } from "../server/storage";
@@ -118,13 +119,13 @@ async function main() {
   const plan = JSON.parse(await readFile(planPath, "utf8")) as { repairs: Repair[] };
   assert.ok(plan.repairs.length > 0 && plan.repairs.length <= 100, "Review at most 100 repairs per transaction");
   assert.equal(new Set(plan.repairs.map(repair => repair.id)).size, plan.repairs.length, "Duplicate repair IDs");
-  const client = new Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 15000, query_timeout: 35000 });
+  const client = new Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 15000, query_timeout: 125000 });
   let transaction = false;
   let phase = "connect";
   try {
     await client.connect();
     await client.query(apply ? "BEGIN" : "BEGIN READ ONLY"); transaction = true;
-    await client.query("SET LOCAL statement_timeout=30000");
+    await client.query("SET LOCAL statement_timeout=120000");
     const lock = apply ? " FOR UPDATE" : "";
     const before = (await client.query(`SELECT * FROM judgments WHERE id=ANY($1::uuid[]) ORDER BY id${lock}`, [plan.repairs.map(repair => repair.id)])).rows;
     assert.equal(before.length, plan.repairs.length, "Missing judgment record");
@@ -185,7 +186,11 @@ async function main() {
     }
     // Save and sync complete originals before the first mutation; never overwrite a backup.
     const backup = await open(backupPath, "wx", 0o600);
-    try { await backup.writeFile(JSON.stringify({ savedAt: new Date().toISOString(), plan, judgments: before, caseLaw: indexRows, sourceFiles: currentFiles, citationLinks: oldLinks, unresolvedCitations: oldUnresolved, ragChunks, dependentChunks, ragDocuments, queryCache: caches })); await backup.sync(); }
+    try {
+      const original = JSON.stringify({ savedAt: new Date().toISOString(), plan, judgments: before, caseLaw: indexRows, sourceFiles: currentFiles, citationLinks: oldLinks, unresolvedCitations: oldUnresolved, ragChunks, dependentChunks, ragDocuments, queryCache: caches });
+      await backup.writeFile(backupPath.endsWith(".gz") ? gzipSync(original) : original);
+      await backup.sync();
+    }
     finally { await backup.close(); }
     const updates = corrected.map(row => {
       const dateChanged = plan.repairs.find(repair => repair.id === row.id)!.changes.decisionDate !== undefined;
@@ -193,6 +198,7 @@ async function main() {
         court: row.court_name_snapshot, court_id: row.court_id, bench: row.bench, full_text: row.full_text, pdf_url: row.pdf_url,
         date_changed: dateChanged, decision_date: dateChanged ? row.decision_date : null };
     });
+    phase = "update canonical judgments";
     const result = await client.query(`UPDATE judgments j SET title=p.title,petitioner=p.petitioner,respondent=p.respondent,
       court_name_snapshot=p.court,court_id=p.court_id,bench=p.bench,
       decision_date=CASE WHEN p.date_changed THEN p.decision_date ELSE j.decision_date END,
@@ -208,9 +214,11 @@ async function main() {
       });
       return owner ? [{ id: indexRow.id, title: owner.title, court: owner.court_name_snapshot || "", summary: extractSubstantiveSummary(owner.full_text) }] : [];
     });
+    phase = "update keyword search rows";
     if (searchUpdates.length) await client.query(`UPDATE case_law c SET title=p.title,court=p.court,summary=p.summary,keywords='{}'
       FROM jsonb_to_recordset($1::jsonb) AS p(id int,title text,court text,summary text) WHERE c.id=p.id`, [JSON.stringify(searchUpdates)]);
     if (changedIds.length) {
+      phase = "rebuild citation references";
       const references = changedBodies.flatMap(row => repairCitationReferences(row, new Set(journalIds.keys())));
       const keys = [...new Map(references.map(reference => [`${reference.year}|${reference.journal}|${reference.page}`,
         { year: reference.year, journal_id: journalIds.get(reference.journal), page: reference.page }])).values()];
@@ -236,11 +244,15 @@ async function main() {
         AS p(source_id uuid,raw text,year int,journal text,page int,context text)`, [JSON.stringify(pending)]);
     }
     if (removedChunkIds.length) {
+      phase = "remove unsupported search excerpts";
       // Detach first: deleting a parent must not cascade into supported excerpts.
-      await client.query("UPDATE rag_chunks SET parent_chunk_id=NULL WHERE parent_chunk_id=ANY($1::bigint[])", [removedChunkIds]);
+      const removed = new Set(removedChunkIds.map(String));
+      const survivingChildren = dependentChunks.filter(row => !removed.has(String(row.id))).map(row => row.id);
+      if (survivingChildren.length) await client.query("UPDATE rag_chunks SET parent_chunk_id=NULL WHERE id=ANY($1::bigint[])", [survivingChildren]);
       await client.query("DELETE FROM rag_chunks WHERE id=ANY($1::bigint[])", [removedChunkIds]);
     }
     if (supported.keep.length) {
+      phase = "refresh retained vector metadata";
       const metadata = corrected.map(row => ({ id: row.id, title: row.title, citation: row.citation_string, court: row.court_name_snapshot,
         hash: crypto.createHash("md5").update(row.full_text).digest("hex") }));
       await client.query(`UPDATE rag_chunks c SET metadata=c.metadata || jsonb_build_object('sourceType','judgment','judgmentId',p.id,
@@ -249,6 +261,7 @@ async function main() {
         FROM jsonb_to_recordset($1::jsonb) AS p(id text,title text,citation text,court text,hash text)
         WHERE c.id=ANY($2::bigint[]) AND c.metadata->>'judgmentId'=p.id`, [JSON.stringify(metadata), supported.keep.map(row => row.id)]);
     }
+    phase = "refresh search document counts";
     if (ragIds.length) await client.query(`UPDATE rag_documents d SET chunk_count=(SELECT count(*) FROM rag_chunks c WHERE c.rag_document_id=d.id),
       status=CASE WHEN EXISTS(SELECT 1 FROM rag_chunks c WHERE c.rag_document_id=d.id) THEN d.status ELSE 'pending' END,updated_at=now()
       WHERE d.id=ANY($1::bigint[])`, [ragIds]);
