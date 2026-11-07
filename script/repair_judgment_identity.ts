@@ -94,19 +94,37 @@ export async function prepareRepair(row: RecordRow, repair: Repair): Promise<Rec
 
 export function repairCitationReferences(row: RecordRow, journals: Set<string>) {
   const key = (value: { year: number; journal: string; page: number }) => `${value.year}|${value.journal}|${value.page}`;
+  const identity = (raw: string, parsed: { year: number; journal: string; page: number }) => `${key(parsed)}|${citationCourtQualifier(raw) || ""}|${citationSection(raw) || ""}`;
   const own = new Set(splitCitations(readJudgmentHeader(row.full_text).reported || row.citation_string)
-    .map(raw => parseCitation(raw, journals)).filter(Boolean).map(value => key(value!)));
+    .flatMap(raw => { const parsed = parseCitation(raw, journals); return parsed ? [identity(raw, parsed)] : []; }));
   const seen = new Set<string>();
   return [...extractCitations(row.full_text), ...citationExtractor.extractFromText(row.full_text, row.id).map(item => item.rawCitation)].flatMap(raw => {
     const parsed = parseCitation(raw, journals);
-    if (!parsed || own.has(key(parsed))) return [];
-    const identity = `${key(parsed)}|${citationCourtQualifier(raw) || ""}|${citationSection(raw) || ""}`;
-    if (seen.has(identity)) return [];
-    seen.add(identity);
+    if (!parsed || own.has(identity(raw, parsed))) return [];
+    const referenceIdentity = identity(raw, parsed);
+    if (seen.has(referenceIdentity)) return [];
+    seen.add(referenceIdentity);
     const offset = row.full_text.indexOf(raw);
     return [{ source_id: row.id, raw, year: parsed.year, journal: parsed.journal, page: parsed.page,
       context: offset < 0 ? null : row.full_text.slice(Math.max(0, offset - 100), offset + raw.length + 100), offset: offset < 0 ? null : offset }];
   });
+}
+
+/** An unqualified index entry must not be assigned to the first court or series. */
+export function repairSearchOwner(indexRow: RecordRow, corrected: RecordRow[], targets: RecordRow[]): RecordRow | undefined {
+  const courtKey = (value: unknown) => String(value || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  const requestedCourt = String(indexRow.court || "").trim();
+  const matches = [...new Map(targets.filter(target => {
+    const court = String(target.effective_court || target.court_name_snapshot || "");
+    return (!requestedCourt || courtKey(requestedCourt) === courtKey(court)
+      || (courtIdentity(requestedCourt) && courtIdentity(requestedCourt) === courtIdentity(court)))
+      && citationIdentifiesJudgment(indexRow.citation, { citation: target.citation_string, court,
+        opening: target.opening, title: target.title, textStatus: target.text_status });
+  }).map(target => [target.id, target])).values()];
+  if (matches.length !== 1) return undefined;
+  const owner = corrected.find(row => row.id === matches[0].id);
+  return owner && assessJudgmentIdentity({ citation: indexRow.citation, title: owner.title,
+    court: requestedCourt || owner.court_name_snapshot, opening: owner.full_text, textStatus: "own" }).textIntegrity === "own" ? owner : undefined;
 }
 
 /** Reuse vectors only for unchanged excerpts supported by the corrected source. */
@@ -224,7 +242,8 @@ async function main() {
     const preview = { mode: apply ? "apply" : "preview", keywordOnly, repairs: corrected.map(row => ({ id: row.id, citation: row.citation_string, title: row.title, decisionDate: row.decision_date, textHash: sha256(row.full_text) })), searchRows: indexRows.length,
       reusedChunks: supported.keep.length, reusedVectors: supported.keep.filter(row => row.embedding !== null).length,
       staleChunks: supported.remove.length, staleCaches: caches.length, changedBodies: changedBodies.length, citationChanges: citationChanged.length, rebuiltCitationSources: changedIds.length, invalidIncomingLinks: invalidIncoming.length,
-      staleCitationLinks: oldLinks.length, staleUnresolvedCitations: oldUnresolved.length, embeddingApiCalls: 0 };
+      staleCitationLinks: oldLinks.length, staleUnresolvedCitations: oldUnresolved.length,
+      keywordUpdates: [] as { id: number; judgmentId: string }[], embeddingApiCalls: 0 };
     if (!apply) {
       await client.query("ROLLBACK"); transaction = false;
       await writeFile(`${backupPath}.preview.json`, JSON.stringify(preview, null, 2), { flag: "wx", mode: 0o600 });
@@ -254,14 +273,18 @@ async function main() {
       WHERE j.id=p.id RETURNING j.id`, [JSON.stringify(updates)]);
     assert.equal(result.rowCount, corrected.length);
     await client.query(`UPDATE judge_case_links l SET year=p.year,court_name=p.court FROM jsonb_to_recordset($1::jsonb) AS p(id uuid,year int,court text) WHERE l.judgment_id=p.id`, [JSON.stringify(updates)]);
+    const searchKeys = [...new Map(corrected.map(row => [`${row.year}|${row.journal_id}|${row.page}`, { year: row.year, journal_id: row.journal_id, page: row.page }])).values()];
+    const searchTargets = indexRows.length ? (await client.query(`SELECT j.id,j.citation_string,j.title,j.court_name_snapshot,
+      coalesce(c.name,j.court_name_snapshot,'') AS effective_court,j.text_status,left(j.full_text,16000) AS opening
+      FROM judgments j LEFT JOIN courts_ref c ON c.id=j.court_id
+      JOIN jsonb_to_recordset($1::jsonb) AS p(year int,journal_id int,page int) ON j.year=p.year AND j.journal_id=p.journal_id AND j.page=p.page
+      WHERE j.is_active=true AND j.canonical_judgment_id IS NULL`, [JSON.stringify(searchKeys)])).rows : [];
     const searchUpdates = indexRows.flatMap(indexRow => {
-      const owner = corrected.find(row => {
-        const repair = plan.repairs.find(repair => repair.id === row.id)!;
-        return (!repair.caseLawIds || repair.caseLawIds.includes(indexRow.id)) && assessJudgmentIdentity({ citation: indexRow.citation,
-          title: row.title, court: indexRow.court || row.court_name_snapshot, opening: row.full_text, textStatus: "own" }).textIntegrity === "own";
-      });
-      return owner ? [{ id: indexRow.id, title: owner.title, court: owner.court_name_snapshot || "", summary: extractSubstantiveSummary(owner.full_text) }] : [];
+      const eligible = corrected.filter(row => { const repair = plan.repairs.find(repair => repair.id === row.id)!; return !repair.caseLawIds || repair.caseLawIds.includes(indexRow.id); });
+      const owner = repairSearchOwner(indexRow, eligible, searchTargets);
+      return owner ? [{ id: indexRow.id, judgmentId: String(owner.id), title: owner.title, court: owner.court_name_snapshot || "", summary: extractSubstantiveSummary(owner.full_text) }] : [];
     });
+    preview.keywordUpdates = searchUpdates.map(({ id, judgmentId }) => ({ id, judgmentId }));
     phase = "update keyword search rows";
     if (searchUpdates.length) await client.query(`UPDATE case_law c SET title=p.title,court=p.court,summary=p.summary,keywords='{}'
       FROM jsonb_to_recordset($1::jsonb) AS p(id int,title text,court text,summary text) WHERE c.id=p.id`, [JSON.stringify(searchUpdates)]);
@@ -276,10 +299,11 @@ async function main() {
       const links: any[] = [], pending: any[] = [];
       for (const reference of references) {
         const matches = targets.filter(target => target.year === reference.year && target.journal_id === journalIds.get(reference.journal) && target.page === reference.page
-          && target.id !== reference.source_id && !(reference.journal === "PLD" && !citationCourtQualifier(reference.raw))
+          && !(reference.journal === "PLD" && !citationCourtQualifier(reference.raw))
           && citationIdentifiesJudgment(reference.raw, { citation: target.citation_string, court: target.court_name_snapshot })
           && assessJudgmentIdentity({ citation: target.citation_string, title: target.title, court: target.court_name_snapshot,
             opening: target.opening, textStatus: target.text_status, textTrueCitation: target.text_true_citation }).textIntegrity === "own");
+        if (matches.length === 1 && matches[0].id === reference.source_id) continue;
         const target = matches.length === 1 ? matches[0] : undefined;
         const valid = Boolean(target);
         (valid ? links : pending).push({ ...reference, target_id: valid ? target.id : null });

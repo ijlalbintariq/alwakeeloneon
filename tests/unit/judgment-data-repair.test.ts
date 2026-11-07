@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { prepareRepair, recordFingerprint, sha256, repairCitationReferences, type Repair } from "../../script/repair_judgment_identity";
+import { prepareRepair, recordFingerprint, sha256, repairCitationReferences, repairSearchOwner, type Repair } from "../../script/repair_judgment_identity";
 
 const body = `Court Name: Supreme Court\nTitle: Ahmad Khan vs State\nReported As: 2024 SCMR 1085\nResult: allowed\n${"Stored legal reasoning. ".repeat(30)}`;
 const row = { id: "00000000-0000-4000-8000-000000000001", citation_string: "2024 SCMR 1085", title: "Incorrect Person vs State", petitioner: "Incorrect Person", respondent: "State", court_name_snapshot: "Supreme Court", decision_date: "2024-01-01T00:00:00.000Z", full_text: body, text_status: "own", text_true_citation: null, pdf_url: null, formatted_text: "Stale caption", headnotes: "Stale headnote", ai_summary: { result: "Stale summary" } };
@@ -32,6 +32,24 @@ test("rebuilt references exclude source aliases and preserve qualified and neutr
   assert.ok(references.some(reference => reference.raw === "PLD 2013 SC 793"));
   assert.ok(references.some(reference => reference.journal === "LHC" && reference.page === 7088));
   assert.ok(references.every(reference => reference.year !== 2020));
+});
+
+test("a case in another publisher section remains a distinct citation reference", () => {
+  const source = { id: row.id, citation_string: "NLR 2014 Civil 369", full_text: "Court Name: Lahore High Court\nTitle: Ahmad vs State\nReported As: NLR 2014 Civil 369\nResult: dismissed\nThe court refers to NLR 2014 Criminal 369." };
+  const references = repairCitationReferences(source, new Set(["NLR"]));
+  assert.equal(references.length, 1);
+  assert.equal(references[0].raw, "NLR 2014 Criminal 369");
+});
+
+test("keyword repairs reject namespace ambiguity across the entire database, not just the current batch", () => {
+  const supreme = { ...row, id: "sc", citation_string: "2024 PLD 565", title: "Ahmad Khan vs State", full_text: body.replace("2024 SCMR 1085", "PLD 2024 SC 565") };
+  const sindh = { ...supreme, id: "shc", court_name_snapshot: "Sindh High Court", full_text: supreme.full_text.replace("Supreme Court", "Sindh High Court").replace("SC 565", "Sindh 565") };
+  const targets = [supreme, sindh].map(r => ({ ...r, opening: r.full_text }));
+  assert.equal(repairSearchOwner({ citation: "2024 PLD 565", court: "" }, [supreme], targets), undefined);
+  assert.equal(repairSearchOwner({ citation: "PLD 2024 SC 565", court: "" }, [supreme], targets)?.id, "sc");
+  assert.equal(repairSearchOwner({ citation: "2024 PLD 565", court: "Sindh High Court" }, [supreme], targets), undefined);
+  assert.equal(repairSearchOwner({ citation: "2024 PLD 565", court: "Sindh High Court" }, [sindh], targets)?.id, "shc");
+  assert.equal(repairSearchOwner({ citation: "PLD 2024 SC 565" }, [supreme], [targets[0], targets[0]])?.id, "sc");
 });
 
 test("stale records, changed evidence and contradictory corrections fail before mutation", async () => fixture(async repair => {

@@ -51,8 +51,9 @@ originals, snapshots, plans, transaction backups and verification receipts are i
 The prepared active-record repair scope is **24,852** records: 21,640 existing-owner
 duplicates, **2,312** recovered canonical citations and **900** further duplicate
 links to those recovered cases. All 21,640 existing-owner repairs passed the full
-local ownership proof, with zero rejected proposals. Deployment-dependent data
-changes wait until canonical-aware readers are confirmed live. A separate
+local ownership proof, with zero rejected proposals. Production is confirmed live at `65c5274`, including canonical-aware readers
+and the complete-text guard. Court/section namespace activation passed native
+uniqueness checks before the repair worker started. A separate
 civil-service reporter regression ensures `PLC(CS)` parentheses do not bypass
 numeric ambiguity checks.
 
@@ -61,7 +62,7 @@ source citations, 648 incomplete headers, 832 conflicting stored parties, 162
 court conflicts, 741 unresolved citation-ownership conflicts and 212 pre-existing
 archived records. These counts are mutually exclusive and concern this cohort.
 
-**101 focused tests, TypeScript check and client/server build pass.**
+**103 focused tests, TypeScript check and client/server build pass.**
 
 This report records the reviewed repair scope. Committed and verified totals
 must come from transaction receipts and final verification, not plan counts.
@@ -81,3 +82,22 @@ raw source or the exact deterministic formatter output, allowing whitespace
 differences. Other cached bodies fall back to the stored original. Regression
 tests reject altered findings even when the title, court and citation remain
 unchanged, and preserve valid deterministic formatting.
+
+## In-progress checkpoint — 2026-11-08T04:43:58+05:00
+
+**19,800 of 21,640 initial duplicate repairs are committed**, with durable
+backups and receipts. The finishing worker is already running: it waits for those
+batches, then applies the 2,312 reviewed source-citation corrections and 900
+additional duplicate links, followed by complete native and public verification.
+These later steps are queued; this checkpoint does not claim they are committed.
+
+All 217 initial database previews passed. Three initial public reader checks and
+three authenticated MCP `get_judgment` checks passed for title, complete
+source-derived text and canonical links. No paid semantic search was invoked.
+A cross-source check of all 4,347 active held records found zero unambiguous
+replacement originals matching their existing title, court and citation.
+
+The repair writer also preserves publisher/court distinctions in self-citation
+filtering and rejects ambiguous keyword-index assignments across the whole
+canonical namespace, rather than choosing the first record in a batch. Actual
+keyword updates are recorded in transaction receipts for final verification.
