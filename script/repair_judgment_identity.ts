@@ -1,5 +1,5 @@
 /** Apply a reviewed source-backed plan. Defaults to a read-only preview.
- * node --import tsx script/repair_judgment_identity.ts --plan plan.json --backup before.json [--apply]
+ * node --import tsx script/repair_judgment_identity.ts --plan plan.json --backup before.json [--keyword-only] [--apply]
  */
 import "../server/load-env";
 import assert from "node:assert/strict";
@@ -108,10 +108,11 @@ export function partitionSupportedRepairChunks(corrected: RecordRow[], chunks: R
 async function main() {
   const args = process.argv.slice(2);
   const apply = args.includes("--apply");
-  const values = args.filter(arg => arg !== "--apply");
+  const keywordOnly = args.includes("--keyword-only");
+  const values = args.filter(arg => arg !== "--apply" && arg !== "--keyword-only");
   const options = new Map<string, string>();
   for (let i = 0; i < values.length; i += 2) {
-    assert.ok(["--plan", "--backup"].includes(values[i]) && values[i + 1], "Use --plan path --backup path [--apply]");
+    assert.ok(["--plan", "--backup"].includes(values[i]) && values[i + 1], "Use --plan path --backup path [--keyword-only] [--apply]");
     options.set(values[i], values[i + 1]);
   }
   const planPath = options.get("--plan"), backupPath = options.get("--backup");
@@ -163,7 +164,7 @@ async function main() {
     phase = "read stale judgment chunks";
     // Judgment indexing uses this source ID and the existing tenant/source index.
     const sourceIds = ids.map(id => Math.abs(parseInt(id.replace(/-/g, "").slice(0, 8), 16)));
-    const candidates = (await client.query(`SELECT * FROM rag_documents WHERE user_id='global-admin-judgments' AND source_document_id=ANY($1::bigint[])${lock}`, [sourceIds])).rows;
+    const candidates = keywordOnly ? [] : (await client.query(`SELECT * FROM rag_documents WHERE user_id='global-admin-judgments' AND source_document_id=ANY($1::bigint[])${lock}`, [sourceIds])).rows;
     const candidateIds = candidates.map(row => row.id);
     const ragChunks = candidateIds.length ? (await client.query(`SELECT * FROM rag_chunks WHERE rag_document_id=ANY($1::bigint[]) AND metadata->>'judgmentId'=ANY($2::text[])${lock}`, [candidateIds, ids])).rows : [];
     const supported = partitionSupportedRepairChunks(corrected, ragChunks);
@@ -175,7 +176,7 @@ async function main() {
     const cacheWhere = "query_text ILIKE ANY($1::text[]) OR response ILIKE ANY($1::text[])";
     phase = "read stale cached responses";
     const caches = (await client.query(`SELECT * FROM query_cache WHERE ${cacheWhere}${lock}`, [cachePatterns])).rows;
-    const preview = { mode: apply ? "apply" : "preview", repairs: corrected.map(row => ({ id: row.id, citation: row.citation_string, title: row.title, decisionDate: row.decision_date, textHash: sha256(row.full_text) })), searchRows: indexRows.length,
+    const preview = { mode: apply ? "apply" : "preview", keywordOnly, repairs: corrected.map(row => ({ id: row.id, citation: row.citation_string, title: row.title, decisionDate: row.decision_date, textHash: sha256(row.full_text) })), searchRows: indexRows.length,
       reusedChunks: supported.keep.length, reusedVectors: supported.keep.filter(row => row.embedding !== null).length,
       staleChunks: supported.remove.length, staleCaches: caches.length, changedBodies: changedIds.length,
       staleCitationLinks: oldLinks.length, staleUnresolvedCitations: oldUnresolved.length, embeddingApiCalls: 0 };

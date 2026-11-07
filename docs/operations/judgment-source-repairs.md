@@ -7,12 +7,14 @@ For repairs without embedding charges:
 ```sh
 node --import tsx --import ./script/no_paid_network.ts \
   script/repair_judgment_identity.ts \
-  --plan /private/path/plan.json --backup /private/path/before.json
+  --plan /private/path/plan.json --backup /private/path/before.json.gz --keyword-only
 ```
 
 Inspect the preview, then use a new backup filename and add `--apply`. The preload blocks HTTP clients, including accidental AI/embedding requests. PostgreSQL connections remain available. Never run `index_repaired_sources.ts --apply` in this mode.
 
-Updates refresh existing PostgreSQL text indexes and source-derived search summaries. Existing chunk text and vectors are retained only where the excerpt occurs in the corrected body. Unsupported excerpts are backed up and removed. Retained chunks receive canonical identity metadata and a body hash; retrieval checks that hash and refreshes titles and URLs from the canonical judgment. No replacement vectors are generated. Records with no retained vectors have limited semantic coverage until separately authorized embedding work.
+Updates refresh existing PostgreSQL text indexes and source-derived search summaries. `--keyword-only` leaves vector rows untouched, avoiding expensive updates to the vector index. Deploy the current retrieval guard before applying this mode: retrieval checks both the parent excerpt and the matching child against the current judgment body, withholds unsupported text, and refreshes titles and URLs from the canonical judgment. Previously tagged body hashes must also match. No replacement vectors are generated. Records without supported existing excerpts have limited semantic coverage until separately authorized embedding work.
+
+Without `--keyword-only`, the tool also backs up and removes unsupported chunks and refreshes supported chunk metadata. This can be slow on a large vector index. Backups ending in `.gz` are compressed without changing their restored contents.
 
 Body replacements rebuild outgoing citation references. Only identity-checked targets with compatible citations receive links; unresolved references stay pending. Incoming references remain subject to reader validation. Numeric citation keys and source associations are checked before mutation. Court references must agree with the reviewed source.
 

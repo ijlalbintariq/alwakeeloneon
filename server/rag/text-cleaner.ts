@@ -7,6 +7,13 @@ function normalizeWhitespace(text: string): string {
     .trim();
 }
 
+/** Check current source text without regenerating or rewriting stored vectors. */
+export function judgmentContainsExcerpt(body: string, excerpt: string): boolean {
+  const normalize = (value: string) => String(value || "").replace(/\u0000/g, " ").replace(/\s+/g, " ").trim();
+  const text = normalize(excerpt);
+  return Boolean(text && (normalize(body).includes(text) || normalize(cleanLegalDocumentText(body)).includes(text)));
+}
+
 function stripRepeatedLines(text: string, minRepeats: number = 3): string {
   const lines = text.split("\n");
   const counts = new Map<string, number>();

@@ -5,6 +5,7 @@ import ts from "typescript";
 import { sql, eq, inArray } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { judgments, courtsRef } from "../../shared/schema";
+import { judgmentContainsExcerpt } from "../../server/rag/text-cleaner";
 import { partitionSupportedRepairChunks } from "../../script/repair_judgment_identity";
 import { assessJudgmentIdentity, citationIdentifiesJudgment, judgmentSourceUrl } from "../../server/citation-verify";
 
@@ -45,14 +46,18 @@ test("RAG uses the canonical case title and withholds reused vectors after a bod
   let currentHash = "current-body";
   const drop = compileFunction("server/rag/rag-service.ts", "dropMislabeledJudgmentChunks", {
     getValidatedJudgmentIntegrity: async (_ids: string[], metadata: Map<string, any>) => {
-      metadata.set(id, { citation: "2024 SCMR 1085", title: "Ahmad Khan vs State", court: "Supreme Court", bodyHash: currentHash });
+      metadata.set(id, { citation: "2024 SCMR 1085", title: "Ahmad Khan vs State", court: "Supreme Court", bodyHash: currentHash, body });
       return new Map([[id, "own"]]);
-    }, judgmentSourceUrl, console,
+    }, judgmentSourceUrl, judgmentContainsExcerpt, console,
   });
-  const match = { title: "A different case from a colliding index ID", metadata: { sourceType: "judgment", judgmentId: id, judgmentBodyHash: "current-body", sourceUrl: "https://example.invalid/wrong-case" } };
+  const match = { title: "A different case from a colliding index ID", chunkText: "Actual legal findings from this judgment.", metadata: { sourceType: "judgment", judgmentId: id, judgmentBodyHash: "current-body", sourceUrl: "https://example.invalid/wrong-case" } };
   const [result] = await drop([match]);
   assert.equal(result.title, "2024 SCMR 1085 — Ahmad Khan vs State");
   assert.equal(result.metadata.sourceUrl, judgmentSourceUrl(id));
+  const legacy = { ...match, metadata: { sourceType: "judgment", judgmentId: id } };
+  assert.equal((await drop([legacy])).length, 1);
+  assert.deepEqual(await drop([{ ...legacy, chunkText: "An unrelated judgment body" }]), []);
+  assert.deepEqual(await drop([{ ...legacy, matchedText: "A child from another judgment" }]), []);
   currentHash = "changed-body";
   assert.deepEqual(await drop([match]), []);
 });

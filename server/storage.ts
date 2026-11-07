@@ -5662,7 +5662,7 @@ export async function getTextProvenance(ids: string[]): Promise<Map<string, "own
 }
 
 /** Validate only requested records; stored provenance alone does not verify identity. */
-export type ValidatedJudgmentMetadata = { citation: string; title: string; court: string; bodyHash: string };
+export type ValidatedJudgmentMetadata = { citation: string; title: string; court: string; bodyHash: string; body: string };
 export async function getValidatedJudgmentIntegrity(ids: string[], metadata?: Map<string, ValidatedJudgmentMetadata>, hashIds: string[] = []): Promise<Map<string, "own" | "mislabeled" | "unknown">> {
   const unique = [...new Set(ids.filter((id) => UUID_RE.test(String(id || ""))))];
   if (!unique.length) return new Map();
@@ -5672,11 +5672,12 @@ export async function getValidatedJudgmentIntegrity(ids: string[], metadata?: Ma
     court: sql<string>`coalesce(${courtsRef.name},${judgments.courtNameSnapshot},'')`, textStatus: judgments.textStatus,
     textTrueCitation: judgments.textTrueCitation,
     opening: sql<string>`left(${judgments.fullText}, 16000)`,
+    body: metadata ? judgments.fullText : sql<string>`NULL::text`,
     bodyHash: metadata && verifiedHashIds.length ? sql<string>`CASE WHEN ${inArray(judgments.id, verifiedHashIds)} THEN md5(${judgments.fullText}) ELSE NULL END` : sql<string>`NULL::text`,
   }).from(judgments).leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id)).where(inArray(judgments.id, unique));
   return new Map(rows.map((row: any) => {
     const integrity = assessJudgmentIdentity(row).textIntegrity;
-    metadata?.set(String(row.id), { citation: row.citation, title: cleanCaseTitle(row.title), court: row.court, bodyHash: row.bodyHash || "" });
+    metadata?.set(String(row.id), { citation: row.citation, title: cleanCaseTitle(row.title), court: row.court, bodyHash: row.bodyHash || "", body: row.body || "" });
     return [String(row.id), integrity === "own" ? "own" : integrity === "mislabeled" ? "mislabeled" : "unknown"];
   }));
 }

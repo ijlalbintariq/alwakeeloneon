@@ -6,7 +6,7 @@ import { judgments, courtsRef, lawJournals, adminKnowledge, statuteDocuments } f
 import { eq, desc } from "drizzle-orm";
 import { chunkTextByTokens, type TextChunk } from "./chunker";
 import { embedTextLocal, embedTextsLocal, isVoyageProvider } from "./embedding-local";
-import { cleanLegalDocumentText } from "./text-cleaner";
+import { cleanLegalDocumentText, judgmentContainsExcerpt } from "./text-cleaner";
 import {
   deleteVectorsBySourceDocument,
   ensureRagSchema,
@@ -700,7 +700,11 @@ export async function dropMislabeledJudgmentChunks(matches: RagMatch[]): Promise
     return matches
       .filter((m) => {
         const id = String(m.metadata?.judgmentId || "");
-        return !id || (statuses.get(id) === "own" && (!m.metadata?.judgmentBodyHash || m.metadata.judgmentBodyHash === identities.get(id)?.bodyHash));
+        const identity = identities.get(id);
+        return !id || (statuses.get(id) === "own" && identity
+          && (!m.metadata?.judgmentBodyHash || m.metadata.judgmentBodyHash === identity.bodyHash)
+          && judgmentContainsExcerpt(identity.body, m.chunkText)
+          && (!m.matchedText || judgmentContainsExcerpt(identity.body, m.matchedText)));
       })
       .map((m) => {
         const id = String(m.metadata?.judgmentId || "");
