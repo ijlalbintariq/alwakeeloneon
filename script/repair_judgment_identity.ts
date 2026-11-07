@@ -177,7 +177,7 @@ async function main() {
         const key = `${row.year}|${row.journal_id}|${row.page}|${judgmentCourtScope(row)}|${row.citation_section}`;
         assert.ok(!planned.has(key), "Two repairs claim the same court citation"); planned.add(key);
         const others = occupied.filter(other => other.id !== row.id && other.year === row.year && other.journal_id === row.journal_id && other.page === row.page);
-        assert.ok(!others.some(other => (judgmentCourtScope(other) === judgmentCourtScope(row) || (courtIdentity(other.court_name_snapshot) && courtIdentity(other.court_name_snapshot) === courtIdentity(row.court_name_snapshot))) && other.citation_section === row.citation_section), "Corrected court citation is already occupied");
+        assert.ok(!others.some(other => (judgmentCourtScope(other) === judgmentCourtScope(row) || (courtIdentity(String(other.court_name_snapshot || "")) && courtIdentity(String(other.court_name_snapshot || "")) === courtIdentity(String(row.court_name_snapshot || "")))) && other.citation_section === row.citation_section), "Corrected court citation is already occupied");
         assert.ok(!others.some(other => other.is_active) || (citationCourtQualifier(row.citation_string) || citationSection(row.citation_string)), "A colliding citation requires an explicit source court or reporter section");
       }
     }

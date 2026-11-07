@@ -443,7 +443,7 @@ export function citationSection(raw: string): string | null {
 export function isReportedCitation(raw: string, known = IDENTITY_JOURNALS): boolean {
   const part = splitCitations(String(raw || ""))[0] || "";
   const parsed = parseCitation(part, known);
-  const compact = part.toUpperCase().replace(/\([^)]*\)/g, "").replace(/[^A-Z0-9]/g, "");
+  const compact = part.toUpperCase().replace(/[^A-Z0-9]/g, "");
   return Boolean(parsed && [String(parsed.year) + parsed.journal, parsed.journal + parsed.year].some(prefix => compact.startsWith(prefix)));
 }
 

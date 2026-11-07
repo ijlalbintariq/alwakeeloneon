@@ -13,17 +13,20 @@ tribunal series therefore require more than a numeric lookup.
 
 The conservative source-backed classification identified:
 
-- **21,819** duplicate records whose complete text matches an active existing
+- **21,640** duplicate records whose complete text matches an active existing
   case and whose stored parties and court identify that case under its true
-  source citation. These point to **15,546** distinct canonical cases.
-- **2,026** records with a usable source citation whose numeric key is vacant.
-- **1,943** records with a usable source citation whose numeric key is occupied;
+  source citation. These point to **15,454** distinct canonical cases.
+- **2,016** records with a usable source citation whose numeric key is vacant.
+- **1,937** records with a usable source citation whose numeric key is occupied;
   court, reporter section or an incorrectly occupied key needs resolution first.
-- **3,623** records whose source identity cannot be safely established under
+- **3,606** records whose source identity cannot be safely established under
   the current rules. These remain held rather than being reassigned by similarity.
+- **212** records were already archived and retain their archived state.
 
 Among the candidate canonical owners, **193** require source-backed metadata
-corrections before duplicate links can be activated. Full before-images for
+corrections before duplicate links can be activated. These 193 corrections are
+committed and verified against complete source hashes; 166 matching keyword
+search rows were refreshed and verified. Full before-images for
 **44,981** reviewed records and candidate owners were saved and their complete
 body SHA-256 values checked against originals before any identity repair.
 
@@ -44,6 +47,21 @@ Migration and application order is documented in
 `docs/operations/judgment-citation-ownership.md`. Private review classifications,
 originals, snapshots, plans, transaction backups and verification receipts are in
 `scratch/citation-source-review-2026-11-07/` and are excluded from Git.
+
+The prepared active-record repair scope is **24,852** records: 21,640 existing-owner
+duplicates, **2,312** recovered canonical citations and **900** further duplicate
+links to those recovered cases. All 21,640 existing-owner repairs passed the full
+local ownership proof, with zero rejected proposals. Deployment-dependent data
+changes wait until canonical-aware readers are confirmed live. A separate
+civil-service reporter regression ensures `PLC(CS)` parentheses do not bypass
+numeric ambiguity checks.
+
+**4,559** records are held after this review: 1,964 unconfirmed identities, incomplete party names or unsupported
+source citations, 648 incomplete headers, 832 conflicting stored parties, 162
+court conflicts, 741 unresolved citation-ownership conflicts and 212 pre-existing
+archived records. These counts are mutually exclusive and concern this cohort.
+
+**99 focused tests, TypeScript check and client/server build pass.**
 
 This report records the reviewed repair scope. Committed and verified totals
 must come from transaction receipts and final verification, not plan counts.

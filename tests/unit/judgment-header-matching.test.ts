@@ -62,6 +62,12 @@ test("publisher sections remain distinct even when court, year and page coincide
   assert.equal(citationIdentifiesJudgment("2020 PTD (Unknown) 1703", { citation: "2020 PTD (Trib.) 1703", court: "Customs Appellate Tribunal" }), false);
 });
 
+test("civil-service reporter parentheses cannot bypass ambiguous-citation checks", () => {
+  assert.equal(isReportedCitation("2020 PLC(CS) 7"), true);
+  assert.equal(isReportedCitation("PLC(C.S.) 2020 7"), true);
+  assert.equal(isReportedCitation("Const. P. 11/2026 (SHC)"), false);
+});
+
 test("the labeling CLI uses complete shared headers and keeps unrelated citations mislabeled", async () => {
   const source = ts.createSourceFile("labels.ts", fs.readFileSync("script/judgment_text_label.ts", "utf8"), ts.ScriptTarget.Latest, true);
   const declaration = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "main")!;
