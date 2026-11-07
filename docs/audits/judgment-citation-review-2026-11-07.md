@@ -61,7 +61,23 @@ source citations, 648 incomplete headers, 832 conflicting stored parties, 162
 court conflicts, 741 unresolved citation-ownership conflicts and 212 pre-existing
 archived records. These counts are mutually exclusive and concern this cohort.
 
-**99 focused tests, TypeScript check and client/server build pass.**
+**101 focused tests, TypeScript check and client/server build pass.**
 
 This report records the reviewed repair scope. Committed and verified totals
 must come from transaction receipts and final verification, not plan counts.
+
+## Whole-text reader verification
+
+Live UUID and canonical-reader checks passed for three initial repaired cases.
+The initial byte-for-byte display check failed because the existing deterministic
+formatter removes page markers and joins wrapped words. The sampled returned
+text exactly matched that formatter applied to the complete original; this was
+not evidence of another case being served. Raw database source hashes still
+matched the cached originals.
+
+The reader guard now also checks the complete displayed body, rather than only
+its header. A cached body is accepted only when its complete text matches the
+raw source or the exact deterministic formatter output, allowing whitespace
+differences. Other cached bodies fall back to the stored original. Regression
+tests reject altered findings even when the title, court and citation remain
+unchanged, and preserve valid deterministic formatting.

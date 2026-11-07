@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { assessJudgmentIdentity, prepareJudgmentDetail, judgmentPdfUrl } from "../../server/citation-verify";
+import { formatJudgmentText } from "../../server/lib/judgmentFormatter";
 
 const body = (title: string, citation: string, court = "Supreme Court") =>
   `Court Name: ${court}\nTitle: ${title}\nReported As: ${citation}\nResult: allowed\n${"Judgment text. ".repeat(20)}`;
@@ -109,6 +110,24 @@ test("a rejected formatted body is removed from every response body field", () =
   assert.doesNotMatch(JSON.stringify(result), /Different Person/);
   const alternate = prepareJudgmentDetail({ ...detail, formattedText: rejected }, { opening: valid.opening, textStatus: "own" });
   assert.equal(alternate.formattedText, null);
+});
+
+test("a matching formatted header cannot validate different judicial findings", () => {
+  const source = valid.opening + "\nThe appeal is dismissed and the conviction remains in force.";
+  const forged = source.replace("dismissed", "allowed").replace("remains in force", "is set aside");
+  assert.equal(assessJudgmentIdentity({ ...valid, opening: forged }).textIntegrity, "own");
+  const result = prepareJudgmentDetail({ ...detail, fullText: forged, formattedText: forged }, { opening: source, textStatus: "own" });
+  assert.equal(result.fullText, source);
+  assert.equal(result.formattedText, null);
+});
+
+test("complete deterministic formatting remains supported without accepting arbitrary body edits", () => {
+  const source = valid.opening + "\n---\n## Page 2\nThe eye-\nwitnesses gave evidence.\n";
+  const formatted = formatJudgmentText(source);
+  assert.notEqual(formatted, source);
+  const result = prepareJudgmentDetail({ ...detail, fullText: formatted, formattedText: formatted }, { opening: source, textStatus: "own" });
+  assert.equal(result.fullText, formatted);
+  assert.equal(result.formattedText, formatted);
 });
 
 test("generic captions and extraction artifacts never verify a case identity", () => {

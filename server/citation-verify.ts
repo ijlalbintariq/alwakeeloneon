@@ -10,6 +10,7 @@
 import { db, dbAvailable } from "./db";
 import { judgments, lawJournals } from "@shared/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
+import { formatJudgmentText } from "./lib/judgmentFormatter";
 
 /**
  * Universal Pakistani citation normalizer.
@@ -672,9 +673,13 @@ export function prepareJudgmentDetail<T extends {
     decisionDate: null, headnotes: null, fullText: "", formattedText: null, pdfUrl: null,
     citations: { made: [], received: [] }, ...check, contentFormat: "unavailable",
   } as T & JudgmentIntegrity & { contentFormat: string };
-  // Prefer the stored body if formatting introduced a different or uncheckable header.
+  // A matching header cannot validate altered holdings in a cached formatted body.
   const renderedCheck = assessJudgmentIdentity({ ...identity, opening: detail.fullText });
-  const fullText = (renderedCheck.identityConflict || (check.textIntegrity === "own" && renderedCheck.textIntegrity !== "own"))
+  const words = (text: string) => String(text || "").replace(/\s+/g, " ").trim();
+  const original = String(stored.opening || "");
+  const sourceDerived = !original || words(detail.fullText) === words(original)
+    || words(detail.fullText) === words(formatJudgmentText(original));
+  const fullText = (!sourceDerived || renderedCheck.identityConflict || (check.textIntegrity === "own" && renderedCheck.textIntegrity !== "own"))
     ? String(stored.opening || "") : String(detail.fullText || stored.opening || "");
   const pdfUrl = judgmentPdfUrl(detail.pdfUrl);
   const hasText = fullText.trim().length >= 200;
