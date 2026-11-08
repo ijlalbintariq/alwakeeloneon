@@ -5741,15 +5741,20 @@ export async function getJudgmentTextStatuses(ids: string[]): Promise<Map<string
 
 /**
  * For a mislabeled judgment, the id of the judgment its body really belongs to
- * (text_true_citation), when that judgment is in the table and owns its text.
+ * (text_true_citation), only when the complete source and owner text hashes match.
  * text_true_citation can list parallel citations ("2023 SHC 303, 2024 PCRLJ 693").
  */
-export async function findTextOwnerJudgment(trueCitation: string | null | undefined): Promise<{ id: string; citation: string } | null> {
+export async function findTextOwnerJudgment(trueCitation: string | null | undefined, sourceId?: string): Promise<{ id: string; citation: string } | null> {
+  if (!UUID_RE.test(String(sourceId || "")) || !String(trueCitation || "").trim()) return null;
+  const [source] = await db.select({ bodyHash: sql<string>`encode(sha256(convert_to(${judgments.fullText},'UTF8')),'hex')` })
+    .from(judgments).where(eq(judgments.id, sourceId!)).limit(1);
+  if (!source?.bodyHash) return null;
   for (const part of splitCitations(String(trueCitation || ""))) {
     const owner = await resolveJudgment(part, { id: judgments.id, citation: judgments.citationString,
       title: judgments.title, court: judgments.courtNameSnapshot, textStatus: judgments.textStatus,
-      textTrueCitation: judgments.textTrueCitation, opening: sql<string>`left(${judgments.fullText},16000)` });
-    if (owner && assessJudgmentIdentity(owner).textIntegrity === "own") return { id: owner.id, citation: owner.citation };
+      textTrueCitation: judgments.textTrueCitation, opening: sql<string>`left(${judgments.fullText},16000)`,
+      bodyHash: sql<string>`encode(sha256(convert_to(${judgments.fullText},'UTF8')),'hex')` });
+    if (owner && owner.bodyHash === source.bodyHash && assessJudgmentIdentity(owner).textIntegrity === "own") return { id: owner.id, citation: owner.citation };
   }
   return null;
 }

@@ -62,7 +62,7 @@ source citations, 648 incomplete headers, 832 conflicting stored parties, 162
 court conflicts, 741 unresolved citation-ownership conflicts and 212 pre-existing
 archived records. These counts are mutually exclusive and concern this cohort.
 
-**103 focused tests, TypeScript check and client/server build pass.**
+**104 focused tests, TypeScript check and client/server build pass.**
 
 This report records the reviewed repair scope. Committed and verified totals
 must come from transaction receipts and final verification, not plan counts.
@@ -101,3 +101,14 @@ The repair writer also preserves publisher/court distinctions in self-citation
 filtering and rejects ambiguous keyword-index assignments across the whole
 canonical namespace, rather than choosing the first record in a batch. Actual
 keyword updates are recorded in transaction receipts for final verification.
+
+## Suggested-owner link guard
+
+The public reader's suggested text-owner link now requires identical SHA-256
+hashes of both complete stored judgment bodies, in addition to an active,
+internally consistent target. A matching citation alone cannot establish that
+another judgment owns the withheld text. The caller supplies the actual source
+UUID; missing source evidence or different text produces no owner link.
+Regression coverage rejects a verified target containing a different case body.
+
+Checkpoint 2026-11-08T05:01:55+05:00: alias=21,640, rekey=2,312, alias-extra=200. Final verification is pending.

@@ -98,6 +98,18 @@ test("normal insertion cannot manufacture canonical redirects and legacy exporte
   }
 });
 
+test("a suggested text-owner link requires the complete original body, not citation existence", async () => {
+  const deps = { db: mockDb([[{ bodyHash: "source-hash" }]]), judgments, sql, eq,
+    UUID_RE: /^[a-f0-9-]{36}$/i, splitCitations, assessJudgmentIdentity,
+    resolveJudgment: async () => ({ ...owner, bodyHash: "different-case-hash" }) };
+  const find = compile("server/storage.ts", "findTextOwnerJudgment", deps);
+  assert.equal(await find(owner.citation, legacy), null);
+  const confirmed = compile("server/storage.ts", "findTextOwnerJudgment", { ...deps,
+    db: mockDb([[{ bodyHash: "source-hash" }]]), resolveJudgment: async () => ({ ...owner, bodyHash: "source-hash" }) });
+  assert.deepEqual(await confirmed(owner.citation, legacy), { id: ownerId, citation: owner.citation });
+  assert.equal(await find(owner.citation), null);
+});
+
 test("bulk reference resolution preserves court sections instead of taking the last numeric match", async () => {
   const source = ts.createSourceFile('extractor.ts',fs.readFileSync('server/services/citation-extractor.ts','utf8'),ts.ScriptTarget.Latest,true);
   let method:ts.MethodDeclaration|undefined;

@@ -13182,7 +13182,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       if (!rawJudgment) return res.status(404).json({ message: "Judgment not found" });
       const judgment = await protectJudgmentDetail(rawJudgment);
       const isMislabeled = judgment.textIntegrity === "mislabeled";
-      const owner = isMislabeled ? await findTextOwnerJudgment(judgment.belongsTo).catch(() => null) : null;
+      const owner = isMislabeled ? await findTextOwnerJudgment(judgment.belongsTo, judgment.id).catch(() => null) : null;
 
       const sourceText = judgment.fullText || "";
       const totalWords = sourceText ? sourceText.trim().split(/\s+/).filter(Boolean).length : 0;
