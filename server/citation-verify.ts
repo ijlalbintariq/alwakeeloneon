@@ -486,10 +486,21 @@ export function readJudgmentHeader(text: string): { title?: string; reported?: s
       if (petitioner && respondent) title = `${petitioner} vs ${respondent}`;
     }
   }
-  const reported = reportedCitationHeader(header)
+  let reported = reportedCitationHeader(header)
     || header.split(/\r?\n/).slice(0, 10).find((line) => line.trim().length <= 100
       && /^(?:(?:19|20)\d{2}\s+|[A-Z. ]+\s+(?:19|20)\d{2}\b)/i.test(line.trim())
       && parseCitation(line, IDENTITY_JOURNALS));
+  if (!reported) {
+    const rawLines = header.split(/\r?\n/).slice(0, 10).map((l) => l.trim()).filter(Boolean);
+    for (let i = 0; i < rawLines.length - 1; i++) {
+      const combined = `${rawLines[i]} ${rawLines[i + 1]}`;
+      const parsed = parseCitation(combined, IDENTITY_JOURNALS);
+      if (combined.length <= 120 && /^(?:(?:19|20)\d{2}\s+|[A-Z. ]+\s+(?:19|20)\d{2}\b)/i.test(combined) && parsed && parsed.page !== parsed.year) {
+        reported = combined;
+        break;
+      }
+    }
+  }
   const court = header.match(/(?:^|\n)\s*(?:Court Name|COURT)\s*:\s*([^\r\n]+)/i)?.[1]
     || header.slice(0, 3500).match(/(?:^|\n)\s*\[([^\]\r\n]*(?:Court|Tribunal)[^\]\r\n]*)\]/i)?.[1];
   return { title, reported, court: court?.trim() };
@@ -519,6 +530,7 @@ export function assessJudgmentIdentity(record: JudgmentIdentity): JudgmentIntegr
     const other = bodyParties[index];
     const shorter = party.length <= other.length ? party : other;
     const longer = party.length <= other.length ? other : party;
+    if (shorter.length === 1 && longer.length > 1 && shorter[0] === longer.join("")) return true;
     return shorter.every((token) => longer.includes(token));
   });
   if (storedParties && bodyParties && !sameParties) return { textIntegrity: "unknown", identityConflict: true, textWarning: "The stored case title conflicts with the parties named in the judgment text." };

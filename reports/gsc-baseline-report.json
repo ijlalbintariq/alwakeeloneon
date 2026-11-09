@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generatedAt": "2026-11-02T22:28:45.633Z",
+    "generatedAt": "2026-11-09T09:44:52.227Z",
     "mode": "FALLBACK_BASELINE",
     "serviceAccountEmail": "google-indexing-bot@gen-lang-client-0332563597.iam.gserviceaccount.com",
     "projectId": "gen-lang-client-0332563597",
@@ -581,7 +581,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-11-02T04:28:45.633Z"
+        "lastCrawlTime": "2026-11-08T15:44:52.226Z"
       },
       {
         "url": "https://www.alwakeelo.com/judgment/c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
@@ -598,7 +598,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-11-01T10:28:45.633Z"
+        "lastCrawlTime": "2026-11-07T21:44:52.227Z"
       },
       {
         "url": "https://www.alwakeelo.com/judgment/d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
@@ -615,7 +615,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-10-31T16:28:45.633Z"
+        "lastCrawlTime": "2026-11-07T03:44:52.227Z"
       },
       {
         "url": "https://www.alwakeelo.com/judgment/f74b650b-ca8e-4fc3-9856-16821dc84b37",
@@ -632,7 +632,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-10-30T22:28:45.633Z"
+        "lastCrawlTime": "2026-11-06T09:44:52.227Z"
       },
       {
         "url": "https://www.alwakeelo.com/judgment/4ad1c4a8-2139-47b6-8769-500a527fc8e6",
@@ -649,7 +649,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-10-30T04:28:45.633Z"
+        "lastCrawlTime": "2026-11-05T15:44:52.227Z"
       },
       {
         "url": "https://www.alwakeelo.com/judgment/868d1b1b-5273-4fc9-aa4a-40002660e22c",
@@ -666,7 +666,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-10-29T10:28:45.633Z"
+        "lastCrawlTime": "2026-11-04T21:44:52.227Z"
       },
       {
         "url": "https://www.alwakeelo.com/judgment/63796fdd-df6c-4d1e-8f6a-480310d34ed1",
@@ -683,7 +683,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-10-28T16:28:45.633Z"
+        "lastCrawlTime": "2026-11-04T03:44:52.227Z"
       },
       {
         "url": "https://www.alwakeelo.com/judgment/86c6bf74-7e77-4224-a323-64310da50051",
@@ -700,7 +700,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-10-27T22:28:45.633Z"
+        "lastCrawlTime": "2026-11-03T09:44:52.227Z"
       },
       {
         "url": "https://www.alwakeelo.com/judgment/d06ad889-fcd4-4389-a935-434aed29d72a",
@@ -717,7 +717,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-10-27T04:28:45.633Z"
+        "lastCrawlTime": "2026-11-02T15:44:52.227Z"
       },
       {
         "url": "https://www.alwakeelo.com/judgment/44953c1b-179c-4743-852f-6ae5cb759ee3",
@@ -734,7 +734,7 @@
           "CourtCase",
           "BreadcrumbList"
         ],
-        "lastCrawlTime": "2026-10-26T10:28:45.633Z"
+        "lastCrawlTime": "2026-11-01T21:44:52.227Z"
       }
     ]
   },
