@@ -19,7 +19,7 @@ const FAQ_SECTIONS: FaqSection[] = [
     items: [
       {
         q: "What is Al Wakeelo?",
-        a: "Al Wakeelo is Pakistan's first AI-powered legal assistant platform. It leverages large language models fine-tuned on Pakistani law and a comprehensive database of over 600,000 High Court and Supreme Court judgments to help advocates, law chambers, and individuals perform research and document drafting."
+        a: "Al Wakeelo is an AI-powered legal research assistant. It leverages large language models supported by Pakistani legal sources and a comprehensive database of Pakistani court judgments to help advocates, law chambers, and individuals perform research and document drafting."
       },
       {
         q: "Who is behind Al Wakeelo?",
@@ -36,7 +36,7 @@ const FAQ_SECTIONS: FaqSection[] = [
     items: [
       {
         q: "How does the AI prevent hallucinations (fake cases)?",
-        a: "Standard AI models (like ChatGPT) frequently invent fake legal precedents. Al Wakeelo solves this through a Retrieval-Augmented Generation (RAG) pipeline. Before answering any query, our engine queries our database of 600,000+ real judgments, extracts verified precedents, and forces the AI model to construct its response strictly using those verified citations."
+        a: "Al Wakeelo uses retrieval and citation-identity checks to reduce unsupported references. Available judgment records supply supported excerpts. AI output can still contain errors and must be reviewed against the original sources."
       },
       {
         q: "What court records are indexed?",
@@ -44,7 +44,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: "How do I verify if a citation in the chat is real?",
-        a: "Any citation generated in the chat window is hyperlinked. Clicking on it will open a dedicated page showing the title, court, decision date, headnotes, and a verified preview of that judgment's text."
+        a: "Any citation generated in the chat window is hyperlinked. Clicking on it will open a dedicated page showing the title, court, decision date, headnotes, and the available judgment text and its identity status."
       }
     ]
   },

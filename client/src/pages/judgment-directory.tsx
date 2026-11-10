@@ -15,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { useDocumentHead } from "@/hooks/use-document-head";
+import { judgmentDirectoryPath } from "@shared/public-routes";
 
 interface Court {
   id: number;
@@ -51,6 +53,7 @@ interface ListResponse {
   items: JudgmentItem[];
   pagination: {
     total: number;
+    totalIsEstimate?: boolean;
     page: number;
     limit: number;
     totalPages: number;
@@ -63,20 +66,29 @@ export default function JudgmentDirectoryPage() {
   
   // Parse query parameters for server-side-crawling friendly states
   const params = new URLSearchParams(window.location.search);
+  let canonicalPath = "/judgments/browse", validFilters = true;
+  try { canonicalPath = judgmentDirectoryPath(params); } catch { validFilters = false; }
+  useDocumentHead({
+    title: "Browse Pakistani Case Law & Judgments Directory | Al Wakeelo",
+    description: "Browse Pakistani judgments by court, law journal and year.",
+    path: canonicalPath,
+    index: validFilters,
+  });
   const courtId = params.get("courtId") ? Number(params.get("courtId")) : undefined;
   const journalId = params.get("journalId") ? Number(params.get("journalId")) : undefined;
   const year = params.get("year") ? Number(params.get("year")) : undefined;
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const limit = 50;
+  const limit = Number(params.get("limit")) || 50;
 
   // 1. Fetch directory index (Courts, Journals, Years)
   const { data: indexData, isLoading: isIndexLoading } = useQuery<DirectoryIndex>({
     queryKey: ["/api/public/browse/index"],
+    enabled: validFilters,
     staleTime: 24 * 60 * 60 * 1000, // 24 hours
   });
 
   // 2. Fetch paginated judgments list if any filter is active
-  const hasFilters = courtId !== undefined || journalId !== undefined || year !== undefined;
+  const hasFilters = courtId !== undefined || journalId !== undefined || year !== undefined || page > 1;
   const listQueryString = new URLSearchParams();
   if (courtId !== undefined) listQueryString.set("courtId", String(courtId));
   if (journalId !== undefined) listQueryString.set("journalId", String(journalId));
@@ -86,7 +98,12 @@ export default function JudgmentDirectoryPage() {
 
   const { data: listData, isLoading: isListLoading } = useQuery<ListResponse>({
     queryKey: ["/api/public/browse/list", listQueryString.toString()],
-    enabled: true, // Always load or fallback to all judgments for broad crawling
+    queryFn: async () => {
+      const response = await fetch(`/api/public/browse/list?${listQueryString}`);
+      if (!response.ok) throw new Error("Judgment directory could not be loaded");
+      return response.json();
+    },
+    enabled: validFilters,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -135,10 +152,13 @@ export default function JudgmentDirectoryPage() {
     }
 
     if (filters.page !== undefined) nextParams.set("page", String(filters.page));
+    if (limit !== 50) nextParams.set("limit", String(limit));
     
     const query = nextParams.toString();
     return `/judgments/browse${query ? `?${query}` : ""}`;
   };
+
+  if (!validFilters) return <div className="p-8"><h1>Invalid directory filters</h1><Link href="/judgments/browse">Browse all judgments</Link></div>;
 
   return (
     <div className="space-y-8 pb-12">
@@ -166,7 +186,7 @@ export default function JudgmentDirectoryPage() {
       </div>
 
       {/* Main Browse Directories or Filtered Listings */}
-      {!hasFilters ? (
+      {!hasFilters && (
         <div className="space-y-8">
           {isIndexLoading ? (
             <div className="space-y-8">
@@ -203,7 +223,7 @@ export default function JudgmentDirectoryPage() {
               <TabsContent value="courts" className="mt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {indexData?.courts.map((court) => (
-                    <Link key={court.id} href={buildBrowseLink({ courtId: court.id })}>
+                    <Link asChild key={court.id} href={buildBrowseLink({ courtId: court.id })}>
                       <a className="group block focus:outline-none">
                         <Card className="h-full bg-neutral-950/40 border-neutral-800 hover:border-amber-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/5 group-hover:-translate-y-1">
                           <CardHeader className="pb-3">
@@ -236,7 +256,7 @@ export default function JudgmentDirectoryPage() {
               <TabsContent value="journals" className="mt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {indexData?.journals.map((journal) => (
-                    <Link key={journal.id} href={buildBrowseLink({ journalId: journal.id })}>
+                    <Link asChild key={journal.id} href={buildBrowseLink({ journalId: journal.id })}>
                       <a className="group block focus:outline-none">
                         <Card className="h-full bg-neutral-950/40 border-neutral-800 hover:border-amber-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/5 group-hover:-translate-y-1">
                           <CardHeader className="pb-3">
@@ -269,7 +289,7 @@ export default function JudgmentDirectoryPage() {
               <TabsContent value="years" className="mt-0">
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
                   {indexData?.years.map((y) => (
-                    <Link key={y} href={buildBrowseLink({ year: y })}>
+                    <Link asChild key={y} href={buildBrowseLink({ year: y })}>
                       <a className="group block text-center focus:outline-none">
                         <div className="rounded-xl border border-neutral-850 bg-neutral-950/40 py-4 hover:border-amber-500/40 hover:bg-neutral-900/50 hover:shadow-md hover:shadow-amber-500/5 transition-all duration-200 group-hover:-translate-y-1">
                           <CalendarDays className="h-4 w-4 text-amber-500/60 group-hover:text-amber-400 mx-auto mb-1 transition-colors" />
@@ -285,14 +305,15 @@ export default function JudgmentDirectoryPage() {
             </Tabs>
           )}
         </div>
-      ) : (
+      )}
+      {(
         <div className="space-y-6">
           {/* Breadcrumb / Back Navigation */}
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <Link href="/judgments/browse">
+            <Link asChild href="/judgments/browse">
               <a className="inline-flex items-center text-sm font-semibold text-neutral-450 hover:text-amber-400 transition-colors gap-2">
                 <ArrowLeft className="h-4 w-4" />
-                Back to Directory Directory
+                Back to Directory
               </a>
             </Link>
             <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/5 px-3 py-1 font-medium">
@@ -308,11 +329,12 @@ export default function JudgmentDirectoryPage() {
                   <Skeleton key={idx} className="h-[120px] w-full rounded-xl" />
                 ))}
               </div>
-            ) : listData && listData.items.length > 0 ? (
+            ) : listData && (listData.items.length > 0 || listData.pagination.totalPages > 1) ? (
               <>
                 <div className="grid grid-cols-1 gap-4">
+                  {listData.items.length === 0 && <p>No confirmed cases on this page. Try another page or filter.</p>}
                   {listData.items.map((item) => (
-                    <Link key={item.id} href={`/judgment/${item.id}`}>
+                    <Link asChild key={item.id} href={`/judgment/${item.id}`}>
                       <a className="group block focus:outline-none">
                         <Card className="bg-neutral-950/40 border-neutral-800 hover:border-amber-500/30 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/5">
                           <CardHeader className="pb-2">
@@ -350,11 +372,11 @@ export default function JudgmentDirectoryPage() {
                 {listData.pagination.totalPages > 1 && (
                   <div className="flex items-center justify-between border-t border-neutral-850 pt-6">
                     <div className="text-xs text-neutral-500">
-                      Showing page {listData.pagination.page} of {listData.pagination.totalPages} ({listData.pagination.total} cases)
+                      Showing page {listData.pagination.page} of {listData.pagination.totalPages} ({listData.pagination.total} {listData.pagination.totalIsEstimate ? "candidate records; unconfirmed identities omitted" : "cases"})
                     </div>
                     <div className="flex items-center gap-2">
                       {listData.pagination.page > 1 ? (
-                        <Link href={buildBrowseLink({ page: listData.pagination.page - 1 })}>
+                        <Link asChild href={buildBrowseLink({ page: listData.pagination.page - 1 })}>
                           <a className="inline-flex h-9 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-950/40 px-3 text-sm font-medium text-neutral-350 hover:border-amber-500/30 hover:text-amber-400 transition-all">
                             <ChevronLeft className="h-4 w-4 mr-1" />
                             Previous
@@ -378,7 +400,7 @@ export default function JudgmentDirectoryPage() {
                           pages.push(p);
                         }
                         return pages.map(p => (
-                          <Link key={p} href={buildBrowseLink({ page: p })}>
+                          <Link asChild key={p} href={buildBrowseLink({ page: p })}>
                             <a className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold border transition-all ${
                               p === current 
                                 ? "bg-amber-500/10 border-amber-500/40 text-amber-400 shadow-sm shadow-amber-500/5" 
@@ -391,7 +413,7 @@ export default function JudgmentDirectoryPage() {
                       })()}
 
                       {listData.pagination.hasMore ? (
-                        <Link href={buildBrowseLink({ page: listData.pagination.page + 1 })}>
+                        <Link asChild href={buildBrowseLink({ page: listData.pagination.page + 1 })}>
                           <a className="inline-flex h-9 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-950/40 px-3 text-sm font-medium text-neutral-350 hover:border-amber-500/30 hover:text-amber-400 transition-all">
                             Next
                             <ChevronRight className="h-4 w-4 ml-1" />

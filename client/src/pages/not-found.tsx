@@ -1,7 +1,9 @@
 import { Scale } from "lucide-react";
 import { Link } from "wouter";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 export default function NotFound() {
+  useDocumentHead({ title: "Page Not Found", description: "The requested Al Wakeelo page could not be found.", index: false });
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-6">
       <div className="text-center space-y-6">
@@ -10,9 +12,9 @@ export default function NotFound() {
           404 - Case Dismissed
         </h1>
         <p className="text-muted-foreground text-sm">The page you seek has been struck from the docket.</p>
-        <Link href="/dashboard">
+        <Link href="/">
           <button className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-primary transition-all shadow-xl">
-            Return to Chambers
+            Return Home
           </button>
         </Link>
       </div>

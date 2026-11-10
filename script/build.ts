@@ -24,6 +24,9 @@ const allowlist = [
   "passport",
   "passport-local",
   "pg",
+  // These ESM-only renderers are used by the CommonJS server's public HTML path.
+  "react-markdown",
+  "remark-gfm",
   "stripe",
   "uuid",
   "ws",

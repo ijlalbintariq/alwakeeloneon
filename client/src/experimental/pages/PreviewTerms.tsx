@@ -140,7 +140,7 @@ export default function PreviewTerms() {
                 Alwakeelo provides a suite of specialized legal technology tools tailored to Pakistani practice, including:
               </p>
               <ul className="list-disc list-inside space-y-1.5 pl-2 text-[#334155] dark:text-[#CBD5E1]">
-                <li>600,000+ indexed Supreme Court and High Court judgments with precedent citation network graphs.</li>
+                <li>Indexed Pakistani court judgments with precedent citation network graphs.</li>
                 <li>83,117 statutory sections directory across 5,887 Federal and Provincial Acts with Limitation Act and Court Fee calculators.</li>
                 <li>High Court and District Court petition and pleading drafting tools.</li>
                 <li>Commercial contract generation, clause libraries, and risk redline audit engines.</li>

@@ -7,7 +7,7 @@ export default function PreviewAbout() {
   useDocumentHead({
     title: "About Us | Al Wakeelo — Pakistan's AI Legal Assistant",
     description: "Learn about Al Wakeelo, Pakistan's premier AI legal assistant operated by Majnoon Studio.",
-    path: "/preview/about",
+    path: "/about",
   });
 
   return (
@@ -36,7 +36,7 @@ export default function PreviewAbout() {
             In Pakistan, legal research has traditionally been slow, expensive, and limited by access to physical law libraries. Al Wakeelo was born out of a desire to change this. 
           </p>
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
-            By indexing over 600,000+ judgments, 83,117 statutory sections across 5,887 Acts, and training advanced AI models with a strict Zero-Training on briefs guarantee, we enable advocates to perform hours of case law research in seconds.
+            By indexing Pakistani judgments, 83,117 statutory sections across 5,887 Acts, and training advanced AI models with a strict Zero-Training on briefs guarantee, we enable advocates to perform hours of case law research in seconds.
           </p>
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] leading-relaxed">
             Our goal is to improve the efficiency of the legal process, giving every chamber the research capabilities of a large firm.
@@ -49,7 +49,7 @@ export default function PreviewAbout() {
             </div>
             <div>
               <h3 className="font-bold text-[#0F172A] dark:text-[#F8FAFC]">Verified Precedents Only</h3>
-              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">We cross-reference every cited judgment against our database to prevent AI hallucinations.</p>
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">Citation and text checks help identify mismatched records. Review original sources before relying on AI output.</p>
             </div>
           </div>
           <div className="flex gap-4">
@@ -131,7 +131,7 @@ export default function PreviewAbout() {
           Ready to experience the future of Pakistani law?
         </h2>
         <p className="text-sm text-[#0F172A] dark:text-[#F8FAFC] max-w-xl mx-auto">
-          Create a free account to search 600,000+ judgments, check statutes, and generate cited drafts.
+          Create a free account to search Pakistani judgments, check statutes, and generate cited drafts.
         </p>
         <div className="flex justify-center gap-3">
           <a
@@ -141,7 +141,7 @@ export default function PreviewAbout() {
             Create Free Account
           </a>
           <a
-            href="/preview/contact"
+            href="/contact"
             className="rounded-xl border border-[#E2E8F0] dark:border-[#1E2D44] bg-white dark:bg-[#131E2E] px-5 py-2.5 text-xs font-medium text-[#0F172A] dark:text-[#F8FAFC] hover:bg-white dark:bg-[#131E2E]/75 transition-colors"
           >
             Contact Chamber

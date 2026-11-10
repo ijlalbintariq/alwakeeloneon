@@ -203,8 +203,8 @@ export default function PreviewLanding() {
   useDocumentHead({
     title: "AL WAKEELO AI - Pakistan Law Search & AI Legal Assistant | Digital Lawyer",
     description:
-      "Pakistan's premier AI-powered digital lawyer and case law search. Search 600,000+ judgments (PLD, SCMR, YLR), search Pakistan Penal Code, CPC & CrPC, draft petitions, and generate legally binding contracts.",
-    path: "/preview",
+      "Pakistan's premier AI-powered digital lawyer and case law search. Search Pakistani judgments (PLD, SCMR, YLR), search Pakistan Penal Code, CPC & CrPC, draft petitions, and draft contracts for review.",
+    path: "/",
   });
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -253,7 +253,7 @@ export default function PreviewLanding() {
   const legalDocumentsLabel =
     legalDocumentsCount > 0
       ? new Intl.NumberFormat("en-US").format(legalDocumentsCount)
-      : "600,000+";
+      : "Pakistani law";
 
   const faqSchema = {
     "@context": "https://schema.org",
@@ -275,7 +275,7 @@ export default function PreviewLanding() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div
             className="flex items-center gap-3 cursor-pointer"
-            onClick={() => navigate("/preview")}
+            onClick={() => navigate("/")}
           >
             <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#105B38]/30 shadow-lg shadow-[#105B38]/10 bg-card flex items-center justify-center">
               <img
@@ -294,23 +294,23 @@ export default function PreviewLanding() {
 
           <div className="hidden md:flex items-center gap-8">
             <a
-              href="/preview"
+              href="/"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview");
+                navigate("/");
               }}
               className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
             >
               Home
             </a>
             <a
-              href="#features"
+              href="/#features"
               onClick={(e) => {
                 e.preventDefault();
-                if (window.location.pathname === '/preview' || window.location.pathname === '/' || window.location.pathname === '/preview/') {
+                if (window.location.pathname === '/') {
                   document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                  navigate('/preview#features');
+                  navigate('/#features');
                 }
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -318,13 +318,13 @@ export default function PreviewLanding() {
               Features
             </a>
             <a
-              href="/preview/pricing"
+              href="/pricing"
               onClick={(e) => {
                 e.preventDefault();
-                if (window.location.pathname === '/preview' || window.location.pathname === '/' || window.location.pathname === '/preview/') {
+                if (window.location.pathname === '/') {
                   document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                  navigate('/preview#pricing');
+                  navigate('/#pricing');
                 }
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -332,40 +332,40 @@ export default function PreviewLanding() {
               Pricing
             </a>
             <a
-              href="/preview/about"
+              href="/about"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview/about");
+                navigate("/about");
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               About
             </a>
             <a
-              href="/preview/contact"
+              href="/contact"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview/contact");
+                navigate("/contact");
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Contact
             </a>
             <a
-              href="/preview/faq"
+              href="/faq"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview/faq");
+                navigate("/faq");
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               FAQ
             </a>
             <a
-              href="/preview/blog"
+              href="/blog"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview/blog");
+                navigate("/blog");
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -428,25 +428,25 @@ export default function PreviewLanding() {
           <div className="md:hidden border-t border-border/70 bg-background/95 backdrop-blur-xl">
             <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-3">
               <a
-                href="/preview"
+                href="/"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview");
+                  navigate("/");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
                 Home
               </a>
               <a
-                href="#features"
+                href="/#features"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  if (window.location.pathname === '/preview' || window.location.pathname === '/' || window.location.pathname === '/preview/') {
+                  if (window.location.pathname === '/') {
                   document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                  navigate('/preview#features');
+                  navigate('/#features');
                 }
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
@@ -454,14 +454,14 @@ export default function PreviewLanding() {
                 Features
               </a>
               <a
-                href="#pricing"
+                href="/#pricing"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  if (window.location.pathname === '/preview' || window.location.pathname === '/' || window.location.pathname === '/preview/') {
+                  if (window.location.pathname === '/') {
                   document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                  navigate('/preview#pricing');
+                  navigate('/#pricing');
                 }
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
@@ -469,44 +469,44 @@ export default function PreviewLanding() {
                 Pricing
               </a>
               <a
-                href="/preview/about"
+                href="/about"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview/about");
+                  navigate("/about");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
                 About
               </a>
               <a
-                href="/preview/contact"
+                href="/contact"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview/contact");
+                  navigate("/contact");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
                 Contact
               </a>
               <a
-                href="/preview/faq"
+                href="/faq"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview/faq");
+                  navigate("/faq");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
                 FAQ
               </a>
               <a
-                href="/preview/blog"
+                href="/blog"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview/blog");
+                  navigate("/blog");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
@@ -551,7 +551,7 @@ export default function PreviewLanding() {
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#105B38]/10 border border-[#105B38]/20 dark:border-[#105B38]/40 rounded-full mb-8">
             <span className="w-2 h-2 bg-[#105B38] rounded-full animate-pulse" />
             <span className="text-[11px] text-[#105B38] font-bold uppercase tracking-widest">
-              Pakistan's First Open-Source Legal AI Platform
+              AI Legal Research & Drafting Platform
             </span>
           </div>
 
@@ -567,7 +567,7 @@ export default function PreviewLanding() {
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             Research case law, draft petitions and contracts, and generate
             client-ready legal documents in minutes with AL WAKEELO AI,
-            fine-tuned for Pakistani legal practice.
+            built to support Pakistani legal practice.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -582,10 +582,10 @@ export default function PreviewLanding() {
               {user ? "Open Dashboard" : "Start Free"} <ArrowRight size={16} />
             </a>
             <a
-              href="/preview/contact?consult=1#consult"
+              href="/contact?consult=1#consult"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview/contact?consult=1#consult");
+                navigate("/contact?consult=1#consult");
               }}
               className="w-full sm:w-auto px-8 py-4 border border-border text-foreground rounded-2xl text-sm font-bold hover:border-[#105B38] hover:text-[#105B38] transition-all flex items-center justify-center gap-2"
             >
@@ -595,13 +595,13 @@ export default function PreviewLanding() {
 
           <div className="mt-4">
             <a
-              href="#features"
+              href="/#features"
               onClick={(e) => {
                 e.preventDefault();
-                if (window.location.pathname === '/preview' || window.location.pathname === '/' || window.location.pathname === '/preview/') {
+                if (window.location.pathname === '/') {
                   document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                  navigate('/preview#features');
+                  navigate('/#features');
                 }
               }}
               className="inline-flex items-center gap-2 text-sm font-bold text-foreground hover:text-[#105B38] transition-all"
@@ -709,7 +709,7 @@ export default function PreviewLanding() {
               </span>
             </h2>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              Connect our massive database of 600,000+ judgments and laws
+              Connect our massive database of Pakistani judgments and laws
               directly to your own AI chatbot app. No more copying and
               pasting—simply generate a secure API Key and start searching
               Pakistan laws inside Claude Desktop, Claude Connectors, or
@@ -802,7 +802,7 @@ export default function PreviewLanding() {
               </span>
             </h2>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              Research 600,000+ judgments, lookup 5,900+ statutes, audit
+              Research Pakistani judgments, lookup 5,900+ statutes, audit
               commercial contracts for risk, and consult AI legal advisors—all
               without leaving your Word document.
             </p>
@@ -816,7 +816,7 @@ export default function PreviewLanding() {
               </a>
               <button
                 type="button"
-                onClick={() => navigate("/preview/word-addin-guide")}
+                onClick={() => navigate("/word-addin-guide")}
                 className="px-6 py-3.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2"
               >
                 View Setup Guide <ArrowRight size={13} />
@@ -833,7 +833,7 @@ export default function PreviewLanding() {
                 </div>
                 <div>
                   <h3 className="font-bold text-foreground text-sm">
-                    600K+ Judgment Search
+                    Pakistani Judgment Search
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     Instant keyword &amp; pinpoint citation search (PLD, SCMR,
@@ -1378,7 +1378,7 @@ export default function PreviewLanding() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div
               className="flex items-center gap-3 cursor-pointer"
-              onClick={() => navigate("/preview")}
+              onClick={() => navigate("/")}
             >
               <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#105B38]/30 bg-card flex items-center justify-center">
                 <img
@@ -1397,80 +1397,80 @@ export default function PreviewLanding() {
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <a
-                href="/preview/about"
+                href="/about"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/about");
+                  navigate("/about");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 About Us
               </a>
               <a
-                href="/preview/contact"
+                href="/contact"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/contact");
+                  navigate("/contact");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Contact Us
               </a>
               <a
-                href="/preview/faq"
+                href="/faq"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/faq");
+                  navigate("/faq");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 FAQ
               </a>
               <a
-                href="/preview/blog"
+                href="/blog"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/blog");
+                  navigate("/blog");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Legal Blog
               </a>
               <a
-                href="/preview/privacy"
+                href="/privacy"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/privacy");
+                  navigate("/privacy");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Privacy Policy
               </a>
               <a
-                href="/preview/terms"
+                href="/terms"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/terms");
+                  navigate("/terms");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Terms and Conditions
               </a>
               <a
-                href="/preview/cancellation-return-refund-policy"
+                href="/cancellation-return-refund-policy"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/cancellation-return-refund-policy");
+                  navigate("/cancellation-return-refund-policy");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Cancellation/Return/Refund Policy
               </a>
               <a
-                href="/preview/ownership-statement"
+                href="/ownership-statement"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/ownership-statement");
+                  navigate("/ownership-statement");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >

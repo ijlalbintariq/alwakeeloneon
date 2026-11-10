@@ -5,6 +5,9 @@ import ts from "typescript";
 import { prepareJudgmentDetail, citationMatchesCourt } from "../../server/citation-verify";
 import { injectSeoMeta } from "../../server/seo-meta";
 import { linkifyCitationsInHtml } from "../../server/static";
+import { sql } from "drizzle-orm";
+import { judgments, courtsRef } from "../../shared/schema";
+import { canonicalPublicPath } from "../../shared/public-routes";
 
 const source = ts.createSourceFile("static.ts", fs.readFileSync("server/static.ts", "utf8"), ts.ScriptTarget.Latest, true);
 function compile(name: string, deps: Record<string, any>): (...args: any[]) => Promise<any> {
@@ -20,20 +23,26 @@ function compile(name: string, deps: Record<string, any>): (...args: any[]) => P
 const id = "00000000-0000-4000-8000-000000000001";
 const title = "Sardar Begum Farooqui vs Azhar Masood Farooqui";
 const text = `Court Name: Sindh High Court\nTitle: ${title}\nReported As: PLD 2022 Sindh 565\nResult: dismissed\n${"The court considered the evidence and dismissed the appeal. ".repeat(30)}`;
-const good = { title, citationString: "2022 PLD 565", courtNameSnapshot: "Sindh High Court", petitioner: "Sardar Begum Farooqui", respondent: "Azhar Masood Farooqui", decisionDate: new Date("2021-11-25T00:00:00Z"), fullText: text, textStatus: "own", headnotes: "UNCHECKED_HEADNOTE", pdfUrl: null };
+const good = { title, citationString: "2022 PLD 565", courtId: 7, courtNameSnapshot: "Sindh High Court", petitioner: "Sardar Begum Farooqui", respondent: "Azhar Masood Farooqui", decisionDate: new Date("2021-11-25T00:00:00Z"), fullText: text, textStatus: "own", headnotes: "UNCHECKED_HEADNOTE", pdfUrl: null };
 
-function harness(initial: any) {
+function harness(initial: any, verifiedOwners = new Set<string>()) {
   let row = initial;
   const get = compile("getJudgmentSeoData", {
-    db: { select: () => ({ from: () => ({ where: () => ({ limit: async () => [row] }) }) }) },
-    judgments: {}, eq: () => "", prepareJudgmentDetail, linkifyCitationsInHtml,
-    seoActiveQueries: 0, SEO_MAX_CONCURRENT: 50, SEO_QUERY_TIMEOUT_MS: 8000, setTimeout: () => 0,
+    db: { select: () => {
+      const chain: any = { limit: async () => { if (row instanceof Error) throw row; return row ? [row] : []; } };
+      for (const name of ["from", "leftJoin", "where"]) chain[name] = () => chain;
+      return chain;
+    } },
+    judgments, courtsRef, sql, eq: () => "", prepareJudgmentDetail, linkifyCitationsInHtml,
+    getIndexableJudgmentIds: async () => verifiedOwners,
+    seoActiveQueries: 0, SEO_MAX_CONCURRENT: 50, SEO_QUERY_TIMEOUT_MS: 8000, setTimeout: () => 0, clearTimeout() {},
   });
   const send = compile("sendIndexWithSeo", {
     getJudgmentSeoData: get, resolveJudgment: async (raw: string) => citationMatchesCourt(raw, row.courtNameSnapshot) ? { id } : undefined,
     judgments: {}, STATIC_PRERENDER: {}, BLOG_ARTICLES: [],
     indexHtmlTemplate: '<html><head><title>Default</title><meta name="robots" content="index, follow" /></head><body><div id="root"></div></body></html>',
     injectSeoMeta, HTML_CACHE_HEADER: "public, s-maxage=300",
+    canonicalPublicPath, console: { error() {} },
   });
   const page = async (url: string) => {
     const res = { headers: {} as Record<string, string>, statusCode: 0, html: "", location: "", setHeader(name: string, value: string) { this.headers[name] = value; }, status(value: number) { this.statusCode = value; return this; }, send(value: string) { this.html = value; return this; }, redirect(status: number, location: string) { this.statusCode = status; this.location = location; return this; } };
@@ -51,6 +60,7 @@ test("both judgment URL aliases publish the same guarded title and text", async 
     assert.equal(result.headers["Cache-Control"], "no-store");
     assert.match(result.html, /Sardar Begum Farooqui vs Azhar Masood Farooqui/);
     assert.match(result.html, /The court considered the evidence/);
+    assert.match(result.html, /href="\/judgments\/browse\?courtId=7"/);
     assert.doesNotMatch(result.html, /UNCHECKED_HEADNOTE|Core Holding:|FAQPage/);
   }
   const canonicalize = (html: string) => html.replaceAll(`/judgments/${id}`, `/judgment/${id}`);
@@ -100,4 +110,31 @@ test("rendered judgment HTML uses citation search for references without a confi
   const result = await harness({ ...good, fullText: `${text}\n\nThe court considered 2024 SCMR 1085.` }).page(`/judgment/${id}`);
   assert.match(result.html, /href="\/citation-search\?q=2024%20SCMR%201085"/);
   assert.doesNotMatch(result.html, /href="\/judgment\/2024-SCMR-1085"/);
+});
+
+test("proven retired UUIDs permanently redirect to the confirmed canonical owner", async () => {
+  const owner = "00000000-0000-4000-8000-000000000002";
+  const row = { ...good, isActive: false, canonicalJudgmentId: owner };
+  const result = await harness(row, new Set([owner])).page(`/judgment/${id}?from=old`);
+  assert.equal(result.statusCode, 301);
+  assert.equal(result.location, `/judgment/${owner}?from=old`);
+  assert.equal((await harness(row).page(`/judgment/${id}`)).statusCode, 404);
+  assert.equal((await harness({ ...row, canonicalJudgmentId: id }).page(`/judgment/${id}`)).statusCode, 404);
+});
+
+test("missing or archived records return 404; backend failures return retryable 503 without noindex", async () => {
+  assert.equal((await harness(undefined).page(`/judgment/${id}`)).statusCode, 404);
+  assert.equal((await harness({ ...good, isActive: false }).page(`/judgment/${id}`)).statusCode, 404);
+  const outage = await harness(new Error("database unavailable")).page(`/judgment/${id}`);
+  assert.equal(outage.statusCode, 503);
+  assert.equal(outage.headers["Retry-After"], "30");
+  assert.equal(outage.headers["Cache-Control"], "no-store");
+  assert.doesNotMatch(outage.html, /noindex/);
+});
+
+test("marketing preview redirects preserve query strings without touching workspace paths", async () => {
+  const response = await harness(good).page("/preview/blog/known-guide?ref=share");
+  assert.equal(response.statusCode, 301);
+  assert.equal(response.location, "/blog/known-guide?ref=share");
+  assert.equal(canonicalPublicPath("/preview/dashboard"), "/preview/dashboard");
 });

@@ -22,7 +22,7 @@ export const PreviewNavbar: React.FC<PreviewNavbarProps> = ({ className }) => {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div
             className="flex items-center gap-3 cursor-pointer"
-            onClick={() => navigate("/preview")}
+            onClick={() => navigate("/")}
           >
             <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#105B38]/30 shadow-lg shadow-[#105B38]/10 bg-card flex items-center justify-center">
               <img
@@ -41,23 +41,23 @@ export const PreviewNavbar: React.FC<PreviewNavbarProps> = ({ className }) => {
 
           <div className="hidden md:flex items-center gap-8">
             <a
-              href="/preview"
+              href="/"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview");
+                navigate("/");
               }}
               className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
             >
               Home
             </a>
             <a
-              href="#features"
+              href="/#features"
               onClick={(e) => {
                 e.preventDefault();
-                if (window.location.pathname === '/preview' || window.location.pathname === '/' || window.location.pathname === '/preview/') {
+                if (window.location.pathname === '/') {
                   document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                  navigate('/preview#features');
+                  navigate('/#features');
                 }
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -65,13 +65,13 @@ export const PreviewNavbar: React.FC<PreviewNavbarProps> = ({ className }) => {
               Features
             </a>
             <a
-              href="#pricing"
+              href="/#pricing"
               onClick={(e) => {
                 e.preventDefault();
-                if (window.location.pathname === '/preview' || window.location.pathname === '/' || window.location.pathname === '/preview/') {
+                if (window.location.pathname === '/') {
                   document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                  navigate('/preview#pricing');
+                  navigate('/#pricing');
                 }
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -79,40 +79,40 @@ export const PreviewNavbar: React.FC<PreviewNavbarProps> = ({ className }) => {
               Pricing
             </a>
             <a
-              href="/preview/about"
+              href="/about"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview/about");
+                navigate("/about");
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               About
             </a>
             <a
-              href="/preview/contact"
+              href="/contact"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview/contact");
+                navigate("/contact");
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Contact
             </a>
             <a
-              href="/preview/faq"
+              href="/faq"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview/faq");
+                navigate("/faq");
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               FAQ
             </a>
             <a
-              href="/preview/blog"
+              href="/blog"
               onClick={(e) => {
                 e.preventDefault();
-                navigate("/preview/blog");
+                navigate("/blog");
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -165,25 +165,25 @@ export const PreviewNavbar: React.FC<PreviewNavbarProps> = ({ className }) => {
           <div className="md:hidden border-t border-border/70 bg-background/95 backdrop-blur-xl">
             <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-3">
               <a
-                href="/preview"
+                href="/"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview");
+                  navigate("/");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
                 Home
               </a>
               <a
-                href="#features"
+                href="/#features"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  if (window.location.pathname === '/preview' || window.location.pathname === '/' || window.location.pathname === '/preview/') {
+                  if (window.location.pathname === '/') {
                   document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                  navigate('/preview#features');
+                  navigate('/#features');
                 }
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
@@ -191,14 +191,14 @@ export const PreviewNavbar: React.FC<PreviewNavbarProps> = ({ className }) => {
                 Features
               </a>
               <a
-                href="#pricing"
+                href="/#pricing"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  if (window.location.pathname === '/preview' || window.location.pathname === '/' || window.location.pathname === '/preview/') {
+                  if (window.location.pathname === '/') {
                   document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                  navigate('/preview#pricing');
+                  navigate('/#pricing');
                 }
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
@@ -206,44 +206,44 @@ export const PreviewNavbar: React.FC<PreviewNavbarProps> = ({ className }) => {
                 Pricing
               </a>
               <a
-                href="/preview/about"
+                href="/about"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview/about");
+                  navigate("/about");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
                 About
               </a>
               <a
-                href="/preview/contact"
+                href="/contact"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview/contact");
+                  navigate("/contact");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
                 Contact
               </a>
               <a
-                href="/preview/faq"
+                href="/faq"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview/faq");
+                  navigate("/faq");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >
                 FAQ
               </a>
               <a
-                href="/preview/blog"
+                href="/blog"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileNavOpen(false);
-                  navigate("/preview/blog");
+                  navigate("/blog");
                 }}
                 className="text-sm font-medium text-foreground hover:text-[#105B38] transition-colors"
               >

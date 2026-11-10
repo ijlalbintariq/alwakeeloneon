@@ -53,6 +53,10 @@ const PreviewJudges = lazy(() => import("./pages/PreviewJudges"));
 const PreviewJudgeProfile = lazy(() => import("./pages/PreviewJudgeProfile"));
 const PreviewMostCited = lazy(() => import("./pages/PreviewMostCited"));
 const PreviewCourtFeeCalculator = lazy(() => import("./pages/PreviewCourtFeeCalculator"));
+const JudgmentDirectoryPage = lazy(() => import("@/pages/judgment-directory"));
+const StatuteViewPage = lazy(() => import("@/pages/statute-view"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const OwnershipStatementPage = lazy(() => import("@/pages/ownership-statement"));
 
 const FallbackLoader = () => (
   <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center text-[#0F172A] font-mono text-xs gap-3">
@@ -123,6 +127,8 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/preview/privacy" component={PreviewPrivacy} />
         <Route path="/terms" component={PreviewTerms} />
         <Route path="/preview/terms" component={PreviewTerms} />
+        <Route path="/ownership-statement" component={OwnershipStatementPage} />
+        <Route path="/preview/ownership-statement" component={OwnershipStatementPage} />
         <Route path="/refund-policy" component={PreviewRefundPolicy} />
         <Route path="/preview/refund-policy" component={PreviewRefundPolicy} />
         <Route path="/cancellation-return-refund-policy" component={PreviewRefundPolicy} />
@@ -195,6 +201,7 @@ export const AppPreviewRouter: React.FC = () => {
         <ProtectedRoute path="/preview/drafting" component={PreviewDrafting} />
         <Route path="/judgments" component={PreviewJudgments} />
         <Route path="/judgment-search" component={PreviewJudgments} />
+        <Route path="/judgments/browse" component={JudgmentDirectoryPage} />
         <Route path="/judgments/:id" component={JudgmentPermalink} />
         <Route path="/workspace/bench-simulator" component={BenchSimulator} />
         <Route path="/preview/judgments" component={PreviewJudgments} />
@@ -228,6 +235,7 @@ export const AppPreviewRouter: React.FC = () => {
         </Route>
         <Route path="/statutes" component={PreviewStatutes} />
         <Route path="/statute-search" component={PreviewStatutes} />
+        <Route path="/statute-view/:id" component={StatuteViewPage} />
         <Route path="/preview/statutes" component={PreviewStatutes} />
         <Route path="/preview/reference" component={PreviewStatutes} />
         <Route path="/judges" component={PreviewJudges} />
@@ -272,7 +280,7 @@ export const AppPreviewRouter: React.FC = () => {
           <Redirect to="/preview/dashboard" />
         </Route>
         <Route path="*">
-          <Redirect to="/dashboard" />
+          <NotFound />
         </Route>
       </Switch>
     </Suspense>

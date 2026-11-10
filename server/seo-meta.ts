@@ -11,6 +11,8 @@
  * lookups (cached) for true per-item titles.
  */
 
+import { canonicalPublicPath } from "../shared/public-routes";
+
 const SITE_NAME = "Al Wakeelo";
 const SITE_ORIGIN = "https://www.alwakeelo.com";
 
@@ -19,6 +21,7 @@ export interface SeoMeta {
   description: string;
   index: boolean;
   schemaMarkup?: string;
+  canonicalPath?: string;
 }
 
 interface RouteRule {
@@ -29,17 +32,25 @@ interface RouteRule {
 const DEFAULT_META: SeoMeta = {
   title: "Alwakeelo AI - Pakistan Law Search & AI Legal Assistant | Digital Lawyer",
   description:
-    "Pakistan's premier AI-powered digital lawyer and case law search. Search 600,000+ judgments (PLD, SCMR, YLR), search Pakistan Penal Code, CPC & CrPC, draft petitions, and generate legally binding contracts.",
-  index: true,
+    "Pakistan's premier AI-powered digital lawyer and case law search. Search Pakistani judgments (PLD, SCMR, YLR), search Pakistan Penal Code, CPC & CrPC, draft petitions, and prepare contract drafts for legal review.",
+  index: false,
 };
 
 const ROUTE_RULES: RouteRule[] = [
+  {
+    match: /^\/pricing$/,
+    meta: {
+      title: "Plans and Pricing | Al Wakeelo",
+      description: "Compare Al Wakeelo plans for Pakistani legal research, AI-assisted drafting and chambers. Review current prices and usage limits before subscribing.",
+      index: true,
+    },
+  },
   {
     match: /^\/$/,
     meta: {
       title: "Alwakeelo AI - Pakistan Law Search & AI Legal Assistant | Digital Lawyer",
       description:
-        "Pakistan's premier AI-powered digital lawyer and case law search. Search 600,000+ judgments (PLD, SCMR, YLR), search Pakistan Penal Code, CPC & CrPC, draft petitions, and generate legally binding contracts.",
+        "Pakistan's premier AI-powered digital lawyer and case law search. Search Pakistani judgments (PLD, SCMR, YLR), search Pakistan Penal Code, CPC & CrPC, draft petitions, and prepare contract drafts for legal review.",
       index: true,
     },
   },
@@ -49,7 +60,7 @@ const ROUTE_RULES: RouteRule[] = [
       title: "Sign in or create account | Al Wakeelo",
       description:
         "Sign in to Al Wakeelo to access AI-powered Pakistani legal research, judgment search, and drafting tools.",
-      index: true,
+      index: false,
     },
   },
   {
@@ -110,7 +121,7 @@ const ROUTE_RULES: RouteRule[] = [
       title: "About Us | Al Wakeelo — Pakistan's AI Legal Assistant",
       description: "Learn about Al Wakeelo, Pakistan's premier AI legal assistant operated by Majnoon Studio. Discover our mission, values, and technology.",
       index: true,
-      schemaMarkup: `<script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"AboutPage","name":"About Al Wakeelo","description":"Al Wakeelo is Pakistan's first AI-powered legal assistant, built by Majnoon Studio. We combine large language models with a database of 600,000+ verified Pakistani court judgments.","url":"https://www.alwakeelo.com/about","mainEntity":{"@id":"https://www.alwakeelo.com/#organization"}})}</script>`,
+      schemaMarkup: `<script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"AboutPage","name":"About Al Wakeelo","description":"Al Wakeelo is a Pakistan-focused AI-powered legal assistant, built by Majnoon Studio. We combine large language models with a database of Pakistani court judgments with identity checks.","url":"https://www.alwakeelo.com/about","mainEntity":{"@id":"https://www.alwakeelo.com/#organization"}})}</script>`,
     },
   },
   {
@@ -135,9 +146,9 @@ ${JSON.stringify(
     "@context": "https://schema.org",
     "@type": "FAQPage",
     "mainEntity": [
-      { "@type": "Question", "name": "What is Al Wakeelo?", "acceptedAnswer": { "@type": "Answer", "text": "Al Wakeelo is Pakistan's first AI-powered legal assistant platform. It leverages large language models and a database of over 600,000 Pakistani court judgments to help advocates, law chambers, and individuals perform legal research and document drafting." } },
+      { "@type": "Question", "name": "What is Al Wakeelo?", "acceptedAnswer": { "@type": "Answer", "text": "Al Wakeelo is a Pakistan-focused AI-powered legal assistant platform. It leverages large language models and a database of Pakistani court judgments to help advocates, law chambers, and individuals perform legal research and document drafting." } },
       { "@type": "Question", "name": "Does Al Wakeelo replace a lawyer?", "acceptedAnswer": { "@type": "Answer", "text": "No. Al Wakeelo is a legal research and drafting assistant. It provides informational drafts and legal citations grounded in Pakistani law, but does not provide binding legal advice. For any official legal action, you must consult a licensed advocate." } },
-      { "@type": "Question", "name": "How does the AI prevent hallucinations (fake cases)?", "acceptedAnswer": { "@type": "Answer", "text": "Al Wakeelo uses a Retrieval-Augmented Generation (RAG) pipeline. Before answering any query, the engine queries our database of 600,000+ real judgments, extracts verified precedents, and forces the AI model to construct its response strictly using those verified citations." } },
+      { "@type": "Question", "name": "How does the AI prevent hallucinations (fake cases)?", "acceptedAnswer": { "@type": "Answer", "text": "Al Wakeelo uses a Retrieval-Augmented Generation (RAG) pipeline. Before answering any query, the engine queries our database of stored judgments, extracts verified precedents, and asks the AI to use supported citations; users must still verify the original judgments." } },
       { "@type": "Question", "name": "What court records are indexed?", "acceptedAnswer": { "@type": "Answer", "text": "Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, and Federal Shariat Court decisions. We support PLD, SCMR, CLC, YLR, MLD, CLD, and PCrLJ reporting journals." } },
       { "@type": "Question", "name": "What documents can the Legal Drafting module write?", "acceptedAnswer": { "@type": "Answer", "text": "Writ petitions, bail applications (pre-arrest, post-arrest, protective), appeals, civil suits (for declaration, injunctions), stay applications, and statutory legal notices under Pakistani law." } },
       { "@type": "Question", "name": "Is my chat history and case data private?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. All user query data, conversations, and document uploads are strictly protected under secure database controls. Only authenticated users inside your chamber or organization can view shared drafts, files, or thread histories." } }
@@ -153,7 +164,7 @@ ${JSON.stringify(
     match: /^\/blog$/,
     meta: {
       title: "Legal Guides & Resources | Al Wakeelo",
-      description: "Browse comprehensive legal guides, articles, and tutorials on Pakistani law. Written by legal experts and advocates.",
+      description: "Browse comprehensive legal guides, articles, and tutorials on Pakistani law. Editorial guides with primary-source research links and review notices.",
       index: true,
     },
   },
@@ -177,9 +188,9 @@ ${JSON.stringify(
   {
     match: /^\/judgments$/,
     meta: {
-      title: "Pakistani Judgment Search — 600,000+ Cases | Al Wakeelo",
+      title: "Pakistani Judgment Search — Pakistani Cases | Al Wakeelo",
       description:
-        "Search 600,000+ Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Find case law by citation, party, court, and year.",
+        "Search Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Find case law by citation, party, court, and year.",
       index: true,
     },
   },
@@ -195,9 +206,9 @@ ${JSON.stringify(
   {
     match: /^\/judgment-search$/,
     meta: {
-      title: "Pakistani Judgment Search — 600,000+ Cases | Al Wakeelo",
+      title: "Pakistani Judgment Search — Pakistani Cases | Al Wakeelo",
       description:
-        "Search 600,000+ Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Find case law by citation, party, court, and year.",
+        "Search Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Find case law by citation, party, court, and year.",
       index: false, // Legacy redirect route (/judgment-search -> /judgments). Noindex to avoid duplicate canonical.
     },
   },
@@ -241,7 +252,7 @@ ${JSON.stringify(
     meta: {
       title: "Al Wakeelo Engine — Pakistani Legal AI Chat | Al Wakeelo",
       description:
-        "Chat with Al Wakeelo, Pakistan's AI legal assistant. Ask questions about Pakistani statutes, judgments, and procedure. Verified citations from 600,000+ cases.",
+        "Chat with Al Wakeelo, Pakistan's AI legal assistant. Ask questions about Pakistani statutes, judgments, and procedure. Citations linked to available case records, with identity checks.",
       index: true,
     },
   },
@@ -345,7 +356,10 @@ ${JSON.stringify(
 ];
 
 export function lookupSeoMeta(pathname: string): SeoMeta {
-  const normalized = pathname === "/" ? "/" : pathname.replace(/\/+$/, "") || "/";
+  const normalized = canonicalPublicPath(pathname === "/" ? "/" : pathname.replace(/\/+$/, "") || "/");
+  if (/^\/(?:preview|cases|case-files|case-documents|login|register|sign-in|sign-up|onboarding|vault|profile)(?:\/|$)/.test(normalized)) {
+    return { ...DEFAULT_META, index: false };
+  }
   for (const rule of ROUTE_RULES) {
     if (rule.match.test(normalized)) return rule.meta;
   }
@@ -369,7 +383,7 @@ function escapeHtmlText(value: string): string {
 }
 
 export function buildCanonicalUrl(pathname: string): string {
-  const normalized = pathname === "/" ? "/" : pathname.replace(/\/+$/, "");
+  const normalized = canonicalPublicPath(pathname === "/" ? "/" : pathname.replace(/\/+$/, ""));
   // Standardize any judgment permalink route to https://www.alwakeelo.com/judgment/:uuid
   const judgmentUuidMatch = normalized.match(/^(?:\/preview\/(?:public\/judgments|p)|\/judgments?)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
   if (judgmentUuidMatch) {
@@ -384,7 +398,7 @@ export function buildCanonicalUrl(pathname: string): string {
  */
 export function injectSeoMeta(html: string, pathname: string, customMeta?: SeoMeta): string {
   const meta = customMeta || lookupSeoMeta(pathname);
-  const canonical = buildCanonicalUrl(pathname);
+  const canonical = buildCanonicalUrl(meta.canonicalPath || pathname);
   const titleSafe = escapeHtmlText(meta.title);
   const descSafe = escapeHtmlAttr(meta.description);
   const canonSafe = escapeHtmlAttr(canonical);

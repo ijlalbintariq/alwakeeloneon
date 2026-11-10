@@ -10,7 +10,7 @@ export const PreviewFooter: React.FC = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div
               className="flex items-center gap-3 cursor-pointer"
-              onClick={(e) => { e.preventDefault(); navigate("/preview"); }}
+              onClick={(e) => { e.preventDefault(); navigate("/"); }}
             >
               <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#105B38]/30 bg-card flex items-center justify-center">
                 <img
@@ -29,80 +29,80 @@ export const PreviewFooter: React.FC = () => {
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <a
-                href="/preview/about"
+                href="/about"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/about");
+                  navigate("/about");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 About Us
               </a>
               <a
-                href="/preview/contact"
+                href="/contact"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/contact");
+                  navigate("/contact");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Contact Us
               </a>
               <a
-                href="/preview/faq"
+                href="/faq"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/faq");
+                  navigate("/faq");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 FAQ
               </a>
               <a
-                href="/preview/blog"
+                href="/blog"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/blog");
+                  navigate("/blog");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Legal Blog
               </a>
               <a
-                href="/preview/privacy"
+                href="/privacy"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/privacy");
+                  navigate("/privacy");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Privacy Policy
               </a>
               <a
-                href="/preview/terms"
+                href="/terms"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/terms");
+                  navigate("/terms");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Terms and Conditions
               </a>
               <a
-                href="/preview/cancellation-return-refund-policy"
+                href="/cancellation-return-refund-policy"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/cancellation-return-refund-policy");
+                  navigate("/cancellation-return-refund-policy");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
                 Cancellation/Return/Refund Policy
               </a>
               <a
-                href="/preview/ownership-statement"
+                href="/ownership-statement"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate("/preview/ownership-statement");
+                  navigate("/ownership-statement");
                 }}
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >

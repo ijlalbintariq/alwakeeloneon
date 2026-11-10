@@ -40,7 +40,7 @@ export default function PreviewInstallApp() {
       step: 1,
       title: "Open Alwakeelo in Safari",
       description: "Ensure you are using Apple Safari on your iPhone or iPad. Web App installation is natively supported in Safari.",
-      tip: "Navigate to https://alwakeelo.com/preview",
+      tip: "Navigate to https://alwakeelo.com/",
       icon: <ExternalLink className="w-6 h-6 text-[#105B38]" />,
     },
     {
@@ -71,7 +71,7 @@ export default function PreviewInstallApp() {
       step: 1,
       title: "Open in Google Chrome",
       description: "Open the Alwakeelo platform in Google Chrome or Samsung Internet on your Android phone or tablet.",
-      tip: "Visit https://alwakeelo.com/preview",
+      tip: "Visit https://alwakeelo.com/",
       icon: <Chrome className="w-6 h-6 text-[#105B38]" />,
     },
     {
@@ -324,11 +324,11 @@ export default function PreviewInstallApp() {
               Also Need Alwakeelo Directly inside Microsoft Word?
             </h3>
             <p className="text-xs text-white/80 max-w-lg">
-              Research 600k+ judgments and insert verified statutory clauses directly into your Word documents with our free sideloading add-in.
+              Research Pakistani judgments and insert statutory clauses directly into your Word documents with our free sideloading add-in.
             </p>
           </div>
           <Link
-            href="/preview/word-addin-guide"
+            href="/word-addin-guide"
             className="px-5 py-3 bg-white dark:bg-[#131E2E] text-[#105B38] hover:bg-[#EBF5F0] dark:bg-[#105B38]/20 text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0 inline-flex items-center gap-2"
           >
             <span>Word Add-in Setup Guide</span>

@@ -1,15 +1,5 @@
 (function () {
   try {
-    var base = window.location.origin + "/";
-    var canonical = document.getElementById("canonical-link");
-    if (canonical) canonical.setAttribute("href", base);
-    var ogUrl = document.getElementById("og-url-meta");
-    if (ogUrl) ogUrl.setAttribute("content", base);
-  } catch (_err) {
-    // no-op
-  }
-
-  try {
     if (!("serviceWorker" in navigator)) return;
 
     var host = String(window.location.hostname || "").toLowerCase();

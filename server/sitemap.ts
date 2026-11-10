@@ -12,17 +12,18 @@
  * Starter plan and to give us multiple smaller files Googlebot can prioritise.
  *
  * Counts are cached for 1 hour to avoid repeated `count(*)` on every Googlebot
- * fetch of the index. Page XML is computed on demand (Postgres ORDER BY id
- * LIMIT/OFFSET ensures recent judgments appear first for Googlebot).
+ * fetch of the index. Judgment pages use the same candidate filter, ordered by
+ * decision date then UUID; actual header checks omit unconfirmed candidates.
  */
 
 import type { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import { eq, asc, desc, and } from "drizzle-orm";
+import { and, asc, desc, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { judgments, statuteDocuments } from "@shared/schema";
-import { getTextProvenance } from "./storage";
+import { BLOG_ARTICLES } from "../shared/blog-data";
+import { getIndexableJudgmentIds, indexableJudgmentCandidateFilter } from "./judgment-indexability";
 
 const PAGE_SIZE = 10_000;
 const COUNT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -47,19 +48,12 @@ async function cachedCount(key: string, loader: () => Promise<number>): Promise<
   return value;
 }
 
-// Pages whose stored text belongs to another case are noindex; listing them in
-// the sitemap would only invite crawlers to them.
-const SITEMAP_JUDGMENT_FILTER = and(
-  eq(judgments.isActive, true),
-  sql`${judgments.textStatus} IS DISTINCT FROM 'mislabeled'`,
-);
-
 async function countActiveJudgments(): Promise<number> {
   return cachedCount("judgments", async () => {
     const [row] = await db
       .select({ count: sqlCountStar() })
       .from(judgments)
-      .where(SITEMAP_JUDGMENT_FILTER);
+      .where(indexableJudgmentCandidateFilter);
     return Number(row?.count || 0);
   });
 }
@@ -112,8 +106,8 @@ function urlBlock(loc: string, lastmod?: string | null, changefreq?: string, pri
   return parts.join("\n");
 }
 
-function sitemapIndexEntry(loc: string, lastmod: string): string {
-  return `  <sitemap>\n    <loc>${xmlEscape(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`;
+function sitemapIndexEntry(loc: string): string {
+  return `  <sitemap>\n    <loc>${xmlEscape(loc)}</loc>\n  </sitemap>`;
 }
 
 // ─── Public route handlers ───────────────────────────────────────────────
@@ -121,23 +115,21 @@ function sitemapIndexEntry(loc: string, lastmod: string): string {
 export async function handleSitemapIndex(req: Request, res: Response): Promise<void> {
   try {
     const origin = siteOrigin(req);
-    const today = new Date().toISOString().slice(0, 10);
-
-    const judgmentTotal = await countActiveJudgments().catch(() => 0);
+    const judgmentTotal = await countActiveJudgments();
     const judgmentPages = Math.max(0, Math.ceil(judgmentTotal / PAGE_SIZE));
 
-    const statuteTotal = await countStatuteDocuments().catch(() => 0);
+    const statuteTotal = await countStatuteDocuments();
     const statutePages = Math.max(0, Math.ceil(statuteTotal / PAGE_SIZE));
 
     const entries: string[] = [];
-    entries.push(sitemapIndexEntry(`${origin}/sitemap-static.xml`, today));
-    entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-priority.xml`, today));
-    entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-tier2.xml`, today));
+    entries.push(sitemapIndexEntry(`${origin}/sitemap-static.xml`));
+    entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-priority.xml`));
+    entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-tier2.xml`));
     for (let n = 1; n <= judgmentPages; n += 1) {
-      entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-${n}.xml`, today));
+      entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-${n}.xml`));
     }
     for (let n = 1; n <= statutePages; n += 1) {
-      entries.push(sitemapIndexEntry(`${origin}/sitemap-statutes-${n}.xml`, today));
+      entries.push(sitemapIndexEntry(`${origin}/sitemap-statutes-${n}.xml`));
     }
 
     const body =
@@ -160,47 +152,6 @@ const STATIC_URLS: Array<{ path: string; changefreq: string; priority: string }>
   { path: "/contact",                            changefreq: "monthly", priority: "0.8" },
   { path: "/faq",                               changefreq: "monthly", priority: "0.8" },
   { path: "/blog",                              changefreq: "daily",   priority: "0.8" },
-  { path: "/blog/muslim-family-laws-pakistan-nikah-talaq-khula", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/understanding-bail-criminal-procedure-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/contract-act-1872-pakistan-business-agreements", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/cybercrime-laws-peca-pakistan-digital-rights", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/demystifying-pakistani-land-revenue-records-fard-mutation", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/how-to-file-civil-suit-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/section-489f-ppc-dishonoured-cheque-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/inheritance-rights-islamic-succession-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/consumer-protection-laws-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/how-to-register-trademark-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/writ-petitions-article-199-constitution-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/rent-tenancy-laws-eviction-procedures-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/labor-employment-rights-workplace-laws-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/power-of-attorney-types-legal-requirements-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/understanding-property-gift-hiba-laws-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/defamation-laws-pakistan-civil-criminal-remedies", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/guide-to-fir-crpc-pakistan-registration-quashment", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/company-registration-pakistan-secp-companies-act", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/arbitration-adr-agreement-arbitration-act-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/legal-document-automation-law-firms-2026-guide", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/best-legal-ai-tools-alternatives-2026", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/lease-agreement-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/affidavit-format-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/power-of-attorney-drafting", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/ai-for-legal-drafting", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/best-legal-drafting-ai", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/lexisnexis-alternatives", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/harvey-ai-alternatives", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/nda-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/legal-drafting-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/legal-notice-drafting-pakistan", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/partnership-deed-drafting", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/legal-drafting-templates", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/best-legal-drafting-software", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/case-brief-writing", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/best-legal-ai-platforms", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/vakalatnama-drafting", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/constitutional-law-research", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/legal-workflow-automation", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/contract-review-checklist", changefreq: "weekly", priority: "0.7" },
-  { path: "/blog/legal-prompt-engineering", changefreq: "weekly", priority: "0.7" },
   { path: "/judgments",                         changefreq: "daily",   priority: "0.9" },
   { path: "/judgments/browse",                  changefreq: "daily",   priority: "0.9" },
   { path: "/statute-search",                    changefreq: "weekly",  priority: "0.9" },
@@ -217,10 +168,12 @@ const STATIC_URLS: Array<{ path: string; changefreq: string; priority: string }>
 
 export function handleSitemapStatic(req: Request, res: Response): void {
   const origin = siteOrigin(req);
-  const today = new Date().toISOString().slice(0, 10);
   const blocks = STATIC_URLS.map((u) =>
-    urlBlock(`${origin}${u.path}`, today, u.changefreq, u.priority),
+    urlBlock(`${origin}${u.path}`, null, u.changefreq, u.priority),
   );
+  blocks.push(...BLOG_ARTICLES.map(article => urlBlock(
+    `${origin}/blog/${article.slug}`, isoDate(article.publishedAt), "monthly", "0.7",
+  )));
   const body =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -245,15 +198,16 @@ export async function handleSitemapJudgments(req: Request, res: Response): Promi
     const rows = await db
       .select({ id: judgments.id, updatedAt: judgments.updatedAt })
       .from(judgments)
-      .where(SITEMAP_JUDGMENT_FILTER)
-      .orderBy(desc(judgments.decisionDate))
+      .where(indexableJudgmentCandidateFilter)
+      .orderBy(desc(judgments.decisionDate), asc(judgments.id))
       .limit(PAGE_SIZE)
       .offset(offset);
 
     if (rows.length === 0) return void res.status(404).type("text/plain").send("Sitemap page out of range");
 
     const origin = siteOrigin(req);
-    const blocks = rows.map((row: { id: string; updatedAt: Date | null }) =>
+    const confirmed = await getIndexableJudgmentIds(rows.map((row: { id: string }) => row.id));
+    const blocks = rows.filter((row: { id: string }) => confirmed.has(row.id)).map((row: { id: string; updatedAt: Date | null }) =>
       urlBlock(`${origin}/judgment/${row.id}`, isoDate(row.updatedAt), "yearly", "0.6"),
     );
     const body =
@@ -273,17 +227,13 @@ export async function handleSitemapJudgments(req: Request, res: Response): Promi
 export async function handleSitemapJudgmentsPriority(req: Request, res: Response): Promise<void> {
   try {
     const origin = siteOrigin(req);
-    const today = new Date().toISOString().slice(0, 10);
-    // 988 verified performing judgments from Search Console Performance report
+    // Curated historical candidates still require current identity validation.
     const filePath = path.resolve(process.cwd(), "shared/priority-judgments.json");
     const priorityJudgments: Array<{ id: string; clicks: number; impressions: number }> = JSON.parse(
       fs.readFileSync(filePath, "utf8")
     );
 
-    const provenance = await getTextProvenance(priorityJudgments.map((r) => r.id)).catch(() => new Map());
-    const blocks = priorityJudgments
-      .filter((row) => provenance.get(row.id) !== "mislabeled")
-      .map((row) => urlBlock(`${origin}/judgment/${row.id}`, today, "weekly", "1.0"));
+    const blocks = await listedJudgmentBlocks(priorityJudgments.map(row => row.id), origin, "weekly", "1.0");
     const body =
       `<?xml version="1.0" encoding="UTF-8"?>\n` +
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -301,17 +251,13 @@ export async function handleSitemapJudgmentsPriority(req: Request, res: Response
 export async function handleSitemapJudgmentsTier2(req: Request, res: Response): Promise<void> {
   try {
     const origin = siteOrigin(req);
-    const today = new Date().toISOString().slice(0, 10);
-    // 10,000 verified high-value Supreme Court & High Court cases (2023-2026)
+    // The file's historical dates are not evidence of a page modification.
     const filePath = path.resolve(process.cwd(), "shared/tier2-judgments.json");
     const tier2Judgments: Array<{ id: string; date?: string }> = JSON.parse(
       fs.readFileSync(filePath, "utf8")
     );
 
-    const provenance = await getTextProvenance(tier2Judgments.map((r) => r.id)).catch(() => new Map());
-    const blocks = tier2Judgments
-      .filter((row) => provenance.get(row.id) !== "mislabeled")
-      .map((row) => urlBlock(`${origin}/judgment/${row.id}`, row.date || today, "monthly", "0.8"));
+    const blocks = await listedJudgmentBlocks(tier2Judgments.map(row => row.id), origin, "monthly", "0.8");
     const body =
       `<?xml version="1.0" encoding="UTF-8"?>\n` +
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -324,6 +270,18 @@ export async function handleSitemapJudgmentsTier2(req: Request, res: Response): 
     console.error("[sitemap:judgments:tier2] failed", err);
     res.status(500).type("text/plain").send("Tier 2 judgments sitemap failed");
   }
+}
+
+async function listedJudgmentBlocks(ids: string[], origin: string, changefreq: string, priority: string): Promise<string[]> {
+  const confirmed = [...await getIndexableJudgmentIds(ids)];
+  const blocks: string[] = [];
+  for (let offset = 0; offset < confirmed.length; offset += 250) {
+    const rows = await db.select({ id: judgments.id, updatedAt: judgments.updatedAt })
+      .from(judgments).where(and(indexableJudgmentCandidateFilter, inArray(judgments.id, confirmed.slice(offset, offset + 250))));
+    blocks.push(...rows.map((row: { id: string; updatedAt: Date | null }) =>
+      urlBlock(`${origin}/judgment/${row.id}`, isoDate(row.updatedAt), changefreq, priority)));
+  }
+  return blocks;
 }
 
 export async function handleSitemapStatutes(req: Request, res: Response): Promise<void> {

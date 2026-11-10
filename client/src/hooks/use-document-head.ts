@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { canonicalPublicPath } from "@shared/public-routes";
 
 const SITE_NAME = "Al Wakeelo";
 const SITE_ORIGIN = "https://www.alwakeelo.com";
@@ -27,8 +28,8 @@ function setLinkHref(selector: string, href: string) {
 
 export function useDocumentHead({ title, description, path, index = true }: DocumentHeadOptions): void {
   useEffect(() => {
-    const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
-    const canonicalPath = path ?? (typeof window !== "undefined" ? window.location.pathname : "/");
+    const fullTitle = /\bal\s*wakeelo\b/i.test(title) ? title : `${title} | ${SITE_NAME}`;
+    const canonicalPath = canonicalPublicPath(path ?? (typeof window !== "undefined" ? window.location.pathname : "/"));
     const canonicalUrl = `${SITE_ORIGIN}${canonicalPath === "/" ? "/" : canonicalPath.replace(/\/+$/, "")}`;
 
     document.title = fullTitle;

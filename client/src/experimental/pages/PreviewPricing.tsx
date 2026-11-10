@@ -87,7 +87,7 @@ export const PRICING_PLANS: PlanTier[] = [
     keyFeatures: [
       "120 AI Actions per month",
       "Standard AI model (8,192 tokens/request)",
-      "600k+ SC & High Court case law citations",
+      "Pakistani Supreme Court & High Court case law",
       "Court Fee Calculator across 5 provinces",
       "Up to 30 case uploads (250 pages PDF chat)",
       "Daily Court Diary & Cause List tracker",
@@ -194,7 +194,7 @@ const FEATURE_MATRIX: FeatureMatrixRow[] = [
     enterprise: true,
   },
   {
-    name: "600,000+ Landmark Judgments & Precedents (PLD/SCMR/YLR)",
+    name: "Pakistani Judgments & Precedents (PLD/SCMR/YLR)",
     category: "Legal AI & Precedent Research",
     starter: "Basic Search",
     standard: "Full Search",
@@ -409,7 +409,7 @@ const FAQS = [
   },
   {
     q: "How does the Microsoft Word Add-in work with our subscription?",
-    a: "Advocates on Pro, Chamber, and Enterprise plans can download the Alwakeelo Word Add-in manifest file. It brings the full 83k statutes lookup, 600k judgment search, and contract risk scanner directly into Microsoft Word (Desktop & Web) without switching windows.",
+    a: "Advocates on Pro, Chamber, and Enterprise plans can download the Alwakeelo Word Add-in manifest file. It brings statute lookup, judgment search, and contract risk scanner directly into Microsoft Word (Desktop & Web) without switching windows.",
   },
   {
     q: "Can we switch between Monthly, Quarterly, and Yearly billing cycles?",
@@ -499,7 +499,7 @@ export default function PreviewPricing() {
       {/* 1. Public Top Navigation Bar */}
       <header className="sticky top-0 z-40 bg-white dark:bg-[#131E2E]/95 backdrop-blur-md border-b border-[#E2E8F0] dark:border-[#1E2D44] px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/preview" className="flex items-center gap-2.5 group">
+          <Link href="/" className="flex items-center gap-2.5 group">
             <img src="/logo.svg" alt="Al Wakeelo" className="w-9 h-9 object-contain transition-transform group-hover:scale-105" />
             <div>
               <span className="text-base font-bold tracking-tight text-[#0F172A] dark:text-[#F8FAFC] font-serif block">
@@ -516,19 +516,19 @@ export default function PreviewPricing() {
         </div>
 
         <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-[#475569]">
-          <Link href="/preview" className="hover:text-[#105B38] transition-colors">
+          <Link href="/" className="hover:text-[#105B38] transition-colors">
             Home
           </Link>
           <Link href="/preview/statutes" className="hover:text-[#105B38] transition-colors">
             83k Statutes
           </Link>
-          <Link href="/preview/pricing" className="text-[#105B38] font-bold">
+          <Link href="/pricing" className="text-[#105B38] font-bold">
             Pricing & Plans
           </Link>
-          <Link href="/preview/about" className="hover:text-[#105B38] transition-colors">
+          <Link href="/about" className="hover:text-[#105B38] transition-colors">
             About
           </Link>
-          <Link href="/preview/contact" className="hover:text-[#105B38] transition-colors">
+          <Link href="/contact" className="hover:text-[#105B38] transition-colors">
             Contact
           </Link>
         </nav>
@@ -933,16 +933,16 @@ export default function PreviewPricing() {
             <span>· Pakistan's Legal AI Workstation</span>
           </div>
           <div className="flex items-center gap-6">
-            <Link href="/preview/terms" className="hover:text-[#105B38] transition-colors">
+            <Link href="/terms" className="hover:text-[#105B38] transition-colors">
               Terms of Service
             </Link>
-            <Link href="/preview/privacy" className="hover:text-[#105B38] transition-colors">
+            <Link href="/privacy" className="hover:text-[#105B38] transition-colors">
               Privacy Policy
             </Link>
-            <Link href="/preview/refund-policy" className="hover:text-[#105B38] transition-colors">
+            <Link href="/cancellation-return-refund-policy" className="hover:text-[#105B38] transition-colors">
               Refund Policy
             </Link>
-            <Link href="/preview/contact" className="hover:text-[#105B38] transition-colors">
+            <Link href="/contact" className="hover:text-[#105B38] transition-colors">
               Advocate Helpline: 0335 8341897
             </Link>
           </div>

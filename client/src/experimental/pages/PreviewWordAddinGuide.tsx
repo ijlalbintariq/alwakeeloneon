@@ -49,7 +49,7 @@ export default function PreviewWordAddinGuide() {
   <Description DefaultValue="Pakistani Case Law Research, 83k Statutes Lookup &amp; Court Drafting Studio inside Microsoft Word" />
   <IconUrl DefaultValue="https://alwakeelo.com/logo-32.png" />
   <HighResolutionIconUrl DefaultValue="https://alwakeelo.com/logo-64.png" />
-  <SupportUrl DefaultValue="https://alwakeelo.com/preview/contact" />
+  <SupportUrl DefaultValue="https://alwakeelo.com/contact" />
   <AppDomains>
     <AppDomain>https://alwakeelo.com</AppDomain>
   </AppDomains>
@@ -64,8 +64,8 @@ export default function PreviewWordAddinGuide() {
 
   const addinFeatures = [
     {
-      title: "600,000+ Case Law Precedent Research",
-      description: "Search Supreme Court and High Court rulings (SCMR, PLD, CLC, PCrLJ) and insert verified legal ratios into your Word brief with 1-click.",
+      title: "Pakistani Case Law Research",
+      description: "Search Supreme Court and High Court rulings (SCMR, PLD, CLC, PCrLJ) and insert cited legal passages into your Word brief with 1-click.",
       icon: <Gavel className="w-5 h-5 text-[#105B38]" />,
     },
     {
@@ -101,7 +101,7 @@ export default function PreviewWordAddinGuide() {
             Alwakeelo Legal AI inside Microsoft Word
           </h1>
           <p className="text-sm sm:text-base text-[#334155] dark:text-[#CBD5E1] leading-relaxed max-w-2xl mx-auto">
-            Draft High Court petitions, research 600,000+ judgments, check 83k statutes, and audit commercial contracts directly inside Microsoft Word on Windows, Mac, or Word Web for <strong className="text-[#105B38]">100% Free</strong>.
+            Draft High Court petitions, research Pakistani judgments, check 83k statutes, and audit commercial contracts directly inside Microsoft Word on Windows, Mac, or Word Web for <strong className="text-[#105B38]">100% Free</strong>.
           </p>
 
           {/* ── MANIFEST DOWNLOAD BANNER ── */}

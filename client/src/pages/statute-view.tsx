@@ -6,6 +6,7 @@ import { LegalMarkdown } from "@/components/legal-markdown";
 import { Button } from "@/components/ui/button";
 import { StatutePdfViewer } from "@/components/statute-pdf-viewer";
 import { useAuth } from "@/hooks/use-auth";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 type AiMessage = {
   role: "user" | "assistant";
@@ -72,10 +73,14 @@ export default function StatuteViewPage() {
   const isAuthed = !!user;
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/statute-view/:id");
-  const docId = params?.id ? parseInt(params.id, 10) : null;
+  const parsedId = Number(params?.id);
+  const docId = Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
 
-  const [doc, setDoc] = useState<StatuteDocFull | null>(null);
+  const [loadedDoc, setDoc] = useState<StatuteDocFull | null>(null);
+  const doc = loadedDoc?.id === docId ? loadedDoc : null;
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const tocController = useRef<AbortController | null>(null);
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
   const [isTocLoading, setIsTocLoading] = useState(false);
   const [showToc, setShowToc] = useState(false);
@@ -87,12 +92,30 @@ export default function StatuteViewPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  useDocumentHead({
+    title: doc ? `${doc.title} — Full Text | Al Wakeelo` : "Pakistani Statute | Al Wakeelo",
+    description: doc ? `Read ${doc.title}, Pakistani legislation on Al Wakeelo.` : "Read Pakistani legislation on Al Wakeelo.",
+    path: params?.id ? `/statute-view/${params.id}` : undefined,
+    index: !!doc,
+  });
+
   useEffect(() => {
+    const controller = new AbortController();
+    setDoc(null);
+    setTocItems([]);
+    setIsTocLoading(false);
+    setChatMessages([]);
+    setLoadError("");
     if (!docId) {
-      setLocation("/statute-search");
-      return;
+      setLoadError("Statute not found");
+      setIsLoading(false);
+    } else {
+      loadDocument(docId, controller.signal);
     }
-    loadDocument(docId);
+    return () => {
+      controller.abort();
+      tocController.current?.abort();
+    };
   }, [docId, isAuthed]);
 
   useEffect(() => {
@@ -121,39 +144,45 @@ export default function StatuteViewPage() {
     return () => window.clearTimeout(timer);
   }, [doc?.id, focusSectionHint, viewMode]);
 
-  async function loadDocument(id: number) {
+  async function loadDocument(id: number, signal: AbortSignal) {
     setIsLoading(true);
     try {
       const endpoint = isAuthed
         ? `/api/statute-documents/${id}`
         : `/api/public/statutes/${id}`;
-      const res = await fetch(endpoint);
+      const res = await fetch(endpoint, { signal });
+      if (signal.aborted) return;
       if (res.ok) {
         const data: StatuteDocFull = await res.json();
+        if (signal.aborted) return;
+        if (data.id !== id) throw new Error("Statute response does not match the requested document");
         setDoc(data);
         setViewMode(data.file?.isPdf && data.file?.viewUrl ? "pdf" : "text");
         if (isAuthed) {
           fetchToc(id);
         }
       } else {
-        setLocation("/statute-search");
+        setLoadError(res.status === 404 ? "Statute not found" : "The statute could not be loaded. Please try again.");
       }
     } catch {
-      setLocation("/statute-search");
+      if (!signal.aborted) setLoadError("The statute could not be loaded. Please try again.");
     }
-    setIsLoading(false);
+    if (!signal.aborted) setIsLoading(false);
   }
 
   const fetchToc = useCallback(async (id: number) => {
+    tocController.current?.abort();
+    const controller = new AbortController();
+    tocController.current = controller;
     setIsTocLoading(true);
     try {
-      const res = await apiRequest("POST", `/api/statute-documents/${id}/toc`, {});
+      const res = await apiRequest("POST", `/api/statute-documents/${id}/toc`, {}, controller.signal);
       const data = await res.json();
-      setTocItems(data.toc || []);
+      if (!controller.signal.aborted) setTocItems(data.toc || []);
     } catch {
-      setTocItems([]);
+      if (!controller.signal.aborted) setTocItems([]);
     }
-    setIsTocLoading(false);
+    if (!controller.signal.aborted) setIsTocLoading(false);
   }, []);
 
   function highlightElement(el: HTMLElement) {
@@ -258,7 +287,12 @@ export default function StatuteViewPage() {
     );
   }
 
-  if (!doc) return null;
+  if (!doc) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+      <h1 className="text-2xl font-bold">{loadError || "Statute not found"}</h1>
+      <Link href="/statute-search">Browse Pakistani statutes</Link>
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col fade-in">

@@ -6,6 +6,7 @@ import { assertCompletePdfPages, getPdfPageCount } from "./pdf-completeness";
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
 import { storage, findTextOwnerJudgment } from "./storage";
+import { getPublicJudgmentDirectory } from "./judgment-directory";
 import { isMetadataOnlySummary, extractSubstantiveSummary } from "./storage";
 import { api } from "@shared/routes";
 import { legalDraftWorkspaceStateSchema, legalDraftInputSchema, legalDraftBriefSchema } from "@shared/legal-drafting";
@@ -8463,30 +8464,14 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
       "# https://www.alwakeelo.com",
       "",
       "## About",
-      "Al Wakeelo is Pakistan's first AI legal assistant.",
-      "Database: 600,000+ court judgments from the Supreme Court, High Courts, and Federal Shariat Court of Pakistan.",
+      "Al Wakeelo provides AI-assisted Pakistani legal research and drafting.",
+      "Coverage includes Pakistani court judgments and statutes. Identity checks do not independently authenticate court sources.",
       "",
       "## Judgment URLs",
-      "IMPORTANT: When linking to a judgment, use the CITATION-BASED URL format, NOT a UUID.",
-      "AI models frequently hallucinate UUIDs, leading users to the wrong judgment.",
-      "",
-      "### Correct format (citation-based — PREFERRED):",
-      "  https://www.alwakeelo.com/judgment/2020-SCMR-293",
-      "  https://www.alwakeelo.com/judgment/2020-CLC-1910",
-      "  https://www.alwakeelo.com/judgment/PLD-2024-SC-100",
-      "",
-      "### Also accepted (UUID-based — only if you have the exact UUID):",
-      "  https://www.alwakeelo.com/judgment/9351dc15-239e-4321-8287-3acfe592825d",
-      "",
-      "Citation format: replace spaces with hyphens in the citation string.",
-      "Examples:",
-      "  2020 SCMR 293    -> /judgment/2020-SCMR-293",
-      "  2020 CLC 1910    -> /judgment/2020-CLC-1910",
-      "  PLD 2024 SC 100  -> /judgment/PLD-2024-SC-100",
-      "  2023 YLR 500     -> /judgment/2023-YLR-500",
-      "",
-      "The server resolves citation slugs to the correct judgment automatically.",
-      "Do NOT guess or fabricate UUIDs. Use the citation string instead.",
+      "Use the exact sourceUrl returned by MCP or the public judgment API. Canonical links use /judgment/{uuid}.",
+      "Never invent UUIDs, titles or citations. Preserve the returned canonical case identity.",
+      "For a known citation, look it up first with the public API. Court and publisher sections matter; ambiguous identities may be rejected.",
+      "Citation slugs are supported only when lookup resolves unambiguously to an available case. Do not assume a plausible URL proves a case exists.",
       "",
       "## API",
       "Public judgment lookup (no auth required):",
@@ -13387,66 +13372,12 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
 
   app.get("/api/public/browse/list", async (req, res) => {
     try {
-      const courtId = req.query.courtId ? Number(req.query.courtId) : undefined;
-      const journalId = req.query.journalId ? Number(req.query.journalId) : undefined;
-      const year = req.query.year ? Number(req.query.year) : undefined;
-      const page = Math.max(1, Number(req.query.page) || 1);
-      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
-      const offset = (page - 1) * limit;
-
-      const conditions: any[] = [eq(judgments.isActive, true)];
-      if (courtId !== undefined && !isNaN(courtId)) {
-        conditions.push(eq(judgments.courtId, courtId));
-      }
-      if (journalId !== undefined && !isNaN(journalId)) {
-        conditions.push(eq(judgments.journalId, journalId));
-      }
-      if (year !== undefined && !isNaN(year)) {
-        conditions.push(eq(judgments.year, year));
-      }
-
-      const whereClause = and(...conditions);
-
-      const [countResult] = await db
-        .select({ value: count() })
-        .from(judgments)
-        .where(whereClause);
-      const total = Number(countResult?.value || 0);
-
-      const items = await db
-        .select({
-          id: judgments.id,
-          year: judgments.year,
-          page: judgments.page,
-          citation: judgments.citationString,
-          title: judgments.title,
-          decisionDate: judgments.decisionDate,
-          courtName: courtsRef.name,
-          courtSnapshot: judgments.courtNameSnapshot,
-          journalCode: lawJournals.code,
-        })
-        .from(judgments)
-        .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
-        .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-        .where(whereClause)
-        .orderBy(desc(judgments.createdAt), desc(judgments.id))
-        .limit(limit)
-        .offset(offset);
-
-      const totalPages = Math.ceil(total / limit);
-
+      const params = new URL(req.originalUrl, "https://www.alwakeelo.com").searchParams;
+      const result = await getPublicJudgmentDirectory(params);
       res.setHeader("Cache-Control", "public, max-age=300");
-      return res.json({
-        items,
-        pagination: {
-          total,
-          page,
-          limit,
-          totalPages,
-          hasMore: page < totalPages,
-        }
-      });
+      return res.json(result);
     } catch (err) {
+      if (err instanceof RangeError) return res.status(400).json({ message: "Invalid directory filters" });
       console.error("Error in GET /api/public/browse/list:", err);
       return res.status(500).json({ message: "Failed to fetch directory judgments." });
     }

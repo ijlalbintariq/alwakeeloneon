@@ -1,16 +1,16 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useDocumentHead } from "@/hooks/use-document-head";
-import { useQuery } from "@tanstack/react-query";
 import { Search, BookOpen, Clock, ChevronRight } from "lucide-react";
 import { PublicPreviewShell } from "@/experimental/components/public/PublicPreviewShell";
 import { BLOG_ARTICLES } from "@shared/blog-data";
+import { blogReadMinutes } from "@shared/blog-editorial";
 
 export default function PreviewBlog() {
   useDocumentHead({
     title: "Legal Guides & Resources | Al Wakeelo",
-    description: "Browse comprehensive legal guides, articles, and tutorials on Pakistani law. Written by legal experts and advocates.",
-    path: "/preview/blog",
+    description: "Browse comprehensive legal guides, articles, and tutorials on Pakistani law. Editorial guides for Pakistani legal research.",
+    path: "/blog",
   });
 
   const [query, setQuery] = useState("");
@@ -45,7 +45,7 @@ export default function PreviewBlog() {
             The Al Wakeelo <span className="text-[#105B38]">Blog</span>
           </h1>
           <p className="text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] max-w-2xl mx-auto text-base">
-            Expert insights, tutorials, and deep dives into Pakistani case law, statutory interpretation, and legal technology.
+            Editorial guides, tutorials, and research resources into Pakistani case law, statutory interpretation, and legal technology.
           </p>
         </section>
 
@@ -94,7 +94,7 @@ export default function PreviewBlog() {
             filteredArticles.map((article) => (
               <Link
                 key={article.slug}
-                href={`/preview/blog/${article.slug}`}
+                href={`/blog/${article.slug}`}
                 className="group bg-white dark:bg-[#131E2E] rounded-3xl border border-[#E2E8F0] dark:border-[#1E2D44] overflow-hidden hover:border-[#A3D4BC] dark:hover:border-[#10B981]/40 hover:shadow-lg transition-all flex flex-col h-full"
               >
                   <div className="px-6 pt-6">
@@ -105,7 +105,7 @@ export default function PreviewBlog() {
                   </div>
                   <div className="p-6 flex flex-col flex-1 space-y-4">
                     <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">
-                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {String(article.readTime).replace(/\D+/g, "") || "5"} min read</span>
+                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {blogReadMinutes(article.content)} min read</span>
                     </div>
                     <h3 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] group-hover:text-[#105B38] dark:group-hover:text-[#10B981] transition-colors leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                       {article.title}
