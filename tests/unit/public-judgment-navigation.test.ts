@@ -121,3 +121,24 @@ test("formatted judgment text can change between empty and loaded without changi
     assert.match(document.body.textContent || "", new RegExp(text || "Text is not available"));
   }
 });
+
+test("public reader exposes a citable summary and one accurate schema graph", async () => {
+  const initialSchema = document.createElement("script");
+  initialSchema.id = "server-judgment-jsonld";
+  initialSchema.type = "application/ld+json";
+  initialSchema.textContent = '{"@type":"WebPage","name":"Initial server record"}';
+  document.head.appendChild(initialSchema);
+  await show(one);
+  assert.equal(document.getElementById("server-judgment-jsonld"), null);
+  await respond(one, record(one, "Example Case", { decisionDate: "2024-01-15" }));
+  const summary = document.querySelector('[aria-label="Judgment citation and verification"]');
+  assert.match(summary?.textContent || "", /Example Case.*2024 SCMR 1085.*Supreme Court.*2024-01-15/);
+  assert.equal(summary?.querySelector("a")?.getAttribute("href"), `https://www.alwakeelo.com/judgment/${one}`);
+  const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+  assert.equal(scripts.length, 1);
+  const graph = JSON.parse(scripts[0].textContent || "{}")["@graph"];
+  assert.equal(graph[1]["@type"], "CreativeWork");
+  assert.equal(graph[1].creator["@type"], "GovernmentOrganization");
+  assert.equal(graph[1].dateCreated, "2024-01-15");
+  assert.equal(graph[0].name, document.title);
+});

@@ -1,3 +1,4 @@
+import { CaseLawResearchGuide } from "@shared/case-law-research";
 import { useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -194,8 +195,8 @@ const FAQ_ITEMS = [
     a: "The platform is designed with privacy and access controls. For sensitive matters, always use official chamber consultation channels as well.",
   },
   {
-    q: "Is AL WAKEELO discussed on Reddit or legal forums?",
-    a: "Yes — Pakistani lawyers and legal researchers discuss AL WAKEELO on Reddit, legal tech communities, and professional networks. We actively welcome community feedback and incorporate it into platform improvements.",
+    q: "Where can I send feedback about a case-law result?",
+    a: "Use the contact page to report an issue. Include the public judgment link, citation and a description of the mismatch so the team can investigate. Avoid including confidential client information.",
   },
 ];
 
@@ -633,7 +634,7 @@ export default function PreviewLanding() {
             <div className="hidden md:flex items-center gap-2">
               <Users size={16} className="text-[#105B38]" />
               <span className="text-xs font-bold uppercase tracking-wider">
-                Discussed on Reddit
+                Built for Legal Research
               </span>
             </div>
           </div>
@@ -1268,8 +1269,8 @@ export default function PreviewLanding() {
             Pakistani law to provide lawyers, advocates, and legal professionals
             with a powerful research and drafting assistant. Our platform is
             backed by a comprehensive database of Pakistani judgments,
-            statutes, and legal texts. Trusted by advocates and discussed across
-            platforms including Reddit, legal forums, and professional networks.
+            statutes, and legal texts. Check the underlying judgment or statute
+            before relying on any AI-generated answer.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
             {[
@@ -1373,6 +1374,7 @@ export default function PreviewLanding() {
       />
 
       {/* 13. Footer */}
+      <CaseLawResearchGuide />
       <footer className="py-10 px-6 bg-background border-t border-border/50">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -1477,12 +1479,12 @@ export default function PreviewLanding() {
                 Ownership Statement
               </a>
               <a
-                href="https://www.reddit.com/"
+                href="/contact"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-muted-foreground hover:text-[#105B38] transition-colors"
               >
-                Reddit Community
+                Research Feedback
               </a>
               <a
                 href="https://www.linkedin.com/company/al-wakeelo"

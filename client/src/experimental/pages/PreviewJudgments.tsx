@@ -1,3 +1,5 @@
+import { useDocumentHead } from "@/hooks/use-document-head";
+import { CASE_LAW_TITLE, CASE_LAW_DESCRIPTION, CaseLawResearchGuide } from "@shared/case-law-research";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocation, useRoute } from "wouter";
 import { PreviewShell } from "@/experimental/components/PreviewShell";
@@ -86,6 +88,8 @@ const COURTS_LIST = [
 const YEARS_LIST = ["All Years", "2026", "2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2012", "1955"];
 
 export const PreviewJudgments: React.FC = () => {
+  const [seoPath] = useLocation();
+  useDocumentHead({ title: CASE_LAW_TITLE, description: CASE_LAW_DESCRIPTION, path: "/judgments", index: !seoPath.startsWith("/preview/") });
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [, previewRouteParams] = useRoute("/preview/judgments/:id");
@@ -526,14 +530,14 @@ export const PreviewJudgments: React.FC = () => {
                 <span>Pakistani Legal Library & Citation Graph Engine</span>
               </h1>
               <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] mt-1">
-                Over 600,000+ verified Supreme Court & High Court judgments with interactive precedent treatment graphs and Article 189/201 ratio extraction
+                Search available Pakistani judgments by citation, party name or legal issue. Verify results against original sources.
               </p>
             </div>
 
             {/* Quick Stats or Action */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 shadow-xs">
-                600k+ Precedents Indexed
+                Pakistani Case Law
               </span>
             </div>
           </div>
@@ -1000,7 +1004,7 @@ export const PreviewJudgments: React.FC = () => {
               {isSearching ? (
                 <div className="py-20 flex flex-col items-center justify-center gap-3 text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569] font-mono text-xs shadow-xs rounded-2xl bg-white dark:bg-[#131E2E] border border-[#E2E8F0] dark:border-[#1E2D44]">
                   <Loader2 className="w-6 h-6 text-[#105B38] animate-spin" />
-                  <span>Searching 600,000+ Pakistani Precedent Records...</span>
+                  <span>Searching Pakistani case-law records...</span>
                 </div>
               ) : searchError ? (
                 <div className="py-16 px-6 text-center rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 space-y-3 text-red-600 dark:text-red-400 shadow-xs flex flex-col items-center">
@@ -1236,6 +1240,7 @@ export const PreviewJudgments: React.FC = () => {
         )}
 
         {/* Standalone Precedent Graph Modal (when clicking 'View Graph' from any result card) */}
+      <CaseLawResearchGuide />
         {graphModalTarget && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in">
             <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white dark:bg-[#131E2E] rounded-3xl p-6 shadow-2xl space-y-4 border border-[#CBD5E1]">

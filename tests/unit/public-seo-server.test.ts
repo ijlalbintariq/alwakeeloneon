@@ -1,3 +1,6 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { CASE_LAW_ANSWERS, CASE_LAW_TITLE, CASE_LAW_DESCRIPTION, CaseLawResearchGuide } from "../../shared/case-law-research";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -83,4 +86,19 @@ test("public directory omits unsafe headers without dropping remaining paginatio
   assert.equal(result.pagination.totalIsEstimate, true);
   assert.equal(result.pagination.hasMore, true);
   assert.equal(result.pagination.totalPages, 3);
+});
+
+test("case-law research answers render without JavaScript with crawlable research links and matching metadata", () => {
+  const html = renderToStaticMarkup(createElement(CaseLawResearchGuide));
+  for (const { question, answer } of CASE_LAW_ANSWERS) {
+    assert.ok(html.includes(question));
+    assert.ok(html.includes(answer));
+  }
+  assert.equal((html.match(/<h2/g) || []).length, CASE_LAW_ANSWERS.length);
+  for (const href of ["/judgments", "/citation-search", "/judgments/browse", "/about", "/contact"]) {
+    assert.ok(html.includes(`href="${href}"`));
+  }
+  assert.doesNotMatch(html, /600,000|every judgment|guaranteed/i);
+  assert.equal(lookupSeoMeta("/judgments").title, CASE_LAW_TITLE);
+  assert.equal(lookupSeoMeta("/judgments").description, CASE_LAW_DESCRIPTION);
 });

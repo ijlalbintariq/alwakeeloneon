@@ -2,6 +2,13 @@
 User-agent: *
 Allow: /
 
+# ChatGPT search discovery (separate from GPTBot training access)
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
 # Block aggressive scrapers that spam database without providing search traffic
 User-agent: Bytespider
 Disallow: /

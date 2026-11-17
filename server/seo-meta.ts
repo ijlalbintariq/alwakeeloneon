@@ -1,3 +1,4 @@
+import { CASE_LAW_TITLE, CASE_LAW_DESCRIPTION } from "../shared/case-law-research";
 /**
  * Per-route SEO metadata for server-side HTML injection.
  *
@@ -188,9 +189,9 @@ ${JSON.stringify(
   {
     match: /^\/judgments$/,
     meta: {
-      title: "Pakistani Judgment Search — Pakistani Cases | Al Wakeelo",
+      title: CASE_LAW_TITLE,
       description:
-        "Search Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Find case law by citation, party, court, and year.",
+        CASE_LAW_DESCRIPTION,
       index: true,
     },
   },
@@ -206,9 +207,9 @@ ${JSON.stringify(
   {
     match: /^\/judgment-search$/,
     meta: {
-      title: "Pakistani Judgment Search — Pakistani Cases | Al Wakeelo",
+      title: CASE_LAW_TITLE,
       description:
-        "Search Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Find case law by citation, party, court, and year.",
+        CASE_LAW_DESCRIPTION,
       index: false, // Legacy redirect route (/judgment-search -> /judgments). Noindex to avoid duplicate canonical.
     },
   },

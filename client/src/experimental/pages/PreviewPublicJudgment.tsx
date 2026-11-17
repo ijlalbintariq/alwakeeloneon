@@ -1,3 +1,4 @@
+import { publicJudgmentSeo, JudgmentCitationSummary } from "@shared/judgment-public-seo";
 import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useParams } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
@@ -151,18 +152,10 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
     return () => controller.abort();
   }, [targetId]);
 
-  // Client-side SEO Document Head
-  const pageTitle = data?.citation
-    ? `${data.citation}: ${data.title}`
-    : data?.title || "Pakistani Court Judgment";
-
-  const pageDescription = data?.headnotes
-    ? `Read ${data.citation || "Pakistani case law"}: ${data.title}. ${data.headnotes.slice(0, 160).replace(/\s+/g, " ").trim()}...`
-    : `Read Pakistani case law ${data?.citation || ""}: ${data?.title || ""} decided by ${data?.court || "Superior Court of Pakistan"}. Full text and citations on Al Wakeelo.`;
-
+  const seo = publicJudgmentSeo(data || { id: targetId || "" });
   useDocumentHead({
-    title: pageTitle,
-    description: pageDescription,
+    title: loading ? "Loading judgment | Al Wakeelo" : seo.title,
+    description: seo.description,
     path: data?.id ? `/judgment/${data.id}` : targetId ? `/judgment/${targetId}` : undefined,
     index: data?.textIntegrity === "own",
   });
@@ -171,146 +164,12 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
     return parsePakistaniHeadnotes(data?.headnotes);
   }, [data?.headnotes]);
 
-  const schemaGraph = useMemo(() => {
-    if (!data || data.textIntegrity !== "own") return null;
-    const id = data.id;
-    const citation = data.citation || "";
-    const title = data.title || "Pakistani Court Judgment";
-    const courtName = data.court || "Superior Court of Pakistan";
-    const courtSlug = courtName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const decisionDateStr = data.decisionDate ? new Date(data.decisionDate).toISOString().slice(0, 10) : undefined;
-
-    // Parse bench judges
-    const benchRaw = data.bench || "";
-    const rawParts = benchRaw.split(/\s*;\s*|\r?\n|\s+and\s+/i);
-    const parsedJudges: Array<{ name: string; title: string }> = [];
-
-    for (const part of rawParts) {
-      const commaParts = part.split(/\s*,\s*/);
-      let currentJudge = "";
-      let currentTitle = "Judge";
-      for (let i = 0; i < commaParts.length; i++) {
-        const token = commaParts[i].trim();
-        if (!token) continue;
-        if (/^(?:C\.?J\.?|Chief Justice|J\.?|Judge|Senior Puisne Judge)$/i.test(token)) {
-          if (currentJudge) {
-            currentTitle = /C\.?J\.?|Chief Justice/i.test(token) ? "Chief Justice" : "Judge";
-          }
-        } else {
-          if (currentJudge) {
-            parsedJudges.push({ name: currentJudge, title: currentTitle });
-            currentTitle = "Judge";
-          }
-          currentJudge = token;
-          if (/Chief Justice/i.test(token) || /\bC\.?J\.?\b/i.test(token)) {
-            currentTitle = "Chief Justice";
-          }
-        }
-      }
-      if (currentJudge) {
-        parsedJudges.push({ name: currentJudge, title: currentTitle });
-      }
-    }
-
-    const authors = parsedJudges.length > 0
-      ? parsedJudges.map((j) => ({ "@type": "Person" as const, name: j.name, jobTitle: j.title }))
-      : [{ "@type": "Person" as const, name: courtName, jobTitle: "Judge" }];
-
-    const journalMatch = citation ? citation.match(/\b([A-Z]{3,6})\b/) : null;
-    const journalCode = journalMatch ? journalMatch[1] : "PLD";
-
-    return {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "LegalArticle",
-          "@id": `https://www.alwakeelo.com/judgment/${id}#article`,
-          "isPartOf": {
-            "@type": "Periodical",
-            "name": "Pakistan Law Reports",
-            "issn": journalCode,
-          },
-          "headline": citation ? `${citation}: ${title}` : title,
-          ...(citation ? { "alternativeHeadline": citation } : {}),
-          "name": title,
-          "description": pageDescription,
-          "inLanguage": "en",
-          "mainEntityOfPage": `https://www.alwakeelo.com/judgment/${id}`,
-          "url": `https://www.alwakeelo.com/judgment/${id}`,
-          ...(decisionDateStr ? { "datePublished": decisionDateStr } : {}),
-          "author": authors,
-          "publisher": {
-            "@type": "Organization",
-            "@id": "https://www.alwakeelo.com/#organization",
-            "name": "Alwakeelo AI",
-            "url": "https://www.alwakeelo.com/",
-          },
-          "about": {
-            "@id": `https://www.alwakeelo.com/judgment/${id}#courtcase`,
-          },
-          ...(data.headnotes ? { "articleBody": data.headnotes.slice(0, 3000) } : {}),
-        },
-        {
-          "@type": "CourtCase",
-          "@id": `https://www.alwakeelo.com/judgment/${id}#courtcase`,
-          "name": title,
-          "identifier": citation || id,
-          "caseNumber": citation || id,
-          "headline": citation ? `${citation}: ${title} — ${courtName}` : title,
-          "court": {
-            "@type": "GovernmentOrganization",
-            "name": courtName,
-            "address": {
-              "@type": "PostalAddress",
-              "addressCountry": "PK",
-            },
-          },
-          "inLanguage": "en",
-          "isAccessibleForFree": true,
-          "about": [
-            { "@type": "Thing", "name": "Pakistani Case Law" },
-            { "@type": "Thing", "name": "Judicial Precedent" },
-          ],
-          ...(decisionDateStr ? { "datePublished": decisionDateStr } : {}),
-          ...((data.petitioner || data.respondent) ? {
-            "party": [
-              ...(data.petitioner ? [{ "@type": "Person" as const, name: data.petitioner, "roleName": "Petitioner / Appellant" }] : []),
-              ...(data.respondent ? [{ "@type": "GovernmentOrganization" as const, name: data.respondent, "roleName": "Respondent" }] : []),
-            ],
-          } : {}),
-        },
-        {
-          "@type": "BreadcrumbList",
-          "@id": `https://www.alwakeelo.com/judgment/${id}#breadcrumbs`,
-          "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.alwakeelo.com/" },
-            { "@type": "ListItem", "position": 2, "name": "Judgments", "item": "https://www.alwakeelo.com/judgments" },
-            { "@type": "ListItem", "position": 3, "name": courtName, "item": `https://www.alwakeelo.com/judgments/browse?court=${encodeURIComponent(courtSlug)}` },
-            { "@type": "ListItem", "position": 4, "name": citation || title, "item": `https://www.alwakeelo.com/judgment/${id}` },
-          ],
-        },
-      ],
-    };
-  }, [data, pageDescription]);
-
+  const schemaGraph = seo.schema;
   useEffect(() => {
-    if (!schemaGraph) return;
-    const scriptId = "judgment-jsonld-schema";
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-    if (!script) {
-      script = document.createElement("script");
-      script.id = scriptId;
-      script.type = "application/ld+json";
-      document.head.appendChild(script);
-    }
-    script.text = JSON.stringify(schemaGraph);
-    return () => {
-      const existing = document.getElementById(scriptId);
-      if (existing) existing.remove();
-    };
-  }, [schemaGraph]);
+    // React owns the current record after mount, including noindex/loading states.
+    document.getElementById("server-judgment-jsonld")?.remove();
+  }, []);
 
-  
   const formattedParagraphs = useMemo(() => {
     if (!data?.previewText) return [];
     let t = data.previewText.replace(/\r\n/g, "\n");
@@ -434,6 +293,8 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
                 data?.title
               )}
             </h1>
+
+            {data && <JudgmentCitationSummary record={data} />}
 
             <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-600 dark:text-slate-400 border-t border-b border-slate-200 dark:border-slate-500/20 py-4">
               <div className="flex items-center gap-2">
@@ -690,11 +551,11 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
         </div>
       </main>
 
-      {/* Structured Legal Data (Schema.org @graph: LegalArticle + CourtCase + BreadcrumbList) */}
+      {/* Shared public judgment structured data */}
       {schemaGraph && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaGraph) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaGraph).replace(/</g, "\\u003c") }}
         />
       )}
     </div>

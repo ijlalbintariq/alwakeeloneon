@@ -1,3 +1,5 @@
+import { publicJudgmentSeo, judgmentDecisionDate, JudgmentCitationSummary } from "../shared/judgment-public-seo";
+import { CaseLawResearchGuide } from "../shared/case-law-research";
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
@@ -145,50 +147,6 @@ export function serveStatic(app: Express) {
   const SEO_QUERY_TIMEOUT_MS = 8_000;
 
   async function getJudgmentSeoData(id: string): Promise<{ meta: SeoMeta; preRenderBlock: string } | { canonicalId: string } | undefined> {
-    function parseBenchJudges(bench: string | null | undefined): Array<{ "@type": "Person"; name: string; jobTitle?: string }> {
-      if (!bench || typeof bench !== "string") return [];
-      const clean = bench.trim();
-      if (!clean) return [];
-
-      const rawParts = clean.split(/\s*;\s*|\r?\n|\s+and\s+/i);
-      const judges: Array<{ name: string; title: string }> = [];
-
-      for (const part of rawParts) {
-        const commaParts = part.split(/\s*,\s*/);
-        let currentJudge = "";
-        let currentTitle = "Judge";
-
-        for (let i = 0; i < commaParts.length; i++) {
-          const token = commaParts[i].trim();
-          if (!token) continue;
-
-          if (/^(?:C\.?J\.?|Chief Justice|J\.?|Judge|Senior Puisne Judge)$/i.test(token)) {
-            if (currentJudge) {
-              currentTitle = /C\.?J\.?|Chief Justice/i.test(token) ? "Chief Justice" : "Judge";
-            }
-          } else {
-            if (currentJudge) {
-              judges.push({ name: currentJudge, title: currentTitle });
-              currentTitle = "Judge";
-            }
-            currentJudge = token;
-            if (/Chief Justice/i.test(token) || /\bC\.?J\.?\b/i.test(token)) {
-              currentTitle = "Chief Justice";
-            }
-          }
-        }
-        if (currentJudge) {
-          judges.push({ name: currentJudge, title: currentTitle });
-        }
-      }
-
-      return judges.map((j) => ({
-        "@type": "Person" as const,
-        name: j.name,
-        jobTitle: j.title,
-      }));
-    }
-
     // Read current identity on each request; repairs can happen outside this process.
 
     // A temporary backend failure must not turn a valid page into a noindex page.
@@ -246,7 +204,7 @@ export function serveStatic(app: Express) {
 
         const citation = row.citationString ? String(row.citationString).trim() : "";
         const courtName = own ? safe.court || "Court not recorded" : "Court identity unverified";
-        const decisionDateStr = own && safe.decisionDate ? new Date(safe.decisionDate).toISOString().slice(0, 10) : "";
+        const decisionDateStr = own ? judgmentDecisionDate(safe.decisionDate) || "" : "";
         const yearStr = decisionDateStr ? decisionDateStr.slice(0, 4) : "";
         const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         const petitioner = own && safe.petitioner ? String(safe.petitioner).trim() : "";
@@ -254,98 +212,9 @@ export function serveStatic(app: Express) {
         const rawFullText: string = own ? safe.fullText : "";
         const courtDirectoryPath = row.courtId ? `/judgments/browse?courtId=${row.courtId}` : "/judgments/browse";
 
-        const pageTitle = citation
-          ? `${citation}: ${cleanTitle} — ${courtName} | Al Wakeelo`
-          : `${cleanTitle} — ${courtName} | Al Wakeelo`;
-
-        const pageDescription = !own ? `Case identity for ${citation || "this record"} is unverified. Inspect available sources in the judgment reader.` : citation
-          ? `Read Pakistani case law ${citation}: ${cleanTitle} decided by ${courtName}. Full text, ratio decidendi, and citations on Al Wakeelo.`
-          : `Read Pakistani case law: ${cleanTitle} decided by ${courtName}. Full text, legal holding, and citations on Al Wakeelo.`;
-
-        const benchStr = row.bench ? String(row.bench).trim() : "";
-        const benchAuthors = parseBenchJudges(benchStr);
-        const articleAuthors = benchAuthors.length > 0
-          ? benchAuthors
-          : [{ "@type": "Person" as const, "name": courtName || "Superior Judiciary of Pakistan", "jobTitle": "Judge" }];
-
-        const journalMatch = citation ? citation.match(/\b([A-Z]{3,6})\b/) : null;
-        const journalCode = journalMatch ? journalMatch[1] : "PLD";
-
-        // Schema markup: LegalArticle + CourtCase + BreadcrumbList in unified @graph
-        const schema = {
-          "@context": "https://schema.org",
-          "@graph": [
-            {
-              "@type": "LegalArticle",
-              "@id": `https://www.alwakeelo.com/judgment/${id}#article`,
-              "isPartOf": {
-                "@type": "Periodical",
-                "name": "Pakistan Law Reports",
-                "issn": journalCode
-              },
-              "headline": pageTitle,
-              ...(citation ? { "alternativeHeadline": citation } : {}),
-              "name": cleanTitle,
-              "description": pageDescription,
-              "inLanguage": "en",
-              "mainEntityOfPage": `https://www.alwakeelo.com/judgment/${id}`,
-              "url": `https://www.alwakeelo.com/judgment/${id}`,
-              ...(decisionDateStr ? { "datePublished": decisionDateStr } : {}),
-              "author": articleAuthors,
-              "publisher": {
-                "@type": "Organization",
-                "@id": "https://www.alwakeelo.com/#organization",
-                "name": "Alwakeelo AI",
-                "url": "https://www.alwakeelo.com/"
-              },
-              "about": {
-                "@id": `https://www.alwakeelo.com/judgment/${id}#courtcase`
-              },
-              ...(safe.headnotes ? { "articleBody": safe.headnotes.slice(0, 3000) } : {})
-            },
-            {
-              "@type": "CourtCase",
-              "@id": `https://www.alwakeelo.com/judgment/${id}#courtcase`,
-              "name": cleanTitle,
-              "identifier": citation || id,
-              "caseNumber": citation || id,
-              "headline": pageTitle,
-              "court": {
-                "@type": "GovernmentOrganization",
-                "name": courtName,
-                "address": {
-                  "@type": "PostalAddress",
-                  "addressCountry": "PK"
-                }
-              },
-              "inLanguage": "en",
-              "isAccessibleForFree": true,
-              "about": [
-                { "@type": "Thing", "name": "Pakistani Case Law" },
-                { "@type": "Thing", "name": "Judicial Precedent" }
-              ],
-              ...(decisionDateStr ? { "datePublished": decisionDateStr } : {}),
-              ...((petitioner || respondent) ? {
-                "party": [
-                  ...(petitioner ? [{ "@type": "Person" as const, "name": petitioner, "roleName": "Petitioner / Appellant" }] : []),
-                  ...(respondent ? [{ "@type": "GovernmentOrganization" as const, "name": respondent, "roleName": "Respondent" }] : [])
-                ]
-              } : {})
-            },
-            {
-              "@type": "BreadcrumbList",
-              "@id": `https://www.alwakeelo.com/judgment/${id}#breadcrumbs`,
-              "itemListElement": [
-                { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.alwakeelo.com/" },
-                { "@type": "ListItem", "position": 2, "name": "Judgments", "item": "https://www.alwakeelo.com/judgments" },
-                { "@type": "ListItem", "position": 3, "name": courtName, "item": `https://www.alwakeelo.com${courtDirectoryPath}` },
-                { "@type": "ListItem", "position": 4, "name": citation || cleanTitle, "item": `https://www.alwakeelo.com/judgment/${id}` }
-              ]
-            }
-          ]
-        };
-        
-        const schemaMarkup = own ? `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2).replace(/</g, "\\u003c")}\n</script>` : "";
+        const publicRecord = { id, title: cleanTitle, citation, court: own ? safe.court : null, decisionDate: safe.decisionDate, textIntegrity: safe.textIntegrity };
+        const { title: pageTitle, description: pageDescription, schema } = publicJudgmentSeo(publicRecord);
+        const schemaMarkup = schema ? `<script id="server-judgment-jsonld" type="application/ld+json">${serializeJsonLd(schema)}</script>` : "";
 
         const meta: SeoMeta = {
           title: pageTitle,
@@ -396,6 +265,8 @@ export function serveStatic(app: Express) {
     </div>
   </div>
 
+  ${renderToStaticMarkup(createElement(JudgmentCitationSummary, { record: publicRecord }))}
+
   <section style="margin:28px 0;padding:24px 28px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;">
     <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-top:0;margin-bottom:20px;">Full Judgment Text &amp; Judicial Ruling</h2>
     ${formattedParagraphs}
@@ -433,6 +304,7 @@ export function serveStatic(app: Express) {
     "/": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
   <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Alwakeelo AI — Pakistan's AI-Powered Legal Assistant</h1>
   <p>Alwakeelo AI is a Pakistan-focused AI legal assistant, built for lawyers, law students, and anyone navigating Pakistani law. Search Pakistani judgments from the Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, and Federal Shariat Court.</p>
+  ${renderToStaticMarkup(createElement(CaseLawResearchGuide))}
   <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Features</h2>
   <ul>
     <li><strong>Judgment Search</strong> — Search Pakistani judgments by citation, party name, court, year, and keyword. Includes PLD, SCMR, YLR, MLD, CLD, CLC, PCrLJ law reports.</li>
@@ -456,17 +328,9 @@ export function serveStatic(app: Express) {
   <p>Draft court-ready legal documents including writ petitions under Article 199 of the Constitution, bail applications (pre-arrest and post-arrest), civil suit plaints, legal notices, appeals, and stay applications. All drafts follow Pakistani judicial formatting standards with proper prayer clauses, statutory references, and verification statements. Contract drafting covers lease agreements, employment contracts, NDAs, partnership deeds, and sale agreements under the Contract Act 1872, Stamp Act 1899, and Registration Act 1908.</p>
 </div>`,
 
-    "/judgments": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">
-  <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0f172a;line-height:1.25;margin:0 0 16px 0;">Pakistani Judgment Search — Pakistani Cases</h1>
-  <p>Search Pakistani judgments from the Supreme Bench, provincial High Benches, the Federal Shariat forum, and special tribunals. Find case law by citation number, party name, jurisdiction, year, and legal keywords.</p>
-  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Search by Citation</h2>
-  <p>Look up judgments by their official citation — PLD 2024 SC 100, 2023 SCMR 500, 2022 YLR 200, MLD, CLC, CLD, PCrLJ citations are all searchable across every reporting journal.</p>
-  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Search by Party Name</h2>
-  <p>Find cases by petitioner or respondent name. Search for proceedings involving the State, Federation of Pakistan, Provincial Governments, NAB, FIA, or private parties.</p>
-  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Jurisdictions Covered</h2>
-  <p>The Supreme Bench of Pakistan, Lahore High Bench, Sindh High Bench, Peshawar High Bench, Islamabad judiciary, Balochistan judiciary, and the Federal Shariat appellate forum.</p>
-  <h2 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0f172a;margin-top:24px;margin-bottom:12px;">Full Judgment Text</h2>
-  <p>Read the complete text of each decision including headnotes, case summary, parties, decision date, and related citations. Every judgment links to the precedents it relies on and subsequent decisions that reference it.</p>
+    "/judgments": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;line-height:1.6;">
+  <h1>Pakistani Case Law Search</h1>
+  ${renderToStaticMarkup(createElement(CaseLawResearchGuide))}
 </div>`,
 
     "/judgments/browse": `<div id="seo-prerender" style="padding:24px 16px;max-width:880px;margin:0 auto;font-family:'Inter', -apple-system, sans-serif;color:#0f172a;line-height:1.6;">

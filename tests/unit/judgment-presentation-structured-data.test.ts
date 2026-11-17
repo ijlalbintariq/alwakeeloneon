@@ -66,7 +66,7 @@ describe("Milestone M2: Judgment Presentation, Headnotes & Legal Structured Data
       title: "2024 SCMR 100: Federation of Pakistan v. Public Interest",
       description: "Supreme Court of Pakistan constitutional judgment on fundamental rights.",
       index: true,
-      schemaMarkup: `<script type="application/ld+json">{"@context":"https://schema.org","@type":"LegalArticle"}</script>`,
+      schemaMarkup: `<script type="application/ld+json">{"@context":"https://schema.org","@type":"CreativeWork"}</script>`,
     };
 
     const injected = injectSeoMeta(mockHtml, `/judgments/${sampleUuid}`, customMeta);
@@ -81,7 +81,7 @@ describe("Milestone M2: Judgment Presentation, Headnotes & Legal Structured Data
       new RegExp(`<meta id="og-url-meta" property="og:url" content="https://www.alwakeelo.com/judgment/${sampleUuid}" />`),
     );
     assert.match(injected, /<title>2024 SCMR 100: Federation of Pakistan v\. Public Interest<\/title>/);
-    assert.match(injected, /{"@context":"https:\/\/schema\.org","@type":"LegalArticle"}/);
+    assert.match(injected, /{"@context":"https:\/\/schema\.org","@type":"CreativeWork"}/);
   });
 
   test("server/static.ts enforces 301 redirects from /judgments/:uuid to /judgment/:uuid", () => {
@@ -95,19 +95,6 @@ describe("Milestone M2: Judgment Presentation, Headnotes & Legal Structured Data
       staticContent.includes("Enforce singular /judgment/:uuid canonical route with 301 redirect"),
       "server/static.ts must register explicit 301 redirect route for legacy plural URLs to singular canonical URL",
     );
-  });
-
-  test("server/static.ts generates Schema.org @graph with LegalArticle, CourtCase, and BreadcrumbList", () => {
-    const staticTsPath = path.resolve(process.cwd(), "server/static.ts");
-    const staticContent = fs.readFileSync(staticTsPath, "utf-8");
-
-    // Verifies Schema.org @graph multi-entity structure
-    assert.ok(staticContent.includes('"@graph": ['), "Must output Schema.org @graph");
-    assert.ok(staticContent.includes('"@type": "LegalArticle"'), "Must include LegalArticle");
-    assert.ok(staticContent.includes('"@type": "CourtCase"'), "Must include CourtCase");
-    assert.ok(staticContent.includes('"@type": "BreadcrumbList"'), "Must include BreadcrumbList");
-    assert.ok(staticContent.includes("parseBenchJudges"), "Must parse bench judges into Person entities");
-    assert.ok(staticContent.includes("bench: judgments.bench"), "Must select judgments.bench from DB");
   });
 
   test("server/storage.ts and server/routes.ts expose bench in JudgmentDetail and API response", () => {
@@ -150,11 +137,7 @@ describe("Milestone M2: Judgment Presentation, Headnotes & Legal Structured Data
     );
     assert.ok(clientContent.includes("Official Editorial Headnotes Not Reported"), "Must provide graceful fallback for null headnotes");
 
-    // Schema.org @graph JSON-LD
-    assert.ok(clientContent.includes('"@graph": ['), "Must build Schema.org @graph");
-    assert.ok(clientContent.includes('"@type": "LegalArticle"'), "Must include LegalArticle in client JSON-LD");
-    assert.ok(clientContent.includes('"@type": "CourtCase"'), "Must include CourtCase in client JSON-LD");
-    assert.ok(clientContent.includes('"@type": "BreadcrumbList"'), "Must include BreadcrumbList in client JSON-LD");
+    assert.ok(clientContent.includes("publicJudgmentSeo("), "Reader must use the shared judgment schema");
     assert.ok(clientContent.includes('type="application/ld+json"'), "Must render application/ld+json script tag");
   });
 });
