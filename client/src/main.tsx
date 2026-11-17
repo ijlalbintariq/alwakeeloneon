@@ -2,10 +2,10 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Remove SEO pre-render block once the JavaScript bundle executes to prevent double rendering for sighted users
+// Judgment HTML stays readable until its reader takes over with the same record.
 try {
   const seoPrerender = document.getElementById("seo-prerender");
-  if (seoPrerender) {
+  if (seoPrerender && !document.getElementById("public-judgment-data")) {
     seoPrerender.remove();
   }
 } catch (e) {

@@ -1,3 +1,5 @@
+import type { PublicJudgmentData } from "@shared/public-judgment-data";
+import { readPublicJudgmentBootstrap } from "@/lib/public-judgment-bootstrap";
 import { publicJudgmentSeo, JudgmentCitationSummary } from "@shared/judgment-public-seo";
 import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useParams } from 'wouter';
@@ -9,29 +11,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Scale, ChevronRight, FileText, Share2, Printer, Download, Sparkles, Building2, Calendar, User, Gavel } from 'lucide-react';
 import { useDocumentHead } from '@/hooks/use-document-head';
 import { renderTextWithCitationLinks, buildJudgmentCitationMap } from '@/components/formatted-judgment-text';
-
-interface PublicJudgmentData {
-  id: string;
-  citation: string;
-  title: string;
-  petitioner: string | null;
-  respondent: string | null;
-  bench?: string | null;
-  court: string | null;
-  decisionDate: string | null;
-  headnotes: string | null;
-  previewText: string;
-  previewWordCount: number;
-  totalWordCount: number;
-  isPreview: boolean;
-  isTruncated: boolean;
-  citations: { made: any[], received: any[] };
-  textIntegrity?: "own" | "mislabeled" | "unknown" | string;
-  textWarning?: string | null;
-  pdfUrl?: string | null;
-  contentFormat?: string;
-  textBelongsTo?: { citation: string | null; id: string | null } | null;
-}
 
 interface ParsedHeadnotePoint {
   label: string;
@@ -116,24 +95,29 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
   // Mounted on /judgment/:id, /preview/p/:id and /preview/public/judgments/:id
   const params = useParams<{ id: string }>();
   const targetId = props?.id || props?.params?.id || params?.id;
-  const [data, setData] = useState<PublicJudgmentData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<PublicJudgmentData | null>(() => readPublicJudgmentBootstrap(targetId));
+  const [loading, setLoading] = useState(() => !data);
   const [error, setError] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   useEffect(() => {
     const controller = new AbortController();
-    setData(null);
+    // Keep the initial, server-verified record while refreshing supplementary data.
+    const initialRecord = data?.id === targetId ? data : null;
+    setData(initialRecord);
     setError(null);
-    setLoading(Boolean(targetId));
+    setLoading(Boolean(targetId) && !initialRecord);
     if (!targetId) return;
 
     const fetchJudgment = async () => {
       try {
         const res = await fetch(`/api/public/judgments/${encodeURIComponent(targetId)}`, { signal: controller.signal });
         if (!res.ok) {
-          if (res.status === 404) throw new Error("Judgment not found");
+          if (res.status === 404 || res.status === 410) {
+            if (!controller.signal.aborted) setData(null);
+            throw new Error("Judgment not found");
+          }
           if (res.status === 429) throw new Error("Too many requests. Please try again later.");
           throw new Error("Failed to load judgment");
         }
@@ -142,7 +126,7 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
       } catch (err: any) {
         if (controller.signal.aborted) return;
         console.error("Public judgment fetch error:", err);
-        setError(err.message);
+        if (!initialRecord || err.message === "Judgment not found") setError(err.message);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -169,6 +153,11 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
     // React owns the current record after mount, including noindex/loading states.
     document.getElementById("server-judgment-jsonld")?.remove();
   }, []);
+
+  useEffect(() => {
+    if (!data && !error && readPublicJudgmentBootstrap(targetId)) return;
+    document.getElementById("seo-prerender")?.remove();
+  }, [data, error, targetId]);
 
   const formattedParagraphs = useMemo(() => {
     if (!data?.previewText) return [];
@@ -295,6 +284,11 @@ export default function PreviewPublicJudgment(props?: PreviewPublicJudgmentProps
             </h1>
 
             {data && <JudgmentCitationSummary record={data} />}
+            {data?.isTruncated && (
+              <p className="mb-4 text-sm text-slate-600">
+                Showing an initial text preview. The full record loads automatically when available. If it does not load, reload this page or use the PDF link below.
+              </p>
+            )}
 
             <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-600 dark:text-slate-400 border-t border-b border-slate-200 dark:border-slate-500/20 py-4">
               <div className="flex items-center gap-2">

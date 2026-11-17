@@ -1,3 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { publicJudgmentSeo, judgmentDecisionDate, JudgmentCitationSummary } from "../../shared/judgment-public-seo";
+import { serializeJsonLd } from "../../server/static";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -34,6 +38,7 @@ function harness(initial: any, verifiedOwners = new Set<string>()) {
       return chain;
     } },
     judgments, courtsRef, sql, eq: () => "", prepareJudgmentDetail, linkifyCitationsInHtml,
+    publicJudgmentSeo, judgmentDecisionDate, JudgmentCitationSummary, serializeJsonLd, createElement, renderToStaticMarkup,
     getIndexableJudgmentIds: async () => verifiedOwners,
     seoActiveQueries: 0, SEO_MAX_CONCURRENT: 50, SEO_QUERY_TIMEOUT_MS: 8000, setTimeout: () => 0, clearTimeout() {},
   });
@@ -137,4 +142,19 @@ test("marketing preview redirects preserve query strings without touching worksp
   assert.equal(response.statusCode, 301);
   assert.equal(response.location, "/blog/known-guide?ref=share");
   assert.equal(canonicalPublicPath("/preview/dashboard"), "/preview/dashboard");
+});
+
+test("confirmed judgment HTML includes matching safe reader data and no private fields", async () => {
+  const result = await harness({ ...good, secret: "PRIVATE_MARKER", fullText: text + "\n</script><script>attack()</script>" }).get(id);
+  const match = result.preRenderBlock.match(/<script id="public-judgment-data" type="application\/json">([\s\S]*?)<\/script>/);
+  assert.ok(match);
+  const data = JSON.parse(match[1]);
+  assert.equal(data.id, id);
+  assert.equal(data.textIntegrity, "own");
+  assert.equal(data.title, title);
+  assert.equal(data.headnotes, null);
+  assert.match(data.previewText, /The court considered the evidence/);
+  assert.doesNotMatch(match[1], /<script|PRIVATE_MARKER|UNCHECKED_HEADNOTE/);
+  assert.equal(data.isTruncated, false);
+  assert.doesNotMatch((await harness({ ...good, textStatus: "mislabeled" }).get(id)).preRenderBlock, /public-judgment-data/);
 });

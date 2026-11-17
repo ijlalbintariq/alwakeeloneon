@@ -1,3 +1,4 @@
+import type { PublicJudgmentData } from "../shared/public-judgment-data";
 import { publicJudgmentSeo, judgmentDecisionDate, JudgmentCitationSummary } from "../shared/judgment-public-seo";
 import { CaseLawResearchGuide } from "../shared/case-law-research";
 import express, { type Express } from "express";
@@ -230,6 +231,17 @@ export function serveStatic(app: Express) {
           ? rawFullText.slice(0, MAX_JUDGMENT_CHARS).replace(/\s+\S*$/, "") + "…"
           : rawFullText;
 
+        const bootstrap: PublicJudgmentData | null = own ? {
+          id, title: cleanTitle, citation, court: safe.court || null,
+          petitioner: petitioner || null, respondent: respondent || null,
+          bench: row.bench || null, decisionDate: decisionDateStr || null,
+          headnotes: null, previewText: fullTextContent,
+          previewWordCount: fullTextContent.trim().split(/\s+/).filter(Boolean).length,
+          totalWordCount: rawFullText.trim().split(/\s+/).filter(Boolean).length,
+          isPreview: isTruncated, isTruncated, citations: { made: [], received: [] },
+          textIntegrity: "own", pdfUrl: safe.pdfUrl || null,
+        } : null;
+
         const formattedParagraphs = fullTextContent
           ? fullTextContent
               .split(/\n\s*\n/)
@@ -284,7 +296,9 @@ export function serveStatic(app: Express) {
   </section>
 </div>`;
 
-        return { meta, preRenderBlock };
+        return { meta, preRenderBlock: bootstrap
+          ? preRenderBlock.replace(/<\/div>$/, `<script id="public-judgment-data" type="application/json">${serializeJsonLd(bootstrap)}</script></div>`)
+          : preRenderBlock };
       }
     } finally {
       seoActiveQueries = Math.max(0, seoActiveQueries - 1);

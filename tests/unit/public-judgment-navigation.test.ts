@@ -142,3 +142,56 @@ test("public reader exposes a citable summary and one accurate schema graph", as
   assert.equal(graph[1].dateCreated, "2024-01-15");
   assert.equal(graph[0].name, document.title);
 });
+
+function installBootstrap(data: any) {
+  const block = document.createElement("div");
+  block.id = "seo-prerender";
+  const payload = document.createElement("script");
+  payload.id = "public-judgment-data";
+  payload.type = "application/json";
+  payload.textContent = JSON.stringify(data);
+  block.appendChild(payload);
+  document.body.appendChild(block);
+}
+
+test("initial HTML record stays visible and indexable during a delayed or failed API refresh", async () => {
+  installBootstrap(record(one, "Server-rendered case"));
+  document.querySelector('meta[name="robots"]')!.setAttribute("content", "index,follow");
+  const changes: string[] = [];
+  const observer = new dom.window.MutationObserver(() => changes.push(document.querySelector('meta[name="robots"]')!.getAttribute("content") || ""));
+  observer.observe(document.head, { attributes: true, subtree: true, attributeFilter: ["content"] });
+  try {
+    await show(one);
+    assert.match(document.querySelector("h1")?.textContent || "", /Server-rendered case/);
+    assert.equal(document.getElementById("seo-prerender"), null);
+    await act(async () => pending.get(one)!.resolve({ ok: false, status: 503 }));
+    assert.match(document.querySelector("h1")?.textContent || "", /Server-rendered case/);
+    assert.ok(changes.every(value => !value.includes("noindex")));
+    assert.doesNotMatch(document.body.textContent || "", /Failed to load judgment/);
+  } finally { observer.disconnect(); }
+});
+
+test("an unavailable or newly unverified record still loses indexability after bootstrap", async () => {
+  installBootstrap(record(one, "Server-rendered case"));
+  await show(one);
+  await respond(one, record(one, "Identity unverified", { textIntegrity: "unknown" }));
+  assert.match(document.querySelector('meta[name="robots"]')!.getAttribute("content") || "", /noindex/);
+  assert.equal(document.querySelector('[aria-label="Judgment citation and verification"]'), null);
+});
+
+test("bootstrap for another URL cannot leak a previous case into the requested page", async () => {
+  installBootstrap(record(one, "Wrong bootstrap case"));
+  await show(two);
+  assert.doesNotMatch(document.body.textContent || "", /Wrong bootstrap case/);
+  await respond(two, record(two, "Requested case"));
+  assert.match(document.querySelector("h1")?.textContent || "", /Requested case/);
+});
+
+test("a removed record cannot remain indexable just because it was in initial HTML", async () => {
+  installBootstrap(record(one, "Retired case"));
+  await show(one);
+  await act(async () => pending.get(one)!.resolve({ ok: false, status: 404 }));
+  assert.doesNotMatch(document.querySelector("h1")?.textContent || "", /Retired case/);
+  assert.match(document.querySelector('meta[name="robots"]')!.getAttribute("content") || "", /noindex/);
+  assert.equal(document.querySelector('script[type="application/ld+json"]'), null);
+});
