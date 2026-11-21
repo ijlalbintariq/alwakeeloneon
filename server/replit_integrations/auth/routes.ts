@@ -122,6 +122,13 @@ function getSafeRedirectUrl(target?: string): string {
   if (trimmed.startsWith("/") && !trimmed.startsWith("//") && !trimmed.startsWith("/\\")) {
     return trimmed;
   }
+  if (
+    trimmed.startsWith("alwakeelo://") ||
+    trimmed.startsWith("http://127.0.0.1:") ||
+    trimmed.startsWith("http://localhost:")
+  ) {
+    return trimmed;
+  }
   return "/dashboard";
 }
 
@@ -483,7 +490,11 @@ export function registerAuthRoutes(app: Express): void {
       const codeVerifier = base64UrlEncode(crypto.randomBytes(48));
       const codeChallenge = base64UrlEncode(crypto.createHash("sha256").update(codeVerifier).digest());
       const redirectUri = getGoogleRedirectUri(req);
-      const redirectParam = String(req.query.redirect || "").trim();
+      const desktopPort = Number(req.query.desktop_port) || 0;
+      let redirectParam = String(req.query.redirect || "").trim();
+      if (!redirectParam && desktopPort > 0) {
+        redirectParam = `/api/auth/desktop-redirect?port=${desktopPort}`;
+      }
 
       (req.session as any).googleOAuth = {
         state,
@@ -708,6 +719,77 @@ export function registerAuthRoutes(app: Express): void {
         return fail("db_unavailable", "Database unavailable");
       }
       return fail("google_callback_failed");
+    }
+  });
+
+  app.get("/api/auth/desktop-redirect", async (req, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      const port = Number(req.query.port) || 0;
+      const sid = req.sessionID || "";
+
+      if (!userId) {
+        return res.redirect("/auth");
+      }
+
+      let user: any = null;
+      try {
+        user = await authStorage.getUser(userId);
+      } catch {
+        user = (req.session as any)?.user;
+      }
+
+      const safeUser = user
+        ? {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            subscriptionTier: user.subscriptionTier,
+          }
+        : null;
+
+      const userEncoded = encodeURIComponent(JSON.stringify(safeUser || {}));
+      const sidEncoded = encodeURIComponent(sid);
+      const loopbackUrl = port > 0 ? `http://127.0.0.1:${port}/auth/callback?session=${sidEncoded}&user=${userEncoded}` : "";
+      const protocolUrl = `alwakeelo://auth?session=${sidEncoded}&user=${userEncoded}`;
+
+      return res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Al Wakeelo Legal Desktop - Authentication Complete</title>
+  <style>
+    body { margin:0; background:#0b111e; color:#f8fafc; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; }
+    .box { background:#131c2e; border:1px solid #c5a880; border-radius:20px; padding:44px; text-align:center; max-width:480px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7); }
+    .logo { font-size:48px; margin-bottom:16px; }
+    h1 { font-family:Georgia,serif; color:#c5a880; font-size:24px; margin:0 0 10px 0; font-weight:700; }
+    p { color:#94a3b8; font-size:14px; line-height:1.6; margin:0 0 24px 0; }
+    .btn { display:inline-block; background:#c5a880; color:#0b111e; font-weight:700; text-decoration:none; padding:13px 30px; border-radius:10px; font-size:15px; }
+    .btn:hover { background:#d4b993; }
+    .note { margin-top:18px; font-size:12px; color:#64748b; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">⚖️</div>
+    <h1>Authentication Successful</h1>
+    <p>Welcome, Counsel ${safeUser?.firstName || "Advocate"}! Prompting your Al Wakeelo Desktop Application now...</p>
+    <a href="${protocolUrl}" class="btn" id="openBtn">Open Al Wakeelo Desktop</a>
+    <div class="note">If the app doesn't open automatically, click the button above. You can safely close this browser window.</div>
+  </div>
+  <script>
+    try {
+      ${loopbackUrl ? `fetch("${loopbackUrl}", { mode: "no-cors" }).catch(() => {});` : ""}
+    } catch(e) {}
+    window.location.href = "${protocolUrl}";
+    setTimeout(() => { try { window.close(); } catch(e) {} }, 3500);
+  </script>
+</body>
+</html>`);
+    } catch (err: any) {
+      console.error("[Desktop Redirect] Error:", err);
+      return res.redirect("/dashboard");
     }
   });
 
