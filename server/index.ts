@@ -533,6 +533,14 @@ app.use((req, res, next) => {
       }).catch(err => {
         console.error("[Startup] Failed to initialize Safepay reconciler:", err);
       });
+
+      // Start background crawler IP range auto-refresh
+      import("./middleware/crawler-verifier").then(({ startOpenAiRangeAutoRefresh, refreshOpenAiIpRanges }) => {
+        startOpenAiRangeAutoRefresh();
+        refreshOpenAiIpRanges().catch(() => {});
+      }).catch(err => {
+        console.error("[Startup] Failed to initialize OpenAI crawler IP range auto-refresh:", err);
+      });
     });
   };
 

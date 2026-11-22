@@ -1998,9 +1998,9 @@
     "semantic_hash": "e65ba209703b6c9981952139ac29c54e"
   },
   "server/index.ts": {
-    "mtime": 1791871010.9524207,
-    "seen": 1791871180.585218,
-    "ast_hash": "1eec06a0aaf4a9fdce384b5093cc7161",
+    "mtime": 1795306401.6120408,
+    "seen": 1795306480.032501,
+    "ast_hash": "4460c17a96f04aa4bb3dd59865ab7f24",
     "semantic_hash": ""
   },
   "server/indexnow.ts": {
@@ -2058,9 +2058,9 @@
     "semantic_hash": "d38e37bd2358bbc3eddb88e6bcdc2d22"
   },
   "server/middleware/rate-limiter.ts": {
-    "mtime": 1793651321.3888862,
-    "seen": 1793653088.1175199,
-    "ast_hash": "de50a77c1a1052d4f66e1bafb7afdb1f",
+    "mtime": 1795306257.8780828,
+    "seen": 1795306480.032733,
+    "ast_hash": "dc2e00a6cd92757713f4861b5145975f",
     "semantic_hash": ""
   },
   "server/ml/ml-client.ts": {
@@ -2298,9 +2298,9 @@
     "semantic_hash": "d7c65518e9a60474aedc33c7fd21aeaf"
   },
   "server/routes.ts": {
-    "mtime": 1794322988.1617436,
-    "seen": 1795278453.676956,
-    "ast_hash": "67f472b5714ec2e0fa34feca013c8028",
+    "mtime": 1795306152.468546,
+    "seen": 1795306480.033765,
+    "ast_hash": "8a2ff8e0dcaebf811dfc7c0e5d89af54",
     "semantic_hash": ""
   },
   "server/run-mcp.ts": {
@@ -42330,8 +42330,8 @@
     "semantic_hash": ""
   },
   "reports/gsc-baseline-report.json": {
-    "mtime": 1794217492.227571,
-    "seen": 1794219337.4498382,
+    "mtime": 1795306021.9371781,
+    "seen": 1795306480.028461,
     "ast_hash": "192b0cfca9ca64d121f28ecfec069482",
     "semantic_hash": ""
   },
@@ -42354,8 +42354,8 @@
     "semantic_hash": ""
   },
   "reports/GSC_MONITORING_REPORT.md": {
-    "mtime": 1794217492.227751,
-    "seen": 1794219337.4618208,
+    "mtime": 1795306021.934562,
+    "seen": 1795306480.040488,
     "ast_hash": "d3f72c7097476129ff7d72cb09ecee27",
     "semantic_hash": ""
   },
@@ -42765,6 +42765,36 @@
     "mtime": 1794261346.0382743,
     "seen": 1795278453.6827252,
     "ast_hash": "fa885195d8fd6e92584328e53a2b565a",
+    "semantic_hash": ""
+  },
+  "server/data/openai-crawlers/chatgpt-user.json": {
+    "mtime": 1795306012.6482222,
+    "seen": 1795306480.0323288,
+    "ast_hash": "f8417bf3e047a05e42313b2d25cf72c8",
+    "semantic_hash": ""
+  },
+  "server/data/openai-crawlers/gptbot.json": {
+    "mtime": 1795306012.419685,
+    "seen": 1795306480.03233,
+    "ast_hash": "a97417469ce4c90792d984b073180dc6",
+    "semantic_hash": ""
+  },
+  "server/data/openai-crawlers/searchbot.json": {
+    "mtime": 1795306012.4155667,
+    "seen": 1795306480.032331,
+    "ast_hash": "58b21359bfbc1dddffc2afa3c7cb517a",
+    "semantic_hash": ""
+  },
+  "server/middleware/crawler-verifier.ts": {
+    "mtime": 1795306231.0587432,
+    "seen": 1795306480.032712,
+    "ast_hash": "7695413b3031abb2e6c8ec60133cc8b2",
+    "semantic_hash": ""
+  },
+  "tests/unit/openai-crawler-verification.test.ts": {
+    "mtime": 1795306338.033285,
+    "seen": 1795306480.038251,
+    "ast_hash": "33eeb2580a5a804a160eab957b10828f",
     "semantic_hash": ""
   }
 }
