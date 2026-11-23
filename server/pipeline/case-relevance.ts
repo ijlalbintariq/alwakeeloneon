@@ -6,7 +6,7 @@ export const CASE_REVIEW_UNAVAILABLE = "[SYSTEM SAFETY GATE — RELEVANCE REVIEW
 
 const decisionSchema = z.object({decisions:z.array(z.object({
   index:z.number().int().nonnegative(), relevant:z.boolean(),
-  confidence:z.number().min(0).max(1), evidence:z.string().max(200).default(""),
+  confidence:z.number().min(0).max(1).default(0), evidence:z.string().max(200).default(""),
 })).max(25)});
 
 /** A model selects only supplied records; it cannot introduce a new case or change its identity. */

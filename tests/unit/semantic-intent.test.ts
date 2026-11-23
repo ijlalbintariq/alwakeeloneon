@@ -281,3 +281,22 @@ test("positive relevance decisions without a genuine supporting passage are with
     }
   }finally{client.chat.completions.create=original;}
 });
+
+test("provider decisions omitting confidence withhold cases without turning a completed review into an outage",async()=>{
+  process.env.OPENROUTER_API_KEY="test-only";
+  const client=getClient();const original=client.chat.completions.create;
+  const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
+  try {
+    for(const relevant of [false,true]) {
+      client.chat.completions.create=(async()=>({choices:[{message:{content:JSON.stringify({decisions:[{index:0,relevant,evidence:relevant?family.summary:""}]})}}]})) as any;
+      const result=await reviewCaseRelevance(intent,[family]);
+      assert.equal(result.status,"checked");assert.deepEqual(result.rows,[]);
+    }
+    client.chat.completions.create=(async()=>({choices:[{message:{content:JSON.stringify({decisions:[
+      {index:0,relevant:false,evidence:""},
+      {index:1,relevant:true,confidence:0.95,evidence:family.summary},
+    ]})}}]})) as any;
+    const mixed=await reviewCaseRelevance(intent,[tax,family]);
+    assert.equal(mixed.status,"checked");assert.deepEqual(mixed.rows,[family]);
+  }finally{client.chat.completions.create=original;}
+});
