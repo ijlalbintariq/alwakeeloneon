@@ -10,6 +10,7 @@ import { extractLocalTopicKeywords } from "../../server/pipeline/query-rewriter"
 import { buildContext } from "../../server/pipeline/context-builder";
 import { extractCitations } from "../../server/citation-verify";
 import { reviewCaseRelevance, CASE_REVIEW_UNAVAILABLE } from "../../server/pipeline/case-relevance";
+import { LegalRetrievalError } from "../../server/legal-retrieval";
 import { getClient } from "../../server/openrouter-ai";
 
 const question = "Find judgments allowing a writ against a Family Court maintenance decree because the husband's financial means were not proved";
@@ -73,7 +74,7 @@ test("tool context uses issue-specific review, preserves reviewed pipeline hits 
   try {
     client.chat.completions.create=(async()=>({choices:[{message:{content:JSON.stringify({decisions:[
       {index:0,relevant:false,confidence:0.99,reason:"Tax assessment"},
-      {index:1,relevant:true,confidence:0.99,reason:"Maintenance financial means evidence"}]})}}]})) as any;
+      {index:1,relevant:true,confidence:0.99,evidence:family.summary}]})}}]})) as any;
     const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
     const result=await filterToolResult({verifiedHits:[tax,family],verifiedCitations:[tax.citation,family.citation],verifiedTitles:[],foundCount:2,contextString:"stale tax context"},intent,[family]);
     assert.deepEqual(result.verifiedCitations,[family.citation]);assert.equal(result.foundCount,1);
@@ -169,7 +170,7 @@ test("relevance review selects only original records and rejects unrelated cases
       assert.match(params.messages[0].content,/unrelated khula/);
       return {choices:[{message:{content:JSON.stringify({decisions:[
         {index:0,relevant:false,confidence:0.99,reason:"Different family remedy"},
-        {index:1,relevant:true,confidence:0.95,reason:"Financial means evidence"}]})}}]};
+        {index:1,relevant:true,confidence:0.95,evidence:unusual.summary}]})}}]};
     }) as any;
     const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
     const result=await reviewCaseRelevance(intent,[khula,unusual]);
@@ -213,6 +214,7 @@ test("case-search entry point uses the shared resolved issue and surfaces provid
   const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
   let status="ready";let review="checked";let retrieved=0;
   const retrieve=compile("server/legal-retrieval.ts","retrieveLegalCaseLaw",{
+    LegalRetrievalError,
     understandLegalQuery:async()=>status === "ready" ? {intent,research:research(),status} : {status},
     runRetrieval:async(actual:any)=>{retrieved++;assert.equal(actual.normalized,research().retrievalQuery?.toLowerCase());assert.equal(actual.topics[0].id,"family");assert.equal(actual.needsStatutes,false);return {caseLaw:[{row:family}],diagnostics:{caseLawRelevance:review}};},
   });
@@ -235,4 +237,47 @@ test("prepared understanding is reused and transient relevance failures are not 
   const output=await run(question,"test-user",[],{understanding:{intent,research:research(),status:"ready"}});
   assert.equal(output.caseRelevanceUnavailable,true);assert.equal(cacheWrites,0);
   assert.deepEqual(output.caseLawHits,[]);assert.match(output.contextString,/RELEVANCE REVIEW UNAVAILABLE/);
+});
+
+test("relevance review allows responses slower than four seconds and uses source evidence",async()=>{
+  process.env.OPENROUTER_API_KEY="test-only";
+  const client=getClient();const original=client.chat.completions.create;
+  const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
+  try {
+    client.chat.completions.create=((params:any,options:any)=>new Promise((resolve,reject)=>{
+      assert.match(params.messages[0].content,/omit prose explanations/);
+      const timer=setTimeout(()=>{options.signal.removeEventListener("abort",abort);resolve({choices:[{message:{content:JSON.stringify({decisions:[{index:0,relevant:true,confidence:0.95,evidence:family.summary}]})}}]});},4100);
+      function abort(){clearTimeout(timer);reject(new Error("Review timed out"));}
+      options.signal.addEventListener("abort",abort,{once:true});
+    })) as any;
+    const result=await reviewCaseRelevance(intent,[family]);
+    assert.equal(result.status,"checked");assert.deepEqual(result.rows,[family]);
+  }finally{client.chat.completions.create=original;}
+});
+
+test("intent classification permits a valid provider response after four seconds",async()=>{
+  process.env.OPENROUTER_API_KEY="test-only";
+  const client=getClient();const original=client.chat.completions.create;
+  try {
+    client.chat.completions.create=((_params:any,options:any)=>new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{options.signal.removeEventListener("abort",abort);resolve({choices:[{message:{content:JSON.stringify(research())}}]});},4100);
+      function abort(){clearTimeout(timer);reject(new Error("Classification timed out"));}
+      options.signal.addEventListener("abort",abort,{once:true});
+    })) as any;
+    const result=await understandLegalQuery(question);
+    assert.equal(result.status,"ready");assert.equal(result.intent?.topics[0].id,"family");
+  }finally{client.chat.completions.create=original;}
+});
+
+test("positive relevance decisions without a genuine supporting passage are withheld",async()=>{
+  process.env.OPENROUTER_API_KEY="test-only";
+  const client=getClient();const original=client.chat.completions.create;
+  const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
+  try {
+    for(const evidence of [undefined,"invented discussion of proving salary or bank statements","Family Court"]) {
+      client.chat.completions.create=(async()=>({choices:[{message:{content:JSON.stringify({decisions:[{index:0,relevant:true,confidence:0.99,evidence}]})}}]})) as any;
+      const result=await reviewCaseRelevance(intent,[family]);
+      assert.equal(result.status,"checked");assert.deepEqual(result.rows,[]);
+    }
+  }finally{client.chat.completions.create=original;}
 });

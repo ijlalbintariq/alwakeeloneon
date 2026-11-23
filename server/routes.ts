@@ -63,7 +63,7 @@ import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 import { mcpServer, mcpUserContext, createMcpServer } from "./mcp-server";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { retrieveLegalCaseLaw } from "./legal-retrieval";
+import { retrieveLegalCaseLaw, LegalRetrievalError } from "./legal-retrieval";
 import { runRetrieval } from "./pipeline/retrieval-engine";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
@@ -24243,6 +24243,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         judgments: kept,
       });
     } catch (err) {
+      if (err instanceof LegalRetrievalError) return res.status(err.status).json({error:err.message,code:err.code,retryable:err.status === 503});
       console.error("[MCP] Search case law failed:", err);
       res.status(500).json({ error: "Search failed" });
     }

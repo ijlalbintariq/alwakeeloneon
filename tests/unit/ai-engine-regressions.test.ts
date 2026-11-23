@@ -130,3 +130,20 @@ test("Vault preserves case-file scope and passes shared understanding and histor
   assert.deepEqual(retrieved, [[42], [42]]);
 
 });
+
+test("MCP HTTP search distinguishes temporary semantic failure from clarification and server errors",async()=>{
+  const {LegalRetrievalError}=await import("../../server/legal-retrieval");
+  for(const error of [
+    new LegalRetrievalError("QUERY_INTENT_UNAVAILABLE","Query intent is unavailable. Please retry.",503),
+    new LegalRetrievalError("CASE_RELEVANCE_UNAVAILABLE","Case relevance review is temporarily unavailable. Please retry.",503),
+    new LegalRetrievalError("QUERY_CLARIFICATION_REQUIRED","Clarify the legal issue you want to research.",422),
+  ]) {
+    const run=handler("/api/mcp/search_case_law",{
+      LegalRetrievalError,checkUsageLimit:async()=>true,retrieveLegalCaseLaw:async()=>{throw error;},
+    });
+    const res=reply();
+    await run({mcpUserId:"disposable-audit",body:{query:"family maintenance"}},res);
+    assert.equal(res.statusCode,error.status);assert.equal(res.body.code,error.code);
+    assert.equal(res.body.retryable,error.status===503);assert.equal(res.body.judgments,undefined);
+  }
+});

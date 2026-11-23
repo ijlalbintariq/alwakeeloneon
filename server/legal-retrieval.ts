@@ -18,6 +18,13 @@ import { runRetrieval } from "./pipeline/retrieval-engine";
 import { understandLegalQuery } from "./pipeline/semantic-intent";
 import type { CaseLaw } from "../shared/schema";
 
+export class LegalRetrievalError extends Error {
+  constructor(public code: "QUERY_INTENT_UNAVAILABLE" | "QUERY_CLARIFICATION_REQUIRED" | "CASE_RELEVANCE_UNAVAILABLE", message: string, public status: number) {
+    super(message);
+    this.name = "LegalRetrievalError";
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 1. Legal Topic Taxonomy
 // ---------------------------------------------------------------------------
@@ -250,15 +257,18 @@ export async function retrieveLegalCaseLaw(opts: LegalRetrievalOptions): Promise
   }
 
   const understanding = await understandLegalQuery(query);
-  if (!understanding.intent) throw new Error("Query intent is unavailable. Clarify the legal issue or retry.");
+  if (!understanding.intent) {
+    if (understanding.status === "clarify") throw new LegalRetrievalError("QUERY_CLARIFICATION_REQUIRED", "Clarify the legal issue you want to research.", 422);
+    throw new LegalRetrievalError("QUERY_INTENT_UNAVAILABLE", "Query intent is unavailable. Please retry.", 503);
+  }
   const intent = understanding.intent;
-  if (["summarize", "translate"].includes(intent.semanticTask || "")) throw new Error("This tool searches case law. Supply a legal research question or citation.");
+  if (["summarize", "translate"].includes(intent.semanticTask || "")) throw new LegalRetrievalError("QUERY_CLARIFICATION_REQUIRED", "This tool searches case law. Supply a legal research question or citation.", 422);
   intent.needsCaseLaw = true;
   intent.needsStatutes = false;
   intent.needsAdminDocs = false;
 
   const retrieval = await runRetrieval(intent, opts.userId || "", { caseLaw: Math.max(limit, 10) });
-  if (retrieval.diagnostics.caseLawRelevance === "unavailable") throw new Error("Case relevance review is temporarily unavailable. Please retry.");
+  if (retrieval.diagnostics.caseLawRelevance === "unavailable") throw new LegalRetrievalError("CASE_RELEVANCE_UNAVAILABLE", "Case relevance review is temporarily unavailable. Please retry.", 503);
   const rows = retrieval.caseLaw.slice(0, limit).map((c) => c.row);
   const topicsDetected = (intent.topics || []).map((t: any) => String(t.label || t.id || ""));
 

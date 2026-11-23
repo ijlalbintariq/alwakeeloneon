@@ -56,7 +56,7 @@ For a clear issue outside the named taxonomy, use other-legal and describe the p
 Select primaryTopic from other-legal or these IDs, and include it in topics: ${LEGAL_TOPICS.map(t=>t.id).join(", ")}.
 requestType describes what the user requests, not the legal domain. If the intent is unclear, return confidence below 0.7.`},
       {role:"user",content:semanticResearchInput(query,history,sourceContext)}],
-    }, {signal:AbortSignal.timeout(4000),maxRetries:0});
+    }, {signal:AbortSignal.timeout(8000),maxRetries:0});
     return parseSemanticResearch(JSON.parse(response.choices[0]?.message?.content || "{}"));
   } catch (error) {
     console.warn("[SemanticIntent] Unavailable or invalid classification; using safe fallback.");
