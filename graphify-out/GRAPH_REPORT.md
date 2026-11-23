@@ -1,17 +1,17 @@
-# Graph Report - Alwakeelo  (2026-11-22)
+# Graph Report - Alwakeelo  (2026-11-23)
 
 ## Corpus Check
-- 7071 files · ~22,058,600 words
+- 7072 files · ~22,059,791 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 167 file(s) not represented in the graph (top: .bin 115, .patch 25, (none) 7)
 
 ## Summary
-- 12824 nodes · 27191 edges · 626 communities (425 shown, 201 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 283 edges (avg confidence: 0.85)
+- 12825 nodes · 27200 edges · 629 communities (421 shown, 208 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 284 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e3a54f70`
+- Built from commit: `b837eb6b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -30,7 +30,7 @@
 - registerRoutes
 - TemplateNamespace
 - .add
-- Dict
+- .push
 - use-toast.ts
 - retrieval-engine.ts
 - useAuth
@@ -51,63 +51,63 @@
 - ParsedCauseList
 - XMLParserBase
 - gsc-monitor.ts
-- .constructor
+- AppPreviewRouter.tsx
 - crawler-verifier.ts
 - extraction-guard.ts
 - contract-drafting.tsx
 - devDependencies
 - tools
-- PreviewChat.tsx
+- chat.tsx
 - DatabaseStorage
 - resolveCaseCitationFromInternalDb
-- .push
+- .pop
 - legal-pagination.ts
 - package.json
 - knowledge-vault.tsx
-- Annotation
+- .create
 - Google Search Console Baseline Performance & Indexing Report
-- .preEvaluateFont
+- XmlObject
 - email.ts
 - experimental-secondary-e2e.test.ts
 - warn
-- judgment-view.tsx
-- preview-master-5tier-e2e.test.ts
-- wouter
+- chatWithDeepSeek
+- statutesCompendiumData.ts
+- lib/utils.ts
 - auto-extract-caselaw.ts
 - dependencies
 - preview-master-verification.test.ts
-- drafting-studio-regressions.test.ts
+- PreviewDrafting.tsx
 - nlpExtractCases
 - Technical Linkable SEO Assets & Embeddable Utilities Specification
 - devDependencies
-- mcp-server.ts
+- .toString
 - audio/client.ts
-- citation-verify.ts
-- .getTextContent
+- mcp-server.ts
+- Page
 - ContentObject
 - judgments-precedent-suite-e2e.test.ts
 - Judgment Vault Enhancement Plan
-- test-preview-e2e.ts
-- repair_judgment_identity.ts
+- legal-drafting-security.ts
+- Subform
 - Manual Test Checklist - Citation Policy Fix
-- PreviewJudgments.tsx
+- judgmentApiClient.ts
 - components/App.tsx
-- experimental/data/majorEnactmentsData.ts
+- exhaustive-production-readiness-audit.test.ts
 - scp-adapter.ts
-- JudgmentReader.tsx
+- PreviewJudgments.tsx
 - preview-e2e.test.ts
 - knowledge-pipeline.ts
 - use-threads.ts
-- .#V
+- FontInfo
 - 4.2 Code Implementation Details
 - voyage-law2-migrate.ts
 - ai-engine-regressions.test.ts
 - package_1770752266081.json
 - SimpleDOMNode
-- judgmentFormatter.ts
-- .parse
+- ColorSpace
+- .getTextContent
 - case-law-client-extractor.ts
-- drafting-data.ts
+- legal-drafting.tsx
 - static.ts
 - diary-mailer.ts
 - validation_pack_run.ts
@@ -121,7 +121,7 @@
 - github-sync.ts
 - README.md
 - document-classifier.ts
-- JpegStream
+- ._bindElement
 - Production RAG Specification (Legal App)
 - compilerOptions
 - preview-workstation-unified-e2e.test.ts
@@ -132,38 +132,38 @@
 - sitemap.ts
 - Generated: 2026-04-15
 - legal-editor.tsx
-- ColorSpace
+- .constructor
 - client/replit_integrations/audio/index.ts
 - runAllTests
-- statutes-83k-dataset.test.ts
+- preview-master-5tier-e2e.test.ts
 - Chat/AI Prompt Handling - Performance Analysis & Optimization Opportunities
 - test_mike_generate_docx.mjs
 - bulk-indexnow.ts
-- audit_chat_logs.ts
+- CaseLaw
 - file-scan.ts
 - Citation Database Fix Guide
 - drizzle-orm
 - App_1770752266078.tsx
 - KnowledgeBaseService
 - 2. Comprehensive Multi-Module Audit Findings
-- CalRGBCS
+- LabCS
 - FormatError
 - punjab-district-adapter.ts
 - resolveCaseCitationFromInternalDb
-- chat.tsx
+- court-fee.ts
 - draft-history-panel.tsx
 - legal-drafting-followup.ts
 - .text
 - manifest.json
 - generate-legal-pdf.ts
 - StringObject
-- legal-drafting.tsx
+- LegalDraftingPageInner
 - api.ts
-- templates-data.ts
+- organization.tsx
 - openrouter-transcription.ts
 - docx-generator.ts
 - server/data/majorEnactmentsData.ts
-- ImageResizer
+- PDFImage
 - adversarial-challenger-2-statutes-calculators.test.ts
 - citation-extractor.ts
 - adversarial-secondary-stress.test.ts
@@ -182,7 +182,7 @@
 - Relational Case Law Ingestion and Citation Graph Linking Walkthrough
 - audit-full-judgment-links.ts
 - causelist-cron.ts
-- FontInfo
+- text-diff.ts
 - RingBuffer
 - NullOptimizer
 - 13. Product Roadmap
@@ -191,12 +191,12 @@
 - causelist-matcher.ts
 - CMap
 - 18. AppSource Publication Strategy
-- adversarial-challenger-2-cross-module-stress.test.ts
+- replitAuth.ts
 - apex-ai.ts
 - r2-storage.ts
 - System Architecture
 - prepare-statute-data.ts
-- google-calendar-service.ts
+- test-preview-e2e.ts
 - DraftingTabManager
 - retrieveForQuery
 - LegalSearchService
@@ -211,8 +211,8 @@
 - index-missing-judgments-voyage.ts
 - live-test.mjs
 - generate_blog_articles.ts
-- CaseLead
-- case-documents.tsx
+- CalRGBCS
+- Color
 - fix-citations.js
 - caselaw_reextract_problem_docs.ts
 - 5. Legal Document Workflow Analysis
@@ -225,7 +225,7 @@
 - 22.2 Exhaustive Risk Narrative & Engineering Mitigation Strategies
 - FontSelector
 - SingleIntersector
-- chunkTextByTokens
+- citation-list.tsx
 - live-production-test.mjs
 - 2. Microsoft Word Add-in Platform Analysis
 - 6. Directory of Top 14 Pakistani Law Chambers
@@ -237,15 +237,15 @@
 - server/index.ts
 - QueryCache
 - ai-model-test.mjs
-- .fill
-- judgment_text_label.ts
+- chat.ts
+- checkout-success.tsx
 - XFAFactory
 - authStorage
 - AlWakeelo SEO and AEO review — 10 November 2026
 - fix_all_theme_colors.cjs
 - Alwakeelo Legal AI Platform: Comprehensive System Manual & Production-Readiness Walkthrough
 - axios
-- judgment-detail.tsx
+- daily-diary.tsx
 - statuteSearchEngine.ts
 - validate_drafting_live.cjs
 - StatuteLookup.tsx
@@ -262,9 +262,9 @@
 - word-addin/package.json
 - IntegerObject
 - 3. High Severity Findings
-- PDFImage
+- SimpleGlyph
 - patch_mcp_route.cjs
-- 04-bulk-embed-judgments.ts
+- 06-embed-statutes.ts
 - Root
 - 5. Low Severity Findings
 - adversarial-challenger-2-r2-r4-r5.test.ts
@@ -273,27 +273,27 @@
 - 6. Dedicated Section: Verification of DB Connection Timeout Handling Logic Completeness
 - test-e2e-caselaw.mjs
 - Medium Priority Issues (P2 - Functional Polish & API Optimization)
-- CCITTFaxDecoder
+- Organization
 - index_1770752266079.tsx
 - legalDatabase_1770752266080.ts
 - MetadataParser
 - audit-engine-quality.ts
 - judgment-integrity-gaps.test.ts
 - AIChat.tsx
-- statutes-workstation-e2e.test.ts
-- StatutoryClauseLibrary.tsx
+- statutes-hybrid-precedents.test.ts
+- AdminKnowledgeFile
 - Al Wakeelo Chat — Bug Fix Report
 - tutorial-cards.tsx
-- update-engine-intelligence.ts
+- DocumentFile
 - challenger-2-empirical-verification.ts
 - deepseek-ai.ts
 - retrieval-misses.ts
 - add-hubs.cjs
 - .createDocumentHandler
-- drafting-studio-regressions.spec.ts
-- Datasets
+- StatuteDocumentFile
+- DeviceRgbCS
 - fix_preview_footer_and_about.cjs
-- getInteger
+- getStringOption
 - ensureAlWakeeloReferencesBlock
 - getUploadBufferOrThrow
 - ux_scan.cjs
@@ -301,34 +301,34 @@
 - push-missing-judgments.ts
 - ai-router.ts
 - use-chat-session.tsx
-- SavedJudgment
+- sync-statute-sections.ts
 - AnnotationBorderStyle
-- parse-statutes.ts
+- DeviceGrayCS
 - run_qa_tests.cjs
 - dependencies
 - halfvec-migrate.ts
 - 21. Future Microsoft 365 Expansion Analysis
 - judgment-pdf.ts
-- public-seo-client.test.ts
-- PageSet
+- esbuild
+- DeviceCmykCS
 - append_hubs.js
 - apply_theme.cjs
 - modules.d.ts
 - auth_debug.cjs
 - auth_debug2.cjs
 - whisper-local.ts
-- document-viewer.tsx
-- ArithmeticDecoder
+- StatuteViewPage
+- OrgMember
 - copy_landing.cjs
 - LegalPageProfileId
 - copy_landing.js
-- HuffmanTreeNode
+- jspdf
 - export-sqlite-missing.py
 - Antigravity handoff: full judgment link and identity audit
 - 6. Second Pass Live Testing (Test Run 2)
 - 11. Feature-by-Feature Flow
 - .b
-- docx
+- verify-internal-links.ts
 - 11. Feature-by-Feature Flow
 - test-e2e-pipeline.ts
 - Teamwork Project Prompt — Draft
@@ -347,6 +347,7 @@
 - TEST_READY: Al Wakeelo Experimental Preview Master Test Suite
 - 7.2 Competitor Teardowns
 - fix_preview_faq.cjs
+- audio-local.ts
 - Alwakeelo Legal AI Platform: Comprehensive Forensic Audit & Production-Readiness Report
 - fix_preview_faq2.cjs
 - 6.6 Surface 6: Track Changes API & Revision Audit
@@ -354,6 +355,7 @@
 - 16. Performance Considerations
 - fix_preview_pricing.cjs
 - statute-live-fallback.test.ts
+- indexnow.ts
 - 19. UI/UX Recommendations
 - fix-route-order.cjs
 - Pakistani Legal Ecosystem Outreach Strategy & Digital PR Blueprint
@@ -362,6 +364,7 @@
 - latency_test_prod.cjs
 - getTierPlan
 - patch_blog_types.cjs
+- Margin
 - patch_fix_boundary.cjs
 - buildCaseLawDedupKey
 - patch_friendly_boundary.cjs
@@ -373,6 +376,7 @@
 - replace_navbar.cjs
 - replace_navbar2.cjs
 - 7. Law Schools & Academic Institutions
+- overrides
 - Al Wakeelo Development Roadmap
 - prepare_missing_payload.py
 - src/App.tsx
@@ -545,6 +549,7 @@
 - 🎓 SKILLS YOU NEED TO LEARN
 - 📚 NEXT STEPS
 - ai-engine-regressions.spec.ts
+- test_fixes.ts
 - 14. Cost Tracking & Analytics
 - 15. PWA & Install Guide
 - 13. Caching System
@@ -555,7 +560,7 @@
 - 🛠️ TECHNICAL RECOMMENDATIONS
 - Run and deploy your AI Studio app
 - 4. Directory of Bar Associations
-- link-precedents-and-judges.ts
+- server/load-env.ts
 - JpegImage
 - requirements.md
 - XhtmlNamespace
@@ -564,11 +569,9 @@
 - Judgment extraction and source-storage audit — 6 November 2026
 - 5. Directory of Judicial Academies (Training Institutes)
 - Legal drafting studio audit — 30 October 2026
-- judgment-free-index.test.ts
 - XhtmlObject
 - Al Wakeelo case-law AEO / GEO implementation
 - xdp_Xdp
-- rag-eval.ts
 - 02-sync-all-judgments.ts
 - 8. Pakistani Legal Publications, Digital Portals & Media
 - backfill-judgment-titles.cjs
@@ -607,57 +610,57 @@
 10. `db` - 138 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `run()` --indirect_call--> `assessJudgmentIdentity()`  [INFERRED]
-  tests/unit/judgment-review-export.test.ts → server/citation-verify.ts
 - `render()` --indirect_call--> `FormattedJudgmentText()`  [INFERRED]
   tests/unit/judgment-citation-links.test.ts → client/src/components/formatted-judgment-text.tsx
 - `mergeAndDeduplicate()` --calls--> `searchStatuteSections()`  [EXTRACTED]
   tests/unit/statute-live-fallback.test.ts → client/src/experimental/data/statutesCompendiumData.ts
-- `Head()` --calls--> `useDocumentHead()`  [EXTRACTED]
-  tests/unit/public-seo-client.test.ts → client/src/hooks/use-document-head.ts
+- `processIncomingDraftingInsert()` --calls--> `plainTextToTiptapHTML()`  [EXTRACTED]
+  tests/unit/adversarial-challenger-2-cross-module-stress.test.ts → client/src/experimental/lib/plain-to-tiptap.ts
 - `runTest()` --indirect_call--> `prompt()`  [INFERRED]
   contract-draft-test.mjs → playwright-tests/ai-engine-regressions.spec.ts
+- `run()` --indirect_call--> `assessJudgmentIdentity()`  [INFERRED]
+  tests/unit/judgment-review-export.test.ts → server/citation-verify.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (626 total, 201 thin omitted)
+## Communities (629 total, 208 thin omitted)
 
 ### Community 0 - "pdf.worker.min.mjs"
 Cohesion: 0.01
-Nodes (251): _a, aa, ac, addHTML(), ae, ai, an, Ao (+243 more)
+Nodes (250): _a, aa, ac, addHTML(), ae, ai, an, Ao (+242 more)
 
 ### Community 1 - "server/storage.ts"
 Cohesion: 0.02
-Nodes (107): allTokens, googleapis, parseSseResponse(), runTests(), getFullTextForCaseLaw(), main(), verifyItemWordBoundaries(), verifyQuery() (+99 more)
+Nodes (96): allTokens, googleapis, triggerGoogleIndexing(), clearSitemapCache(), AdminKnowledgeListItem, ALL_CAPS_PREFIX_REGEX, backfillTsvColumn(), BILLING_CYCLE_SET (+88 more)
 
 ### Community 2 - "cn"
 Cohesion: 0.02
-Nodes (206): AppShell(), AppSidebar(), NAVIGATION_GROUPS, NavigationGroup, NavigationItem, AccordionContent, AccordionItem, AccordionTrigger (+198 more)
+Nodes (188): AppShell(), AppSidebar(), NAVIGATION_GROUPS, NavigationGroup, NavigationItem, GoogleCalendarButton(), AccordionContent, AccordionItem (+180 more)
 
 ### Community 3 - "server/routes.ts"
 Cohesion: 0.01
-Nodes (192): RFC-6749, RFC-7636, CLAUSE_LIBRARY, ClauseItem, ContractTemplateItem, PAKISTANI_CONTRACT_TEMPLATES, LEGAL_DRAFT_MAX_INPUT_CHARS, prepareLegalDraftInput() (+184 more)
+Nodes (191): RFC-6749, RFC-7636, CLAUSE_LIBRARY, ClauseItem, ContractTemplateItem, PAKISTANI_CONTRACT_TEMPLATES, LEGAL_DRAFT_MAX_INPUT_CHARS, prepareLegalDraftInput() (+183 more)
 
 ### Community 4 - ".getOperatorList"
-Cohesion: 0.04
-Nodes (25): addCachedImageOps(), EvalState, fetchBinaryData(), getStandardFontName(), getTilingPatternIR(), getTransformMatrix(), getXfaFontDict(), getXfaFontName() (+17 more)
+Cohesion: 0.06
+Nodes (20): addCachedImageOps(), assert(), ColorSpaceUtils, fetchBinaryData(), getTilingPatternIR(), getTransformMatrix(), isNumberArray(), isPDFFunction() (+12 more)
 
 ### Community 5 - ".compile"
-Cohesion: 0.09
-Nodes (13): AstArgument, AstBinaryOperation, AstLiteral, AstMin, AstNode, AstVariable, AstVariableDefinition, buildAddOperation() (+5 more)
+Cohesion: 0.07
+Nodes (14): AstArgument, AstBinaryOperation, AstLiteral, AstMin, AstNode, AstVariable, AstVariableDefinition, buildAddOperation() (+6 more)
 
 ### Community 6 - "useToast"
 Cohesion: 0.01
-Nodes (196): CaseFilesPage, DailyDiaryPage, GoogleCalendarButton(), PreviewCaseFiles, PreviewDailyDiary, PreviewHistory, PreviewOrganization, CaseDossierOverview() (+188 more)
+Nodes (201): CaseDocumentsPage, CaseFilesPage, PreviewCaseFiles, PreviewDailyDiary, PreviewKnowledgeVault, PreviewOrganization, CaseDossierOverview(), CaseDossierOverviewProps (+193 more)
 
 ### Community 7 - "db.ts"
 Cohesion: 0.02
-Nodes (50): bcryptjs, drizzle-orm, runTests(), testQuery(), normalizeCitationForMatch(), run(), runTests(), testQuery() (+42 more)
+Nodes (46): main(), simulateHTTP(), bcryptjs, drizzle-orm, BATCH, DRY_RUN, DuplicateStatsRow, getRows() (+38 more)
 
 ### Community 8 - ".success"
 Cohesion: 0.05
-Nodes (36): applyAssist(), Arc, ariaLabel(), CheckButton, checkDimensions(), ChoiceList, computeBbox(), Corner (+28 more)
+Nodes (36): applyAssist(), ariaLabel(), CheckButton, checkDimensions(), ChoiceList, computeBbox(), createWrapper(), DateTimeEdit (+28 more)
 
 ### Community 9 - "ConfigNamespace"
 Cohesion: 0.01
@@ -665,43 +668,43 @@ Nodes (57): Acrobat7, ADBE_JSConsole, ADBE_JSDebugger, Attributes, AutoSave, Cac
 
 ### Community 10 - "rag-service.ts"
 Cohesion: 0.06
-Nodes (75): main(), main(), main(), main(), RAG_HNSW_EF_SEARCH, getR2ObjectText(), isVoyageProvider(), clamp() (+67 more)
+Nodes (75): main(), main(), main(), getR2ObjectText(), isVoyageProvider(), clamp(), deleteDocumentVectors(), dropMislabeledJudgmentChunks() (+67 more)
 
 ### Community 11 - "registerRoutes"
 Cohesion: 0.03
-Nodes (118): getExtractionQueueStats(), requireDatabase(), appearsTextLike(), beginInteractiveChatRequest(), buildApexModeSystemPrompt(), checkRateLimit(), checkUsageLimit(), cleanSummaryMetadata() (+110 more)
+Nodes (86): getExtractionQueueStats(), uploadBufferToR2(), appearsTextLike(), beginInteractiveChatRequest(), buildApexModeSystemPrompt(), checkRateLimit(), checkUsageLimit(), cleanSummaryMetadata() (+78 more)
 
 ### Community 12 - "TemplateNamespace"
-Cohesion: 0.01
-Nodes (56): Assist, BatchOutput, Bind, BindItems, Bookend, Border, Break, BreakAfter (+48 more)
+Cohesion: 0.02
+Nodes (37): Arc, Assist, Barcode, Bind, BindItems, Bookend, Button, Calculate (+29 more)
 
 ### Community 13 - ".add"
 Cohesion: 0.03
-Nodes (31): CFFCharset, CFFCompiler, CFFDict, CFFEncoding, CFFFDSelect, CFFFont, CFFIndex, CFFOffsetTracker (+23 more)
+Nodes (31): CFF, CFFCompiler, CFFDict, CFFEncoding, CFFFDSelect, CFFIndex, CFFOffsetTracker, CFFParser (+23 more)
 
-### Community 14 - "Dict"
-Cohesion: 0.04
-Nodes (40): ButtonWidgetAnnotation, CaretAnnotation, ChoiceWidgetAnnotation, CircleAnnotation, DefaultAppearanceEvaluator, Dict, ErrorFont, escapeString() (+32 more)
+### Community 14 - ".push"
+Cohesion: 0.03
+Nodes (37): ButtonWidgetAnnotation, ChoiceWidgetAnnotation, codePointIter(), computeIDs(), DefaultAppearanceEvaluator, Dict, encodeToXmlString(), EquateRange (+29 more)
 
 ### Community 15 - "use-toast.ts"
-Cohesion: 0.06
-Nodes (40): PDF_OPTIONS, StatutePdfViewerProps, Toast, ToastAction, ToastActionElement, ToastClose, ToastDescription, ToastProps (+32 more)
+Cohesion: 0.07
+Nodes (36): PDF_OPTIONS, StatutePdfViewerProps, Toast, ToastAction, ToastActionElement, ToastClose, ToastDescription, ToastProps (+28 more)
 
 ### Community 16 - "retrieval-engine.ts"
 Cohesion: 0.04
-Nodes (83): runTest(), intent, ctx, intent, preambleSize, runTest(), LEGAL_QUERIES, main() (+75 more)
+Nodes (73): env, runTest(), intent, ctx, intent, preambleSize, LEGAL_QUERIES, main() (+65 more)
 
 ### Community 17 - "useAuth"
-Cohesion: 0.03
-Nodes (100): AppContent(), CheckoutPage, CheckoutSuccessPage, DashboardPage, OrganizationPage, ProtectedRoute(), Router(), ThemeToggleButton() (+92 more)
+Cohesion: 0.04
+Nodes (78): AppContent(), CheckoutPage, DashboardPage, ProtectedRoute(), Router(), ThemeToggleButton(), LayoutShell(), COLOR_MAP (+70 more)
 
 ### Community 18 - "bench-pipeline.ts"
-Cohesion: 0.09
-Nodes (53): main(), simulateHTTP(), runHardTest(), main(), callWithFallback(), getClient(), isOpenRouterAvailable(), resolveOpenRouterApiKey() (+45 more)
+Cohesion: 0.11
+Nodes (43): runHardTest(), getClient(), isOpenRouterAvailable(), resolveOpenRouterApiKey(), TOOL_POOL_MAX, ToolJudgmentSearchResult, AdversarialQueries, BenchContext (+35 more)
 
 ### Community 19 - ".checkAndRepair"
-Cohesion: 0.03
-Nodes (35): adjustWidths(), amendFallbackToUnicode(), Ascii85Stream, AsciiHexStream, BaseStream, bytesToString(), CCITTFaxStream, DecodeStream (+27 more)
+Cohesion: 0.02
+Nodes (43): adjustWidths(), amendFallbackToUnicode(), Ascii85Stream, AsciiHexStream, BaseStream, bytesToString(), CCITTFaxStream, CFFCharset (+35 more)
 
 ### Community 20 - "ContractDrafting.tsx"
 Cohesion: 0.21
@@ -713,27 +716,27 @@ Nodes (94): ./db, AgentToolSearchResult, ApexToolSearchResult, AttachBusy, Attac
 
 ### Community 22 - "schema.ts"
 Cohesion: 0.02
-Nodes (152): drizzle-zod, zod, GenerateAttackPlanInput, Conversation, conversations, InsertConversation, insertConversationSchema, InsertMessage (+144 more)
+Nodes (147): zod, GenerateAttackPlanInput, errorSchemas, BenchCitedCase, benchCitedCaseSchema, benchMessages, benchMessagesRelations, benchSessions (+139 more)
 
 ### Community 23 - "Option01"
 Cohesion: 0.03
 Nodes (20): AddSilentPrint, AddViewerPreferences, Change, CompressLogicalStructure, config_Encrypt, ContentCopy, DocumentAssembly, Embed (+12 more)
 
 ### Community 24 - "PreviewSidebar.tsx"
-Cohesion: 0.11
-Nodes (16): NavGroup, NavItem, PreviewSidebar(), PreviewSidebarProps, OnboardingTour(), TOUR_STEPS, TourContext, TourContextType (+8 more)
+Cohesion: 0.17
+Nodes (12): NavGroup, NavItem, PreviewSidebar(), PreviewSidebarProps, OnboardingTour(), TOUR_STEPS, TourContext, TourContextType (+4 more)
 
 ### Community 25 - "production-improvements-e2e.test.ts"
-Cohesion: 0.16
-Nodes (20): canonicalCitationKey(), CitationAuditReport, classifyJudgmentHeader(), main(), resolveDatabaseUrl(), runCitationIdentityAudit(), __dirname, __filename (+12 more)
+Cohesion: 0.15
+Nodes (21): canonicalCitationKey(), CitationAuditReport, classifyJudgmentHeader(), main(), resolveDatabaseUrl(), runCitationIdentityAudit(), __dirname, __filename (+13 more)
 
 ### Community 26 - "IStorage"
 Cohesion: 0.01
-Nodes (23): backfillCaseLawSources(), extractCitationsFromDoc(), IStorage, AdminKnowledge, AdminKnowledgeFile, ApiKey, BlogPost, CaseLaw (+15 more)
+Nodes (20): IStorage, ApiKey, BlogPost, CaseLead, CaseLeadStatus, Document, GithubKnowledge, InsertBlogPost (+12 more)
 
 ### Community 27 - "XFAObject"
-Cohesion: 0.02
-Nodes (42): Acrobat, Agent, CalendarSymbols, Common, Config, config_FontInfo, CurrencySymbols, Data (+34 more)
+Cohesion: 0.01
+Nodes (43): Acrobat, Agent, CalendarSymbols, Common, Config, config_FontInfo, CurrencySymbols, Data (+35 more)
 
 ### Community 28 - "Citation Platform Implementation Backlog"
 Cohesion: 0.04
@@ -748,8 +751,8 @@ Cohesion: 0.07
 Nodes (20): AES128Cipher, AES256Cipher, AESBaseCipher, ARCFourCipher, calculateMD5(), calculateSHA384(), calculateSHA512(), ch() (+12 more)
 
 ### Community 31 - "embedding-local.ts"
-Cohesion: 0.09
-Nodes (39): main(), QUERIES, main(), main(), main(), DEFAULT_DIM, EMBEDDING_PROVIDER, embedRepairedTexts() (+31 more)
+Cohesion: 0.05
+Nodes (58): main(), QUERIES, main(), main(), main(), main(), buildJudgmentText(), __dirname (+50 more)
 
 ### Community 32 - "ParsedCauseList"
 Cohesion: 0.26
@@ -759,21 +762,21 @@ Nodes (10): ItemValidationError, ParsedCaseItem, ParsedCauseList, ValidationResu
 Cohesion: 0.10
 Nodes (21): __dirname, fetchJudgmentMetadata(), __filename, generateMarkdownReport(), GSCInspectionSample, GSCJudgmentPerformance, GSCQueryMetrics, GSCReportData (+13 more)
 
-### Community 35 - ".constructor"
-Cohesion: 0.07
-Nodes (8): CFF, CFFHeader, CFFStrings, findBlock(), isSpecial(), PostScriptToken, Type1Font, Type1Parser
+### Community 35 - "AppPreviewRouter.tsx"
+Cohesion: 0.03
+Nodes (62): AppPreviewRouter, TaxReturnPage, BenchSimulator, JudgmentDirectoryPage, McpPublicLandingPage, McpTutorialPage, OauthConsentPage, PreviewAbout (+54 more)
 
 ### Community 36 - "crawler-verifier.ts"
-Cohesion: 0.10
-Nodes (33): cacheCleanupInterval, CacheEntry, checkIpInAnyOpenAiRanges(), checkIpInPrefixes(), checkIsRealCrawler(), clearCrawlerVerificationCache(), CrawlerType, crawlerVerificationCache (+25 more)
+Cohesion: 0.09
+Nodes (39): express, cacheCleanupInterval, CacheEntry, checkIpInAnyOpenAiRanges(), checkIpInPrefixes(), checkIsRealCrawler(), clearCrawlerVerificationCache(), CrawlerType (+31 more)
 
 ### Community 37 - "extraction-guard.ts"
-Cohesion: 0.08
-Nodes (42): mammoth, main(), cleanText(), CLOUD_OCR_PROVIDER, isCloudPdfOcrAvailable(), ocrPdfWithCloud(), OCRSPACE_API_KEY, OCRSPACE_ENDPOINT (+34 more)
+Cohesion: 0.06
+Nodes (51): mammoth, unpdf, FileRow, main(), sourceFormatRepair(), main(), cleanText(), CLOUD_OCR_PROVIDER (+43 more)
 
 ### Community 38 - "contract-drafting.tsx"
-Cohesion: 0.03
-Nodes (82): CourtFeeCalculator(), Props, LegalEditor, LegalEditorHandle, OwnershipMode, ScopeMode, Strictness, StyleMemoryPanel() (+74 more)
+Cohesion: 0.04
+Nodes (66): ContractDraftingPage, LegalEditor, LegalEditorHandle, OwnershipMode, ScopeMode, Strictness, StyleMemoryPanel(), StyleModule (+58 more)
 
 ### Community 39 - "devDependencies"
 Cohesion: 0.07
@@ -783,41 +786,45 @@ Nodes (30): devDependencies, autoprefixer, drizzle-kit, esbuild, jsdom, playwrig
 Cohesion: 0.06
 Nodes (71): annotations, justifications, annotations, justifications, destructiveHint, openWorldHint, readOnlyHint, app_info (+63 more)
 
-### Community 41 - "PreviewChat.tsx"
+### Community 41 - "chat.tsx"
 Cohesion: 0.04
-Nodes (66): BookmarksPage, HistoryPage, SharedConversationPage, extractText(), LegalMarkdownComponent(), getOrCreatePublicSessionId(), PublicLegalChatWidget(), handleMessageInputKeyDown() (+58 more)
+Nodes (67): BookmarksPage, ChatPage, HistoryPage, SharedConversationPage, AiSummary, CaseLawCard(), CaseLawCardData, CaseLawCardProps (+59 more)
 
 ### Community 42 - "DatabaseStorage"
-Cohesion: 0.01
-Nodes (27): DatabaseStorage, toStyleMemorySettingsView(), toVisitorSessionStats(), CaseClient, CaseCompliance, CaseFile, CaseNote, Document (+19 more)
+Cohesion: 0.02
+Nodes (22): buildSearchTokenMatch(), cleanCaseTitle(), DatabaseStorage, isMetadataOnlySummary(), looksLikeRealCaseTitle(), toStyleMemorySettingsView(), toVisitorSessionStats(), AdminKnowledge (+14 more)
 
 ### Community 43 - "resolveCaseCitationFromInternalDb"
-Cohesion: 0.07
-Nodes (54): runValidation(), TEST_CASES, TestCase, applyAlWakeeloSafetyGuardrails(), applyCitationRecordCorrections(), canonicalizeStatuteName(), caseCitationMatches(), chooseBestStatuteDocument() (+46 more)
+Cohesion: 0.08
+Nodes (51): runValidation(), TEST_CASES, TestCase, applyAlWakeeloSafetyGuardrails(), applyCitationRecordCorrections(), canonicalizeStatuteName(), caseCitationMatches(), chooseBestStatuteDocument() (+43 more)
 
-### Community 44 - ".push"
-Cohesion: 0.03
-Nodes (35): arrayBuffersToBytes(), Binder, buildHuffmanTable(), ChunkedStreamManager, computeIDs(), Contour, createDataNode(), createText() (+27 more)
+### Community 44 - ".pop"
+Cohesion: 0.08
+Nodes (8): addChildren(), arrayBuffersToBytes(), buildHuffmanTable(), ChunkedStreamManager, mayHaveChildren(), ObjectLoader, PostScriptEvaluator, PostScriptStack
 
 ### Community 45 - "legal-pagination.ts"
 Cohesion: 0.22
 Nodes (6): computePaginationBreaks(), cssNumber(), LegalPaginationBreak, LegalPaginationExtension, legalPaginationPluginKey, LegalPaginationState
 
 ### Community 46 - "package.json"
-Cohesion: 0.02
-Nodes (76): @esbuild-kit/esm-loader, lucide-react, react, react-dom, @types/node, @types/react, @types/react-dom, typescript (+68 more)
+Cohesion: 0.03
+Nodes (73): lucide-react, react, react-dom, @types/node, @types/react, @types/react-dom, typescript, vite (+65 more)
 
 ### Community 47 - "knowledge-vault.tsx"
-Cohesion: 0.12
-Nodes (25): KnowledgeVaultPage, DateFilter, detectedConcepts(), Doc, escapeRegExp(), extensionFromTitle(), formatBytes(), formatDate() (+17 more)
+Cohesion: 0.06
+Nodes (41): JudgmentViewPage, KnowledgeVaultPage, DocumentViewer(), DocumentViewerProps, escapeHtml(), escapeRegex(), splitIntoPages(), AiMessage (+33 more)
+
+### Community 48 - ".create"
+Cohesion: 0.05
+Nodes (23): CaretAnnotation, CircleAnnotation, FileAttachmentAnnotation, FreeTextAnnotation, getPdfColorArray(), getQuadPoints(), getRgbColor(), HighlightAnnotation (+15 more)
 
 ### Community 49 - "Google Search Console Baseline Performance & Indexing Report"
 Cohesion: 0.12
 Nodes (16): 1. Executive Summary, 2. Segregated Performance: Public Judgments vs. Static Pages, 3. Top 20 Ranking Search Queries, 4. Top Performing Judgment Precedents, 5. Indexing Coverage & Technical Health Breakdown, 6.1 Daily Crawl Budget & Indexing API Utilization [High Priority], 6.2 Canonical URL Consolidation [High Priority], 6.3 Schema.org LegalArticle Rich Results [Medium Priority] (+8 more)
 
-### Community 50 - ".preEvaluateFont"
-Cohesion: 0.12
-Nodes (4): addChildren(), mayHaveChildren(), MurmurHash3_64, XFAAttribute
+### Community 50 - "XmlObject"
+Cohesion: 0.06
+Nodes (5): Datasets, datasets_Data, DatasetsNamespace, XFAAttribute, XmlObject
 
 ### Community 51 - "email.ts"
 Cohesion: 0.12
@@ -829,23 +836,23 @@ Nodes (9): AdvocateProfileState, AnalysisFinding, BookmarkedItem, CaseDocument, 
 
 ### Community 53 - "warn"
 Cohesion: 0.03
-Nodes (36): adjustMapping(), Catalog, addPageDict(), addPageError(), appendIfJavaScriptDict(), parseNestedOrder(), parseOnOff(), parseOrder() (+28 more)
+Nodes (37): adjustMapping(), Annotation, Catalog, addPageDict(), addPageError(), appendIfJavaScriptDict(), parseNestedOrder(), parseOnOff() (+29 more)
 
-### Community 54 - "judgment-view.tsx"
-Cohesion: 0.08
-Nodes (22): JudgmentsPage, JudgmentViewPage, CaseLawResult, CitationResult, CitationSearchParams, formatDecisionDate(), formatJournalCodeLabel(), Journal (+14 more)
+### Community 54 - "chatWithDeepSeek"
+Cohesion: 0.05
+Nodes (56): openai, runComparison(), generateDraft(), getMockLegalSystemPrompt(), main(), client, client, client (+48 more)
 
-### Community 55 - "preview-master-5tier-e2e.test.ts"
-Cohesion: 0.14
+### Community 55 - "statutesCompendiumData.ts"
+Cohesion: 0.12
 Nodes (38): DOMAIN_STYLES, LegalReferenceModal(), LegalReferenceModalProps, numberToWordsPk(), TIER_STYLES, calculateProvincialCourtFee(), computeLimitationDeadline(), COURT_FEE_SUIT_TYPES (+30 more)
 
-### Community 56 - "wouter"
-Cohesion: 0.04
-Nodes (96): JudgmentDirectoryPage, McpTutorialPage, CASE_TYPE_OPTIONS, ChatMessage, PUBLIC_ROUTES, PublicChatResponse, PublicFunnelEventType, URGENCY_OPTIONS (+88 more)
+### Community 56 - "lib/utils.ts"
+Cohesion: 0.05
+Nodes (90): CASE_TYPE_OPTIONS, ChatMessage, PUBLIC_ROUTES, PublicChatResponse, PublicFunnelEventType, URGENCY_OPTIONS, Badge(), BadgeProps (+82 more)
 
 ### Community 57 - "auto-extract-caselaw.ts"
 Cohesion: 0.07
-Nodes (30): buildFlexibleReportPattern(), CASE_NUMBER_PATTERNS, CaseLawRoleReindexProgress, CITATION_PATTERNS, CitationMention, CitationRoleAssignmentOptions, COURT_MAP, extractAndSave() (+22 more)
+Nodes (32): buildFlexibleReportPattern(), CASE_NUMBER_PATTERNS, CaseLawRoleReindexProgress, caseTypeFromCitation(), CITATION_PATTERNS, CitationMention, CitationRoleAssignmentOptions, COURT_MAP (+24 more)
 
 ### Community 58 - "dependencies"
 Cohesion: 0.02
@@ -855,13 +862,13 @@ Nodes (114): dependencies, axios, bcryptjs, @capacitor/android, @capacitor/cli, 
 Cohesion: 0.09
 Nodes (15): auditPlaintDefects(), calculateLimitationDeadline(), computeCourtFees(), InMemChamberStore, MockCaseFile, MockCourtDiaryEvent, MockDocumentScan, MockLegalDraft (+7 more)
 
-### Community 60 - "drafting-studio-regressions.test.ts"
-Cohesion: 0.11
-Nodes (22): CitationAttributes, CitationNode, DocumentTab, draftFingerprint(), DraftSaveQueue, hasDraftContent(), normalizeDraftingTabs(), backtrackLCS() (+14 more)
+### Community 60 - "PreviewDrafting.tsx"
+Cohesion: 0.10
+Nodes (29): PreviewDrafting, ALL_DRAFTING_TEMPLATES, COMMERCIAL_CONTRACTS, COURT_PETITIONS, DraftingTemplate, STATUTORY_CLAUSES, StatutoryClause, TemplateCategory (+21 more)
 
 ### Community 61 - "nlpExtractCases"
-Cohesion: 0.17
-Nodes (21): testCases, addPreferredPrimaryMention(), assignCitationRolesToCases(), caseTypeFromCitation(), createFallbackDocumentClassification(), extractCitationMentionsFromText(), extractKeywords(), extractNeutralCitationFromSourceFilename() (+13 more)
+Cohesion: 0.27
+Nodes (16): addPreferredPrimaryMention(), assignCitationRolesToCases(), createFallbackDocumentClassification(), extractCitationMentionsFromText(), extractNeutralCitationFromSourceFilename(), extractReportedAsCitation(), extractSummaryNearCitation(), findTitleNearCitation() (+8 more)
 
 ### Community 62 - "Technical Linkable SEO Assets & Embeddable Utilities Specification"
 Cohesion: 0.06
@@ -871,89 +878,89 @@ Nodes (33): 1.1 Technical Principles of Linkable Assets, 1. Executive Overview &
 Cohesion: 0.12
 Nodes (16): devDependencies, copy-webpack-plugin, css-loader, html-webpack-plugin, office-addin-debugging, office-addin-dev-certs, style-loader, ts-loader (+8 more)
 
-### Community 64 - "mcp-server.ts"
-Cohesion: 0.11
-Nodes (25): extractCitations(), judgmentPdfUrl(), judgmentSourceUrl(), prepareJudgmentDetail(), protectJudgmentDetail(), verifyCitations(), createMcpServer(), enforceQuota() (+17 more)
+### Community 64 - ".toString"
+Cohesion: 0.08
+Nodes (7): MurmurHash3_64, Ref, RefSetCache, StructElement, StructElementNode, StructTreePage, Yt
 
 ### Community 65 - "audio/client.ts"
 Cohesion: 0.13
 Nodes (18): AudioFormat, convertToWav(), detectAudioFormat(), ensureCompatibleFormat(), openai, speechToText(), speechToTextStream(), textToSpeech() (+10 more)
 
-### Community 66 - "citation-verify.ts"
-Cohesion: 0.17
-Nodes (29): main(), main(), repairCitationReferences(), repairSearchOwner(), LIVE, main(), assessJudgmentIdentity(), assessJudgmentText() (+21 more)
-
-### Community 67 - ".getTextContent"
-Cohesion: 0.11
-Nodes (15): Intersector, Page, addFakeSpaces(), appendEOL(), applyInverseRotation(), buildTextContentItem(), compareWithLastPosition(), ensureTextContentItem() (+7 more)
+### Community 66 - "mcp-server.ts"
+Cohesion: 0.04
+Nodes (100): main(), APPLY, bodyCourt(), canonJournalCode(), HIGH_COURT_NEUTRAL, loadDatabaseUrl(), main(), Member (+92 more)
 
 ### Community 68 - "ContentObject"
 Cohesion: 0.02
 Nodes (23): AlwaysEmbed, BehaviorOverride, BooleanElement, ContentObject, DateElement, DateTime, Decimal, DefaultTypeface (+15 more)
 
 ### Community 69 - "judgments-precedent-suite-e2e.test.ts"
-Cohesion: 0.10
-Nodes (4): BookmarkRecord, executeTwoTierSearchWithFallback(), MatrixRow, resolveJudgmentDetailWithFallback()
+Cohesion: 0.11
+Nodes (12): generateLocalLegalResponse(), findSeedJudgmentByCitation(), getAllSeedJudgments(), getSeedJudgmentById(), rows, searchSeedJudgments(), SEED_JUDGMENTS, SeedJudgmentRecord (+4 more)
 
 ### Community 70 - "Judgment Vault Enhancement Plan"
 Cohesion: 0.04
 Nodes (46): 1. **Advanced Search Operators**, 1. **Live PDF Rendering Engine**, 1. **PDF Viewer Implementation**, 2. **Citation Highlighting in PDF**, 2. **Real-time Judgment Updates Feed**, 2. **Year Range Filter**, 3. **Citation Search Result Count**, 3. **Cross-Jurisdiction Search** (+38 more)
 
-### Community 71 - "test-preview-e2e.ts"
-Cohesion: 0.20
-Nodes (11): sanitize-html, results, runTest(), TestResult, escapeHtml(), LEGAL_DRAFT_PREVIEW_CSP, sanitizeLegalDraftHtml(), CONTRACT_LAW_ADDON (+3 more)
+### Community 71 - "legal-drafting-security.ts"
+Cohesion: 0.53
+Nodes (4): sanitize-html, escapeHtml(), LEGAL_DRAFT_PREVIEW_CSP, sanitizeLegalDraftHtml()
 
-### Community 72 - "repair_judgment_identity.ts"
-Cohesion: 0.16
-Nodes (20): judgmentCourtScope(), prepareRepair(), recordFingerprint(), RecordRow, Repair, sha256(), verifySourceEvidence(), main() (+12 more)
+### Community 72 - "Subform"
+Cohesion: 0.08
+Nodes (5): Area, getAvailableSpace(), getContainedChildren(), Subform, SubformSet
 
 ### Community 73 - "Manual Test Checklist - Citation Policy Fix"
 Cohesion: 0.04
 Nodes (46): Artifact Cleanup (Prior Fix), Automated Checks, Browser Console, Bug Reports (if any), Case Law Retrieval Depth, Environment, Expected Results, Expected Results (+38 more)
 
-### Community 74 - "PreviewJudgments.tsx"
-Cohesion: 0.17
-Nodes (21): PreviewJudgments, formatDate(), JudgmentReader(), CitationLookupParams, createDraftingInsertPayload(), dispatchDraftingInsert(), DraftingInsertPayload, formatRatioOrHeadnotes() (+13 more)
+### Community 74 - "judgmentApiClient.ts"
+Cohesion: 0.19
+Nodes (14): CitationLookupParams, createDraftingInsertPayload(), DraftingInsertPayload, formatRatioOrHeadnotes(), getSavedJudgments(), JudgmentRatioDecidendi, JudgmentSearchParams, SavedJudgmentRecord (+6 more)
 
 ### Community 75 - "components/App.tsx"
 Cohesion: 0.19
 Nodes (16): @fluentui/react-components, App(), useStyles, Home(), HomeProps, useStyles, Login(), LoginProps (+8 more)
 
-### Community 76 - "experimental/data/majorEnactmentsData.ts"
-Cohesion: 0.14
-Nodes (31): getAllMajorSections(), getMajorSection(), getMajorSectionById(), getSectionsForEnactment(), LandmarkPrecedent, MAJOR_ENACTMENTS_DATA, sectionByStatuteAndNum, sectionsById (+23 more)
+### Community 76 - "exhaustive-production-readiness-audit.test.ts"
+Cohesion: 0.24
+Nodes (19): getMajorSectionById(), MAJOR_ENACTMENTS_DATA, CachedPrecedentEntry, LandmarkPrecedent, precedentCache, extractTitleFromDescription(), normalizeSectionPrefixAndHeading(), PREPOSITIONS_LOWER (+11 more)
 
 ### Community 77 - "scp-adapter.ts"
 Cohesion: 0.11
 Nodes (18): probeLiveCourtServers(), record(), reports, runProductionReadinessCheck(), TestReport, IhcCourtAdapter, IsbDistrictCourtAdapter, LhcCourtAdapter (+10 more)
 
-### Community 78 - "JudgmentReader.tsx"
-Cohesion: 0.19
-Nodes (16): JudgmentReaderProps, OverruledAlertBanner(), OverruledAlertBannerProps, PrecedentCitationItem, PrecedentGraph(), PrecedentGraphProps, JudgmentSummaryData, RatioDecidendiCard() (+8 more)
+### Community 78 - "PreviewJudgments.tsx"
+Cohesion: 0.13
+Nodes (30): PreviewJudgments, formatDate(), JudgmentReader(), JudgmentReaderProps, OverruledAlertBanner(), OverruledAlertBannerProps, PrecedentCitationItem, PrecedentGraph() (+22 more)
 
 ### Community 79 - "preview-e2e.test.ts"
 Cohesion: 0.04
-Nodes (5): DashboardMetrics, Provider, Theme, traverse(), Treatment
+Nodes (7): CONTRACT_LAW_ADDON, PAKISTANI_JUDICIAL_FORMAT_GUIDANCE, DashboardMetrics, Provider, Theme, traverse(), Treatment
 
 ### Community 80 - "knowledge-pipeline.ts"
 Cohesion: 0.05
-Nodes (52): env, BENCHMARK_QUERIES, runLatencyBenchmark(), OBSCURE_QUERIES, runFullPipelineTest(), runTests(), SCENARIOS, __dirname (+44 more)
+Nodes (55): BENCHMARK_QUERIES, runLatencyBenchmark(), OBSCURE_QUERIES, runFullPipelineTest(), runTests(), SCENARIOS, getOpenRouterToolModelName(), normalizePipelineModule() (+47 more)
 
 ### Community 81 - "use-threads.ts"
 Cohesion: 0.16
 Nodes (9): CreateThreadInput, ThreadDetailResponse, ThreadResponse, useDeleteThread(), useSendMessage(), useThread(), buildUrl(), InsertMessage (+1 more)
+
+### Community 82 - "FontInfo"
+Cohesion: 0.06
+Nodes (6): CssFontInfo, FontInfo, Pdf, SystemFontInfo, seedTab(), setup()
 
 ### Community 83 - "4.2 Code Implementation Details"
 Cohesion: 0.04
 Nodes (45): 1.1 Scope & Methodology, 1.2 Audit Verdict & Overall Score, 1. EXECUTIVE SUMMARY, 2.1 Vector Database & Embedding Integrity (DB Auditor), 2.2 Chunking & Context Engineering (RAG Auditor), 2.3 AI Legal Reasoning & Accuracy (AI Auditor), 2.4 UX, Citation Traceability & Retrieval Quality (UX Auditor), 2.5 Billing, Subscription & Performance Gating (Billing Auditor) (+37 more)
 
 ### Community 84 - "voyage-law2-migrate.ts"
-Cohesion: 0.18
-Nodes (21): bulkInsertChildren(), bulkInsertChildrenForBatch(), bulkInsertParents(), bulkInsertParentsForBatch(), createV2Tables(), embedTextsVoyage(), fitToDimension(), indexAllJudgments() (+13 more)
+Cohesion: 0.10
+Nodes (35): bulkInsertChildren(), bulkInsertChildrenForBatch(), bulkInsertParents(), bulkInsertParentsForBatch(), createV2Tables(), embedTextsVoyage(), fitToDimension(), indexAllJudgments() (+27 more)
 
 ### Community 85 - "ai-engine-regressions.test.ts"
-Cohesion: 0.13
-Nodes (11): readChatEvents(), CleanChatResult, cleanLegalChatResponse(), JudgmentItem, LawItem, normalizeJudgments(), normalizeLaws(), parseJsonLoose() (+3 more)
+Cohesion: 0.12
+Nodes (12): readChatEvents(), CleanChatResult, cleanLegalChatResponse(), JudgmentItem, LawItem, normalizeJudgments(), normalizeLaws(), parseJsonLoose() (+4 more)
 
 ### Community 86 - "package_1770752266081.json"
 Cohesion: 0.06
@@ -963,33 +970,33 @@ Nodes (34): Attachment, EnhancedCaseLaw, EnhancedStatute, gemini, GeminiResponse
 Cohesion: 0.14
 Nodes (3): DatasetXMLParser, SimpleDOMNode, SimpleXMLParser
 
-### Community 88 - "judgmentFormatter.ts"
-Cohesion: 0.16
-Nodes (18): db, main(), pool, endsWithTerminalPunct(), formatJudgmentText(), handleHyphenation(), HEADING_PATTERNS, HYPHENATED_WORDS (+10 more)
+### Community 88 - "ColorSpace"
+Cohesion: 0.12
+Nodes (3): AlternateCS, ColorSpace, DeviceRgbaCS
 
-### Community 89 - ".parse"
-Cohesion: 0.06
-Nodes (13): AppearanceStreamEvaluator, BaseLocalCache, GlobalColorSpaceCache, LocalColorSpaceCache, LocalFunctionCache, LocalGStateCache, LocalImageCache, LocalTilingPatternCache (+5 more)
+### Community 89 - ".getTextContent"
+Cohesion: 0.07
+Nodes (23): AppearanceStreamEvaluator, BaseLocalCache, GlobalColorSpaceCache, LocalColorSpaceCache, LocalFunctionCache, LocalGStateCache, LocalImageCache, LocalTilingPatternCache (+15 more)
 
 ### Community 90 - "case-law-client-extractor.ts"
 Cohesion: 0.18
 Nodes (17): buildFlexibleReportPattern(), CITATION_PATTERNS, ClientExtractedCase, ClientExtractResult, dedupeCases(), extractCaseLawInBrowser(), extractCasesFromFreeText(), inferCourt() (+9 more)
 
-### Community 91 - "drafting-data.ts"
-Cohesion: 0.14
-Nodes (27): PAK_AFFIDAVIT_TEMPLATE, PAK_BAIL_497_TEMPLATE, PAK_BAIL_498_BBA_TEMPLATE, PAK_CIVIL_MISC_151_TEMPLATE, PAK_CIVIL_PLAINT_TEMPLATE, PAK_CIVIL_REVISION_115_TEMPLATE, PAK_CRIMINAL_MISC_22A_TEMPLATE, PAK_EXECUTION_ORDER21_TEMPLATE (+19 more)
+### Community 91 - "legal-drafting.tsx"
+Cohesion: 0.06
+Nodes (64): LegalDraftingPage, PAK_AFFIDAVIT_TEMPLATE, PAK_BAIL_497_TEMPLATE, PAK_BAIL_498_BBA_TEMPLATE, PAK_CIVIL_MISC_151_TEMPLATE, PAK_CIVIL_PLAINT_TEMPLATE, PAK_CIVIL_REVISION_115_TEMPLATE, PAK_CRIMINAL_MISC_22A_TEMPLATE (+56 more)
 
 ### Community 92 - "static.ts"
 Cohesion: 0.11
-Nodes (39): InternalLinksReport, RouteCheckResult, runInternalLinkCrawler(), directoryOptions(), getPublicJudgmentDirectory(), getIndexableJudgmentIds(), buildCanonicalUrl(), DEFAULT_META (+31 more)
+Nodes (41): DirectoryJudgment, directoryOptions(), getPublicJudgmentDirectory(), getIndexableJudgmentIds(), indexableJudgmentCandidateFilter, buildCanonicalUrl(), DEFAULT_META, escapeHtmlAttr() (+33 more)
 
 ### Community 93 - "diary-mailer.ts"
 Cohesion: 0.22
 Nodes (20): buildDailyDigestHtml(), buildItemCardHtml(), buildWeeklyDigestHtml(), checkAndRun(), delay(), DiaryEmailItem, escapeHtml(), getItemsForDate() (+12 more)
 
 ### Community 94 - "validation_pack_run.ts"
-Cohesion: 0.12
-Nodes (24): DuplicateStatsRow, getRows(), hasFlag(), loadDuplicateStats(), main(), toNumber(), CaseSample, citationExistsInDb() (+16 more)
+Cohesion: 0.31
+Nodes (10): CaseSample, citationExistsInDb(), CitationSample, extractReferencesCitations(), getRows(), main(), normalizeCitation(), parseCookieHeader() (+2 more)
 
 ### Community 95 - "PinpointCitationParser.tsx"
 Cohesion: 0.12
@@ -1005,7 +1012,7 @@ Nodes (26): main(), getSubscriptionWindow(), main(), normalizeBillingCycle(), ma
 
 ### Community 98 - "ingest.ts"
 Cohesion: 0.06
-Nodes (59): BackfillResult, backfillStyleMemoryFromSavedDrafts(), belongsToModule(), EMBED_CACHE_TTL_MS, embedCache, embedStyleChunks(), embedStyleQuery(), getCachedEmbedding() (+51 more)
+Nodes (60): BackfillResult, backfillStyleMemoryFromSavedDrafts(), belongsToModule(), chunkStyleText(), EMBED_CACHE_TTL_MS, embedCache, embedStyleChunks(), embedStyleQuery() (+52 more)
 
 ### Community 99 - "sanitizeInputText"
 Cohesion: 0.08
@@ -1031,9 +1038,9 @@ Nodes (42): Additional Case & Calendar Management Features, AI Architecture, �
 Cohesion: 0.17
 Nodes (15): ClassificationMethod, classifyDocumentMetadata(), classifyWithML(), cleanText(), detectSourceType(), DocumentMetadata, DOMAIN_LABEL_MAP, DOMAIN_TAXONOMY (+7 more)
 
-### Community 105 - "JpegStream"
-Cohesion: 0.08
-Nodes (4): clearGlobalCaches(), JpegStream, JpxError, JpxImage
+### Community 105 - "._bindElement"
+Cohesion: 0.04
+Nodes (18): Binder, clearGlobalCaches(), CmykICCBasedCS, createText(), fetchSync(), IccColorSpace, IndexedCS, Items (+10 more)
 
 ### Community 106 - "Production RAG Specification (Legal App)"
 Cohesion: 0.06
@@ -1069,19 +1076,23 @@ Nodes (32): AI_ROUTER_V2 Implementation, AI_ROUTER_V2 Performance Analysis, AI_R
 
 ### Community 115 - "legal-editor.tsx"
 Cohesion: 0.06
-Nodes (32): CitationList, CitationListHandle, CitationListProps, CitationSuggestion, CitationSuggestionItem, extractSurroundingContext(), applyCase(), CaseMode (+24 more)
+Nodes (31): CitationAttributes, CitationNode, applyCase(), CaseMode, CustomHeading, CustomParagraph, FontSize, LegalEditorInner() (+23 more)
 
-### Community 116 - "ColorSpace"
-Cohesion: 0.04
-Nodes (16): AlternateCS, BaseShading, ColorSpace, ColorSpaceUtils, DeviceGrayCS, DeviceRgbaCS, DeviceRgbCS, DummyShading (+8 more)
+### Community 116 - ".constructor"
+Cohesion: 0.14
+Nodes (7): BaseShading, DummyShading, getB(), MeshShading, MeshStreamReader, Pattern, RadialAxialShading
 
 ### Community 117 - "client/replit_integrations/audio/index.ts"
 Cohesion: 0.26
 Nodes (9): createAudioPlaybackContext(), decodePCM16ToFloat32(), PlaybackState, SequenceBuffer, useAudioPlayback(), RecordingState, useVoiceRecorder(), StreamCallbacks (+1 more)
 
-### Community 119 - "statutes-83k-dataset.test.ts"
-Cohesion: 0.16
-Nodes (18): ActSelector(), ActSelectorProps, actByIdMap, actByShortCodeMap, actByTitleMap, ActManifestItem, ACTS_MANIFEST, getActManifestById() (+10 more)
+### Community 118 - "runAllTests"
+Cohesion: 0.05
+Nodes (3): runAllTests(), traverse(), runTest()
+
+### Community 119 - "preview-master-5tier-e2e.test.ts"
+Cohesion: 0.10
+Nodes (29): ActSelector(), ActSelectorProps, actByIdMap, actByShortCodeMap, actByTitleMap, ActManifestItem, ACTS_MANIFEST, getActManifestById() (+21 more)
 
 ### Community 120 - "Chat/AI Prompt Handling - Performance Analysis & Optimization Opportunities"
 Cohesion: 0.06
@@ -1092,16 +1103,16 @@ Cohesion: 0.21
 Nodes (15): cellBorder, generateDocxLocal(), headingLevels, isSignatureLine(), isTitleLikeFirstHeading(), isUnnumberedHeading(), legalNumbering(), legalNumberingLevels (+7 more)
 
 ### Community 122 - "bulk-indexnow.ts"
-Cohesion: 0.17
-Nodes (12): __dirname, __filename, getJudgmentBatch(), getStaticUrls(), loadState(), main(), saveState(), State (+4 more)
+Cohesion: 0.27
+Nodes (10): __dirname, __filename, getJudgmentBatch(), getStaticUrls(), loadState(), main(), saveState(), State (+2 more)
 
-### Community 123 - "audit_chat_logs.ts"
-Cohesion: 0.24
-Nodes (11): audit(), AuditFailure, checkCitationExists(), checkStatuteSectionExists(), citationExistCache, extractCitations(), ExtractedStatute, extractStatutes() (+3 more)
+### Community 123 - "CaseLaw"
+Cohesion: 0.08
+Nodes (26): audit(), AuditFailure, checkCitationExists(), checkStatuteSectionExists(), citationExistCache, extractCitations(), ExtractedStatute, extractStatutes() (+18 more)
 
 ### Community 124 - "file-scan.ts"
 Cohesion: 0.11
-Nodes (27): DEFAULT_SCAN_ARGS, FileScanConfig, FileScanMode, FileScanResult, getFileScanConfig(), makeTempPath(), parseArgs(), parseMode() (+19 more)
+Nodes (26): DEFAULT_SCAN_ARGS, FileScanConfig, FileScanMode, FileScanResult, getFileScanConfig(), makeTempPath(), parseArgs(), parseMode() (+18 more)
 
 ### Community 125 - "Citation Database Fix Guide"
 Cohesion: 0.07
@@ -1123,13 +1134,9 @@ Nodes (3): DocumentChunk, knowledgeBase, KnowledgeBaseService
 Cohesion: 0.07
 Nodes (29): 1. Executive Summary & Production-Readiness Evaluation, 2. Comprehensive Multi-Module Audit Findings, 3. Programmatic Scan & Verification Logs, 4. Prioritized Remediation Roadmap, A. TypeScript Compiler Check (`npm run check`), Alwakeelo Legal AI Platform: Comprehensive Forensic Audit & Production-Readiness Report, B. Unit Testing Diagnostics (`npm test`), Diagnostic & Root Cause of Compiler Errors: (+21 more)
 
-### Community 130 - "CalRGBCS"
-Cohesion: 0.09
-Nodes (4): CalGrayCS, CalRGBCS, DeviceCmykCS, LabCS
-
 ### Community 131 - "FormatError"
 Cohesion: 0.03
-Nodes (39): addHex(), BinaryCMapReader, BinaryCMapStream, CipherTransform, CMapFactory, Cmd, createBuiltInCMap(), EvaluatorPreprocessor (+31 more)
+Nodes (40): addHex(), BinaryCMapReader, BinaryCMapStream, CipherTransform, CMapFactory, Cmd, createBuiltInCMap(), EvaluatorPreprocessor (+32 more)
 
 ### Community 132 - "punjab-district-adapter.ts"
 Cohesion: 0.18
@@ -1139,69 +1146,69 @@ Nodes (11): BROWSER_HEADERS, DistrictConfig, PUNJAB_DISTRICTS, CourtAdapter, arc
 Cohesion: 0.11
 Nodes (34): buildSearchTokens(), caseCitationMatches(), caseLawSearchRowKey(), collapseCaseRowsBySource(), createCachedCaseLawSourceTextLoader(), deriveNeutralPrimaryCitationFromFilename(), enforceProseCitationIntegrity(), ensureFilenameNeutralPrimaryCaseRow() (+26 more)
 
-### Community 134 - "chat.tsx"
-Cohesion: 0.10
-Nodes (25): ChatPage, AiSummary, CaseLawCard(), CaseLawCardData, CaseLawCardProps, CaseLawHit, AiMode, ApexModelInfo (+17 more)
+### Community 134 - "court-fee.ts"
+Cohesion: 0.20
+Nodes (15): CourtFeeCalculator(), Props, CourtFeeCalculatorModal(), CourtFeeCalculatorModalProps, calculateCourtFee(), computeAdValorem(), CourtFeeResult, formatRs() (+7 more)
 
 ### Community 135 - "draft-history-panel.tsx"
 Cohesion: 0.24
 Nodes (12): DraftHistoryPanel(), DraftHistoryPanelProps, formatTimestamp(), timeAgo(), computeWordDiff(), DiffSegment, DraftSnapshot, getStorageKey() (+4 more)
 
 ### Community 136 - "legal-drafting-followup.ts"
-Cohesion: 0.13
-Nodes (22): deepseekMatch, env, runTest(), prompt(), ANY_MAJOR_HEADING, applyLegalDraftEdit(), buildLegalDraftEditSummary(), classifyLegalDraftFollowUp() (+14 more)
+Cohesion: 0.14
+Nodes (21): deepseekMatch, env, runTest(), prompt(), ANY_MAJOR_HEADING, applyLegalDraftEdit(), buildLegalDraftEditSummary(), classifyLegalDraftFollowUp() (+13 more)
 
 ### Community 137 - ".text"
-Cohesion: 0.10
-Nodes (10): detail(), edge(), setup(), @playwright/test, HEADING_SHEWETH, HEADING_VERIFICATION, HEADING_VERSUS, protect() (+2 more)
+Cohesion: 0.12
+Nodes (8): detail(), edge(), setup(), @playwright/test, heading(), HEADING_SHEWETH, HEADING_VERIFICATION, HEADING_VERSUS
 
 ### Community 138 - "manifest.json"
 Cohesion: 0.18
 Nodes (10): background_color, categories, description, display, icons, name, orientation, short_name (+2 more)
 
 ### Community 139 - "generate-legal-pdf.ts"
-Cohesion: 0.11
-Nodes (19): generateLegalPDF(), ensureSpace(), renderRuns(), startNewPage(), LegalPDFOptions, ParsedNode, parseHTML(), extractTextRuns() (+11 more)
+Cohesion: 0.15
+Nodes (16): generateLegalPDF(), ensureSpace(), renderRuns(), startNewPage(), LegalPDFOptions, ParsedNode, parseHTML(), extractTextRuns() (+8 more)
 
 ### Community 140 - "StringObject"
 Cohesion: 0.02
-Nodes (46): Amd, AppearanceFilter, Base, Certificate, config_Picture, Creator, CurrencySymbol, DatePattern (+38 more)
+Nodes (44): Amd, AppearanceFilter, Base, Certificate, config_Picture, Creator, CurrencySymbol, DatePattern (+36 more)
 
-### Community 141 - "legal-drafting.tsx"
-Cohesion: 0.10
-Nodes (26): LegalDraftingPage, buildDraftingGuidanceMessage(), buildLegalDraftConversationHistory(), CaseLawSourceDocument, ChatSnippetPopover, classifyLegalDraftPrompt(), createDraftingIntroMessage(), createEmptyLegalDraftReferences() (+18 more)
+### Community 141 - "LegalDraftingPageInner"
+Cohesion: 0.16
+Nodes (14): useDraftTabs(), esc(), isHTMLContent(), plainTextToTiptapHTML(), SECTION_HEADINGS, buildDraftingGuidanceMessage(), buildLegalDraftConversationHistory(), classifyLegalDraftPrompt() (+6 more)
 
 ### Community 142 - "api.ts"
 Cohesion: 0.18
 Nodes (13): CaseLawSearch(), COURTS, DEFAULT_JOURNALS, ResultCard(), useStyles, CaseLawResult, ContractTemplate, getLawJournals() (+5 more)
 
-### Community 143 - "templates-data.ts"
-Cohesion: 0.10
-Nodes (20): AGREEMENT_TO_SELL_TEMPLATE, CONSTRUCTION_TEMPLATE, CONTRACT_TEMPLATES_MAP, COPYRIGHT_TEMPLATE, EMPLOYMENT_TEMPLATE, FOUNDERS_TEMPLATE, GPA_TEMPLATE, IP_ASSIGNMENT_TEMPLATE (+12 more)
+### Community 143 - "organization.tsx"
+Cohesion: 0.17
+Nodes (15): OrganizationPage, categoryChip(), displayName(), excerpt(), formatDate(), getRoleMeta(), initialsFromName(), Org (+7 more)
 
 ### Community 144 - "openrouter-transcription.ts"
 Cohesion: 0.23
 Nodes (12): FetchImplementation, getOpenRouterTranscriptionModels(), getResponseError(), isOpenRouterTranscriptionAvailable(), OpenRouterAudioFormat, OpenRouterTranscriptionOptions, OpenRouterTranscriptionResult, resolveApiKey() (+4 more)
 
 ### Community 145 - "docx-generator.ts"
-Cohesion: 0.27
-Nodes (13): cellBorder, generateDocxBuffer(), headingLevels, isSignatureLine(), isTitleLikeFirstHeading(), isUnnumberedHeading(), legalNumbering(), legalNumberingLevels (+5 more)
+Cohesion: 0.18
+Nodes (16): docx, dom, outputPath, cellBorder, generateDocxBuffer(), headingLevels, isSignatureLine(), isTitleLikeFirstHeading() (+8 more)
 
 ### Community 146 - "server/data/majorEnactmentsData.ts"
 Cohesion: 0.13
 Nodes (12): getMajorSection(), getSectionsForEnactment(), LandmarkPrecedent, MAJOR_ENACTMENT_KEYS, MAJOR_ENACTMENT_METAS, MAJOR_ENACTMENTS_DATA, MajorEnactmentMeta, sectionByStatuteAndNum (+4 more)
 
-### Community 147 - "ImageResizer"
-Cohesion: 0.24
-Nodes (3): convertBlackAndWhiteToRGBA(), convertToRGBA(), ImageResizer
+### Community 147 - "PDFImage"
+Cohesion: 0.13
+Nodes (5): convertBlackAndWhiteToRGBA(), convertToRGBA(), ImageResizer, PDFImage, resizeImageMask()
 
 ### Community 148 - "adversarial-challenger-2-statutes-calculators.test.ts"
 Cohesion: 0.07
-Nodes (27): ALL_CAPS_RE, BULLET_ITEM_RE, CASE_NUMBER_RE, CENTRED_TITLE_RE, COURT_TITLE_RE, esc(), GROUND_OR_NUMBERED_RE, HORIZONTAL_RULE_RE (+19 more)
+Nodes (26): ALL_CAPS_RE, BULLET_ITEM_RE, CASE_NUMBER_RE, CENTRED_TITLE_RE, COURT_TITLE_RE, esc(), GROUND_OR_NUMBERED_RE, HORIZONTAL_RULE_RE (+18 more)
 
 ### Community 149 - "citation-extractor.ts"
-Cohesion: 0.15
-Nodes (13): buildFlexibleReportPattern(), CITATION_REGEX, citationExtractor, CitationType, COMPACT_NEUTRAL_REGEX, extractContext(), ExtractedCitation, JOURNAL_CODES (+5 more)
+Cohesion: 0.11
+Nodes (15): buildFlexibleReportPattern(), CITATION_REGEX, citationExtractor, CitationType, COMPACT_NEUTRAL_REGEX, extractContext(), ExtractedCitation, JOURNAL_CODES (+7 more)
 
 ### Community 150 - "adversarial-secondary-stress.test.ts"
 Cohesion: 0.07
@@ -1260,20 +1267,24 @@ Cohesion: 0.09
 Nodes (22): 1. Database-Backed Metrics and Thresholds, 1. Extraction Regular Expressions, 1. High-Performance SQL Bulk Mode vs. Unit-Test Mode, 1. TypeScript Compilation Check, 2. Batch Pagination (`id > lastId`), 2. Random 50 Samples Integrity Check, 2. Title Petitioner/Respondent Splitting, 2. Unit Testing Suite (+14 more)
 
 ### Community 164 - "audit-full-judgment-links.ts"
-Cohesion: 0.18
-Nodes (22): acquireLock(), AuditCheckpoint, AuditDisjointCategory, AuditRunnerOptions, CHECKPOINT_FILE, classifyAuditResult(), computeSha256(), fetchHealth() (+14 more)
+Cohesion: 0.10
+Nodes (38): acquireLock(), AuditCheckpoint, AuditDisjointCategory, AuditRunnerOptions, CHECKPOINT_FILE, classifyAuditResult(), computeSha256(), fetchHealth() (+30 more)
 
 ### Community 165 - "causelist-cron.ts"
 Cohesion: 0.32
 Nodes (11): adapters, router, runOnce(), checkScheduleAndRun(), COURT_ADAPTERS, getNextWorkingDayStr(), getPktTime(), getTodayStr() (+3 more)
+
+### Community 166 - "text-diff.ts"
+Cohesion: 0.27
+Nodes (11): DiffReviewCard(), DiffReviewCardProps, backtrackLCS(), computeLCS(), computeParagraphDiff(), computeWordDiff(), DiffChangeType, DiffResult (+3 more)
 
 ### Community 169 - "13. Product Roadmap"
 Cohesion: 0.09
 Nodes (22): 13.1 Phase 1: MVP Foundation (Months 1–3), 13.2 Phase 2: Productivity & Chamber Workflow (Months 4–6), 13.3 Phase 3: Advanced AI & Automation (Months 7–12), 13.4 Phase 4: Future Vision & Ecosystem Expansion (Months 13–18+), 13.5 Summary Roadmap Deliverables Matrix, 13. Product Roadmap, Detailed Feature Deliverables, Detailed Feature Deliverables (+14 more)
 
 ### Community 170 - "security-governance.ts"
-Cohesion: 0.23
-Nodes (15): AdminAuditLog, banUser(), getAuditLogs(), getUserBan(), getUserBanMap(), hasDbPool(), initializeSecurityGovernance(), inMemoryAuditLogs (+7 more)
+Cohesion: 0.07
+Nodes (50): createUploadStorage(), fetchCaseLawEntriesForSync(), fetchPendingCaseLawAdminDocs(), finalizeCaseLawProcessState(), getCaseLawDuplicateStats(), getCaseLawPendingDiagnostics(), getDbRows(), loadCaseLawBadIndexTargets() (+42 more)
 
 ### Community 171 - "preview-e2e-full.test.ts"
 Cohesion: 0.09
@@ -1287,17 +1298,17 @@ Nodes (15): resend, runLocalE2ETest(), evaluateMatch(), normalizeAdvocateName(),
 Cohesion: 0.09
 Nodes (22): 18.1 Step-by-Step Microsoft Commercial Marketplace / Partner Center Publication Workflow, 18.2 Top 5 AppSource Rejection Reasons for Word Add-ins & Prevention Guide, 18.3 Permission Philosophy & Scope Minimization (`ReadWriteDocument` Justification), 18.4 Privacy Policy & Terms of Service Legal Requirements, 18.5 Commercial Marketplace Options: Free, Transactable SaaS & Per-Seat Licensing, 18.6 Centralized Web Host Deployment Architecture, 18.7 Store Listing SEO, Optimization & Microsoft Co-Sell Alignment, 18. AppSource Publication Strategy (+14 more)
 
-### Community 175 - "adversarial-challenger-2-cross-module-stress.test.ts"
-Cohesion: 0.25
-Nodes (14): generateLocalLegalResponse(), getSavedJudgments(), saveJudgmentBookmark(), UnifiedJudgmentResult, findSeedJudgmentByCitation(), getAllSeedJudgments(), getSeedJudgmentById(), rows (+6 more)
+### Community 175 - "replitAuth.ts"
+Cohesion: 0.24
+Nodes (11): connect-pg-simple, express-session, memorystore, validateDatabaseUrl(), validatePgHost(), isSingleIpEnforced(), AUTH_SINGLE_IP_ENFORCED, getSession() (+3 more)
 
 ### Community 176 - "apex-ai.ts"
-Cohesion: 0.07
-Nodes (32): openai, client, client, client, client, run(), testModel(), buildStatuteText() (+24 more)
+Cohesion: 0.10
+Nodes (28): main(), runMode(), main(), AgentSearchResult, AgentStep, ApexAgentOptions, ApexAgentResponse, ApexChatOptions (+20 more)
 
 ### Community 177 - "r2-storage.ts"
-Cohesion: 0.10
-Nodes (31): FileRow, main(), sourceFormatRepair(), main(), buildDates(), buildObjectKey(), buildPublicUrl(), deleteR2Object() (+23 more)
+Cohesion: 0.11
+Nodes (28): main(), cleanText(), ExtractedSection, extractPunishment(), main(), parseSectionsFromText(), buildDates(), buildObjectKey() (+20 more)
 
 ### Community 178 - "System Architecture"
 Cohesion: 0.09
@@ -1307,21 +1318,21 @@ Nodes (21): Al Wakeel - AI Legal Assistant, Apex AI Integration (Kimi K2.5), Att
 Cohesion: 0.28
 Nodes (8): cleanTitle(), __dirname, __filename, main(), OUT_DIR, parseSections(), StatuteDoc, StatuteSection
 
-### Community 180 - "google-calendar-service.ts"
-Cohesion: 0.19
-Nodes (19): GoogleCalendarButtonProps, RFC-5545, router, buildGoogleApiEventPayload(), CALENDAR_SCOPES, createGoogleCalendarEvent(), deleteGoogleCalendarEvent(), disconnectGoogleCalendar() (+11 more)
+### Community 180 - "test-preview-e2e.ts"
+Cohesion: 0.18
+Nodes (21): GoogleCalendarButtonProps, RFC-5545, results, TestResult, router, buildGoogleApiEventPayload(), CALENDAR_SCOPES, createGoogleCalendarEvent() (+13 more)
 
 ### Community 182 - "retrieveForQuery"
-Cohesion: 0.12
-Nodes (14): main(), main(), main(), queriesCategoryA, queriesCategoryB, queriesCategoryC, runBenchmark(), buildRagContext() (+6 more)
+Cohesion: 0.16
+Nodes (12): runTests(), testQuery(), main(), main(), main(), runTests(), testQuery(), queriesCategoryA (+4 more)
 
 ### Community 183 - "LegalSearchService"
 Cohesion: 0.29
 Nodes (3): LegalSearchService, SearchResult, searchService
 
 ### Community 184 - "auth/routes.ts"
-Cohesion: 0.08
-Nodes (44): connect-pg-simple, express-session, memorystore, CaptchaVerificationResult, envEnabled(), getClientIp(), isCaptchaEnforced(), verifyCaptchaToken() (+36 more)
+Cohesion: 0.12
+Nodes (27): CaptchaVerificationResult, envEnabled(), getClientIp(), isCaptchaEnforced(), verifyCaptchaToken(), ADMIN_MAX_CONCURRENT_SESSIONS, applyAuthRateLimit(), applyForgotPasswordEmailRateLimit() (+19 more)
 
 ### Community 185 - "Builder"
 Cohesion: 0.20
@@ -1350,14 +1361,6 @@ Nodes (7): printSummaryReport(), results, runFullTest(), testChatCompletion(), t
 ### Community 194 - "generate_blog_articles.ts"
 Cohesion: 0.29
 Nodes (6): ArticleMeta, articlesToGenerate, __dirname, __filename, generateArticle(), run()
-
-### Community 195 - "CaseLead"
-Cohesion: 0.22
-Nodes (3): CaseLead, CaseLeadStatus, InsertCaseLead
-
-### Community 196 - "case-documents.tsx"
-Cohesion: 0.20
-Nodes (12): CaseDocumentsPage, AnalysisResult, AnalysisRisk, buildAnalysisPrompt(), CaseDocumentsPage(), Category, clamp(), Doc (+4 more)
 
 ### Community 197 - "fix-citations.js"
 Cohesion: 0.43
@@ -1395,9 +1398,9 @@ Nodes (6): AL_WAKEELO_GITHUB_URL, AL_WAKEELO_SYSTEM_PROMPT, CHAMBER_DRIVE_URL, C
 Cohesion: 0.10
 Nodes (21): 22.1 Exhaustive 6-Domain Risk Assessment Matrix, 22.2 Exhaustive Risk Narrative & Engineering Mitigation Strategies, 22. Risks, Constraints & Mitigation, Domain 1: Platform & Ecosystem Risks (Microsoft Word Environment), Domain 2: Market & Competitive Risks, Domain 3: Technical Feasibility Risks, Domain 4: Security & Compliance Risks, Domain 5: Operational & Execution Risks (+13 more)
 
-### Community 209 - "chunkTextByTokens"
-Cohesion: 0.22
-Nodes (15): ChunkingConfig, chunkTextByTokens(), countTokens(), DEFAULT_CHUNKING_CONFIG, extractJudgmentResult(), extractSectionType(), extractStatuteCitations(), splitAtBoundaries() (+7 more)
+### Community 209 - "citation-list.tsx"
+Cohesion: 0.27
+Nodes (7): CitationList, CitationListHandle, CitationListProps, CitationSuggestion, CitationSuggestionItem, extractSurroundingContext(), @tiptap/suggestion
 
 ### Community 210 - "live-production-test.mjs"
 Cohesion: 0.52
@@ -1412,8 +1415,8 @@ Cohesion: 0.13
 Nodes (15): 10. Khalid Anwer & Co., 11. Kabraji & Talibuddin, 12. Legal Aid Society (LAS) / Legal Aid & Human Rights, 13. Hassan & Hassan (Advocates), 14. MCAS&W (Mansoor, Chaudhri, Alvi, Saqib & Waheed), 1. Cornelius, Lane & Mufti (CLM), 2. Haidermota & Co., 3. RIAA Barker Gillette (+7 more)
 
 ### Community 213 - "pg"
-Cohesion: 0.04
-Nodes (21): pool, loadEnv(), main(), normalizeCitation(), pg, CRITICAL_STATUTES, { Client }, pool (+13 more)
+Cohesion: 0.05
+Nodes (16): pool, loadEnv(), main(), normalizeCitation(), pg, CRITICAL_STATUTES, { Client }, pool (+8 more)
 
 ### Community 214 - "form.tsx"
 Cohesion: 0.17
@@ -1425,27 +1428,27 @@ Nodes (5): CITATION_PATTERNS, REPORT_ABBRS, REPORT_CODES, sampleTexts, testCitat
 
 ### Community 216 - "legal-drafting.ts"
 Cohesion: 0.11
-Nodes (24): createDefaultTab(), DraftTab, DraftTabsContext, DraftTabsContextValue, DraftTabsProvider(), generateTabId(), loadTabsFromStorage(), normalizeStoredDraftTabs() (+16 more)
+Nodes (25): createDefaultTab(), DraftTab, DraftTabsContext, DraftTabsContextValue, DraftTabsProvider(), generateTabId(), loadTabsFromStorage(), normalizeStoredDraftTabs() (+17 more)
 
 ### Community 217 - "4. Medium Severity Findings"
 Cohesion: 0.15
 Nodes (13): 4. Medium Severity Findings, [MED-01] Missing `try ... finally` Block Leaking Migration Pool Connections, [MED-02] Inconsistent CTE Join Semantics in `searchJudgmentsByKeywordsRaw`, [MED-03] 32-Bit Signed Integer Overflow in Hex UUID Slicing, [MED-04] Vector Type & Operator Mismatch (`halfvec_cosine_ops` vs `$2::vector`), [MED-05] Conflicting Dark-Mode Class Collapsing Contrast in Factual Matrix Box, [MED-06] Synchronous Layout Thrashing & 2px Border Jitter in Facts Auto-Expand, [MED-07] Unmounted State Mutation in `DraftingLaunchpad` (+5 more)
 
 ### Community 218 - "server/index.ts"
-Cohesion: 0.07
-Nodes (21): express, audioBodyParser, convertToWav(), registerOfflineTranscriptionRoutes(), transcribeWithWhisper(), getCloudPdfOcrProviderName(), app, http (+13 more)
+Cohesion: 0.08
+Nodes (16): app, getClientIdentifier(), http, httpServer, IncomingMessage, log(), SAFE_HTTP_METHODS, WORD_ADDIN_ORIGINS (+8 more)
 
 ### Community 220 - "ai-model-test.mjs"
 Cohesion: 0.47
 Nodes (5): calculateQualityScore(), mockResponses, results, runFullTest(), testProvider()
 
-### Community 221 - ".fill"
-Cohesion: 0.18
-Nodes (4): ContextCache, DecodingContext, log2(), SimpleSegmentVisitor
+### Community 221 - "chat.ts"
+Cohesion: 0.20
+Nodes (9): drizzle-zod, Conversation, conversations, InsertConversation, insertConversationSchema, InsertMessage, insertMessageSchema, Message (+1 more)
 
-### Community 222 - "judgment_text_label.ts"
+### Community 222 - "checkout-success.tsx"
 Cohesion: 0.25
-Nodes (10): APPLY, bodyCourt(), canonJournalCode(), HIGH_COURT_NEUTRAL, loadDatabaseUrl(), main(), Member, requireColumns() (+2 more)
+Nodes (8): CheckoutSuccessPage, CheckoutSuccessPage(), verify(), CYCLE_LABELS, formatPkr(), PLAN_LABELS, VerificationData, VerificationState
 
 ### Community 225 - "AlWakeelo SEO and AEO review — 10 November 2026"
 Cohesion: 0.09
@@ -1463,13 +1466,13 @@ Nodes (19): 1. System Architecture Overview, 2. Relational Database Schema & See
 Cohesion: 0.09
 Nodes (10): axios, cheerio, HEADERS, HEADERS, HEADERS, __dirname, __filename, main() (+2 more)
 
-### Community 229 - "judgment-detail.tsx"
-Cohesion: 0.20
-Nodes (12): JudgmentDetailPage, AiMessage, CitationCard(), CitationLinkItem, formatDate(), generateDetailPDF(), JudgmentDetailPage(), handleChatSend() (+4 more)
+### Community 229 - "daily-diary.tsx"
+Cohesion: 0.28
+Nodes (8): DailyDiaryPage, DailyDiaryPage(), DiaryItem, formatDateLabel(), getWeekDates(), OUTCOME_OPTIONS, PRIORITY_COLORS, PRIORITY_DOT
 
 ### Community 230 - "statuteSearchEngine.ts"
-Cohesion: 0.13
-Nodes (16): MAJOR_ENACTMENT_KEYS, StatutorySection, UseStatuteSearchOptions, UseStatuteSearchResult, PrecedentMemoryCache, debounce(), IndexedSectionRecord, normalizeSectionNumber() (+8 more)
+Cohesion: 0.14
+Nodes (15): StatutorySection, UseStatuteSearchOptions, UseStatuteSearchResult, PrecedentMemoryCache, debounce(), IndexedSectionRecord, normalizeSectionNumber(), PAKISTANI_LEGAL_ALIASES (+7 more)
 
 ### Community 231 - "validate_drafting_live.cjs"
 Cohesion: 0.14
@@ -1496,8 +1499,8 @@ Cohesion: 0.16
 Nodes (9): compile(), compileHelper(), helperDeps, isoDate, own, quietConsole, sitemapFunction(), urlBlock (+1 more)
 
 ### Community 238 - "User"
-Cohesion: 0.07
-Nodes (9): BillingCycle, IAuthStorage, normalizeBillingCycle(), normalizeBillingCycle(), emailVerificationTokens, passwordResetTokens, sessions, UpsertUser (+1 more)
+Cohesion: 0.08
+Nodes (3): IAuthStorage, normalizeBillingCycle(), User
 
 ### Community 239 - "find_missing_2026.py"
 Cohesion: 0.40
@@ -1535,9 +1538,9 @@ Nodes (11): 3. High Severity Findings, [HIGH-01] Overruled Precedent Promoted to
 Cohesion: 0.20
 Nodes (7): ./pages/PreviewBlog, ./pages/PreviewBlogDetail, ./pages/PreviewRefundPolicy, code, fs, code, code
 
-### Community 249 - "04-bulk-embed-judgments.ts"
-Cohesion: 0.23
-Nodes (11): buildJudgmentText(), __dirname, __filename, loadProgress(), main(), pool, PROGRESS_FILE, saveProgress() (+3 more)
+### Community 249 - "06-embed-statutes.ts"
+Cohesion: 0.43
+Nodes (7): buildStatuteText(), embedBatch(), main(), openai, pool, sha256(), upsertBatch()
 
 ### Community 251 - "5. Low Severity Findings"
 Cohesion: 0.22
@@ -1568,20 +1571,16 @@ Cohesion: 0.27
 Nodes (8): CaseLawMention, extractCaseLaw(), extractStatutes(), findCaseLaw(), findStatute(), initDb(), main(), StatuteMention
 
 ### Community 263 - "judgment-integrity-gaps.test.ts"
-Cohesion: 0.15
-Nodes (13): compile(), handler(), mcpDb, pdfFunction(), pdfHarness(), pdfSource, record, routes (+5 more)
+Cohesion: 0.21
+Nodes (10): compile(), handler(), mcpDb, pdfFunction(), pdfHarness(), pdfSource, protect(), record (+2 more)
 
 ### Community 264 - "AIChat.tsx"
 Cohesion: 0.46
 Nodes (7): AIChat(), FormattedMessageText(), LocalChatMessage, parseInlineFormatting(), sanitizeAIMessage(), useStyles, ChatMessage
 
-### Community 265 - "statutes-workstation-e2e.test.ts"
-Cohesion: 0.10
-Nodes (11): LandmarkCitation, StatuteDomain, UnifiedSection, DraftingInsertPayload, LEGAL_ACRONYMS, MockLocalStorage, PrecedentMemoryCacheHarness, BadgeRenderProps (+3 more)
-
-### Community 266 - "StatutoryClauseLibrary.tsx"
-Cohesion: 0.40
-Nodes (4): STATUTORY_CLAUSES, StatutoryClause, ClauseCategory, StatutoryClauseLibraryProps
+### Community 265 - "statutes-hybrid-precedents.test.ts"
+Cohesion: 0.17
+Nodes (6): LandmarkAuthorityCardProps, LandmarkCitation, PrecedentMemoryCacheHarness, CachedPrecedentEntry, PrecedentMemoryCache, PrecedentResolutionState
 
 ### Community 267 - "Al Wakeelo Chat — Bug Fix Report"
 Cohesion: 0.29
@@ -1591,17 +1590,13 @@ Nodes (6): Al Wakeelo Chat — Bug Fix Report, Files Modified, Pending Considera
 Cohesion: 0.33
 Nodes (6): CardPos, CONTRACT_DRAFTING_STEPS, getCardPosition(), LEGAL_DRAFTING_STEPS, TutorialCards(), TutorialStep
 
-### Community 269 - "update-engine-intelligence.ts"
-Cohesion: 0.43
-Nodes (6): args, computeAuthorityScores(), detectTreatments(), main(), propagateOverruled(), TREATMENT_PATTERNS
-
 ### Community 270 - "challenger-2-empirical-verification.ts"
-Cohesion: 0.16
-Nodes (16): Commands, LegalPageBreak, @tiptap/core, buildLegalPageCssVariables(), DEFAULT_LEGAL_PAGE_PROFILE_ID, LEGAL_PAGE_GAP_PX, LEGAL_PAGE_PROFILES, LegalPageProfile (+8 more)
+Cohesion: 0.14
+Nodes (17): PAKISTANI_OUTCOMES, buildLegalPageCssVariables(), DEFAULT_LEGAL_PAGE_PROFILE_ID, LEGAL_PAGE_GAP_PX, LEGAL_PAGE_PROFILES, LegalPageProfile, mmToCssPx(), resolveLegalPageProfile() (+9 more)
 
 ### Community 271 - "deepseek-ai.ts"
-Cohesion: 0.06
-Nodes (49): runComparison(), generateDraft(), getMockLegalSystemPrompt(), main(), main(), testModuleRAG(), getModuleProfile(), ModelRoute (+41 more)
+Cohesion: 0.08
+Nodes (42): runTest(), callAI(), runTests(), main(), chatWithDeepSeekTools(), DeepSeekChatOptions, DeepSeekResponse, DeepSeekTranscriptionOptions (+34 more)
 
 ### Community 272 - "retrieval-misses.ts"
 Cohesion: 0.38
@@ -1613,23 +1608,15 @@ Nodes (5): content, fs, generatedStr, hubs, index
 
 ### Community 274 - ".createDocumentHandler"
 Cohesion: 0.04
-Nodes (25): AbortException, AnnotationFactory, assert(), BasePdfManager, getNewAnnotationsMap(), getVerbosityLevel(), isRefsEqual(), LocalPdfManager (+17 more)
-
-### Community 275 - "drafting-studio-regressions.spec.ts"
-Cohesion: 0.22
-Nodes (4): Pdf, seedTab(), setup(), unpdf
-
-### Community 276 - "Datasets"
-Cohesion: 0.20
-Nodes (3): Datasets, datasets_Data, DatasetsNamespace
+Nodes (22): AbortException, AnnotationFactory, BasePdfManager, DataHandler, getNewAnnotationsMap(), getVerbosityLevel(), LocalPdfManager, MessageHandler (+14 more)
 
 ### Community 277 - "fix_preview_footer_and_about.cjs"
 Cohesion: 0.33
 Nodes (5): footerMatch, fs, landingCode, prodAboutCode, returnMatch
 
-### Community 278 - "getInteger"
-Cohesion: 0.03
-Nodes (28): Area, Barcode, Caption, Comb, ContentArea, Draw, Equate, ExclGroup (+20 more)
+### Community 278 - "getStringOption"
+Cohesion: 0.02
+Nodes (41): BatchOutput, Border, Break, BreakAfter, BreakBefore, Caption, Compress, config_Area (+33 more)
 
 ### Community 279 - "ensureAlWakeeloReferencesBlock"
 Cohesion: 0.40
@@ -1652,20 +1639,16 @@ Cohesion: 0.31
 Nodes (8): COURT_MAP, JOURNAL_MAP, JudgmentRecord, LIVE, main(), parseCitationPage(), parseTitleParts(), sanitize()
 
 ### Community 284 - "ai-router.ts"
-Cohesion: 0.04
-Nodes (82): run(), testStreamHandlers(), runTest(), main(), REPORT_PATH, callAI(), runTests(), callProvider() (+74 more)
+Cohesion: 0.08
+Nodes (39): testStreamHandlers(), callWithFallback(), ChatMessage, DEFAULT_PER_PROVIDER_TIMEOUT_MS, DEFAULT_STANDARD_CHAIN, DEFAULT_TURBO_CHAIN, isAiRouterV2Enabled(), makeAbortable() (+31 more)
 
 ### Community 285 - "use-chat-session.tsx"
 Cohesion: 0.19
 Nodes (12): ChatDock(), ChatMessage, ChatSession, ChatSessionContext, ChatSessionProvider(), send(), getModelDisplayName(), getModelFunctionDescription() (+4 more)
 
-### Community 286 - "SavedJudgment"
-Cohesion: 0.18
-Nodes (4): InsertSavedJudgment, InsertStyleMemorySample, SavedJudgment, StyleMemorySample
-
-### Community 288 - "parse-statutes.ts"
-Cohesion: 0.57
-Nodes (5): cleanText(), ExtractedSection, extractPunishment(), main(), parseSectionsFromText()
+### Community 286 - "sync-statute-sections.ts"
+Cohesion: 0.29
+Nodes (5): __dirname2, __filename2, JSON_PATH, LIVE, StatuteSection
 
 ### Community 289 - "run_qa_tests.cjs"
 Cohesion: 0.50
@@ -1687,9 +1670,9 @@ Nodes (16): 21.1.1 Core Legal Utility Modules in Excel, 21.1.2 Production `Excel
 Cohesion: 0.60
 Nodes (4): formatDate(), generateCourtJudgmentPdfBuffer(), JudgmentPdfData, sanitizeTextForPdf()
 
-### Community 295 - "public-seo-client.test.ts"
-Cohesion: 0.14
-Nodes (7): esbuild, allowlist, allowlist, dom, Head(), render(), temporary
+### Community 295 - "esbuild"
+Cohesion: 0.29
+Nodes (3): esbuild, allowlist, allowlist
 
 ### Community 297 - "append_hubs.js"
 Cohesion: 0.50
@@ -1711,9 +1694,9 @@ Nodes (3): http, req, testUser
 Cohesion: 0.48
 Nodes (6): convertAudioToWav(), getEnvInt(), isWhisperCppConfigured(), spawnAndWait(), transcribeWithWhisperCpp(), WhisperCppTranscribeOptions
 
-### Community 303 - "document-viewer.tsx"
-Cohesion: 0.53
-Nodes (5): DocumentViewer(), DocumentViewerProps, escapeHtml(), escapeRegex(), splitIntoPages()
+### Community 303 - "StatuteViewPage"
+Cohesion: 0.40
+Nodes (4): StatuteViewPage(), handleChatSend(), highlightElement(), scrollToSection()
 
 ### Community 305 - "copy_landing.cjs"
 Cohesion: 0.50
@@ -1726,6 +1709,10 @@ Nodes (19): DraftingExportModal(), DraftingExportModalProps, buildDocxChildren()
 ### Community 307 - "copy_landing.js"
 Cohesion: 0.50
 Nodes (3): code, fs, routeMap
+
+### Community 308 - "jspdf"
+Cohesion: 0.40
+Nodes (3): base, plain, jspdf
 
 ### Community 309 - "export-sqlite-missing.py"
 Cohesion: 0.70
@@ -1744,12 +1731,12 @@ Cohesion: 0.12
 Nodes (16): 11.10 Bookmarks, 11.11 Knowledge Vault (User Documents), 11.12 Search History, 11.13 Organization & Team Collaboration, 11.14 Admin Panel, 11.15 Password Reset, 11.1 Registration & Login, 11.2 Main AI Chat (Al Wakeelo Engine) (+8 more)
 
 ### Community 313 - ".b"
-Cohesion: 0.29
-Nodes (3): doRun(), enqueueChunk(), TOOL_SEARCH_QUALITY_THRESHOLD
+Cohesion: 0.18
+Nodes (5): doRun(), enqueueChunk(), CAUSE_TITLE_PATTERN, PROVISION_MENTION_PATTERN, TOOL_SEARCH_QUALITY_THRESHOLD
 
-### Community 314 - "docx"
+### Community 314 - "verify-internal-links.ts"
 Cohesion: 0.40
-Nodes (3): docx, dom, outputPath
+Nodes (3): InternalLinksReport, RouteCheckResult, runInternalLinkCrawler()
 
 ### Community 315 - "11. Feature-by-Feature Flow"
 Cohesion: 0.12
@@ -1764,8 +1751,8 @@ Cohesion: 0.10
 Nodes (19): 2026-08-29T00:02:18Z, 2026-09-10T16:52:17Z, Acceptance Criteria, Acceptance Criteria, Audit & Remediation, Database Connectivity, Original User Request, R1. Comprehensive Module Audit & Remediation (+11 more)
 
 ### Community 318 - "PreviewStatutes.tsx"
-Cohesion: 0.16
-Nodes (18): PreviewStatutes, CleanStatuteViewer(), CleanStatuteViewerProps, LandmarkAuthorityCard(), LandmarkAuthorityCardProps, useSectionPrecedents(), UseSectionPrecedentsOptions, UseSectionPrecedentsResult (+10 more)
+Cohesion: 0.14
+Nodes (22): PreviewStatutes, CleanStatuteViewer(), CleanStatuteViewerProps, LandmarkAuthorityCard(), getSectionsForEnactment(), useSectionPrecedents(), UseSectionPrecedentsOptions, UseSectionPrecedentsResult (+14 more)
 
 ### Community 319 - "adversarial-challenger-2.test.ts"
 Cohesion: 0.12
@@ -1776,8 +1763,8 @@ Cohesion: 0.14
 Nodes (14): 17.1 Enterprise M365 Single Sign-On (SSO) & OAuth 2.0 PKCE Flow, 17.2 Data Encryption Standards, 17.3 Data Sovereignty & Pakistani Legal Compliance, 17.4 Temporary Document Processing & Zero-Retention Policy, 17.5 Attorney-Client Privilege Protection, 17.6 Security Certifications & M365 Permission Scopes, 17.7 Comprehensive Audit Logging & Security Event Tracing Schema, 17. Security & Compliance Analysis (+6 more)
 
 ### Community 321 - ".onSymbolDictionary"
-Cohesion: 0.18
-Nodes (13): decodeBitmap(), decodeIAID(), decodeInteger(), readBits(), decodeRefinement(), decodeTextRegion(), getCustomHuffmanTable(), getStandardTable() (+5 more)
+Cohesion: 0.07
+Nodes (21): ArithmeticDecoder, CCITTFaxDecoder, ContextCache, decodeBitmap(), decodeIAID(), decodeInteger(), readBits(), decodeMMRBitmap() (+13 more)
 
 ### Community 322 - "e2e_latency.cjs"
 Cohesion: 0.67
@@ -1823,6 +1810,10 @@ Nodes (13): 7.1 Market Landscape for Legal Tech Word Add-ins, 7.2.1 Litera (DocX
 Cohesion: 0.50
 Nodes (3): fs, prodFaqCode, returnMatch
 
+### Community 333 - "audio-local.ts"
+Cohesion: 0.60
+Nodes (4): audioBodyParser, convertToWav(), registerOfflineTranscriptionRoutes(), transcribeWithWhisper()
+
 ### Community 334 - "Alwakeelo Legal AI Platform: Comprehensive Forensic Audit & Production-Readiness Report"
 Cohesion: 0.15
 Nodes (12): 1. Executive Summary, 2. Overall Score & Production-Readiness Verdict, 4. Database Audit Findings Table, 5. Statute Retrieval Findings Table, 6. Case Law Retrieval Findings Table, 7. AI Analysis Findings Table, 8. UX Findings Table, Alwakeelo Legal AI Platform: Comprehensive Forensic Audit & Production-Readiness Report (+4 more)
@@ -1848,8 +1839,8 @@ Cohesion: 0.50
 Nodes (3): fs, prodPricingCode, returnMatch
 
 ### Community 340 - "statute-live-fallback.test.ts"
-Cohesion: 0.25
-Nodes (6): fetchLive(), inferDomainFromText(), DebounceController, mergeAndDeduplicate(), transformStatuteDocLookupResponse(), transformStatuteLookupResponse()
+Cohesion: 0.20
+Nodes (9): fetchLive(), inferDomainFromText(), StatuteDomain, UnifiedSection, BadgeRenderProps, DebounceController, mergeAndDeduplicate(), transformStatuteDocLookupResponse() (+1 more)
 
 ### Community 342 - "19. UI/UX Recommendations"
 Cohesion: 0.17
@@ -1923,13 +1914,17 @@ Nodes (3): fs, landingCode, navMatch
 Cohesion: 0.25
 Nodes (8): 7.1 LUMS Shaikh Ahmad Hassan School of Law (SAHSOL), 7.2 Punjab University Law College (PULC), 7.3 Pakistan College of Law (PCL), 7.4 Denning Law School, 7.5 The Institute of Legal Studies (TILS), 7.6 SZABIST Faculty of Law, 7.7 Additional University Faculties, 7. Law Schools & Academic Institutions
 
+### Community 362 - "overrides"
+Cohesion: 0.67
+Nodes (3): @esbuild-kit/esm-loader, overrides, drizzle-kit
+
 ### Community 363 - "Al Wakeelo Development Roadmap"
 Cohesion: 0.18
 Nodes (10): Al Wakeelo Development Roadmap, Before Going Live, ⚠️ COMMON MISTAKES TO AVOID, From Prototype to Commercial Launch, 🚀 LAUNCH CHECKLIST, Marketing, 🤝 MY FINAL ADVICE, ⚡ QUICK WINS (Do These First!) (+2 more)
 
 ### Community 366 - "src/App.tsx"
 Cohesion: 0.02
-Nodes (126): AboutPage, AdminPanelPage, AdminSetupPage, App(), AppPreviewRouter, BlogDetailPage, BlogPage, CancellationReturnRefundPolicyPage (+118 more)
+Nodes (114): AboutPage, AdminPanelPage, AdminSetupPage, App(), BlogDetailPage, BlogPage, CancellationReturnRefundPolicyPage, ContactPage (+106 more)
 
 ### Community 367 - "How to Enable It"
 Cohesion: 0.33
@@ -2205,7 +2200,7 @@ Nodes (4): Next 3 Months, 📚 NEXT STEPS, This Month, This Week
 
 ### Community 570 - "ai-engine-regressions.spec.ts"
 Cohesion: 0.29
-Nodes (3): events(), send(), setup()
+Nodes (4): events(), history(), send(), setup()
 
 ### Community 572 - "14. Cost Tracking & Analytics"
 Cohesion: 0.50
@@ -2243,9 +2238,9 @@ Nodes (3): Development Tools, Learning Resources, 🛠️ TECHNICAL RECOMMENDATI
 Cohesion: 0.29
 Nodes (7): 4.1 Supreme Court Bar Association of Pakistan (SCBA), 4.2 Lahore High Court Bar Association (LHCBA), 4.3 Sindh High Court Bar Association (SHCBA), 4.4 Islamabad High Court Bar Association (IHCBA), 4.5 Peshawar High Court Bar Association (PHCBA), 4.6 Balochistan High Court Bar Association (BHCBA), 4. Directory of Bar Associations
 
-### Community 583 - "link-precedents-and-judges.ts"
-Cohesion: 0.23
-Nodes (9): cleanJudgeName(), extractJudges(), main(), inferCitationType(), main(), resolveCitationBacklog(), judgeCaseLinks, unresolvedCitations (+1 more)
+### Community 583 - "server/load-env.ts"
+Cohesion: 0.03
+Nodes (42): parseSseResponse(), runTests(), main(), testModuleRAG(), __dirname, __filename, main(), mapCourtToRefId() (+34 more)
 
 ### Community 586 - "XhtmlNamespace"
 Cohesion: 0.17
@@ -2271,10 +2266,6 @@ Nodes (6): 5.1 Federal Judicial Academy (FJA), 5.2 Punjab Judicial Academy (PJA)
 Cohesion: 0.33
 Nodes (5): Fixes, Follow-up: selection AI actions, Legal drafting studio audit — 30 October 2026, Live production validation and repaired legacy suites, Validation
 
-### Community 594 - "judgment-free-index.test.ts"
-Cohesion: 0.17
-Nodes (6): partitionSupportedRepairChunks(), ROOT_DIR, handler(), visit(), count(), match()
-
 ### Community 595 - "XhtmlObject"
 Cohesion: 0.20
 Nodes (3): Html, Sup, XhtmlObject
@@ -2282,10 +2273,6 @@ Nodes (3): Html, Sup, XhtmlObject
 ### Community 597 - "Al Wakeelo case-law AEO / GEO implementation"
 Cohesion: 0.20
 Nodes (9): Al Wakeelo case-law AEO / GEO implementation, Brand evidence, Crawler access, Evidence and readiness, Implemented, Next actions and success checks, Primary guidance, Public judgment detail pages — follow-up implementation (+1 more)
-
-### Community 599 - "rag-eval.ts"
-Cohesion: 0.31
-Nodes (9): args, CaseResult, EvalCase, flag(), has(), loadCases(), main(), matchesAny() (+1 more)
 
 ### Community 600 - "02-sync-all-judgments.ts"
 Cohesion: 0.31
@@ -2325,17 +2312,17 @@ Nodes (5): CaseDocument, CaseFileDetail, CaseFileImportModal(), CaseFileImportMo
 
 ## Knowledge Gaps
 - **3691 isolated node(s):** `fs`, `content`, `hubs`, `generatedStr`, `index` (+3686 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 5445 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **201 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 5444 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **208 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `dependencies` to `package.json`?**
   _High betweenness centrality (0.038) - this node is a cross-community bridge._
-- **Why does `warn()` connect `warn` to `pdf.worker.min.mjs`, `FormatError`, `.getOperatorList`, `.success`, `TemplateNamespace`, `.add`, `Dict`, `.createDocumentHandler`, `.checkAndRepair`, `ImageResizer`, `AnnotationBorderStyle`, `.constructor`, `.push`, `Annotation`, `Builder`, `.getTextContent`, `ContentObject`, `preview-e2e.test.ts`, `XFAFactory`, `JpegStream`, `ColorSpace`?**
+- **Why does `warn()` connect `warn` to `pdf.worker.min.mjs`, `FormatError`, `.getOperatorList`, `.compile`, `.success`, `.add`, `.push`, `.createDocumentHandler`, `.checkAndRepair`, `PDFImage`, `XFAObject`, `AnnotationBorderStyle`, `.pop`, `.create`, `Builder`, `.toString`, `Page`, `ContentObject`, `preview-e2e.test.ts`, `.getTextContent`, `XFAFactory`, `._bindElement`, `.constructor`?**
   _High betweenness centrality (0.028) - this node is a cross-community bridge._
-- **Why does `drizzle-orm` connect `db.ts` to `server/storage.ts`, `server/routes.ts`, `punjab-district-adapter.ts`, `audit-engine-quality.ts`, `rag-service.ts`, `update-engine-intelligence.ts`, `bench-pipeline.ts`, `citation-extractor.ts`, `schema.ts`, `test_half.ts`, `IStorage`, `parse-statutes.ts`, `causelist-cron.ts`, `causelist-matcher.ts`, `package.json`, `email.ts`, `google-calendar-service.ts`, `mcp-server.ts`, `audio/client.ts`, `citation-verify.ts`, `caselaw_reextract_problem_docs.ts`, `link-precedents-and-judges.ts`, `scp-adapter.ts`, `judgment-free-index.test.ts`, `02-sync-all-judgments.ts`, `judgmentFormatter.ts`, `static.ts`, `validation_pack_run.ts`, `safepay.ts`, `sync-2026-only.ts`, `judgment-sitemap-indexability.test.ts`, `User`, `sitemap.ts`, `audit_chat_logs.ts`?**
+- **Why does `drizzle-orm` connect `db.ts` to `server/storage.ts`, `server/routes.ts`, `punjab-district-adapter.ts`, `audit-engine-quality.ts`, `rag-service.ts`, `retrieval-engine.ts`, `bench-pipeline.ts`, `citation-extractor.ts`, `schema.ts`, `test_half.ts`, `embedding-local.ts`, `audit-full-judgment-links.ts`, `causelist-cron.ts`, `causelist-matcher.ts`, `package.json`, `r2-storage.ts`, `email.ts`, `test-preview-e2e.ts`, `retrieveForQuery`, `audio/client.ts`, `mcp-server.ts`, `caselaw_reextract_problem_docs.ts`, `server/load-env.ts`, `scp-adapter.ts`, `02-sync-all-judgments.ts`, `static.ts`, `chat.ts`, `validation_pack_run.ts`, `safepay.ts`, `sync-2026-only.ts`, `judgment-sitemap-indexability.test.ts`, `sitemap.ts`, `CaseLaw`?**
   _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **Are the 10 inferred relationships involving `registerRoutes()` (e.g. with `cleanupDiskUploadFilesAfterResponse()` and `verifyMcpToken()`) actually correct?**
   _`registerRoutes()` has 10 INFERRED edges - model-reasoned connections that need verification._
@@ -2344,4 +2331,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **What connects `fs`, `content`, `hubs` to the rest of the system?**
   _3691 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `pdf.worker.min.mjs` be split into smaller, more focused modules?**
-  _Cohesion score 0.009499947802484601 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.009686060216436301 - nodes in this community are weakly interconnected._
