@@ -35,6 +35,8 @@ export interface LegalTopic {
 }
 
 export interface QueryIntent {
+  semanticTask?: "research" | "explain" | "draft" | "summarize" | "translate" | "clarify";
+  semanticIssue?: string;
   raw: string;
   normalized: string;
   type: IntentType;

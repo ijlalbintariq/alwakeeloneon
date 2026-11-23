@@ -15,7 +15,7 @@
  */
 
 import { runRetrieval } from "./pipeline/retrieval-engine";
-import { classifyQueryIntent, analyzeQueryExplicitness } from "./pipeline/intent-classifier";
+import { understandLegalQuery } from "./pipeline/semantic-intent";
 import type { CaseLaw } from "../shared/schema";
 
 // ---------------------------------------------------------------------------
@@ -249,13 +249,16 @@ export async function retrieveLegalCaseLaw(opts: LegalRetrievalOptions): Promise
     return { rows: [], topicsDetected: [], retrievalStrategy: "no-results" };
   }
 
-  const intent = classifyQueryIntent(query);
-  intent.tier = analyzeQueryExplicitness(query, intent);
+  const understanding = await understandLegalQuery(query);
+  if (!understanding.intent) throw new Error("Query intent is unavailable. Clarify the legal issue or retry.");
+  const intent = understanding.intent;
+  if (["summarize", "translate"].includes(intent.semanticTask || "")) throw new Error("This tool searches case law. Supply a legal research question or citation.");
   intent.needsCaseLaw = true;
   intent.needsStatutes = false;
   intent.needsAdminDocs = false;
 
   const retrieval = await runRetrieval(intent, opts.userId || "", { caseLaw: Math.max(limit, 10) });
+  if (retrieval.diagnostics.caseLawRelevance === "unavailable") throw new Error("Case relevance review is temporarily unavailable. Please retry.");
   const rows = retrieval.caseLaw.slice(0, limit).map((c) => c.row);
   const topicsDetected = (intent.topics || []).map((t: any) => String(t.label || t.id || ""));
 

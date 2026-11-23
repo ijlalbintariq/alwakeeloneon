@@ -91,8 +91,8 @@ import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-lib
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { gatherKnowledgeContextV2, gatherKnowledgeWithHits, type ConversationTurn, type CaseLawHit, type PipelineRunResult } from "./pipeline/knowledge-pipeline";
-import { filterToolResult, INTENT_UNAVAILABLE } from "./pipeline/semantic-intent";
-import { classifyQueryIntent, detectQueryComplexity, isFollowUpQuestion, type QueryComplexity } from "./pipeline/intent-classifier";
+import { filterToolResult, understandLegalQuery, INTENT_UNAVAILABLE } from "./pipeline/semantic-intent";
+import { detectQueryComplexity, isFollowUpQuestion, type QueryComplexity } from "./pipeline/intent-classifier";
 import { refineUserQuery } from "./query-refiner";
 import {
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
@@ -11377,17 +11377,19 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
       const allowed = await checkUsageLimit(userId, "chat", res);
       if (!allowed) return;
 
-      // Expand query with legal synonyms for better keyword search recall
-      const intent = classifyQueryIntent(parsed.query, { module: parsed.module });
-      const expandedQuery = intent.expandedQuery || parsed.query;
+      const understanding = await understandLegalQuery(parsed.query, parsed.conversationHistory, { module: parsed.module });
+      if (!understanding.intent) return res.json({answer:"Please clarify the legal issue and what you want to find.",confidence:"low",citations:[],model:{provider:"none",name:"none"}});
+      const intent = understanding.intent;
+      const resolvedQuery = understanding.research?.retrievalQuery || parsed.query;
+      const expandedQuery = intent.expandedQuery || resolvedQuery;
 
       // ── Run RAG retrieval AND judgment DB search in PARALLEL ──────────
       // Instead of sequential (RAG 3s + judgment 3s = 6s), run both at once = 3s
-      const [retrieval, judgmentContext] = await Promise.all([
+      const [retrieval, judgmentKnowledge] = await Promise.all([
         (async () => {
           let result = await retrieveForQuery({
             userId,
-            query: parsed.query,
+            query: resolvedQuery,
             documentIds: effectiveDocumentIds,
             topK: Number(process.env.RAG_TOP_K || 5),
             expandedQueryText: expandedQuery,
@@ -11404,7 +11406,7 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
             if (lazyResult.indexedNow > 0) {
               result = await retrieveForQuery({
                 userId,
-                query: parsed.query,
+                query: resolvedQuery,
                 documentIds: effectiveDocumentIds,
                 topK: Number(process.env.RAG_TOP_K || 5),
                 expandedQueryText: expandedQuery,
@@ -11413,13 +11415,9 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
           }
           return result;
         })(),
-        // Judgment DB pipeline — 8s timeout (usually returns in 3s)
-        raceToDeadline(gatherKnowledgeContextV2(parsed.query, userId, undefined, { module: parsed.module }), 8000, "", "Vault judgment context").then((result) => result.value)
-          .catch((e) => {
-            console.error("[RAG:ask] judgment pipeline error (non-fatal):", e);
-            return "";
-          }),
+        gatherKnowledgeWithHits(parsed.query, userId, parsed.conversationHistory, { module: parsed.module, understanding }),
       ]);
+      const judgmentContext = judgmentKnowledge.contextString;
 
       const strictContext = String(process.env.RAG_FORCE_CONTEXT || "true").toLowerCase() !== "false";
 
@@ -11471,6 +11469,7 @@ RAG POLICY (STRICT):
         : result.text;
       answerText = enforcePakistanLawOnlyOutput(answerText);
       answerText = (await enforceInternalCaseCitationIntegrity(answerText, {
+        trustedCitations: judgmentKnowledge.caseLawHits.map(hit => hit.citation),
         placeholder: "",
         normalizeVerified: true,
         requirePrimary: true,
@@ -16221,7 +16220,7 @@ If they want to change a specific part, return section-edit. If they want a comp
         }
         const emptyToolResult: DraftToolSearchResult = { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
 
-        const knowledgePipelineResult = await gatherKnowledgeWithHits(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
+        const knowledgePipelineResult: PipelineRunResult = await gatherKnowledgeWithHits(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
             console.warn("[LegalDrafting:Pipeline] Knowledge pipeline unavailable:", err?.message || err);
             return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[], maxRelevanceScore: 0 };
         });
@@ -16234,7 +16233,7 @@ If they want to change a specific part, return section-edit. If they want a comp
         const useOpenRouterToolsDraft = isOpenRouterAvailable();
         const draftToolSearchCapable = useOpenRouterToolsDraft || isDeepSeekAvailable();
         const pipelineMaxScore = knowledgePipelineResult.maxRelevanceScore ?? 0;
-        const draftToolSearchEnabled = draftToolSearchCapable && (
+        const draftToolSearchEnabled = draftToolSearchCapable && !knowledgePipelineResult.caseRelevanceUnavailable && knowledgePipelineResult.intent?.needsCaseLaw && (
           pipelineCaseLawHits.length === 0 || pipelineMaxScore < TOOL_SEARCH_QUALITY_THRESHOLD
         );
         let draftToolSearchResult: DraftToolSearchResult = { ...emptyToolResult };
@@ -16248,10 +16247,10 @@ If they want to change a specific part, return section-edit. If they want a comp
           );
           try {
             draftToolSearchResult = await (useOpenRouterToolsDraft
-              ? runToolJudgmentSearchOR(caseLawSearchSubject, (q, n) => {
+              ? runToolJudgmentSearchOR(knowledgePipelineResult.retrievalQuery || caseLawSearchSubject, (q, n) => {
                   console.log(`[LegalDrafting:ToolSearch:OR] query="${q}" found=${n} at=${Date.now() - toolSearchStartedAt}ms/18000ms`);
                 }, undefined, 18000)
-              : runToolJudgmentSearch(caseLawSearchSubject, (q, n) => {
+              : runToolJudgmentSearch(knowledgePipelineResult.retrievalQuery || caseLawSearchSubject, (q, n) => {
                   console.log(`[LegalDrafting:ToolSearch:DS] query="${q}" found=${n} at=${Date.now() - toolSearchStartedAt}ms/8000ms`);
                 }, undefined, 8000)
             );
@@ -16260,6 +16259,8 @@ If they want to change a specific part, return section-edit. If they want a comp
             draftToolSearchResult = { ...emptyToolResult };
           }
         }
+
+        draftToolSearchResult = await filterToolResult(draftToolSearchResult, knowledgePipelineResult.intent);
 
         if (draftToolSearchEnabled) {
           // Logged even on a miss: "found=0 queries=[]" means the tool-calling model
@@ -16299,7 +16300,7 @@ If they want to change a specific part, return section-edit. If they want a comp
                     `Before drafting, please use these Pakistani case-law records I retrieved from our internal database for this petition:\n\n` +
                     `${effectiveDraftCaseContext}\n\n` +
                     `CASE LAW CITATION MANDATE (STRICT):\n` +
-                    `- You MUST cite at least 3 relevant judgments from this list in the GROUNDS section of the draft.\n` +
+                    `- Cite only directly relevant judgments from this list; there is no minimum count in the GROUNDS section of the draft.\n` +
                     `- For each citation, state the case name and citation string, then explain its relevance to the current matter in 1-2 sentences.\n` +
                     `- Use ONLY the exact citation strings shown above — do not modify, guess, or invent any citation.\n` +
                     `- If fewer than 3 cases in the list are relevant, cite as many as are genuinely applicable.`,
@@ -16567,7 +16568,7 @@ ${lengthDirective}
 - Keep prayer specific to this filing type and facts; avoid generic/contract wording.
 - Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
 - Case law citation rule (strict): cite ONLY judgments provided in the case-law conversation turns above. Do not invent, guess, or fabricate any citation string, volume number, or page number.
-${hasCaseLawForDraft ? "- You MUST include at least 3 relevant case law citations from the provided pool in the GROUNDS section. For each, state the full citation and explain its relevance." : "- No verified case law was retrieved from the internal database for this query. State in the GROUNDS section that relevant case law should be added by the practitioner. Do NOT fabricate or hallucinate any citations."}
+${hasCaseLawForDraft ? "- Include only directly relevant case law citations from the provided pool; there is no minimum count in the GROUNDS section. For each, state the full citation and explain its relevance." : "- No verified case law was retrieved from the internal database for this query. State in the GROUNDS section that relevant case law should be added by the practitioner. Do NOT fabricate or hallucinate any citations."}
 - Statute citation rule (strict): cite only authentic Pakistani statute provisions; do not invent section/article numbers.
 - Statute terminology rule (strict): The Qanun-e-Shahadat Order, 1984 (QSO) uses "Article" NOT "Section" (e.g. "Article 10 of the Qanun-e-Shahadat Order, 1984", never "Section 10"). Similarly, the Constitution uses "Article" (e.g. "Article 199"). PPC, CrPC, and CPC use "Section".
 - Use only case law citations available in the provided case-law turns. Do not cite any case authority outside that provided pool.
@@ -17973,19 +17974,12 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       // when needed (property, criminal, family, inheritance).
       if (!directMode && (moduleType === "al-wakeelo" || moduleType === "contract-drafting")) {
         const topicLabels = (knowledgeResult.topics || []).map((t: string) => t.toLowerCase());
-        const topicStr = topicLabels.join(" ");
-        const userQuery = (lastUserMessage?.content || "").toLowerCase();
 
-        const isPropertyTopic = topicLabels.some((t: string) => /property|transfer|registration|specific.?relief|pre.?emption|easement|adverse.?possession|lis.?pendens|benami|land.?revenue/.test(t))
-          || /\b(tpa|transfer of property|sale deed|agreement to sell|s\.?53a|s\.?41|s\.?52|registration act|specific relief|lis pendens|ostensible owner|part performance)\b/i.test(userQuery);
-        const isCriminalTopic = topicLabels.some((t: string) => /criminal|bail|murder|hurt|theft|extortion|narcotics|arms|terrorism|blasphemy|dacoity|robbery|kidnap|fir|investigation|confession|quashment|self.?defen/.test(t))
-          || /\b(bail|fir|murder|s\.?302|s\.?497|arrest|police|challan|confession|crpc|ppc|cognizable)\b/i.test(userQuery);
-        const isFamilyTopic = topicLabels.some((t: string) => /family|khula|divorce|custody|maintenance|dower|dissolution|domestic.?violence|conjugal|jactitation|dowry|visitation/.test(t))
-          || /\b(khula|talaq|divorce|custody|maintenance|dower|mehr|hizanat|family court|wife|husband)\b/i.test(userQuery);
-        const isInheritanceTopic = topicLabels.some((t: string) => /inherit|succession|miras|wirasat|gift|hiba|will|wasiy|faraid/.test(t))
-          || /\b(inheritance|miras|wirasat|wills?|wasiy|faraid|succession|heir|legal heir|share|daughter.?share|wife.?share|son.?share)\b/i.test(userQuery);
-        const isContractTopic = topicLabels.some((t: string) => /contract|agreement|breach|partnership|arbitration|indemnity|guarantee|agency/.test(t))
-          || /\b(contract act|breach of contract|specific performance|force majeure|liquidated damages|indemnity|arbitration clause|privity|consideration|void agreement)\b/i.test(userQuery);
+        const isPropertyTopic = topicLabels.some((t: string) => /property|transfer|registration|specific.?relief|pre.?emption|easement|adverse.?possession|lis.?pendens|benami|land.?revenue/.test(t));
+        const isCriminalTopic = topicLabels.some((t: string) => /criminal|bail|murder|hurt|theft|extortion|narcotics|arms|terrorism|blasphemy|dacoity|robbery|kidnap|fir|investigation|confession|quashment|self.?defen/.test(t));
+        const isFamilyTopic = topicLabels.some((t: string) => /family|khula|divorce|custody|maintenance|dower|dissolution|domestic.?violence|conjugal|jactitation|dowry|visitation/.test(t));
+        const isInheritanceTopic = topicLabels.some((t: string) => /inherit|succession|miras|wirasat|gift|hiba|will|wasiy|faraid/.test(t));
+        const isContractTopic = topicLabels.some((t: string) => /contract|agreement|breach|partnership|arbitration|indemnity|guarantee|agency/.test(t));
 
         if (isPropertyTopic) systemPrompt += PROPERTY_LAW_ADDON;
         if (isCriminalTopic) systemPrompt += CRIMINAL_LAW_ADDON;
@@ -18007,7 +18001,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       // Budget is capped at 20s for the fallback tool search.
       const TOOL_SEARCH_FALLBACK_MS = 20_000;
       const pipelineMaxScore = knowledgeResult.maxRelevanceScore ?? 100;
-      const toolSearchEnabled = toolSearchCapable && !!knowledgeResult.intent?.needsCaseLaw && (
+      const toolSearchEnabled = toolSearchCapable && !knowledgeResult.caseRelevanceUnavailable && knowledgeResult.intent?.needsCaseLaw && (
         pipelineCaseLawHits.length === 0 ||
         pipelineMaxScore < TOOL_SEARCH_QUALITY_THRESHOLD
       );
@@ -18032,7 +18026,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] },
           "tool-search-fallback",
         );
-        toolSearchResult = filterToolResult(toolSearchRace.value, knowledgeResult.intent);
+        toolSearchResult = await filterToolResult(toolSearchRace.value, knowledgeResult.intent);
       }
 
       if (refineResult.wasRefined) {
@@ -18307,7 +18301,7 @@ The user has attached the following documents for your reference. Analyze them c
             ? `\n\nMANDATORY FORMAL CITATION RULE (NON-NEGOTIABLE):\n` +
               `- Whenever referencing a judicial precedent anywhere in your response, you MUST write the exact formal citation string enclosed in bold brackets, e.g. **[CITATION FROM THE LIST]**. Never mention a case vaguely without its bracketed formal citation.\n` +
               `- The knowledge pipeline retrieved verified Pakistani judgments for this query (listed in the VERIFIED JUDGMENTS section above).\n` +
-              `- You MUST cite at least 3 of those judgments (up to 5) using their EXACT formal citation strings. Never cite an off-topic judgment just to reach the minimum.\n` +
+              `- Cite only directly relevant judgments (up to 5), using their EXACT formal citation strings. There is no minimum count.\n` +
               `- Always use the citation format: **[CITATION]**. You may include case titles or party names naturally.\n` +
               `- Do NOT invent or guess citations — only cite what appears in the VERIFIED JUDGMENTS context.\n` +
               `- Each cited judgment must appear in your prose AND in the final references block.\n` +
@@ -19217,7 +19211,7 @@ The user has attached the following documents for your reference. Analyze them c
 
       const isContract = brief.draftType === "contract";
       const legalKnowledgeQuery = `${brief.reliefType} ${brief.facts}`;
-      const knowledgePipeline = await gatherKnowledgeWithHits(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
+      const knowledgePipeline: PipelineRunResult = await gatherKnowledgeWithHits(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
         console.warn("[Drafting:RAG] Knowledge pipeline unavailable:", err?.message || err);
         return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[], maxRelevanceScore: 0 };
       });
@@ -19236,16 +19230,17 @@ The user has attached the following documents for your reference. Analyze them c
       let briefRetrievedCitations = knowledgePipeline.caseLawHits.map((h) => h.citation);
 
       const needsToolSearch =
-        !isContract &&
+        !isContract && !knowledgePipeline.caseRelevanceUnavailable && knowledgePipeline.intent?.needsCaseLaw &&
         (knowledgePipeline.caseLawHits.length === 0 ||
           (knowledgePipeline.maxRelevanceScore ?? 0) < TOOL_SEARCH_QUALITY_THRESHOLD);
       if (needsToolSearch && (isOpenRouterAvailable() || isDeepSeekAvailable())) {
         // The search model truncates its input, so lead with what names the case.
-        const subject = `Pakistani case law. ${brief.reliefType || ""}. ${String(brief.facts || "").slice(0, 220)}`.trim();
+        const subject = knowledgePipeline.retrievalQuery || legalKnowledgeQuery;
         try {
-          const toolResult = await (isOpenRouterAvailable()
+          const rawToolResult = await (isOpenRouterAvailable()
             ? runToolJudgmentSearchOR(subject, (q, n) => console.log(`[Drafting:Brief:ToolSearch] query="${q}" found=${n}`), undefined, 18000)
             : runToolJudgmentSearch(subject, (q, n) => console.log(`[Drafting:Brief:ToolSearch] query="${q}" found=${n}`), undefined, 8000));
+          const toolResult = await filterToolResult(rawToolResult, knowledgePipeline.intent);
           if (toolResult.foundCount > 0) {
             briefCaseLawContext = toolResult.contextString;
             briefRetrievedCitations = toolResult.verifiedCitations;
@@ -19269,7 +19264,7 @@ ${isContract
 Fill in placeholder names with brackets like [Party Name] where information is missing.
 ${briefCaseLawContext ? `
 CASE LAW CITATION MANDATE (STRICT):
-- Cite at least 3 of the judgments supplied in the conversation turns above, inside the GROUNDS section.
+- Cite only directly relevant judgments supplied above inside the GROUNDS section. There is no minimum count.
 - For each, give the exact citation string as provided, then one or two sentences applying it to these facts.
 - Use ONLY those citations. Never invent, guess or reformat a citation string.` : !isContract ? `
 - No verified case law was retrieved for this brief. Say in the GROUNDS section that authorities should be added by the practitioner, and cite nothing from memory.` : ""}
@@ -19300,7 +19295,7 @@ Facts: ${brief.facts}`;
               content:
                 `Before drafting, use these Pakistani case-law records retrieved from our internal database for this matter:\n\n` +
                 `${briefCaseLawContext}\n\n` +
-                `Cite at least 3 of them in the GROUNDS section, using their exact citation strings.`,
+                `Cite only directly relevant judgments in the GROUNDS section, using their exact citation strings. There is no minimum count.`,
             },
             {
               role: "assistant" as const,
@@ -22662,7 +22657,7 @@ ${(documentContent || "").slice(0, 6000)}
 
       // Tool-based judgment search — same as Standard/Turbo for citation accuracy
       const useOpenRouterTools = isOpenRouterAvailable();
-      const toolSearchEnabled = !!apexKnowledge.intent?.needsCaseLaw && (useOpenRouterTools || isDeepSeekAvailable());
+      const toolSearchEnabled = !apexKnowledge.caseRelevanceUnavailable && apexKnowledge.intent?.needsCaseLaw && (useOpenRouterTools || isDeepSeekAvailable());
       interface ApexToolSearchResult {
         contextString: string;
         foundCount: number;
@@ -22678,7 +22673,7 @@ ${(documentContent || "").slice(0, 6000)}
           ).catch(() => ({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] }))
         : { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
 
-      const toolSearchResult = filterToolResult(rawApexToolSearchResult, apexKnowledge.intent, apexKnowledge.caseLawHits);
+      const toolSearchResult = await filterToolResult(rawApexToolSearchResult, apexKnowledge.intent, apexKnowledge.caseLawHits);
 
       if (toolSearchResult.foundCount > 0) {
         console.log(`[Apex Chat:ToolSearch] found=${toolSearchResult.foundCount} queries=${JSON.stringify(toolSearchResult.queriesUsed)}`);
@@ -22688,7 +22683,7 @@ ${(documentContent || "").slice(0, 6000)}
       const toolMandateBlock =
         toolSearchResult.foundCount > 0
           ? `\n\nCITATION MANDATE (REQUIRED — read carefully):\n` +
-            `- You MUST cite at least 3 judgments from the AI-SEARCHED JUDGMENTS list above.\n` +
+            `- Cite only directly relevant judgments from the supplied list. There is no minimum count.\n` +
             `- Always use the FORMAL CITATION string, never the case name alone.\n` +
             `- Do NOT cite any case that is not in the list above — those citations will be removed.\n` +
             `- Do NOT cite from memory or training data.`
@@ -22893,7 +22888,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       // Tool-based judgment search — same as Standard/Turbo for citation accuracy
       const useOpenRouterTools = isOpenRouterAvailable();
-      const agentToolSearchEnabled = !!agentKnowledge.intent?.needsCaseLaw && (useOpenRouterTools || isDeepSeekAvailable());
+      const agentToolSearchEnabled = !agentKnowledge.caseRelevanceUnavailable && agentKnowledge.intent?.needsCaseLaw && (useOpenRouterTools || isDeepSeekAvailable());
       interface AgentToolSearchResult {
         contextString: string;
         foundCount: number;
@@ -22909,7 +22904,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
           ).catch(() => ({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] }))
         : { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
 
-      const agentToolSearchResult = filterToolResult(rawAgentToolSearchResult, agentKnowledge.intent, agentKnowledge.caseLawHits);
+      const agentToolSearchResult = await filterToolResult(rawAgentToolSearchResult, agentKnowledge.intent, agentKnowledge.caseLawHits);
 
       if (agentToolSearchResult.foundCount > 0) {
         console.log(`[Apex Agent:ToolSearch] found=${agentToolSearchResult.foundCount} queries=${JSON.stringify(agentToolSearchResult.queriesUsed)}`);
@@ -22919,7 +22914,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const agentToolMandateBlock =
         agentToolSearchResult.foundCount > 0
           ? `\n\nCITATION MANDATE (REQUIRED):\n` +
-            `- You MUST cite at least 3 judgments from the AI-SEARCHED JUDGMENTS list above.\n` +
+            `- Cite only directly relevant judgments from the supplied list. There is no minimum count.\n` +
             `- Always use the FORMAL CITATION string, never the case name alone.\n` +
             `- Do NOT cite any case that is not in the list above.`
           : "";
@@ -24265,7 +24260,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       // Real intent classification, so "PPC 302" takes the exact section lookup
       // (statuteRef) and topic-mapped Acts instead of only the generic search.
-      const dummyIntent = { ...classifyQueryIntent(query), needsCaseLaw: false, needsStatutes: true, needsAdminDocs: false };
+      const understanding = await understandLegalQuery(query);
+      if (!understanding.intent) return res.status(503).json({ error: "Query intent could not be established. Please clarify the legal issue." });
+      const dummyIntent = { ...understanding.intent, needsCaseLaw: false, needsStatutes: true, needsAdminDocs: false };
       const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
       await storage.logUsage(userId, "search-statutes").catch(() => {});
 

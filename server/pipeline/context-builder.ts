@@ -1,3 +1,4 @@
+import { CASE_REVIEW_UNAVAILABLE } from "./case-relevance";
 /**
  * Context Builder
  *
@@ -234,7 +235,7 @@ For EACH cited case, provide a FULL SHORT SUMMARY using this EXACT format:
 **Relevance:** How this case applies to the user's specific question.`);
   } else if (intent.needsCaseLaw) {
     // No results — inject explicit instruction to prevent hallucination
-    parts.push(buildNoCaseLawMessage(intent));
+    parts.push(retrieval.diagnostics.caseLawRelevance === "unavailable" ? CASE_REVIEW_UNAVAILABLE : buildNoCaseLawMessage(intent));
   }
 
   if (hasStatutes) {

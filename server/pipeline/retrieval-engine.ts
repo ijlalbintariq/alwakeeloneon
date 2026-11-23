@@ -15,7 +15,7 @@
  */
 
 import { storage } from "../storage";
-import { caseSupportsIntent } from "./semantic-intent";
+import { reviewCaseRelevance } from "./case-relevance";
 import { similaritySearch } from "../rag/vector-store";
 import { embedTextLocal } from "../rag/embedding-local";
 import { isVoyageProvider } from "../rag/embedding-local";
@@ -57,6 +57,7 @@ export interface RetrievalResult {
   adminDocs: RetrievedDoc[];
   /** Diagnostic info for logging */
   diagnostics: {
+    caseLawRelevance?: "checked" | "unavailable" | "not-required";
     caseLawFetched: number;
     caseLawAfterFilter: number;
     statutesFetched: number;
@@ -650,7 +651,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
   // The client-side scorer adds a relevance RANKING signal but must not drop valid results.
   // Use a flat low threshold of 10 — enough to drop results that only matched on
   // generic words ("section", "court") without any topic or statute term.
-  const rawMinScore = isCitationLookup ? 0 : 10;
+  const rawMinScore = isCitationLookup || intent.semanticTask ? 0 : 10;
 
   // ── Reciprocal Rank Fusion (RRF) Multi-Stream Rank Scoring ─────────────────
   const rrfScores = new Map<string, number>();
@@ -1348,7 +1349,9 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
       : Promise.resolve([] as RetrievedDoc[]),
   ]);
 
-  const caseLawResults = rawCaseLawResults.filter(hit=>caseSupportsIntent(hit.row,intent));
+  const review = await reviewCaseRelevance(intent, rawCaseLawResults.map(hit => hit.row));
+  const accepted = new Set(review.rows);
+  const caseLawResults = rawCaseLawResults.filter(hit => accepted.has(hit.row));
   const durationMs = Date.now() - t0;
 
   return {
@@ -1356,6 +1359,7 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
     statutes: statuteResults,
     adminDocs: adminDocResults,
     diagnostics: {
+      caseLawRelevance: review.status,
       caseLawFetched: caseLawResults.length,
       // caseLawAfterFilter = results with score > 0 (genuinely scored, not just trusted-citation passthrough)
       caseLawAfterFilter: caseLawResults.filter((r) => r.relevanceScore > 0).length,

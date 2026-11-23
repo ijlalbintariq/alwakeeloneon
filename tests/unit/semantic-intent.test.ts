@@ -5,10 +5,11 @@ import ts from "typescript";
 import crypto from "node:crypto";
 import { classifyQueryIntent, analyzeQueryExplicitness, normalizePipelineModule } from "../../server/pipeline/intent-classifier";
 import { parseSemanticResearch, semanticResearchInput, generateSemanticRetrievalQueries, extractDeterministicFacts } from "../../server/pipeline/llm-query-extractor";
-import { applySemanticIntent, caseSupportsIntent, filterToolResult, INTENT_UNAVAILABLE } from "../../server/pipeline/semantic-intent";
+import { applySemanticIntent, understandLegalQuery, filterToolResult, INTENT_UNAVAILABLE } from "../../server/pipeline/semantic-intent";
 import { extractLocalTopicKeywords } from "../../server/pipeline/query-rewriter";
 import { buildContext } from "../../server/pipeline/context-builder";
 import { extractCitations } from "../../server/citation-verify";
+import { reviewCaseRelevance, CASE_REVIEW_UNAVAILABLE } from "../../server/pipeline/case-relevance";
 import { getClient } from "../../server/openrouter-ai";
 
 const question = "Find judgments allowing a writ against a Family Court maintenance decree because the husband's financial means were not proved";
@@ -47,8 +48,6 @@ test("AI can select tax despite a relationship word and safely replace stale fam
   assert.equal(intent.topics[0].id,"tax");
   assert.equal(intent.normalized,"income tax assessment against wife");
   assert.ok(!intent.expandedQuery.includes("khula"));
-  assert.equal(caseSupportsIntent(tax,intent),true);
-  assert.equal(caseSupportsIntent(family,intent),false);
 });
 
 test("model output validates taxonomy, confidence, field types and primary-topic membership",()=>{
@@ -68,14 +67,19 @@ test("semantic input preserves the thread anchor and document facts without trea
   assert.ok(!JSON.stringify(input).includes("INVENTED TAX CITATION"));
 });
 
-test("retrieval and tool context reject revenue cases but keep substantively relevant family cases regardless of reporter",()=>{
-  const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
-  assert.equal(caseSupportsIntent(tax,intent),false);assert.equal(caseSupportsIntent(family,intent),true);
-  assert.equal(caseSupportsIntent({...family,citation:"2024 PTD 123"},intent),true);
-  const result=filterToolResult({verifiedHits:[tax,family],verifiedCitations:[tax.citation,family.citation],verifiedTitles:[],foundCount:2,contextString:"stale tax context"},intent);
-  assert.deepEqual(result.verifiedCitations,[family.citation]);assert.equal(result.foundCount,1);
-  assert.ok(!result.contextString.includes(tax.citation));assert.ok(!result.contextString.includes("stale"));
-  assert.equal(filterToolResult(result).foundCount,0);
+test("tool context uses issue-specific review, preserves reviewed pipeline hits and clears stale citations",async()=>{
+  process.env.OPENROUTER_API_KEY="test-only";
+  const client=getClient();const original=client.chat.completions.create;
+  try {
+    client.chat.completions.create=(async()=>({choices:[{message:{content:JSON.stringify({decisions:[
+      {index:0,relevant:false,confidence:0.99,reason:"Tax assessment"},
+      {index:1,relevant:true,confidence:0.99,reason:"Maintenance financial means evidence"}]})}}]})) as any;
+    const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
+    const result=await filterToolResult({verifiedHits:[tax,family],verifiedCitations:[tax.citation,family.citation],verifiedTitles:[],foundCount:2,contextString:"stale tax context"},intent,[family]);
+    assert.deepEqual(result.verifiedCitations,[family.citation]);assert.equal(result.foundCount,1);
+    assert.ok(!result.contextString.includes(tax.citation));assert.ok(!result.contextString.includes("stale"));
+    assert.equal((await filterToolResult(result)).foundCount,0);
+  } finally {client.chat.completions.create=original;}
 });
 
 test("one configured AI call receives context, uses a cancellable deadline, and rejects malformed responses",async()=>{
@@ -98,13 +102,16 @@ test("actual pipeline applies AI topics before retrieval, filters foreign cases,
   let modelCalls=0,retrievalCalls=0;
   const retrieval=compile("server/pipeline/retrieval-engine.ts","runRetrieval",{
     fetchCaseLaw:async()=>[{row:tax,relevanceScore:100},{row:family,relevanceScore:90}],
-    fetchStatutes:async()=>[],fetchAdminDocs:async()=>[],caseSupportsIntent,
+    fetchStatutes:async()=>[],fetchAdminDocs:async()=>[],reviewCaseRelevance:async()=>({rows:[family],status:"checked"}),
   });
   let model:any=research();
   const run=compile("server/pipeline/knowledge-pipeline.ts","runKnowledgePipeline",{
     crypto,normalizePipelineModule,normKey:(s:string)=>s,cacheGet:()=>undefined,cacheSet:()=>{},
-    classifyQueryIntent,analyzeQueryExplicitness,extractCitations,applySemanticIntent,INTENT_UNAVAILABLE,
-    generateSemanticRetrievalQueries:async()=>{modelCalls++;return model;},extractDeterministicFacts,
+    INTENT_UNAVAILABLE,understandLegalQuery:async(query:string)=>{
+      const intent=classifyQueryIntent(query);
+      if(intent.type === "citation-lookup") return {intent,status:"ready"};
+      modelCalls++;return applySemanticIntent(intent,model) ? {intent,research:model,status:"ready"} : {status:"unavailable"};
+    },extractDeterministicFacts,
     extractLocalTopicKeywords,buildFocusedRetrievalQueries:()=>[],buildContext,recordRetrievalMiss:()=>{},
     runRetrieval:async(intent:any,...args:any[])=>{retrievalCalls++;if(intent.type!=="citation-lookup")assert.equal(intent.topics[0].id,"family");return retrieval(intent,...args);},
     OUTER_DEADLINE_MS:1000,
@@ -116,4 +123,116 @@ test("actual pipeline applies AI topics before retrieval, filters foreign cases,
   const before=retrievalCalls;model={...research(),confidence:0};
   const unavailable=await run(question,"test-user");assert.equal(retrievalCalls,before);
   assert.equal(unavailable.contextString,INTENT_UNAVAILABLE);assert.deepEqual(unavailable.caseLawHits,[]);
+});
+
+
+test("shared resolver handles follow-ups, explicit topic changes, unfamiliar subjects, and non-search tasks",async()=>{
+  process.env.OPENROUTER_API_KEY="test-only";
+  const client=getClient();const original=client.chat.completions.create;let calls=0;
+  let output:any=research();
+  const history=[{role:"user" as const,content:question}];
+  try {
+    client.chat.completions.create=(async(params:any)=>{
+      calls++; const input=JSON.parse(params.messages[1].content);
+      if(input.latestRequest === "financial means cases only") assert.equal(input.initialRequest,question);
+      return {choices:[{message:{content:JSON.stringify(output)}}]};
+    }) as any;
+    const followup=await understandLegalQuery("financial means cases only",history);
+    assert.equal(followup.intent?.topics[0].id,"family");
+    output={...research(),primaryTopic:"tax",topics:["tax"],retrievalQuery:"income tax assessment appeal",issues:["assessment appeal"]};
+    const change=await understandLegalQuery("Forget maintenance. Find income tax assessment appeals",history);
+    assert.equal(change.intent?.topics[0].id,"tax");assert.ok(!change.intent?.expandedQuery.includes("khula"));
+    output={...research(),primaryTopic:"other-legal",topics:["other-legal"],retrievalQuery:"unusual new legal research issue"};
+    assert.equal((await understandLegalQuery("unusual new legal research issue")).intent?.topics[0].id,"other-legal");
+    for(const task of ["translate","summarize"]) {
+      output={...research(),task};
+      const result=await understandLegalQuery("translate or summarize this petition",history);
+      assert.equal(result.intent?.needsCaseLaw,false);assert.equal(result.intent?.needsStatutes,false);
+    }
+    output={...research(),task:"clarify"};
+    assert.equal((await understandLegalQuery("help with that")).status,"clarify");
+    const before=calls;
+    await understandLegalQuery("2024 SCMR 1085");await understandLegalQuery("PPC 302");
+    assert.equal(calls,before,"precise lookups must not need a model");
+  } finally {client.chat.completions.create=original;}
+});
+
+test("relevance review selects only original records and rejects unrelated cases inside the same domain",async()=>{
+  process.env.OPENROUTER_API_KEY="test-only";
+  const client=getClient();const original=client.chat.completions.create;
+  const khula={...family,citation:"2024 CLC 321",summary:"Dissolution of marriage by khula; no issue about maintenance or financial means"};
+  const unusual={...family,citation:"2024 PTD 123",summary:"Adverse inference after the obligor concealed salary records in child support proceedings"};
+  try {
+    client.chat.completions.create=(async(params:any)=>{
+      const request=JSON.parse(params.messages[1].content);
+      assert.match(request.issue,/maintenance financial means/);
+      assert.match(params.messages[0].content,/unrelated khula/);
+      return {choices:[{message:{content:JSON.stringify({decisions:[
+        {index:0,relevant:false,confidence:0.99,reason:"Different family remedy"},
+        {index:1,relevant:true,confidence:0.95,reason:"Financial means evidence"}]})}}]};
+    }) as any;
+    const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
+    const result=await reviewCaseRelevance(intent,[khula,unusual]);
+    assert.equal(result.status,"checked");assert.equal(result.rows[0],unusual);assert.equal(result.rows.length,1);
+  } finally {client.chat.completions.create=original;}
+});
+
+test("malformed, incomplete or unavailable relevance decisions fail closed without claiming no matches",async()=>{
+  process.env.OPENROUTER_API_KEY="test-only";
+  const client=getClient();const original=client.chat.completions.create;
+  const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
+  try {
+    const good={index:0,relevant:true,confidence:0.95,reason:"Evidence"};
+    for(const value of [{decisions:[]},{decisions:[good,good]},{decisions:[{...good,index:2}]},{decisions:[{...good,confidence:2}]},"bad json"]) {
+      client.chat.completions.create=(async()=>({choices:[{message:{content:typeof value==="string"?value:JSON.stringify(value)}}]})) as any;
+      const result=await reviewCaseRelevance(intent,[family]);
+      assert.equal(result.status,"unavailable");assert.deepEqual(result.rows,[]);
+    }
+    client.chat.completions.create=(async()=>{throw new Error("provider unavailable");}) as any;
+    const result=await filterToolResult({verifiedHits:[family],verifiedCitations:[family.citation],verifiedTitles:[],foundCount:1,contextString:"stale"},intent);
+    assert.equal(result.foundCount,0);assert.equal(result.contextString,CASE_REVIEW_UNAVAILABLE);
+    const ctx=buildContext(intent,{caseLaw:[],statutes:[],adminDocs:[],diagnostics:{caseLawRelevance:"unavailable"} as any});
+    assert.match(ctx.contextString,/RELEVANCE REVIEW UNAVAILABLE/);
+    assert.ok(!ctx.contextString.includes("NO MATCHING JUDGMENTS"));
+    const exact=classifyQueryIntent("2024 SCMR 1085");
+    assert.equal((await reviewCaseRelevance(exact,[family])).status,"not-required");
+  } finally {client.chat.completions.create=original;}
+});
+
+test("disabled semantic service never silently returns a keyword interpretation",async()=>{
+  const previous=process.env.USE_LLM_QUERY_EXTRACTOR;
+  try {
+    process.env.USE_LLM_QUERY_EXTRACTOR="false";
+    const result=await understandLegalQuery(question);
+    assert.equal(result.status,"unavailable");assert.equal(result.intent,undefined);
+    assert.equal((await understandLegalQuery("PPC 302")).status,"ready");
+  } finally {if(previous===undefined)delete process.env.USE_LLM_QUERY_EXTRACTOR;else process.env.USE_LLM_QUERY_EXTRACTOR=previous;}
+});
+
+test("case-search entry point uses the shared resolved issue and surfaces provider failures",async()=>{
+  const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());
+  let status="ready";let review="checked";let retrieved=0;
+  const retrieve=compile("server/legal-retrieval.ts","retrieveLegalCaseLaw",{
+    understandLegalQuery:async()=>status === "ready" ? {intent,research:research(),status} : {status},
+    runRetrieval:async(actual:any)=>{retrieved++;assert.equal(actual.normalized,research().retrievalQuery?.toLowerCase());assert.equal(actual.topics[0].id,"family");assert.equal(actual.needsStatutes,false);return {caseLaw:[{row:family}],diagnostics:{caseLawRelevance:review}};},
+  });
+  assert.deepEqual((await retrieve({query:question})).rows,[family]);
+  status="unavailable";
+  await assert.rejects(retrieve({query:question}),/Query intent is unavailable/);
+  assert.equal(retrieved,1,"must not retrieve with a guessed local intent");
+  status="ready";review="unavailable";
+  await assert.rejects(retrieve({query:question}),/relevance review is temporarily unavailable/);
+});
+
+test("prepared understanding is reused and transient relevance failures are not cached",async()=>{
+  const intent=classifyQueryIntent(question);applySemanticIntent(intent,research());let cacheWrites=0;
+  const run=compile("server/pipeline/knowledge-pipeline.ts","runKnowledgePipeline",{
+    crypto,normalizePipelineModule,normKey:(s:string)=>s,cacheGet:()=>undefined,cacheSet:()=>{cacheWrites++;},
+    understandLegalQuery:async()=>{throw new Error("Must reuse prepared understanding");},INTENT_UNAVAILABLE,
+    extractDeterministicFacts,buildContext,recordRetrievalMiss:()=>{},OUTER_DEADLINE_MS:1000,
+    runRetrieval:async()=>({caseLaw:[],statutes:[],adminDocs:[],diagnostics:{caseLawRelevance:"unavailable"}}),
+  });
+  const output=await run(question,"test-user",[],{understanding:{intent,research:research(),status:"ready"}});
+  assert.equal(output.caseRelevanceUnavailable,true);assert.equal(cacheWrites,0);
+  assert.deepEqual(output.caseLawHits,[]);assert.match(output.contextString,/RELEVANCE REVIEW UNAVAILABLE/);
 });

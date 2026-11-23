@@ -172,3 +172,24 @@ test("precedent edges require a matching citation as well as both case identitie
   assert.deepEqual(result.edges.map((edge:any)=>edge.reliable),[true,false,true,false]);
   assert.equal(result.unreliableEdges,2);
 });
+
+test("MCP statute search uses semantic query understanding and stops when understanding is unavailable", async () => {
+  let ready = true;
+  let retrievals = 0;
+  const search = handler("search_statutes", {
+    ...base,
+    understandLegalQuery: async () => ready ? {status:"ready",intent:{normalized:"family court maintenance financial means",topics:[{id:"family"}]}} : {status:"unavailable"},
+    runRetrieval: async (intent: any) => {
+      retrievals++;
+      assert.equal(intent.normalized,"family court maintenance financial means");
+      assert.equal(intent.topics[0].id,"family");
+      assert.equal(intent.needsCaseLaw,false);
+      assert.equal(intent.needsStatutes,true);
+      return {statutes:[]};
+    },
+  });
+  await search({query:"What law covers that?",limit:5});
+  ready = false;
+  await assert.rejects(search({query:"What law covers that?",limit:5}),/intent could not be established/);
+  assert.equal(retrievals,1);
+});

@@ -63,7 +63,7 @@ test("Vault rejects missing or empty case files before charging usage or broaden
     let charged = false;
     const run = handler("/api/rag/ask", { getUserId: () => "owner", z, storage: { getCaseFile: async () => caseFile, getCaseDocumentIds: async () => ids }, checkUsageLimit: async () => { charged = true; return true; } });
     const res = reply();
-    await run({ body: { query: "Case question", caseFileId: 7 } }, res);
+    await run({ body: { query: "Case question", caseFileId: 7, conversationHistory: [{role:"user",content:"maintenance"}] } }, res);
     assert.equal(res.statusCode, expected);
     assert.equal(charged, false);
   }
@@ -110,24 +110,23 @@ test("chat validates message shape and the final user role before charging quota
   }
 });
 
-test("Vault lazy indexing keeps case-file scope and applies the enrichment deadline before awaiting it", async () => {
+test("Vault preserves case-file scope and passes shared understanding and history into judgment retrieval", async () => {
   const indexed: any[] = [];
   const retrieved: any[] = [];
-  let deadline = 0;
+  let shared: any;
   const run = handler("/api/rag/ask", {
     getUserId: () => "owner", z,
     storage: { getCaseFile: async () => ({ id: 7 }), getCaseDocumentIds: async () => [42] },
     checkUsageLimit: async () => true,
-    classifyQueryIntent: () => ({}),
+    understandLegalQuery: async () => (shared = {intent:{},status:"ready"}),
     retrieveForQuery: async (args: any) => { retrieved.push(args.documentIds); return { matches: [], confidence: "low" }; },
     ensureIndexedForUserDocuments: async (args: any) => { indexed.push(args.sourceDocumentIds); return { indexedNow: 1 }; },
-    gatherKnowledgeContextV2: () => new Promise(() => {}),
-    raceToDeadline: async (_promise: any, ms: number, fallback: any) => { deadline = ms; return { value: fallback }; },
+    gatherKnowledgeWithHits: async (_q:any,_u:any,history:any,context:any) => { assert.equal(context.understanding, shared); assert.deepEqual(history, [{role:"user",content:"maintenance"}]); return {contextString:"",caseLawHits:[]}; },
   });
   const res = reply();
-  await run({ body: { query: "Case question", caseFileId: 7 } }, res);
+  await run({ body: { query: "Case question", caseFileId: 7, conversationHistory: [{role:"user",content:"maintenance"}] } }, res);
   assert.equal(res.statusCode, 200);
   assert.deepEqual(indexed, [[42]]);
   assert.deepEqual(retrieved, [[42], [42]]);
-  assert.equal(deadline, 8000);
+
 });

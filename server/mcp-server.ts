@@ -6,7 +6,7 @@ import { storage, extractSubstantiveSummary, getValidatedJudgmentIntegrity } fro
 import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
-import { classifyQueryIntent } from "./pipeline/intent-classifier";
+import { understandLegalQuery } from "./pipeline/semantic-intent";
 import { checkUsageLimit, createSignedUploadSession, logUsageCost, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
 import { PAKISTANI_JUDICIAL_FORMAT_GUIDANCE, CONTRACT_LAW_ADDON } from "./legal-drafting-template";
 import { chatWithDeepSeek } from "./deepseek-ai";
@@ -430,10 +430,10 @@ export function registerAllTools(server: McpServer) {
     await enforceQuota(userId, "search-statutes");
 
     const t0 = Date.now();
-    // Mimic intent classifier and fetch statutes using targeted taxonomic matching
-    // Real intent classification, so "PPC 302" takes the exact section lookup
-    // (statuteRef) and topic-mapped Acts instead of only the generic search.
-    const dummyIntent = { ...classifyQueryIntent(query), needsCaseLaw: false, needsStatutes: true, needsAdminDocs: false };
+    // Share semantic understanding with chat; exact sections retain local parsing.
+    const understanding = await understandLegalQuery(query);
+    if (!understanding.intent) throw new Error("Query intent could not be established. Clarify the legal issue or retry.");
+    const dummyIntent = { ...understanding.intent, needsCaseLaw: false, needsStatutes: true, needsAdminDocs: false };
     
     const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
     const latency = Date.now() - t0;
