@@ -26,7 +26,9 @@ import { createHash } from "crypto";
 import { classifyQueryIntent, analyzeQueryExplicitness, normalizePipelineModule } from "./intent-classifier";
 import { runRetrieval } from "./retrieval-engine";
 import { buildContext } from "./context-builder";
-import { rewriteFollowUpQuery, type ConversationTurn } from "./query-rewriter";
+import { applySemanticIntent, INTENT_UNAVAILABLE } from "./semantic-intent";
+import { extractCitations } from "../citation-verify";
+import { extractLocalTopicKeywords, type ConversationTurn } from "./query-rewriter";
 import { generateSemanticRetrievalQueries, extractDeterministicFacts } from "./llm-query-extractor";
 import { recordRetrievalMiss } from "./retrieval-miss-log";
 import type { QueryIntent } from "./intent-classifier";
@@ -39,6 +41,8 @@ interface CachedPipelineResult {
   contextString: string;
   caseLawHits: CaseLawHit[];
   maxRelevanceScore: number;
+  intent?: QueryIntent;
+  retrievalQuery?: string;
 }
 type TimedEntry<T> = { value: T; expiresAt: number };
 const contextCache = new Map<string, TimedEntry<CachedPipelineResult>>();
@@ -262,6 +266,7 @@ export interface PipelineRunResult {
   /** Highest relevance score among retrieved case law (0-100). Used by routes.ts
    *  to decide whether to run multi-angle tool search as a quality gate. */
   maxRelevanceScore: number;
+  intent?: QueryIntent;
   /** The query retrieval actually ran (after follow-up rewriting). */
   retrievalQuery?: string;
 }
@@ -270,7 +275,7 @@ export async function runKnowledgePipeline(
   rawQuery: string,
   userId?: string,
   conversationHistory?: ConversationTurn[],
-  context?: { module?: string },
+  context?: { module?: string; sourceContext?: string },
 ): Promise<PipelineRunResult> {
   const t0 = Date.now();
   // Key on the normalized module, so "draft" and "legal-drafting" share one entry
@@ -278,8 +283,8 @@ export async function runKnowledgePipeline(
   // A follow-up ("is it bailable?") is rewritten from the conversation, so the
   // same words mean different things in different threads. Key on the recent
   // turns too, or one thread's retrieval answers another's.
-  const historyTag = (conversationHistory || []).length
-    ? crypto.createHash("sha1").update(JSON.stringify((conversationHistory || []).slice(-4))).digest("hex").slice(0, 12)
+  const historyTag = (conversationHistory || []).length || context?.sourceContext
+    ? crypto.createHash("sha1").update(JSON.stringify({anchor:conversationHistory?.find(t=>t.role === "user"),recent:conversationHistory?.slice(-4),source:context?.sourceContext})).digest("hex").slice(0, 12)
     : "none";
   const key = `${userId || "anon"}::${normalizePipelineModule(context?.module)}::${historyTag}::${normKey(rawQuery)}`;
   const cached = cacheGet(key);
@@ -288,7 +293,9 @@ export async function runKnowledgePipeline(
       contextString: cached.contextString,
       hasCaseLaw: cached.contextString.includes("VERIFIED JUDGMENTS"),
       hasStatutes: cached.contextString.includes("VERIFIED STATUTES"),
-      topics: [],
+      topics: cached.intent?.topics.map(t=>t.id) || [],
+      intent: cached.intent,
+      retrievalQuery: cached.retrievalQuery,
       durationMs: 0,
       caseLawHits: cached.caseLawHits,
       // Carry the score the hits actually scored. Reporting a flat 100 made every
@@ -300,7 +307,7 @@ export async function runKnowledgePipeline(
   const inner = (async (): Promise<PipelineRunResult> => {
     // ---- Step 1: Rewrite follow-up query (FIRST) ----
     const history = conversationHistory || [];
-    const queryForRetrieval = await rewriteFollowUpQuery(rawQuery, history);
+    let queryForRetrieval = rawQuery;
 
     // ---- Step 2: Intent Classification & Cheap Query Analyzer ----
     const intent = classifyQueryIntent(queryForRetrieval, context);
@@ -320,40 +327,30 @@ export async function runKnowledgePipeline(
     // Vector Stream 1: ALWAYS include original rewritten query as grounding anchor (prevents HyDE drift)
     focusedQueries.push(queryForRetrieval);
 
-    // Runs for long narratives, and for queries the topic dictionary did not
-    // recognise — those get no synonym expansion at all otherwise.
-    //
-    // Measured on tests/eval/rag-eval.ts, after the fan-out fix:
-    //   threshold 12 (default)  49/50, median 8.6s   — fires on 0 of the 50 cases
-    //   forced on every query   47/50, median 13.2s  — 37 extra LLM calls
-    //
-    // So it is a safety net, not a speed-up. At the default it costs nothing on
-    // ordinary queries; forced on it adds ~54% latency and wins nothing. Do not
-    // raise PIPELINE_LLM_EXPAND_MIN_SCORE without re-running the eval.
-    // Set it to 0 to disable the low-score trigger entirely.
-    //
-    // Note for anyone reading git history: an earlier comment here blamed this
-    // trigger for a 44/50 run. That was wrong — the run logged 0 dictionary-miss
-    // fires, so this path never executed. The real cause was connection-pool
-    // contention, since fixed in vector-store.ts and db.ts.
-    const LOW_TOPIC_SCORE = Number(process.env.PIPELINE_LLM_EXPAND_MIN_SCORE ?? 12);
-    const dictionaryMissed =
-      LOW_TOPIC_SCORE > 0 &&
-      ((intent.topics?.length || 0) === 0 || (intent.topTopicScore || 0) < LOW_TOPIC_SCORE);
-    // A named section is already a precise anchor; no need to pay for a rewrite.
-    // A citation lookup has no topics by design, so dictionaryMissed is always
-    // true for it; the structured citation match needs no HyDE rewrite.
-    const needsLlmExpansion =
-      (tier === "tier2_narrative" || dictionaryMissed) && !intent.statuteRef && intent.type !== "citation-lookup";
+    const compact = (value:string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const exactCitation = extractCitations(rawQuery).some(c=>compact(c) === compact(rawQuery));
+    const ref = intent.statuteRef;
+    const exactSection = !!ref && [
+      `${ref.abbr} ${ref.sectionOrArticle}`, `${ref.sectionOrArticle} ${ref.abbr}`,
+      `section ${ref.sectionOrArticle} ${ref.abbr}`, `${ref.abbr} section ${ref.sectionOrArticle}`,
+      `article ${ref.sectionOrArticle} ${ref.abbr}`,
+    ].some(value=>compact(value) === compact(rawQuery));
+    const needsLlmExpansion = !exactCitation && !exactSection;
 
     if (needsLlmExpansion && USE_LLM_QUERY_EXTRACTOR) {
       console.log(
         `[Pipeline:2:LLM-Agent] Invoking Structured Legal Research Agent ` +
-        `(reason=${tier === "tier2_narrative" ? "narrative" : "dictionary-miss"} ` +
+        `(reason=semantic-intent ` +
         `topScore=${intent.topTopicScore || 0})`,
       );
-      const research = await generateSemanticRetrievalQueries(queryForRetrieval);
-      const deterministic = extractDeterministicFacts(queryForRetrieval);
+      const research = await generateSemanticRetrievalQueries(rawQuery, history, context?.sourceContext);
+      if (!applySemanticIntent(intent, research, context?.module)) {
+        return { contextString:INTENT_UNAVAILABLE,hasCaseLaw:false,hasStatutes:false,topics:[],durationMs:Date.now()-t0,
+          caseLawHits:[],maxRelevanceScore:0,retrievalQuery:rawQuery };
+      }
+      queryForRetrieval = research.retrievalQuery!;
+      focusedQueries = history.length || context?.sourceContext ? [queryForRetrieval] : [queryForRetrieval, rawQuery];
+      const deterministic = extractDeterministicFacts(rawQuery);
 
       // Multi-Angle HyDE & Query Vector Streams
       const maq = research.multiAngleQueries;
@@ -371,28 +368,14 @@ export async function runKnowledgePipeline(
         if (!focusedQueries.includes(statCand)) focusedQueries.push(statCand);
       }
 
-      // Enrich intent object with LLM domain + issues + statute candidates
-      if (research.domains.length > 0) {
-        const lowerDomains = research.domains.map(d => d.toLowerCase());
-        if (lowerDomains.includes("criminal") && !lowerDomains.includes("civil")) {
-          intent.type = "case-law";
-        } else if (lowerDomains.includes("statute") || lowerDomains.includes("constitutional")) {
-          intent.type = "statute";
-        } else {
-          intent.type = "general-legal";
-        }
-      }
-
-      if (research.issues.length > 0) {
-        const issueTerms = research.issues.slice(0, 3).join(" ");
-        intent.expandedQuery = `${intent.expandedQuery} ${issueTerms}`.trim();
-        intent.expandedTerms = intent.expandedQuery.split(/\s+/);
-      }
-
       console.log(
         `[Pipeline:2:LLM-Agent] domains=[${research.domains.join(",")}] ` +
         `statutes=[${research.statuteCandidates.join(",")}] confidence=${research.confidence}`,
       );
+    } else if (needsLlmExpansion && !USE_LLM_QUERY_EXTRACTOR && history.length) {
+      queryForRetrieval = extractLocalTopicKeywords(rawQuery, history);
+      Object.assign(intent, classifyQueryIntent(queryForRetrieval, context));
+      focusedQueries = [queryForRetrieval];
     } else if (queryForRetrieval.length > 150) {
       // Fallback: Regex query condensation for long Tier 1.5 queries
       const regexQueries = buildFocusedRetrievalQueries(queryForRetrieval, intent);
@@ -431,7 +414,7 @@ export async function runKnowledgePipeline(
       : 0;
 
     if (ctx.contextString.length > 0) {
-      cacheSet(key, { contextString: ctx.contextString, caseLawHits, maxRelevanceScore });
+      cacheSet(key, { contextString: ctx.contextString, caseLawHits, maxRelevanceScore, intent, retrievalQuery:queryForRetrieval });
     }
 
     // Record the runs where the topic dictionary or retrieval came up short, so
@@ -451,6 +434,7 @@ export async function runKnowledgePipeline(
       hasCaseLaw: ctx.hasCaseLawCitations,
       hasStatutes: ctx.hasStatutes,
       topics: intent.topics.map((t) => t.id),
+      intent,
       durationMs: Date.now() - t0,
       caseLawHits,
       maxRelevanceScore,
@@ -458,13 +442,14 @@ export async function runKnowledgePipeline(
     };
   })();
 
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
   return Promise.race([
     inner,
     new Promise<PipelineRunResult>((resolve) =>
-      setTimeout(
+      deadlineTimer = setTimeout(
         () =>
           resolve({
-            contextString: "",
+            contextString: INTENT_UNAVAILABLE,
             hasCaseLaw: false,
             hasStatutes: false,
             topics: [],
@@ -475,7 +460,7 @@ export async function runKnowledgePipeline(
         OUTER_DEADLINE_MS,
       ),
     ),
-  ]);
+  ]).finally(() => clearTimeout(deadlineTimer));
 }
 
 /**
@@ -486,7 +471,7 @@ export async function gatherKnowledgeContextV2(
   query: string,
   userId?: string,
   conversationHistory?: ConversationTurn[],
-  context?: { module?: string },
+  context?: { module?: string; sourceContext?: string },
 ): Promise<string> {
   try {
     const result = await runKnowledgePipeline(query, userId, conversationHistory, context);
@@ -507,7 +492,7 @@ export async function gatherKnowledgeWithHits(
   query: string,
   userId?: string,
   conversationHistory?: ConversationTurn[],
-  context?: { module?: string },
+  context?: { module?: string; sourceContext?: string },
 ): Promise<PipelineRunResult> {
   try {
     return await runKnowledgePipeline(query, userId, conversationHistory, context);

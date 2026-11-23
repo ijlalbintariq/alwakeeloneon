@@ -13,10 +13,10 @@
 import { chatWithDeepSeek, isDeepSeekAvailable } from "../deepseek-ai";
 
 // Patterns that signal the current query refers to something from prior context.
-const VAGUE_REFERENCE_RE = /\b(it|its|that|this|the case|the section|the same|the above|the punishment|the penalty|the offence|what about|and also|and what|how about|applicable here|apply here|related to that|regarding that|regarding this|my issue|my situation|my case|more judgments|more cases|hamara case|hamare case|is case|is hawale se|koi case|koi faisla|is par|is tarah|isi tarah|yeh wala|wahi|dobara|aur batain|wapis lene|iske bare|uska kya|yeh bhi|wo bhi|pehle wala|agla|pichla)\b/i;
+const VAGUE_REFERENCE_RE = /\b(it|its|that|this|these|those|the case|the cases|the judgment|the judgments|these judgments|those judgments|the section|the same|the above|the punishment|the penalty|the offence|what about|and also|and what|how about|applicable here|apply here|related to that|regarding that|regarding this|my issue|my situation|my case|more judgments|more cases|irrelevant|not relevant|unrelated|wrong judgments|wrong cases|not applicable|focus on|instead of|hamara case|hamare case|is case|is hawale se|koi case|koi faisla|is par|is tarah|isi tarah|yeh wala|wahi|dobara|aur batain|wapis lene|iske bare|uska kya|yeh bhi|wo bhi|pehle wala|agla|pichla)\b/i;
 
 // Starters that are obviously a follow-up even without a pronoun.
-const FOLLOWUP_STARTER_RE = /^(what about|how about|and |but |so |then |also |why |what if|does it|is it|are they|can it|can they|give more|more case law|more cases|any more|give me more|aur |phir |lekin |bhai |janab |yeh batain|koi judgment|same hamre|in urdu|urdu mein|roman urdu)\b/i;
+const FOLLOWUP_STARTER_RE = /^(what about|how about|and |but |so |then |also |why |what if|does it|is it|are they|can it|can they|give more|more case law|more cases|any more|give me more|focus on|only |strictly |aur |phir |lekin |bhai |janab |yeh batain|koi judgment|same hamre|in urdu|urdu mein|roman urdu)\b/i;
 
 const REWRITE_TIMEOUT_MS = 5000; // 5 seconds (allows DeepSeek network buffer)
 
@@ -63,7 +63,7 @@ export function extractLocalTopicKeywords(rawQuery: string, history: Conversatio
 
   // Common Pakistani legal domain topics & key terms regex
   const legalTopicMatches = userTexts.match(
-    /\b(custody|hizanat|guardian|guardianship|minor|welfare|father|mother|visitation|maintenance|khula|dower|nikkah|talaq|family|bail|pre-arrest|post-arrest|narcotics|cnsa|section \d+|article \d+|ppc|crpc|cpc|qso|peca|murder|302|337|420|489-f|fraud|cheating|partition|inheritance|succession|mutation|patwari|khasra|possession|injunction|writ|mandamus|habeas corpus)\b/gi
+    /\b(custody|hizanat|guardian|guardianship|minor|welfare|father|mother|husband|wife|spouse|matrimonial|visitation|maintenance|khula|dower|mehr|nikkah|talaq|family|bail|pre-arrest|post-arrest|narcotics|cnsa|section \d+|article \d+|ppc|crpc|cpc|qso|peca|murder|302|337|420|489-f|fraud|cheating|partition|inheritance|succession|mutation|patwari|khasra|possession|injunction|writ|mandamus|habeas corpus)\b/gi
   );
 
   if (!legalTopicMatches || legalTopicMatches.length === 0) {

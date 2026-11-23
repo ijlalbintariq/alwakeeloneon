@@ -3751,6 +3751,40 @@ export function classifyQueryIntent(rawQuery: string, context?: { module?: strin
   const topTopicScore = scored.length > 0 ? scored[0].score : 0;
   let topTopics = scored.slice(0, 3).map((s) => s.topic);
 
+  // ---------------------------------------------------------------------------
+  // Family Law Topic Promotion (Fix for Writ-Petition-on-Family-Matter Collision)
+  //
+  // Problem: Queries like "Writ Petition was allowed on the ground that the
+  // Husband did not have enough means, where the actual source of income was
+  // not proven" score `constitutional` as #1 (because "writ" = primary term,
+  // score 12) even though the query is fundamentally about family maintenance.
+  //
+  // Fix: When the query contains family-relationship terms (husband, wife,
+  // maintenance, custody, etc.) AND `constitutional` outranks `family`,
+  // promote `family` to position #1 so retrieval targets family court
+  // judgments rather than generic constitutional/admin writs.
+  //
+  // This does NOT remove `constitutional` — it stays in top 3 so writ-petition
+  // synonyms still participate in expanded query terms.
+  // ---------------------------------------------------------------------------
+  const FAMILY_RELATIONSHIP_RE = /\b(?:husband|wife|spouse|maintenance|nafaqa|custody|hizanat|khula|dower|mehr|nikah|talaq|divorce|matrimonial|family court|family judge|minor child|child maintenance|biwi|shohar|iddat|dissolution of marriage)\b/i;
+  const competingSubject = /\b(?:income tax|sales tax|fbr|tax assessment|customs|employment|government service|dismissal|pension|termination)\b/i.test(normalized);
+  const familyIdx = topTopics.findIndex((t) => t.id === "family");
+  const constitIdx = topTopics.findIndex((t) => t.id === "constitutional");
+  if (constitIdx >= 0 && constitIdx < familyIdx && !competingSubject && FAMILY_RELATIONSHIP_RE.test(normalized)) {
+    // Family scored but ranked below constitutional — promote it
+    const [familyTopic] = topTopics.splice(familyIdx, 1);
+    topTopics.unshift(familyTopic);
+    topTopics = topTopics.slice(0, 3);
+  } else if (constitIdx >= 0 && familyIdx < 0 && !competingSubject && FAMILY_RELATIONSHIP_RE.test(normalized)) {
+    // Family didn't even score (edge case) but family terms are clearly present
+    const familyTopic = LEGAL_TOPICS.find((t) => t.id === "family");
+    if (familyTopic) {
+      topTopics.unshift(familyTopic);
+      topTopics = topTopics.slice(0, 3);
+    }
+  }
+
   // Contract drafting only. Forcing these onto legal-drafting pushed "contract"
   // and "property" ahead of the real topic — a bail application scored Bail third
   // behind two topics the query never mentioned.

@@ -91,6 +91,7 @@ import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-lib
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { gatherKnowledgeContextV2, gatherKnowledgeWithHits, type ConversationTurn, type CaseLawHit, type PipelineRunResult } from "./pipeline/knowledge-pipeline";
+import { filterToolResult, INTENT_UNAVAILABLE } from "./pipeline/semantic-intent";
 import { classifyQueryIntent, detectQueryComplexity, isFollowUpQuestion, type QueryComplexity } from "./pipeline/intent-classifier";
 import { refineUserQuery } from "./query-refiner";
 import {
@@ -3553,13 +3554,8 @@ export async function verifyReferencesBlock(
       if (k) trustedPoolKeys.add(k);
     }
   }
-  // Only activate pool-mode rejection when the pool is large enough to be
-  // authoritative (>= 5 hits). With fewer hits, the tool search likely had
-  // partial coverage — rejecting off-pool citations strips legitimate cases
-  // the AI found from training but that ARE in the DB. Fall through to
-  // per-citation DB verification instead.
-  const POOL_MODE_MIN_SIZE = 5;
-  const poolMode = trustedPoolKeys.size >= POOL_MODE_MIN_SIZE && effectivePolicy.strict;
+  // An explicitly supplied pool is authoritative even when it contains zero hits.
+  const poolMode = trustedCitations !== undefined;
 
   const judgmentRows = await Promise.all(
     inputJudgments.map(async (judgment) => {
@@ -3680,7 +3676,7 @@ export async function enforceProseCitationIntegrity(
     }
     return false;
   };
-  const poolActive = trustedKeys.size > 0;
+  const poolActive = trustedCitations !== undefined;
   const lookupCache = new Map<string, string | null>();
   const verifyInDb = async (citation: string): Promise<string | null> => {
     const k = normalizeCitationForMatch(citation);
@@ -3969,45 +3965,8 @@ export async function enforceStatuteSectionIntegrity(content: string): Promise<s
 }
 
 export function stripForbiddenNoJudgmentsMessage(content: string): string {
-  if (!content) return content;
-  
-  let cleaned = content;
-
-  // 1. Remove entire sections starting with Case Law header if they contain negative messaging or judgment-search prompt
-  cleaned = cleaned.replace(
-    /^\s*#{1,4}\s*(?:Leading|Relevant|Key)?\s*Case\s+Law[\s\S]*?(?=\n+#{1,4}\s+|\n\s*\n\s*###|\n{3,}|$)/gmi,
-    (match) => {
-      if (/(?:no\s+(?:relevant|specific|direct)?\s*(?:judgments?|case\s*laws?)|search\s+our\s+Judgment\s+Search|Judgment\s+Search\s+database|\/judgment-search)/i.test(match)) {
-        return "";
-      }
-      return match;
-    }
-  );
-
-  // 2. Direct match & remove any block starting with Case Law containing "No relevant judgments"
-  cleaned = cleaned.replace(
-    /(?:#{1,4}\s*)?(?:Leading|Relevant|Key)?\s*Case\s+Law[\s\S]*?No\s+relevant\s+judgments\s+found[\s\S]*?(?=\n+#{1,4}\s+|\n\n|$)/gmi,
-    ""
-  );
-
-  // 3. Remove isolated lines containing "No relevant judgments", "Judgment Search", or "/judgment-search"
-  cleaned = cleaned.replace(
-    /^[^\n]*No\s+relevant\s+judgments[^\n]*/gmi,
-    "",
-  );
-  cleaned = cleaned.replace(
-    /\s*\([^)]*(?:Judgment\s+Search|\/judgment-search)[^)]*\)/gi,
-    "",
-  );
-  cleaned = cleaned.replace(
-    /^[^\n]*(?:Judgment\s+Search|\/judgment-search)[^\n]*/gmi,
-    "",
-  );
-
-  // 4. Remove orphaned headers
-  cleaned = cleaned.replace(/^\s*#{1,4}\s*(?:Leading|Relevant|Key)?\s*Case\s+Law\s*$/gmi, "");
-
-  return cleaned.replace(/\n{3,}/g, "\n\n").trim();
+  // An honest no-results notice is required; never hide it from the user.
+  return content;
 }
 
 export function stripPartyNamesFromProseCitations(content: string): string {
@@ -6992,7 +6951,7 @@ async function resolveCaseCitationFromInternalDb(
   return best;
 }
 
-async function enforceInternalCaseCitationIntegrity(
+export async function enforceInternalCaseCitationIntegrity(
   content: string,
   options?: {
     placeholder?: string;
@@ -7011,6 +6970,7 @@ async function enforceInternalCaseCitationIntegrity(
     trustedCitations?: Iterable<string>;
   },
 ): Promise<{ content: string; removed: string[]; verified: string[] }> {
+  if (options?.trustedCitations !== undefined) options = { ...options, trustedCitations: Array.from(options.trustedCitations) };
   const rawInput = String(content || "");
   if (!rawInput.trim()) {
     return { content: "", removed: [], verified: [] };
@@ -7023,8 +6983,19 @@ async function enforceInternalCaseCitationIntegrity(
   // prose only, then re-append the block verbatim.
   const REFS_RE = /```references\s*[\s\S]*?```/i;
   const refsMatch = rawInput.match(REFS_RE);
-  const refsBlock = refsMatch ? refsMatch[0] : "";
+  let refsBlock = refsMatch ? refsMatch[0] : "";
   const text = refsBlock ? rawInput.replace(REFS_RE, "").trimEnd() : rawInput;
+
+  if (refsBlock && options?.trustedCitations !== undefined) {
+    const allowed = new Set(Array.from(options.trustedCitations, value => normalizeCitationForMatch(String(value))));
+    try {
+      const payload = JSON.parse(refsBlock.replace(/^```references\s*/i, "").replace(/```$/, "").trim());
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("Invalid references object");
+      payload.judgments = (Array.isArray(payload.judgments) ? payload.judgments : [])
+        .filter((row: any) => allowed.has(normalizeCitationForMatch(String(row?.citation || ""))));
+      refsBlock = "```references\n" + JSON.stringify(payload) + "\n```";
+    } catch { refsBlock = ""; }
+  }
 
   // Helper to re-attach the protected refs block on every early return path.
   const withRefs = (body: string): string =>
@@ -7040,7 +7011,7 @@ async function enforceInternalCaseCitationIntegrity(
   // Non-strict mode: skip all DB lookups, normalization, and removal entirely.
   // Citations came from the knowledge context already injected into the prompt;
   // post-processing them serves no purpose and risks unwanted format changes.
-  if (!policy.strict) {
+  if (!policy.strict && options?.trustedCitations === undefined) {
     return { content: withRefs(text), removed: [], verified: [] };
   }
 
@@ -7078,7 +7049,7 @@ async function enforceInternalCaseCitationIntegrity(
   // unrelated cases or (b) hallucinations whose formatting happens to match a
   // real row. Both should be stripped to keep every reference card clickable
   // and on-topic.
-  const poolMode = trustedKeys.size > 0 && policy.strict;
+  const poolMode = options?.trustedCitations !== undefined;
 
   await Promise.all(
     Array.from(representativeByKey.entries()).map(async ([key, candidate]) => {
@@ -7114,7 +7085,7 @@ async function enforceInternalCaseCitationIntegrity(
   // The AI received these citations from the knowledge context injected into the prompt.
   // Removing them on a DB-lookup miss degrades response quality and hides valid case law.
   // Only strict mode (e.g. drafting modules) should strip unverified citations.
-  if (removed.size > 0 && policy.strict) {
+  if (removed.size > 0 && (policy.strict || poolMode)) {
     const longestFirst = Array.from(removed).filter(Boolean).sort((a, b) => b.length - a.length);
     for (const raw of longestFirst) {
       const escapedCitation = escapeRegExp(raw);
@@ -7526,7 +7497,7 @@ For LEGAL QUERIES, use markdown ### headings. Include at minimum:
   - **Issue:** The legal question the court addressed.
   - **Held:** The court's decision and reasoning in 1-2 sentences.
   - **Relevance:** Why this case directly helps or warns the user's situation.
-  Include at least 3 cases (up to 5) for substantive legal queries. Never list a citation without these four sub-points.
+  Include only directly relevant cases from the supplied retrieval pool, up to 5. One supported case is preferable to unrelated cases. If none qualify, state that no matching precedents were found. Never list a citation without these four sub-points.
 ### Practical Strategy — cause of action, evidence needs, procedural pathway, limitation period, timeline
 
 For SIMPLE questions: 2-3 sections, each brief. Omit sections not applicable.
@@ -9169,18 +9140,22 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
       });
 
       const module = req.body.module;
-      const knowledgeContext = await gatherKnowledgeContextV2(firstMessage, userId, undefined, { module });
+      const threadKnowledge = await gatherKnowledgeWithHits(firstMessage, userId, undefined, { module });
+      const knowledgeContext = threadKnowledge.contextString || INTENT_UNAVAILABLE;
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       let usedModel = "";
       const _t0 = Date.now();
-      const { content: aiResponse, fromCache } = await getCachedOrCall("chat", firstMessage, async () => {
+      const answerCacheKey = crypto.createHash("sha256").update(JSON.stringify({
+        version: "semantic-intent-v1", userId, module, query: firstMessage, context: knowledgeContext,
+      })).digest("hex");
+      const { content: aiResponse, fromCache } = await getCachedOrCall("chat", answerCacheKey, async () => {
         const result = await callStandardAISimple(systemPromptFull, firstMessage, TOKEN_LIMITS.chat);
         usedModel = result.model;
         return result.text;
       });
       const normalizedAiResponse = suppressWrongIndianJurisdictionForPakCitation(aiResponse, firstMessage);
-      const safeAiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse).catch(() => ensureAlWakeeloReferencesBlock(normalizedAiResponse));
+      const safeAiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse, undefined, threadKnowledge.caseLawHits.map(hit=>hit.citation)).catch(() => "The response could not be verified. Please retry; no case citations are available.");
 
       if (!fromCache) {
         await logUsageCost(userId, "chat", usedModel || "deepseek", systemPromptFull + firstMessage, safeAiResponse, { userQuery: firstMessage, responseTimeMs: Date.now() - _t0 });
@@ -9382,15 +9357,32 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
         parts: [{ text: m.content }],
       }));
 
+      // Build conversation history for the query rewriter so follow-up queries
+      // carry context from the thread anchor (initial user message) + recent turns.
+      // Without this, follow-ups like "These Judgments are irrelevant" or
+      // "focus on Family Matters" arrive at the retrieval pipeline in total isolation
+      // with zero context from the original writ petition / legal facts.
+      const priorMessages = history.slice(0, -1); // drop last (= current user message)
+      const firstUserTurn = priorMessages.find((m) => m.role === "user");
+      const recentTurns = priorMessages.slice(-6);
+      const combinedTurns = firstUserTurn && !recentTurns.includes(firstUserTurn)
+        ? [firstUserTurn, ...recentTurns]
+        : recentTurns;
+      const conversationTurns: ConversationTurn[] = combinedTurns.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+
       const module = req.body.module;
-      const knowledgeContext = await gatherKnowledgeContextV2(message, userId, undefined, { module });
+      const threadKnowledge = await gatherKnowledgeWithHits(message, userId, conversationTurns, { module });
+      const knowledgeContext = threadKnowledge.contextString || INTENT_UNAVAILABLE;
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       const _t0 = Date.now();
       const result = await callStandardAI(systemPromptFull, geminiContents, TOKEN_LIMITS.chat);
 
       const normalizedAiResponse = suppressWrongIndianJurisdictionForPakCitation(result.text, message);
-      const aiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse).catch(() => ensureAlWakeeloReferencesBlock(normalizedAiResponse));
+      const aiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse, undefined, threadKnowledge.caseLawHits.map(hit=>hit.citation)).catch(() => "The response could not be verified. Please retry; no case citations are available.");
       const inputText = systemPromptFull + history.map(m => m.content).join(" ");
       await logUsageCost(userId, "chat", result.model, inputText, aiResponse, { userQuery: message, responseTimeMs: Date.now() - _t0 });
 
@@ -17864,7 +17856,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       }));
 
       const knowledgePromise: Promise<PipelineRunResult> = knowledgeNeeded
-        ? gatherKnowledgeWithHits(lastUserMessage!.content, userId, priorTurns, { module: moduleType }).catch((err) => {
+        ? gatherKnowledgeWithHits(lastUserMessage!.content, userId, priorTurns, { module: moduleType, sourceContext: attachmentContext }).catch((err) => {
             console.warn("[AI Chat] Knowledge pipeline unavailable:", getErrorMessage(err));
             return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[], maxRelevanceScore: 0 };
           })
@@ -17970,7 +17962,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         raceToDeadline<RefineResult>(refinePromise, 4000, { refined: lastUserMessage?.content || "", wasRefined: false, elapsedMs: 0 }, "query-refine"),
       ]);
       const knowledgeResult = knowledgeRace.value;
-      const knowledgeContext = knowledgeResult.contextString;
+      const knowledgeContext = knowledgeNeeded ? (knowledgeResult.contextString || INTENT_UNAVAILABLE) : "";
       const pipelineCaseLawHits = knowledgeResult.caseLawHits || [];
       const styleRetrieved = styleRace.value;
       const refineResult = refineRace.value;
@@ -18015,7 +18007,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       // Budget is capped at 20s for the fallback tool search.
       const TOOL_SEARCH_FALLBACK_MS = 20_000;
       const pipelineMaxScore = knowledgeResult.maxRelevanceScore ?? 100;
-      const toolSearchEnabled = toolSearchCapable && (
+      const toolSearchEnabled = toolSearchCapable && !!knowledgeResult.intent?.needsCaseLaw && (
         pipelineCaseLawHits.length === 0 ||
         pipelineMaxScore < TOOL_SEARCH_QUALITY_THRESHOLD
       );
@@ -18040,7 +18032,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] },
           "tool-search-fallback",
         );
-        toolSearchResult = toolSearchRace.value;
+        toolSearchResult = filterToolResult(toolSearchRace.value, knowledgeResult.intent);
       }
 
       if (refineResult.wasRefined) {
@@ -18284,7 +18276,7 @@ The user has attached the following documents for your reference. Analyze them c
           ? `\n\nMANDATORY FORMAL CITATION RULE (NON-NEGOTIABLE):\n` +
             `- Whenever referencing a judicial precedent in prose, headings, or bullets, you MUST write the exact formal citation string enclosed in bold brackets, e.g. **[CITATION FROM THE LIST]**. Never mention a case vaguely without its bracketed formal citation.\n` +
             `- Cite ONLY judgments from the AI-SEARCHED JUDGMENTS list above that are DIRECTLY relevant to the user's legal question.\n` +
-            `- You MUST cite at least 3 relevant cases (up to 5) with full detail for each (Facts, Issue, Held, Relevance). Never cite irrelevant or mixed-domain cases just to reach the minimum.\n` +
+            `- Cite only directly relevant cases from this list (up to 5), with Facts, Issue, Held and Relevance. There is no minimum count. Never substitute irrelevant or mixed-domain cases.\n` +
             `- If NONE of the cases in the list are relevant to the specific legal topic, do NOT cite any of them.\n` +
             `- Include the FORMAL CITATION string verbatim in your response, copied EXACTLY as listed. You may include case titles or party names naturally.\n` +
             `- Do NOT cite any case that is not in the list above — those citations will be removed.\n` +
@@ -18308,7 +18300,7 @@ The user has attached the following documents for your reference. Analyze them c
             `- **Held:** The court's ruling and reasoning (ratio decidendi).\n` +
             `- **Relevance:** Why this case directly applies to the user's situation.\n` +
             `\n` +
-            `- You MUST cite at least 3 cases (up to 5) using this format. If fewer than 3 relevant cases exist in the pool, cite all available and state that additional cases were not found.\n` +
+            `- Use this format for directly relevant cases only (up to 5). There is no minimum count; if no cases address the issue, state that no matching precedents were found.\n` +
             `- NEVER cite a case with just "the court held that X" — always use the structured format above.\n` +
             `- Present all cases under a "## Leading Case Law" section in your response.`
           : pipelineCitationLines.length > 0
@@ -22638,13 +22630,25 @@ ${(documentContent || "").slice(0, 6000)}
     const apexRequestCap = Math.max(256, getModeOutputCap(tier, "apex") || 8192);
 
     try {
+      // Build conversation history for retrieval context (same pattern as main chat handler)
+      let apexConversationTurns: ConversationTurn[] = [];
+      if (threadId) {
+        const threadHistory = await storage.getMessages(threadId);
+        const priorMsgs = threadHistory.slice(0, -1);
+        const firstUT = priorMsgs.find((m) => m.role === "user");
+        const recentT = priorMsgs.slice(-6);
+        const combinedT = firstUT && !recentT.includes(firstUT) ? [firstUT, ...recentT] : recentT;
+        apexConversationTurns = combinedT.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+      }
+
       // Build the full Al Wakeelo system prompt — same as main handler
       let systemPrompt = `${getLegalSystemPrompt()}${VERIFIED_JUDGMENTS_CITATION_ADDON}`;
       if (systemContext) {
         systemPrompt += `\n\n${systemContext}`;
       }
 
-      const knowledgeContext = await gatherKnowledgeContextV2(message, userId, undefined, { module });
+      const apexKnowledge = await gatherKnowledgeWithHits(message, userId, apexConversationTurns, { module, sourceContext: systemContext });
+      const knowledgeContext = apexKnowledge.contextString || INTENT_UNAVAILABLE;
       systemPrompt += knowledgeContext;
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
@@ -22658,7 +22662,7 @@ ${(documentContent || "").slice(0, 6000)}
 
       // Tool-based judgment search — same as Standard/Turbo for citation accuracy
       const useOpenRouterTools = isOpenRouterAvailable();
-      const toolSearchEnabled = useOpenRouterTools || isDeepSeekAvailable();
+      const toolSearchEnabled = !!apexKnowledge.intent?.needsCaseLaw && (useOpenRouterTools || isDeepSeekAvailable());
       interface ApexToolSearchResult {
         contextString: string;
         foundCount: number;
@@ -22667,12 +22671,14 @@ ${(documentContent || "").slice(0, 6000)}
         verifiedTitles: Array<{ title: string; citation: string }>;
         verifiedHits: Array<{ citation: string; title: string; court: string; summary: string }>;
       }
-      const toolSearchResult: ApexToolSearchResult = toolSearchEnabled
+      const rawApexToolSearchResult: ApexToolSearchResult = toolSearchEnabled
         ? await (useOpenRouterTools
-            ? runToolJudgmentSearchOR(message, () => {}, undefined, 18000)
-            : runToolJudgmentSearch(message, () => {})
+            ? runToolJudgmentSearchOR(apexKnowledge.retrievalQuery || message, () => {}, undefined, 18000)
+            : runToolJudgmentSearch(apexKnowledge.retrievalQuery || message, () => {})
           ).catch(() => ({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] }))
         : { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
+
+      const toolSearchResult = filterToolResult(rawApexToolSearchResult, apexKnowledge.intent, apexKnowledge.caseLawHits);
 
       if (toolSearchResult.foundCount > 0) {
         console.log(`[Apex Chat:ToolSearch] found=${toolSearchResult.foundCount} queries=${JSON.stringify(toolSearchResult.queriesUsed)}`);
@@ -22770,7 +22776,7 @@ ${(documentContent || "").slice(0, 6000)}
       console.log(`[AI Routing][apex] Primary Kimi(${selectedApexModel}) succeeded in ${Date.now() - apexStartedAt}ms`);
 
       const actualModel = responseModel;
-      let safeResponseContent = await applyAlWakeeloSafetyGuardrails(responseContent).catch(() => ensureAlWakeeloReferencesBlock(responseContent));
+      let safeResponseContent = await applyAlWakeeloSafetyGuardrails(responseContent, undefined, toolSearchResult.verifiedCitations).catch(() => "The response could not be verified. Please retry.");
       safeResponseContent = enforcePakistanLawOnlyOutput(safeResponseContent);
       safeResponseContent = (await enforceInternalCaseCitationIntegrity(safeResponseContent, {
         placeholder: "",
@@ -22837,6 +22843,17 @@ ${(documentContent || "").slice(0, 6000)}
     if (!allowed) return;
 
     try {
+      // Build conversation history for retrieval context (same pattern as main chat handler)
+      let apexAgentConvTurns: ConversationTurn[] = [];
+      if (threadId) {
+        const threadHistory = await storage.getMessages(threadId);
+        const priorMsgs = threadHistory.slice(0, -1);
+        const firstUT = priorMsgs.find((m) => m.role === "user");
+        const recentT = priorMsgs.slice(-6);
+        const combinedT = firstUT && !recentT.includes(firstUT) ? [firstUT, ...recentT] : recentT;
+        apexAgentConvTurns = combinedT.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+      }
+
       // Build the full Al Wakeelo system prompt — same as main handler
       let systemPrompt = `${getLegalSystemPrompt()}${VERIFIED_JUDGMENTS_CITATION_ADDON}`;
       systemPrompt += `\n\nYou are operating in APEX AGENT mode with web research capabilities. You have access to the $web_search tool to research Pakistani legal topics, case law, statutes, and legal news from authoritative sources. When answering legal questions:
@@ -22862,7 +22879,8 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
-      const knowledgeContext = await gatherKnowledgeContextV2(message, userId, undefined, { module });
+      const agentKnowledge = await gatherKnowledgeWithHits(message, userId, apexAgentConvTurns, { module, sourceContext: systemContext });
+      const knowledgeContext = agentKnowledge.contextString || INTENT_UNAVAILABLE;
       systemPrompt += knowledgeContext;
 
       // Wrap with Apex mode profile (same as main handler)
@@ -22875,7 +22893,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       // Tool-based judgment search — same as Standard/Turbo for citation accuracy
       const useOpenRouterTools = isOpenRouterAvailable();
-      const agentToolSearchEnabled = useOpenRouterTools || isDeepSeekAvailable();
+      const agentToolSearchEnabled = !!agentKnowledge.intent?.needsCaseLaw && (useOpenRouterTools || isDeepSeekAvailable());
       interface AgentToolSearchResult {
         contextString: string;
         foundCount: number;
@@ -22884,12 +22902,14 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         verifiedTitles: Array<{ title: string; citation: string }>;
         verifiedHits: Array<{ citation: string; title: string; court: string; summary: string }>;
       }
-      const agentToolSearchResult: AgentToolSearchResult = agentToolSearchEnabled
+      const rawAgentToolSearchResult: AgentToolSearchResult = agentToolSearchEnabled
         ? await (useOpenRouterTools
-            ? runToolJudgmentSearchOR(message, () => {}, undefined, 18000)
-            : runToolJudgmentSearch(message, () => {})
+            ? runToolJudgmentSearchOR(agentKnowledge.retrievalQuery || message, () => {}, undefined, 18000)
+            : runToolJudgmentSearch(agentKnowledge.retrievalQuery || message, () => {})
           ).catch(() => ({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] }))
         : { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
+
+      const agentToolSearchResult = filterToolResult(rawAgentToolSearchResult, agentKnowledge.intent, agentKnowledge.caseLawHits);
 
       if (agentToolSearchResult.foundCount > 0) {
         console.log(`[Apex Agent:ToolSearch] found=${agentToolSearchResult.foundCount} queries=${JSON.stringify(agentToolSearchResult.queriesUsed)}`);
@@ -22978,7 +22998,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       console.log(`[Apex Agent] Completed in ${Date.now() - startedAt}ms, steps: ${agentResult.steps.length}, searches: ${agentResult.searchQueries.length}`);
 
-      let safeContent = await applyAlWakeeloSafetyGuardrails(agentResult.content).catch(() => ensureAlWakeeloReferencesBlock(agentResult.content));
+      let safeContent = await applyAlWakeeloSafetyGuardrails(agentResult.content, undefined, agentToolSearchResult.verifiedCitations).catch(() => "The response could not be verified. Please retry.");
       // Strip chain-of-thought reasoning and irrelevant statute refs
       safeContent = stripChainOfThought(safeContent);
       safeContent = filterIrrelevantStatuteRefs(safeContent, message);

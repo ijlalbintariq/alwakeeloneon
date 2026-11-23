@@ -15,6 +15,7 @@
  */
 
 import { storage } from "../storage";
+import { caseSupportsIntent } from "./semantic-intent";
 import { similaritySearch } from "../rag/vector-store";
 import { embedTextLocal } from "../rag/embedding-local";
 import { isVoyageProvider } from "../rag/embedding-local";
@@ -1335,7 +1336,7 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
   const statuteLimit = limits.statutes ?? 8;
   const adminDocLimit = limits.adminDocs ?? 3;
 
-  const [caseLawResults, statuteResults, adminDocResults] = await Promise.all([
+  const [rawCaseLawResults, statuteResults, adminDocResults] = await Promise.all([
     intent.needsCaseLaw
       ? fetchCaseLaw(intent, userId, caseLawLimit, focusedQueries)
       : Promise.resolve([] as RetrievedCaseLaw[]),
@@ -1347,6 +1348,7 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
       : Promise.resolve([] as RetrievedDoc[]),
   ]);
 
+  const caseLawResults = rawCaseLawResults.filter(hit=>caseSupportsIntent(hit.row,intent));
   const durationMs = Date.now() - t0;
 
   return {

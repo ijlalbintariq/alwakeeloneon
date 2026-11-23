@@ -161,7 +161,17 @@ function buildAdminDocsSection(docs: RetrievedDoc[]): ContextSection | null {
 // ---------------------------------------------------------------------------
 
 function buildNoCaseLawMessage(intent: QueryIntent): string {
-  return `[SYSTEM NOTE: Focus your response on statutory analysis and practical legal guidance. Do NOT output a 'Leading Case Law' section or any negative disclaimer such as 'No relevant judgments found'.]`;
+  if (intent.type === "case-law" || intent.needsCaseLaw) {
+    return `[SYSTEM SAFETY GATE — ZERO VERIFIED CASE LAW FOUND]
+CRITICAL: The internal legal database returned ZERO verified judgments matching this specific query.
+1. You MUST NOT cite, reference, or invent ANY case law citations (PLD, SCMR, YLR, MLD, CLC, PLJ, PTD, PCrLJ, NLR, or any other reporter series) from memory, training weights, or by analogy.
+2. Explicitly inform the user: "No matching verified precedents on these specific facts were found in the Al Wakeelo internal database."
+3. STRICT PROHIBITION AGAINST UNRELATED LEGAL ANALOGIES: Do NOT substitute cases from unrelated areas of law. Specifically:
+   - For Family Law disputes (maintenance, custody, divorce, dower), NEVER cite Income Tax (PTD), Sales Tax, Board of Revenue, or Customs cases, even if they discuss procedural topics like "source of income" or "assessment".
+   - For Civil disputes, NEVER cite unrelated Criminal FIR/bail rulings.
+4. Provide statutory analysis and practical legal guidance under the relevant governing statute only.`;
+  }
+  return `[SYSTEM NOTE: Focus your response on statutory analysis and practical legal guidance. Do NOT cite any case law citations from memory. Rely strictly on verified statutory text.]`;
 }
 
 // ---------------------------------------------------------------------------
