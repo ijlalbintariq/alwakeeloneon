@@ -138,3 +138,8 @@ test("quality averages, distributions and feature rankings exclude legacy and in
     const text = dialect.sqlToQuery(predicate).sql; assert.match(text, /reviewed/); assert.match(text, /BETWEEN 1 AND 5/);
   }
 });
+
+test("incomplete provider token accounting does not create an invalid dashboard usage object", async () => {
+  const result = await compileReview(async () => ({ choices: [{ message: { content: JSON.stringify(review) } }], usage: {} }))(input);
+  assert.equal(result.status, 'reviewed'); assert.equal(result.tokenUsage, undefined);
+});

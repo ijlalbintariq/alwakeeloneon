@@ -82,7 +82,7 @@ Return JSON {relevance:1..5,completeness:1..5,caseLawRelevance:1..5 or null,requ
     }, { signal: AbortSignal.timeout(8000), maxRetries: 0 });
     const usage = response.usage;
     return { ...parseQualityReview(JSON.parse(response.choices[0]?.message?.content || "{}"), input), model, reviewedAt: new Date().toISOString(),
-      tokenUsage: usage ? { input: usage.prompt_tokens, output: usage.completion_tokens, total: usage.total_tokens } : undefined };
+      tokenUsage: usage && [usage.prompt_tokens, usage.completion_tokens, usage.total_tokens].every(value => Number.isSafeInteger(value) && value >= 0) ? { input: usage.prompt_tokens, output: usage.completion_tokens, total: usage.total_tokens } : undefined };
   } catch {
     return { ...unavailable("The reviewer timed out, failed, or returned invalid evidence. No quality score was assigned."), model, reviewedAt: new Date().toISOString() };
   } finally { activeReviews--; }
