@@ -689,7 +689,7 @@ export function prepareJudgmentDetail<T extends {
   const renderedCheck = assessJudgmentIdentity({ ...identity, opening: detail.fullText });
   const words = (text: string) => String(text || "").replace(/\s+/g, " ").trim();
   const original = String(stored.opening || "");
-  const sourceDerived = !original || words(detail.fullText) === words(original)
+  const sourceDerived = !original || detail.fullText === original || words(detail.fullText) === words(original)
     || words(detail.fullText) === words(formatJudgmentText(original));
   const fullText = (!sourceDerived || renderedCheck.identityConflict || (check.textIntegrity === "own" && renderedCheck.textIntegrity !== "own"))
     ? String(stored.opening || "") : String(detail.fullText || stored.opening || "");

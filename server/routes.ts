@@ -1,3 +1,5 @@
+import { memorySafeConcurrency, readMemorySnapshot } from "./memory-guard";
+import { countWords } from "./text-memory";
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
 import { resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, judgmentPdfUrl, judgmentSourceUrl, extractCitations, verifyCitations, citationMatchesCourt } from "./citation-verify";
 import { generateCourtJudgmentPdfBuffer } from "./judgment-pdf";
@@ -212,7 +214,7 @@ const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
 
 const INLINE_DB_CONTENT_LIMIT = Math.max(5000, Number(process.env.DB_INLINE_CONTENT_MAX_CHARS || 60000));
 const MB = 1024 * 1024;
-const UPLOAD_STORAGE_MODE = String(process.env.UPLOAD_STORAGE_MODE || "memory").trim().toLowerCase();
+const UPLOAD_STORAGE_MODE = String(process.env.UPLOAD_STORAGE_MODE || "disk").trim().toLowerCase();
 const USE_DISK_UPLOAD_STORAGE = UPLOAD_STORAGE_MODE === "disk";
 const UPLOAD_TEMP_DIR = String(process.env.UPLOAD_TEMP_DIR || os.tmpdir()).trim() || os.tmpdir();
 const DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.DOCUMENT_UPLOAD_MAX_FILE_MB || 75)) * MB;
@@ -221,8 +223,8 @@ const ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.ADMIN_UP
 const ADMIN_UPLOAD_MAX_FILES = Math.max(1, Number(process.env.ADMIN_UPLOAD_MAX_FILES || 200));
 const GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(2, Number(process.env.GENERAL_UPLOAD_MAX_FILE_MB || 75)) * MB;
 const EXTRACTION_TIMEOUT_MS = Math.max(3000, Number(process.env.EXTRACTION_TIMEOUT_MS || 120000));
-const UPLOAD_QUEUE_CONCURRENCY = Math.max(1, Number(process.env.UPLOAD_QUEUE_CONCURRENCY || 2));
-const UPLOAD_QUEUE_MAX_PENDING = Math.max(UPLOAD_QUEUE_CONCURRENCY, Number(process.env.UPLOAD_QUEUE_MAX_PENDING || 32));
+const UPLOAD_QUEUE_CONCURRENCY = memorySafeConcurrency(process.env.UPLOAD_QUEUE_CONCURRENCY, 1, 1);
+const UPLOAD_QUEUE_MAX_PENDING = memorySafeConcurrency(process.env.UPLOAD_QUEUE_MAX_PENDING, 4, 4);
 const CASELAW_AUTO_SYNC_MAX = Math.max(1, Number(process.env.CASELAW_AUTO_SYNC_MAX || 5000));
 const CASELAW_AUTO_SYNC_ON_UPLOAD = (() => {
   const raw = String(process.env.CASELAW_AUTO_SYNC_ON_UPLOAD || "false").trim().toLowerCase();
@@ -662,7 +664,7 @@ function getPublicChatLanguageFallback(language: "english" | "romanUrdu" | "urdu
   return "Your response is being provided in English as requested. For professional legal assistance, please contact the chamber or hire a lawyer.";
 }
 
-function getUploadQueueStats() {
+export function getUploadQueueStats() {
   return {
     active: activeUploadRequests,
     queued: pendingUploadResolvers.length,
@@ -679,7 +681,8 @@ function cloneUploadFile(file: Express.Multer.File): Express.Multer.File {
   const sourceBuffer = getUploadBufferOrThrow(file);
   return {
     ...file,
-    buffer: Buffer.from(sourceBuffer),
+    // Background jobs retain this buffer after the temporary upload file is removed.
+    buffer: sourceBuffer,
   };
 }
 
@@ -691,7 +694,7 @@ function getUploadBufferOrThrow(file: Express.Multer.File): Buffer {
     throw new Error(`Upload buffer is unavailable for ${file.originalname || "upload.bin"}`);
   }
   const loaded = fs.readFileSync(filePath);
-  (file as any).buffer = loaded;
+  // Keep disk-backed request files from retaining every previously processed buffer.
   return loaded;
 }
 
@@ -828,7 +831,16 @@ function releaseUploadSlot() {
 
 function createUploadQueueMiddleware(label: string) {
   return (req: Request, res: any, next: NextFunction) => {
+    const memory = readMemorySnapshot();
+    if (memory.usedBytes >= memory.limitBytes * 0.8) {
+      res.setHeader("Retry-After", "30");
+      return res.status(503).json({ message: "Temporarily busy. Please retry shortly." });
+    }
     const begin = () => {
+      if (req.aborted || res.destroyed || res.writableEnded) {
+        releaseUploadSlot();
+        return;
+      }
       let released = false;
       const cleanup = () => {
         if (released) return;
@@ -854,6 +866,10 @@ function createUploadQueueMiddleware(label: string) {
     }
 
     pendingUploadResolvers.push(begin);
+    res.once("close", () => {
+      const index = pendingUploadResolvers.indexOf(begin);
+      if (index >= 0) pendingUploadResolvers.splice(index, 1);
+    });
   };
 }
 
@@ -13170,7 +13186,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const owner = isMislabeled ? await findTextOwnerJudgment(judgment.belongsTo, judgment.id).catch(() => null) : null;
 
       const sourceText = judgment.fullText || "";
-      const totalWords = sourceText ? sourceText.trim().split(/\s+/).filter(Boolean).length : 0;
+      const totalWords = countWords(sourceText);
 
       // Cache at the edge so repeat crawls don't hit DB.
       res.setHeader("Cache-Control", "no-store");

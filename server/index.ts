@@ -3,7 +3,9 @@ import "./proxy-env";
 import fs from "fs";
 import path from "path";
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes, getUploadQueueStats } from "./routes";
+import { getExtractionQueueStats } from "./extraction-guard";
+import { memoryGuard, startMemoryMonitor } from "./memory-guard";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { dbAvailable, dbUnavailableReason, pool } from "./db";
@@ -15,6 +17,8 @@ const app = express();
 const httpServer = createServer(app);
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+app.use(memoryGuard.middleware);
+startMemoryMonitor(() => ({ uploads: getUploadQueueStats(), extraction: getExtractionQueueStats() }));
 
 declare module "http" {
   interface IncomingMessage {

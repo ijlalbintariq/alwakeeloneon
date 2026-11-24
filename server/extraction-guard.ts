@@ -1,3 +1,4 @@
+import { memorySafeConcurrency } from "./memory-guard";
 import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import { promises as fs } from "node:fs";
@@ -12,8 +13,8 @@ import { ocrPdfWithTesseract, type OcrPdfOptions, type OcrPdfResult } from "./oc
 
 const execFileAsync = promisify(execFile);
 
-const EXTRACTION_QUEUE_CONCURRENCY = Math.max(1, Number(process.env.EXTRACTION_QUEUE_CONCURRENCY || 2));
-const EXTRACTION_QUEUE_MAX_PENDING = Math.max(EXTRACTION_QUEUE_CONCURRENCY, Number(process.env.EXTRACTION_QUEUE_MAX_PENDING || 64));
+const EXTRACTION_QUEUE_CONCURRENCY = memorySafeConcurrency(process.env.EXTRACTION_QUEUE_CONCURRENCY, 1, 1);
+const EXTRACTION_QUEUE_MAX_PENDING = Math.max(EXTRACTION_QUEUE_CONCURRENCY, memorySafeConcurrency(process.env.EXTRACTION_QUEUE_MAX_PENDING, 2, 2));
 const EXTRACTION_TIMEOUT_MS_DEFAULT = Math.max(3000, Number(process.env.EXTRACTION_TIMEOUT_MS || 120000));
 const EXTRACTION_WORKER_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.EXTRACTION_WORKER_ENABLED || "false"));
 
@@ -279,30 +280,26 @@ async function runWorkerTask<T>(kind: WorkerKind, buffer: Buffer, timeoutMs: num
       workerData: { kind, inputPath, options: options || {} },
     });
 
+    let settled = false;
+    const finish = async (error?: Error, payload?: T) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      // Reclaim the worker before releasing its queue slot or starting an inline fallback.
+      await worker.terminate().catch(() => {});
+      if (error) reject(error);
+      else resolve(payload as T);
+    };
     const timer = setTimeout(() => {
-      worker.terminate();
-      reject(new Error(`Worker timed out for ${kind} after ${timeoutMs}ms`));
+      void finish(new Error(`Worker timed out for ${kind} after ${timeoutMs}ms`));
     }, timeoutMs);
 
-    worker.on("message", (parsed: any) => {
-      clearTimeout(timer);
-      if (!parsed.ok) {
-        reject(new Error(parsed.error || `Extraction worker failed for ${kind}`));
-      } else {
-        resolve(parsed.payload as T);
-      }
+    worker.once("message", (parsed: any) => {
+      void finish(parsed.ok ? undefined : new Error(parsed.error || `Extraction worker failed for ${kind}`), parsed.payload);
     });
-
-    worker.on("error", (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-
-    worker.on("exit", (code) => {
-      clearTimeout(timer);
-      if (code !== 0) {
-        reject(new Error(`Worker stopped with exit code ${code}`));
-      }
+    worker.once("error", (error) => { void finish(error); });
+    worker.once("exit", (code) => {
+      if (!settled) void finish(new Error(`Worker exited without a result (code ${code})`));
     });
   }).finally(async () => {
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});

@@ -1,3 +1,5 @@
+import { memorySafeConcurrency } from "./memory-guard";
+import { countWords, firstWords } from "./text-memory";
 import type { PublicJudgmentData } from "../shared/public-judgment-data";
 import { publicJudgmentSeo, judgmentDecisionDate, JudgmentCitationSummary } from "../shared/judgment-public-seo";
 import { CaseLawResearchGuide } from "../shared/case-law-research";
@@ -125,26 +127,35 @@ export function serveStatic(app: Express) {
   const indexHtmlTemplate = fs.readFileSync(indexHtmlPath, "utf8");
 
   // Statute metadata is cached; judgment pages always read current identity.
-  const seoCache = new Map<string, { meta: SeoMeta; preRenderBlock: string; expiresAt: number }>();
+  const seoCache = new Map<string, { meta: SeoMeta; preRenderBlock: string; expiresAt: number; bytes: number }>();
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
   const MAX_SEO_CACHE_SIZE = 500; // Limit cache to ~30MB to prevent Render out-of-memory (OOM) status 137/139
 
+  const MAX_SEO_CACHE_BYTES = 8 * 1024 * 1024;
+  let seoCacheBytes = 0;
+
   function setSeoCache(key: string, data: { meta: SeoMeta; preRenderBlock: string; expiresAt: number }) {
-    if (seoCache.size >= MAX_SEO_CACHE_SIZE) {
-      // Map iteration is in insertion order, so this drops the oldest 100 entries
-      let i = 0;
-      for (const k of seoCache.keys()) {
-        seoCache.delete(k);
-        if (++i >= 100) break;
-      }
+    const bytes = Buffer.byteLength(data.preRenderBlock) + Buffer.byteLength(JSON.stringify(data.meta));
+    const previous = seoCache.get(key);
+    if (previous) {
+      seoCacheBytes -= previous.bytes;
+      seoCache.delete(key);
     }
-    seoCache.set(key, data);
+    if (bytes > MAX_SEO_CACHE_BYTES) return;
+    while (seoCache.size >= MAX_SEO_CACHE_SIZE || seoCacheBytes + bytes > MAX_SEO_CACHE_BYTES) {
+      const oldest = seoCache.keys().next().value;
+      if (oldest === undefined) break;
+      seoCacheBytes -= seoCache.get(oldest)!.bytes;
+      seoCache.delete(oldest);
+    }
+    seoCache.set(key, { ...data, bytes });
+    seoCacheBytes += bytes;
   }
 
   // Returns { meta, preRenderBlock } tuple — null when judgment not found.
   // Concurrency limiter for SEO DB lookups — prevents crawlers from exhausting the pool
   let seoActiveQueries = 0;
-  const SEO_MAX_CONCURRENT = 50;
+  const SEO_MAX_CONCURRENT = memorySafeConcurrency(process.env.SEO_MAX_CONCURRENT, 4, 4);
   const SEO_QUERY_TIMEOUT_MS = 8_000;
 
   async function getJudgmentSeoData(id: string): Promise<{ meta: SeoMeta; preRenderBlock: string } | { canonicalId: string } | undefined> {
@@ -236,8 +247,8 @@ export function serveStatic(app: Express) {
           petitioner: petitioner || null, respondent: respondent || null,
           bench: row.bench || null, decisionDate: decisionDateStr || null,
           headnotes: null, previewText: fullTextContent,
-          previewWordCount: fullTextContent.trim().split(/\s+/).filter(Boolean).length,
-          totalWordCount: rawFullText.trim().split(/\s+/).filter(Boolean).length,
+          previewWordCount: countWords(fullTextContent),
+          totalWordCount: countWords(rawFullText),
           isPreview: isTruncated, isTruncated, citations: { made: [], received: [] },
           textIntegrity: "own", pdfUrl: safe.pdfUrl || null,
         } : null;
@@ -651,8 +662,7 @@ export function serveStatic(app: Express) {
         const title = row.title ? String(row.title).trim() : "Pakistani Statute";
         const category = row.category ? String(row.category).trim() : "general";
         const rawContent = row.content ? String(row.content).trim() : "";
-        const words = rawContent.match(/\S+\s*/g) || [];
-        const contentExcerpt = words.slice(0, 1000).join("") + (words.length > 1000 ? "…" : "");
+        const contentExcerpt = firstWords(rawContent, 1000);
 
         const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 

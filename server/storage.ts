@@ -3011,9 +3011,10 @@ export class DatabaseStorage implements IStorage {
       ),
     );
 
-    const linkedJudgments: Array<{ id: string; citation: string; title: string; court: string; textStatus: string | null;
-      textTrueCitation: string | null; opening: string; isActive: boolean }> = linkedIds.length > 0
-      ? await db.select({
+    // Verify bounded batches and retain only display metadata, not each 16KB header.
+    const linkedMap = new Map<string, { id: string; citation: string; title: string; court: string }>();
+    for (let offset = 0; offset < linkedIds.length; offset += 250) {
+      const linkedJudgments = await db.select({
         id: judgments.id,
         citation: judgments.citationString,
         title: judgments.title,
@@ -3025,11 +3026,14 @@ export class DatabaseStorage implements IStorage {
       })
         .from(judgments)
         .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-        .where(inArray(judgments.id, linkedIds))
-      : [];
-    const linkedMap = new Map<string, typeof linkedJudgments[number]>(
-      linkedJudgments.filter(j => j.isActive && assessJudgmentIdentity(j).textIntegrity === "own").map(j => [j.id, j] as const),
-    );
+        .where(inArray(judgments.id, linkedIds.slice(offset, offset + 250)));
+      for (const judgment of linkedJudgments) {
+        if (judgment.isActive && assessJudgmentIdentity(judgment).textIntegrity === "own") {
+          const { id, citation, title, court } = judgment;
+          linkedMap.set(id, { id, citation, title, court });
+        }
+      }
+    }
 
     const made = madeBase.map((item: typeof madeBase[number]) => {
       const candidate = item.linkedJudgmentId ? linkedMap.get(item.linkedJudgmentId) : undefined;
