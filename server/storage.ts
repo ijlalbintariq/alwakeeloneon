@@ -1,3 +1,4 @@
+import type { QualityAssessment } from "../shared/quality-assessment";
 import { db, pool, dbAvailable } from "./db";
 import { assessJudgmentIdentity, judgmentPdfUrl, citationIdentifiesJudgment, citationCanLinkDirectly, citationSection, resolveJudgment, splitCitations } from "./citation-verify";
 import { clearSitemapCache } from "./sitemap";
@@ -3436,24 +3437,27 @@ export class DatabaseStorage implements IStorage {
     outputLength: number;
     qualityScore: number;
     qualityFlags: string[];
+    qualityAssessment?: QualityAssessment;
     userQuery?: string;
     responseTimeMs?: number;
-  }): Promise<void> {
+  }): Promise<number | undefined> {
     try {
-      const pgFlags = `{${entry.qualityFlags.map(f => `"${f.replace(/"/g, '\\"')}"`).join(',')}}`;
-      await db.execute(sql`
-        INSERT INTO ai_output_log (user_id, feature, model, input_snippet, output_snippet, output_length, quality_score, quality_flags, user_query, response_time_ms)
-        VALUES (${entry.userId}, ${entry.feature}, ${entry.model}, ${entry.inputSnippet}, ${entry.outputSnippet}, ${entry.outputLength}, ${entry.qualityScore}, ${pgFlags}::text[], ${entry.userQuery || ''}, ${entry.responseTimeMs || 0})
-      `);
+      const [row] = await db.insert(aiOutputLog).values({ ...entry, userQuery: entry.userQuery || "", responseTimeMs: entry.responseTimeMs || 0 }).returning({ id: aiOutputLog.id });
+      return row?.id;
     } catch (err) {
       console.error("[QualityLog] Error logging output quality:", err);
     }
+  }
+
+  async updateOutputQuality(id: number, assessment: QualityAssessment): Promise<void> {
+    await db.update(aiOutputLog).set({ qualityScore: assessment.score ?? 0, qualityFlags: assessment.flags, qualityAssessment: assessment }).where(eq(aiOutputLog.id, id));
   }
 
   async getOutputQualityLogs(limit: number, offset: number, filters?: {
     feature?: string;
     minScore?: number;
     maxScore?: number;
+    assessment?: "unassessed" | "flagged";
     userId?: string;
   }): Promise<{ items: any[]; total: number }> {
     try {
@@ -3462,7 +3466,10 @@ export class DatabaseStorage implements IStorage {
 
       const conditions: any[] = [];
       if (filters?.feature) conditions.push(eq(aiOutputLog.feature, filters.feature));
+      if (filters?.assessment === "unassessed") conditions.push(sql`(${aiOutputLog.qualityAssessment}->>'status' IS DISTINCT FROM 'reviewed' OR ${aiOutputLog.qualityAssessment}->>'version' IS DISTINCT FROM '2')`);
+      if (filters?.assessment === "flagged") conditions.push(sql`${aiOutputLog.qualityAssessment}->>'version' = '2' AND ${aiOutputLog.qualityFlags} && ARRAY['off_topic','incomplete_answer','case_law_not_relevant_or_missing','unsupported_claims','low_review_confidence','review_unavailable']::text[]`);
       if (filters?.userId) conditions.push(eq(aiOutputLog.userId, filters.userId));
+      if (filters?.minScore !== undefined || filters?.maxScore !== undefined) conditions.push(sql`${aiOutputLog.qualityAssessment}->>'status' = 'reviewed' AND ${aiOutputLog.qualityAssessment}->>'version' = '2'`);
       if (filters?.minScore !== undefined) conditions.push(gte(aiOutputLog.qualityScore, filters.minScore));
       if (filters?.maxScore !== undefined) conditions.push(lte(aiOutputLog.qualityScore, filters.maxScore));
 
@@ -3481,6 +3488,7 @@ export class DatabaseStorage implements IStorage {
         outputLength: aiOutputLog.outputLength,
         qualityScore: aiOutputLog.qualityScore,
         qualityFlags: aiOutputLog.qualityFlags,
+        qualityAssessment: aiOutputLog.qualityAssessment,
         createdAt: aiOutputLog.createdAt,
         userQuery: sql<string>`ai_output_log.user_query`,
         responseTimeMs: sql<number>`ai_output_log.response_time_ms`,
@@ -3504,22 +3512,30 @@ export class DatabaseStorage implements IStorage {
 
   async getOutputQualityStats(): Promise<{
     totalLogs: number;
+    reviewedLogs: number;
+    unassessedLogs: number;
+    flaggedLogs: number;
     avgScore: number;
     scoreDistribution: Record<number, number>;
     byFeature: Array<{ feature: string; count: number; avgScore: number }>;
     flagCounts: Record<string, number>;
   }> {
-    const empty = { totalLogs: 0, avgScore: 0, scoreDistribution: {}, byFeature: [], flagCounts: {} };
+    const empty = { totalLogs: 0, reviewedLogs: 0, unassessedLogs: 0, flaggedLogs: 0, avgScore: 0, scoreDistribution: {}, byFeature: [], flagCounts: {} };
     try {
-      const [totalRow] = await db.select({ total: count(), avg: sql<number>`AVG(${aiOutputLog.qualityScore})` }).from(aiOutputLog);
+      const reviewed = sql`${aiOutputLog.qualityAssessment}->>'status' = 'reviewed' AND ${aiOutputLog.qualityAssessment}->>'version' = '2' AND ${aiOutputLog.qualityScore} BETWEEN 1 AND 5`;
+      const flagged = sql`${aiOutputLog.qualityAssessment}->>'version' = '2' AND ${aiOutputLog.qualityFlags} && ARRAY['off_topic','incomplete_answer','case_law_not_relevant_or_missing','unsupported_claims','low_review_confidence','review_unavailable']::text[]`;
+      const [totalRow] = await db.select({ total: count(), flagged: sql<number>`count(*) FILTER (WHERE ${flagged})`, reviewed: sql<number>`count(*) FILTER (WHERE ${reviewed})`, avg: sql<number>`AVG(${aiOutputLog.qualityScore}) FILTER (WHERE ${reviewed})` }).from(aiOutputLog);
       const totalLogs = Number(totalRow?.total || 0);
+      const reviewedLogs = Number(totalRow?.reviewed || 0);
+      const unassessedLogs = totalLogs - reviewedLogs;
+      const flaggedLogs = Number(totalRow?.flagged || 0);
       const avgScore = Number(totalRow?.avg || 0);
 
       // Score distribution
       const distRows = await db.select({
         score: aiOutputLog.qualityScore,
         cnt: count(),
-      }).from(aiOutputLog).groupBy(aiOutputLog.qualityScore);
+      }).from(aiOutputLog).where(reviewed).groupBy(aiOutputLog.qualityScore);
       const scoreDistribution: Record<number, number> = {};
       for (const r of distRows) {
         scoreDistribution[r.score] = Number(r.cnt);
@@ -3530,7 +3546,7 @@ export class DatabaseStorage implements IStorage {
         feature: aiOutputLog.feature,
         cnt: count(),
         avg: sql<number>`AVG(${aiOutputLog.qualityScore})`,
-      }).from(aiOutputLog).groupBy(aiOutputLog.feature);
+      }).from(aiOutputLog).where(reviewed).groupBy(aiOutputLog.feature);
       const byFeature = featureRows.map((f: any) => ({
         feature: f.feature,
         count: Number(f.cnt),
@@ -3540,6 +3556,7 @@ export class DatabaseStorage implements IStorage {
       // Flag counts — aggregate from recent 500 entries
       const recentFlags = await db.select({ qualityFlags: aiOutputLog.qualityFlags })
         .from(aiOutputLog)
+        .where(sql`${aiOutputLog.qualityAssessment}->>'version' = '2'`)
         .orderBy(desc(aiOutputLog.createdAt))
         .limit(500);
       const flagCounts: Record<string, number> = {};
@@ -3549,7 +3566,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      return { totalLogs, avgScore: Number(avgScore.toFixed(2)), scoreDistribution, byFeature, flagCounts };
+      return { totalLogs, reviewedLogs, unassessedLogs, flaggedLogs, avgScore: Number(avgScore.toFixed(2)), scoreDistribution, byFeature, flagCounts };
     } catch (err) {
       console.error("[QualityStats] Table may not exist yet:", err);
       return empty;
@@ -5381,6 +5398,7 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_payment_records_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_payment_records_user_id ON payment_records (user_id)` },
     { label: "idx_payment_records_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_payment_records_status ON payment_records (status)` },
     // ── AI Output Quality enhancements ─────────────────────────────────
+    { label: "alter_ai_output_log_quality_assessment", stmt: sql`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS quality_assessment jsonb` },
     { label: "alter_ai_output_log_user_query", stmt: sql`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS user_query text DEFAULT ''` },
     { label: "alter_ai_output_log_response_time_ms", stmt: sql`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS response_time_ms integer DEFAULT 0` },
     // ── Precomputed tsvector columns for keyword search optimization ────

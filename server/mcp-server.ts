@@ -7,7 +7,7 @@ import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
 import { understandLegalQuery } from "./pipeline/semantic-intent";
-import { checkUsageLimit, createSignedUploadSession, logUsageCost, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
+import { checkUsageLimit, createSignedUploadSession, logUsageCost, logOutputQuality, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
 import { PAKISTANI_JUDICIAL_FORMAT_GUIDANCE, CONTRACT_LAW_ADDON } from "./legal-drafting-template";
 import { chatWithDeepSeek } from "./deepseek-ai";
 import { isOpenRouterAvailable, chatWithOpenRouter } from "./openrouter";
@@ -74,18 +74,7 @@ async function logToolUsage(userId: string, feature: string, query: string, outp
 
     // 2. Always log to AI Output Log for visibility as requested by admin
     const logModel = feature === "legal-research" ? "mcp-rag-context" : (feature === "chat" ? "deepseek-chat" : `mcp-tool:${feature}`);
-    await storage.logOutputQuality({
-      userId,
-      feature: "chat", // Log as chat so it appears uniformly in the dashboard
-      model: logModel,
-      inputSnippet: query.slice(0, 500),
-      outputSnippet: (outputText || `[Tool Executed Successfully: ${feature}]`).slice(0, 1500),
-      outputLength: (outputText || "").length,
-      qualityScore: 5,
-      qualityFlags: [],
-      userQuery: query,
-      responseTimeMs: 0
-    }).catch(() => {});
+    void logOutputQuality(userId, feature, logModel, query, outputText, { userQuery: query, operational: !outputText.trim() });
 
   } catch (err) {
     console.error(`[MCP] Failed to log usage metrics for ${feature}:`, err);
@@ -217,7 +206,6 @@ export function registerAllTools(server: McpServer) {
     });
     const latency = Date.now() - t0;
 
-    await logToolUsage(userId, "search-judgments", query);
 
     // -------------------------------------------------------------------
     // Resolve result rows to judgment UUIDs.
@@ -384,6 +372,7 @@ export function registerAllTools(server: McpServer) {
       instruction: "Verified means internal identity consistency only; the original source has not been authenticated. Independently verify every citation and proposition. To read available text, call get_judgment using its id.",
       judgments: keptRows,
     };
+    await logToolUsage(userId, "search-judgments", query, JSON.stringify(payload));
 
     return {
       content: [
@@ -439,7 +428,6 @@ export function registerAllTools(server: McpServer) {
     const latency = Date.now() - t0;
 
     // Track usage metrics
-    await logToolUsage(userId, "search-statutes", query);
 
     const payload = {
       version: VERSION,
@@ -455,6 +443,8 @@ export function registerAllTools(server: McpServer) {
         statuteDocumentTitle: s.statuteDocumentTitle,
       })),
     };
+
+    await logToolUsage(userId, "search-statutes", query, JSON.stringify(payload));
 
     return {
       content: [

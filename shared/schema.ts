@@ -1,3 +1,4 @@
+import type { QualityAssessment } from "./quality-assessment";
 
 import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, index, jsonb, customType, doublePrecision, check, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -315,7 +316,10 @@ export const aiOutputLog = pgTable("ai_output_log", {
   inputSnippet: text("input_snippet").notNull(),
   outputSnippet: text("output_snippet").notNull(),
   outputLength: integer("output_length").notNull().default(0),
-  qualityScore: integer("quality_score").notNull().default(4),
+  qualityScore: integer("quality_score").notNull().default(0),
+  qualityAssessment: jsonb("quality_assessment").$type<QualityAssessment>(),
+  userQuery: text("user_query").notNull().default(""),
+  responseTimeMs: integer("response_time_ms").notNull().default(0),
   qualityFlags: text("quality_flags").array().notNull().default([]),
   createdAt: timestamp("created_at").defaultNow(),
 });

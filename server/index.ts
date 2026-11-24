@@ -304,7 +304,7 @@ app.use((req, res, next) => {
             input_snippet TEXT NOT NULL,
             output_snippet TEXT NOT NULL,
             output_length INTEGER NOT NULL DEFAULT 0,
-            quality_score INTEGER NOT NULL DEFAULT 4,
+            quality_score INTEGER NOT NULL DEFAULT 0,
             quality_flags TEXT[] NOT NULL DEFAULT '{}',
             user_query TEXT NOT NULL DEFAULT '',
             response_time_ms INTEGER NOT NULL DEFAULT 0,
@@ -314,6 +314,8 @@ app.use((req, res, next) => {
         // Ensure columns exist for tables created before user_query/response_time_ms were added
         await pool.query(`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS user_query TEXT NOT NULL DEFAULT ''`).catch(() => {});
         await pool.query(`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS response_time_ms INTEGER NOT NULL DEFAULT 0`).catch(() => {});
+        await pool.query(`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS quality_assessment jsonb`);
+        await pool.query(`ALTER TABLE ai_output_log ALTER COLUMN quality_score SET DEFAULT 0`);
         console.log("[Startup] ai_output_log table ready.");
       } catch (err: any) {
         console.warn("[Startup] Could not ensure ai_output_log table:", err?.message);

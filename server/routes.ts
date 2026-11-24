@@ -1,3 +1,5 @@
+import { reviewOutputQuality } from "./output-quality";
+import type { QualityAssessment } from "../shared/quality-assessment";
 import { memorySafeConcurrency, readMemorySnapshot } from "./memory-guard";
 import { countWords } from "./text-memory";
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
@@ -7833,7 +7835,7 @@ export async function checkUsageLimit(userId: string, feature: string, res: any)
   }
 }
 
-export async function logUsageCost(userId: string, feature: string, model: string, inputText: string, outputText: string, extra?: { userQuery?: string; responseTimeMs?: number; skipQualityLog?: boolean }) {
+export async function logUsageCost(userId: string, feature: string, model: string, inputText: string, outputText: string, extra?: { userQuery?: string; responseTimeMs?: number; skipQualityLog?: boolean; sourceContext?: string }) {
   try {
     const inputTokens = estimateTokens(inputText);
     const outputTokens = estimateTokens(outputText);
@@ -7848,148 +7850,20 @@ export async function logUsageCost(userId: string, feature: string, model: strin
   }
 }
 
-// ── AI Output Quality Scoring Engine ──────────────────────────────────
-function scoreOutputQuality(feature: string, inputText: string, outputText: string): { score: number; flags: string[] } {
-  const flags: string[] = [];
-  let score = 4; // base score
-
-  const outLen = (outputText || "").length;
-  const isDraft = feature === "draft" || feature === "contract" || feature === "contract-drafting" || feature === "brief" || feature === "summarize";
-  const isChat = feature === "chat" || feature === "chat-apex";
-
-  let isJson = false;
+// Quality review runs after generation and cannot alter the user's answer or action quota.
+export async function logOutputQuality(userId: string, feature: string, model: string, inputText: string, outputText: string, extra?: { userQuery?: string; responseTimeMs?: number; sourceContext?: string; operational?: boolean }) {
   try {
-    const trimmed = (outputText || "").trim();
-    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
-      JSON.parse(trimmed);
-      isJson = true;
-    }
-  } catch {}
-
-  // 1. Too short
-  if (outLen < 30) {
-    flags.push("too_short");
-    score -= 2;
-  } else if (isDraft && outLen < 200) {
-    flags.push("possibly_truncated");
-    score -= 1;
-  } else if (isChat && outLen < 50) {
-    flags.push("too_short");
-    score -= 1;
-  }
-
-  // 2. Error indicators
-  const errorPatterns = [
-    /i\s+(apologize|am unable)\s+to\s+(generate|complete|summarize|answer|process)/i,
-    /error\s+(occurred|generating|processing)/i,
-    /failed\s+to\s+(generate|process|complete)/i,
-    /something\s+went\s+wrong/i,
-    /please\s+try\s+again/i,
-  ];
-  for (const pat of errorPatterns) {
-    if (pat.test(outputText)) {
-      flags.push("error_detected");
-      score -= 2;
-      break;
-    }
-  }
-
-  // 3. Legal citations presence (for chat & draft features)
-  if ((isChat || isDraft) && !isJson) {
-    const JOURNALS = "PLD|SCMR|CLC|MLD|PCrLJ|PLC|YLR|PLJ|NLR|PCRLJ|PTD|PSC|KLR|BLJ";
-    const hasCitations =
-      // Journal-first (standard Pakistani): PLD 2024 SC 123, SCMR 2023 1450
-      new RegExp(`\\b(${JOURNALS})\\s+\\d{4}\\b`, "i").test(outputText)
-      // Year-first (alternate): 2024 PLD, 2023 SCMR 1450
-      || new RegExp(`\\b\\d{4}\\s+(${JOURNALS})\\b`, "i").test(outputText)
-      // Section/S. references: Section 302, S. 9, s.54
-      || /\b(section|s\.)\s*\d+/i.test(outputText)
-      // Article/Clause references: Article 199, clause 5
-      || /\b(Article|clause)\s+\d+/i.test(outputText)
-      // Common statute abbreviations: PPC, CPC, CrPC, TPA, QSO, MFLO, SRA
-      || /\b(PPC|CPC|CrPC|Cr\.P\.C|TPA|QSO|MFLO|SRA|FCA|NIA)\b/.test(outputText)
-      // Named statutes: "Contract Act", "Penal Code", "Transfer of Property Act" etc.
-      || /\b(Penal Code|Contract Act|Transfer of Property|Specific Relief|Limitation Act|Evidence Act|Criminal Procedure|Civil Procedure|Family Courts? Act|Succession Act|Registration Act|Dissolution of Muslim Marriages|Muslim Family Laws|Guardians and Wards|Constitution of Pakistan)\b/i.test(outputText)
-      // Order/Rule references (CPC): Order IX Rule 13, O.XXXVII
-      || /\b(Order|O\.)\s*[IVXLCDM]+/i.test(outputText);
-    if (!hasCitations && outLen > 200) {
-      flags.push("no_citations");
-      score -= 1;
-    }
-    if (hasCitations) {
-      flags.push("has_citations");
-      score += 1;
-    }
-  }
-
-  // 4. Formatting quality (for drafts)
-  if (isDraft && outLen > 300 && !isJson) {
-    const hasMarkdownHeaders = /^#{1,3}\s/m.test(outputText) || /\*\*[A-Z]/.test(outputText);
-    const hasLists = /^[\-\*\d]\./m.test(outputText) || /\n\d+\.\s/m.test(outputText);
-    // Court-ready drafts don't use markdown — check for legal document structure instead
-    const hasCourtHeadings = /\b(PRAYER|VERIFICATION|BRIEF FACTS|GROUNDS|INTERIM RELIEF|ANNEXURES|RESPECTFULLY SHEWETH|IN THE .*(COURT|TRIBUNAL))\b/i.test(outputText);
-    const hasNumberedParas = /\b(That the|That\s)/.test(outputText) || /^\(?\d+[.)]/m.test(outputText);
-    const hasStructure = hasMarkdownHeaders || hasLists || hasCourtHeadings || hasNumberedParas;
-    if (!hasStructure) {
-      flags.push("poor_formatting");
-      score -= 1;
-    }
-    if ((hasMarkdownHeaders || hasCourtHeadings) && (hasLists || hasNumberedParas)) {
-      flags.push("well_structured");
-    }
-  }
-
-  // 5. Malformed output
-  if (/```json[\s\S]*?```/.test(outputText) && !/\{/.test(outputText.replace(/```json[\s\S]*?```/g, ""))) {
-    // Entire response is just a code block
-    flags.push("raw_code_block");
-    score -= 1;
-  }
-
-  // 6. Good length bonus
-  if (isDraft && outLen > 1500) {
-    flags.push("comprehensive");
-    score += 1;
-  }
-
-  return { score: Math.max(1, Math.min(5, score)), flags };
-}
-
-async function logOutputQuality(userId: string, feature: string, model: string, inputText: string, outputText: string, extra?: { userQuery?: string; responseTimeMs?: number }) {
-  try {
-    // Extract user's actual question from input (skip system prompt)
-    // The inputText is typically "systemPrompt + userInput" — extract the tail
-    // but prefer splitting on known prompt boundaries for better snippets
-    let userInput = inputText;
-    const promptBoundaries = ["\nUser legal query:", "\nQuery:", "\nInstruction:", "\nDraft Title:", "\nDraft Content:"];
-    for (const boundary of promptBoundaries) {
-      const idx = inputText.lastIndexOf(boundary);
-      if (idx > 0) {
-        userInput = inputText.slice(idx).slice(0, 500);
-        break;
-      }
-    }
-    if (userInput === inputText) {
-      userInput = inputText.length > 500 ? inputText.slice(-500) : inputText;
-    }
-    const outputSnippet = (outputText || "").slice(0, 3000);
-    const { score, flags } = scoreOutputQuality(feature, inputText, outputText);
-
-    await storage.logOutputQuality({
-      userId,
-      feature,
-      model,
-      inputSnippet: userInput.slice(0, 500),
-      outputSnippet,
-      outputLength: (outputText || "").length,
-      qualityScore: score,
-      qualityFlags: flags,
-      userQuery: extra?.userQuery?.slice(0, 2000) || "",
-      responseTimeMs: extra?.responseTimeMs || 0,
-    });
+    const query = extra?.userQuery?.trim() || "";
+    const assessment: QualityAssessment = { version: 2, status: extra?.operational ? "not_applicable" : "pending", score: null,
+      reason: extra?.operational ? "Tool execution was logged; no generated answer was supplied for relevance review." : "Awaiting independent relevance and source-support review.", flags: [] };
+    const id = await storage.logOutputQuality({ userId, feature, model, inputSnippet: query.slice(0, 500), outputSnippet: (outputText || "").slice(0, 3000),
+      outputLength: (outputText || "").length, qualityScore: 0, qualityFlags: [], qualityAssessment: assessment,
+      userQuery: query.slice(0, 2000), responseTimeMs: extra?.responseTimeMs || 0 });
+    if (id === undefined || extra?.operational) return;
+    const review = await reviewOutputQuality({ feature, query, answer: outputText, sourceContext: extra?.sourceContext, generationContext: inputText });
+    await storage.updateOutputQuality(id, review);
   } catch (err) {
-    // Never crash the main flow
-    console.error("[QualityLog] Error:", err);
+    console.error("[QualityLog] Review could not be saved:", err);
   }
 }
 
@@ -18725,6 +18599,7 @@ The user has attached the following documents for your reference. Analyze them c
           const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
           await logUsageCost(userId, usageFeatureKey, usedModel, inputText, fullContent, {
             userQuery: lastUserMessage?.content || "",
+            sourceContext: [knowledgeContext, toolSearchResult?.contextString || ""].join("\n"),
             responseTimeMs: Date.now() - aiStartMs,
           });
           try {
@@ -18868,6 +18743,7 @@ The user has attached the following documents for your reference. Analyze them c
       try {
         await logUsageCost(userId, usageFeatureKey, usedModel, inputText, completion, {
           userQuery: lastUserMessage?.content || "",
+          sourceContext: [knowledgeContext, toolSearchResult?.contextString || ""].join("\n"),
           responseTimeMs: Date.now() - aiStartMs,
         });
       } catch (usageErr) {
@@ -22582,7 +22458,7 @@ ${(documentContent || "").slice(0, 6000)}
       aiResponse = aiResponse.replace(/\b(Instructions|Your rules|DOCUMENT):\s*\n(-\s+.+\n?)+/gi, "").trimEnd();
       const inputText = systemPrompt + messages.map(m => m.content).join("\n");
       const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
-      await logUsageCost(userId, "chat", result.model, inputText, aiResponse, { userQuery: lastUserMsg?.content || "", responseTimeMs: Date.now() - _t0 });
+      await logUsageCost(userId, "chat", result.model, inputText, aiResponse, { userQuery: lastUserMsg?.content || "", sourceContext: documentContent || "", responseTimeMs: Date.now() - _t0 });
 
       res.json({ content: aiResponse });
     } catch (err: any) {
@@ -22799,6 +22675,7 @@ ${(documentContent || "").slice(0, 6000)}
       const inputText = messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat-apex", actualModel, inputText, safeResponseContent, {
         userQuery: message,
+        sourceContext: [knowledgeContext, toolSearchResult?.contextString || ""].join("\n"),
         responseTimeMs: Date.now() - apexStartedAt,
       });
 
@@ -23025,6 +22902,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const inputText = messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat-apex", agentResult.model, inputText, safeContent, {
         userQuery: message,
+        sourceContext: [knowledgeContext, agentToolSearchResult?.contextString || ""].join("\n"),
         responseTimeMs: Date.now() - startedAt,
       });
 
@@ -23834,6 +23712,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       if (req.query.userId && typeof req.query.userId === "string") filters.userId = req.query.userId;
       if (req.query.minScore) filters.minScore = Number(req.query.minScore);
       if (req.query.maxScore) filters.maxScore = Number(req.query.maxScore);
+      if (req.query.assessment === "unassessed" || req.query.assessment === "flagged") filters.assessment = req.query.assessment;
       const result = await storage.getOutputQualityLogs(limit, offset, filters);
       res.json(result);
     } catch (err) {
@@ -23855,8 +23734,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         inputSnippet: String(inputSnippet || "").slice(0, 500),
         outputSnippet: `[CLIENT/DELIVERY ERROR] ${safeError}`,
         outputLength: 0,
-        qualityScore: 1,
+        qualityScore: 0,
         qualityFlags: ["Client Error", safeError],
+        qualityAssessment: { version: 2, status: "not_applicable", score: null, reason: "Client-reported delivery error; no generated answer was reviewed.", flags: ["client_error"] },
         userQuery: String(inputSnippet || "").slice(0, 2000),
         responseTimeMs: 0,
       });
@@ -24409,7 +24289,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       if (!allowed) return;
 
       const rawContext = await gatherKnowledgeContextV2(query, userId, undefined, { module: req.body.module });
-      await logUsageCost(userId, "chat", "mcp-rag-context", query, rawContext, { userQuery: query, skipQualityLog: true });
+      await logUsageCost(userId, "chat", "mcp-rag-context", query, rawContext, { userQuery: query });
 
       // The RAG context carries citations as plain prose, and some of them come
       // from an LLM-extracted index, so a citation in here is not evidence that

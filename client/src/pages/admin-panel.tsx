@@ -1,3 +1,5 @@
+import { qualityScoreLabel, type QualityAssessment } from "@shared/quality-assessment";
+import { QualityAssessmentDetails } from "@/components/admin/quality-assessment";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1670,6 +1672,9 @@ function UserActivityPanel({ userId }: { userId: string }) {
 
 type QualityStats = {
   totalLogs: number;
+  reviewedLogs: number;
+  unassessedLogs: number;
+  flaggedLogs: number;
   avgScore: number;
   scoreDistribution: Record<number, number>;
   byFeature: Array<{ feature: string; count: number; avgScore: number }>;
@@ -1685,6 +1690,7 @@ type QualityLogItem = {
   outputSnippet: string;
   outputLength: number;
   qualityScore: number;
+  qualityAssessment?: QualityAssessment | null;
   qualityFlags: string[];
   createdAt: string;
   userEmail: string | null;
@@ -1710,14 +1716,23 @@ const SCORE_LABELS: Record<number, string> = {
 };
 
 const FLAG_LABELS: Record<string, { label: string; color: string }> = {
+  off_topic: { label: "Off-topic answer", color: "text-orange-600 dark:text-orange-400" },
+  incomplete_answer: { label: "Incomplete answer", color: "text-orange-600 dark:text-orange-400" },
+  case_law_not_relevant_or_missing: { label: "Missing or irrelevant cases", color: "text-orange-600 dark:text-orange-400" },
+  unsupported_claims: { label: "Unsupported claims", color: "text-orange-600 dark:text-orange-400" },
+  low_review_confidence: { label: "Low review confidence", color: "text-orange-600 dark:text-orange-400" },
+  review_unavailable: { label: "Review unavailable", color: "text-orange-600 dark:text-orange-400" },
+  source_support_unassessed: { label: "Source support unassessed", color: "text-orange-600 dark:text-orange-400" },
+  citations_not_in_supplied_sources: { label: "Citation absent from supplied sources", color: "text-orange-600 dark:text-orange-400" },
+  partial_review: { label: "Partial review", color: "text-orange-600 dark:text-orange-400" },
   too_short: { label: "Too Short", color: "text-red-400" },
   possibly_truncated: { label: "Truncated", color: "text-orange-400" },
   error_detected: { label: "Error", color: "text-red-400" },
   no_citations: { label: "No Citations", color: "text-yellow-400" },
-  has_citations: { label: "Citations ✓", color: "text-emerald-400" },
+  has_citations: { label: "Citation text present", color: "text-emerald-400" },
   poor_formatting: { label: "Poor Format", color: "text-orange-400" },
   well_structured: { label: "Well Structured", color: "text-emerald-400" },
-  comprehensive: { label: "Comprehensive", color: "text-blue-400" },
+  comprehensive: { label: "Long output (legacy)", color: "text-blue-400" },
   raw_code_block: { label: "Raw Code", color: "text-orange-400" },
   malformed_output: { label: "Malformed", color: "text-red-400" },
 };
@@ -1732,7 +1747,7 @@ function OutputQualitySection() {
     queryKey: ["/api/admin/output-quality/stats"],
     queryFn: async () => {
       const res = await fetch("/api/admin/output-quality/stats", { credentials: "include" });
-      if (!res.ok) return { totalLogs: 0, avgScore: 0, scoreDistribution: {}, byFeature: [], flagCounts: {} };
+      if (!res.ok) return { totalLogs: 0, reviewedLogs: 0, unassessedLogs: 0, flaggedLogs: 0, avgScore: 0, scoreDistribution: {}, byFeature: [], flagCounts: {} };
       return res.json();
     },
     refetchInterval: 30000,
@@ -1742,7 +1757,9 @@ function OutputQualitySection() {
   queryParams.set("limit", "20");
   queryParams.set("offset", String(page * 20));
   if (featureFilter) queryParams.set("feature", featureFilter);
-  if (scoreFilter === "poor") { queryParams.set("maxScore", "2"); }
+  if (scoreFilter === "unassessed") { queryParams.set("assessment", "unassessed"); }
+  else if (scoreFilter === "flagged") { queryParams.set("assessment", "flagged"); }
+  else if (scoreFilter === "poor") { queryParams.set("maxScore", "2"); }
   else if (scoreFilter === "fair") { queryParams.set("minScore", "3"); queryParams.set("maxScore", "3"); }
   else if (scoreFilter === "good") { queryParams.set("minScore", "4"); }
   else if (scoreFilter === "excellent") { queryParams.set("minScore", "5"); }
@@ -1754,10 +1771,12 @@ function OutputQualitySection() {
       if (!res.ok) return { items: [], total: 0 };
       return res.json();
     },
+    refetchInterval: 30000,
   });
 
   return (
     <div className="space-y-6">
+      <p className="text-xs text-muted-foreground">Only completed AI reviews contribute to quality scores and rates. Legacy, pending, unavailable and tool-only entries are excluded. {stats?.reviewedLogs ?? 0} reviewed · {stats?.unassessedLogs ?? 0} unassessed · {stats?.flaggedLogs ?? 0} flagged for attention (including uncertain reviews).</p>
       {/* Overview Cards */}
       {statsLoading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="animate-spin text-primary" size={24} /></div>
@@ -1774,10 +1793,10 @@ function OutputQualitySection() {
               <CardContent className="p-6">
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Avg Score</span>
                 <p className={`text-2xl font-bold ${stats.avgScore >= 4 ? "text-emerald-400" : stats.avgScore >= 3 ? "text-yellow-400" : "text-red-400"}`}>
-                  {stats.avgScore}/5
+                  {stats.reviewedLogs > 0 ? `${stats.avgScore}/5` : "Unassessed"}
                 </p>
                 <span className="text-[9px] text-muted-foreground mt-1 block">
-                  {stats.avgScore >= 4.5 ? "Excellent" : stats.avgScore >= 4 ? "Good" : stats.avgScore >= 3 ? "Needs Improvement" : "Critical"}
+                  {stats.reviewedLogs === 0 ? "No completed reviews" : stats.avgScore >= 4.5 ? "Excellent" : stats.avgScore >= 4 ? "Good" : stats.avgScore >= 3 ? "Needs Improvement" : "Critical"}
                 </span>
               </CardContent>
             </Card>
@@ -1785,7 +1804,7 @@ function OutputQualitySection() {
               <CardContent className="p-6">
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Good+ Rate</span>
                 <p className="text-2xl font-bold text-blue-400">
-                  {stats.totalLogs > 0 ? Math.round((((stats.scoreDistribution || {})[4] || 0) + ((stats.scoreDistribution || {})[5] || 0)) / stats.totalLogs * 100) : 0}%
+                  {stats.reviewedLogs > 0 ? Math.round((((stats.scoreDistribution || {})[4] || 0) + ((stats.scoreDistribution || {})[5] || 0)) / stats.reviewedLogs * 100) : 0}%
                 </p>
                 <span className="text-[9px] text-muted-foreground mt-1 block">
                   {(((stats.scoreDistribution || {})[4] || 0) + ((stats.scoreDistribution || {})[5] || 0)).toLocaleString()} outputs scored 4-5
@@ -1796,7 +1815,7 @@ function OutputQualitySection() {
               <CardContent className="p-6">
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Issues Rate</span>
                 <p className="text-2xl font-bold text-red-400">
-                  {stats.totalLogs > 0 ? Math.round((((stats.scoreDistribution || {})[1] || 0) + ((stats.scoreDistribution || {})[2] || 0)) / stats.totalLogs * 100) : 0}%
+                  {stats.reviewedLogs > 0 ? Math.round((((stats.scoreDistribution || {})[1] || 0) + ((stats.scoreDistribution || {})[2] || 0)) / stats.reviewedLogs * 100) : 0}%
                 </p>
                 <span className="text-[9px] text-muted-foreground mt-1 block">
                   {(((stats.scoreDistribution || {})[1] || 0) + ((stats.scoreDistribution || {})[2] || 0)).toLocaleString()} outputs scored 1-2
@@ -1811,7 +1830,7 @@ function OutputQualitySection() {
               <CardContent className="p-6">
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Fair Rate (Score 3)</span>
                 <p className="text-2xl font-bold text-yellow-400">
-                  {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution || {})[3] || 0) / stats.totalLogs * 100) : 0}%
+                  {stats.reviewedLogs > 0 ? Math.round(((stats.scoreDistribution || {})[3] || 0) / stats.reviewedLogs * 100) : 0}%
                 </p>
                 <span className="text-[9px] text-muted-foreground mt-1 block">
                   {((stats.scoreDistribution || {})[3] || 0).toLocaleString()} outputs — room for improvement
@@ -1822,10 +1841,10 @@ function OutputQualitySection() {
               <CardContent className="p-6">
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Excellent Rate (5/5)</span>
                 <p className="text-2xl font-bold text-emerald-400">
-                  {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution || {})[5] || 0) / stats.totalLogs * 100) : 0}%
+                  {stats.reviewedLogs > 0 ? Math.round(((stats.scoreDistribution || {})[5] || 0) / stats.reviewedLogs * 100) : 0}%
                 </p>
                 <span className="text-[9px] text-muted-foreground mt-1 block">
-                  {((stats.scoreDistribution || {})[5] || 0).toLocaleString()} perfect score outputs
+                  {((stats.scoreDistribution || {})[5] || 0).toLocaleString()} outputs assessed 5/5
                 </span>
               </CardContent>
             </Card>
@@ -1871,7 +1890,7 @@ function OutputQualitySection() {
                 <div className="space-y-2">
                   {[5, 4, 3, 2, 1].map((score) => {
                     const cnt = (stats.scoreDistribution || {})[score] || 0;
-                    const pct = stats.totalLogs > 0 ? Math.round(cnt / stats.totalLogs * 100) : 0;
+                    const pct = stats.reviewedLogs > 0 ? Math.round(cnt / stats.reviewedLogs * 100) : 0;
                     return (
                       <div key={score} className="flex items-center gap-3">
                         <Badge className={`${SCORE_COLORS[score]} text-[9px] w-20 justify-center`}>{SCORE_LABELS[score]}</Badge>
@@ -1967,6 +1986,8 @@ function OutputQualitySection() {
                 <SelectContent>
                   <SelectItem value="all">All Scores</SelectItem>
                   <SelectItem value="excellent">Excellent (5)</SelectItem>
+                  <SelectItem value="unassessed">Unassessed / legacy</SelectItem>
+                  <SelectItem value="flagged">Needs attention</SelectItem>
                   <SelectItem value="good">Good (4-5)</SelectItem>
                   <SelectItem value="fair">Fair (3)</SelectItem>
                   <SelectItem value="poor">Issues (1-2)</SelectItem>
@@ -1987,8 +2008,8 @@ function OutputQualitySection() {
                   >
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-3 min-w-0">
-                        <Badge className={`${SCORE_COLORS[log.qualityScore] || SCORE_COLORS[3]} text-[9px] flex-shrink-0`}>
-                          {log.qualityScore}/5
+                        <Badge className={`${log.qualityAssessment?.status === "reviewed" ? (SCORE_COLORS[log.qualityScore] || SCORE_COLORS[3]) : "bg-muted text-muted-foreground"} text-[9px] flex-shrink-0`}>
+                          {qualityScoreLabel(log)}
                         </Badge>
                         <span className="text-[10px] font-bold text-foreground">{FEATURE_LABELS[log.feature] || log.feature}</span>
                         <span className="text-[10px] text-muted-foreground truncate max-w-[300px]">{(log.userQuery || log.inputSnippet || "").slice(0, 100)}</span>
@@ -2015,10 +2036,11 @@ function OutputQualitySection() {
 
                   {expandedId === log.id && (
                     <div className="mx-4 mt-1 border-l-2 border-primary/20 pl-4 space-y-3 py-3">
+                      <QualityAssessmentDetails assessment={log.qualityAssessment} />
                       {/* Metadata row */}
                       <div className="flex items-center gap-3 flex-wrap">
                         <Badge className="bg-card border-border text-[8px] text-muted-foreground">
-                          📊 Score: {log.qualityScore}/5 — {SCORE_LABELS[log.qualityScore] || "Unknown"}
+                          📊 Score: {qualityScoreLabel(log)} — {log.qualityAssessment?.status === "reviewed" ? SCORE_LABELS[log.qualityScore] : "Not scored"}
                         </Badge>
                         <Badge className="bg-card border-border text-[8px] text-muted-foreground">
                           🤖 {log.model}
