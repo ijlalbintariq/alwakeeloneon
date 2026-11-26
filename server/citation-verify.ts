@@ -160,10 +160,25 @@ export async function verifyCitations(raws: string[]): Promise<Map<string, strin
  * qualifiers disambiguate them; an unqualified citation with several owners
  * remains unresolved. Never choose a different case by row order.
  */
-const PUBLIC_SITE = (process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "");
+/**
+ * Returns the canonical public site origin for external links (MCP, citations, PDFs).
+ * Render sets PUBLIC_SITE_URL to the apex (https://alwakeelo.com), which redirects 301
+ * to https://www.alwakeelo.com — normalizing here ensures links go straight to the
+ * canonical www host without cross-host redirect failures.
+ */
+export function getCanonicalPublicSiteUrl(): string {
+  const raw = (process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://www.alwakeelo.com")
+    .trim()
+    .replace(/\/+$/, "");
+  return raw.replace(/^https?:\/\/alwakeelo\.com$/i, "https://www.alwakeelo.com");
+}
 
 export function judgmentSourceUrl(judgmentId: string): string {
-  return `${PUBLIC_SITE}/judgment/${judgmentId}`;
+  return `${getCanonicalPublicSiteUrl()}/judgment/${judgmentId}`;
+}
+
+export function judgmentGeneratedPdfUrl(judgmentId: string): string {
+  return `${getCanonicalPublicSiteUrl()}/api/public/judgments/${judgmentId}/pdf`;
 }
 
 /** "PLC(CS)N" -> "PLCCSN". Same shape parseCitation produces. */

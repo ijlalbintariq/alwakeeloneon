@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
-import { assessJudgmentIdentity, judgmentPdfUrl, judgmentSourceUrl, prepareJudgmentDetail, citationMatchesCourt, citationIdentifiesJudgment, citationCanLinkDirectly } from "../../server/citation-verify";
+import { assessJudgmentIdentity, judgmentPdfUrl, judgmentSourceUrl, judgmentGeneratedPdfUrl, getCanonicalPublicSiteUrl, prepareJudgmentDetail, citationMatchesCourt, citationIdentifiesJudgment, citationCanLinkDirectly } from "../../server/citation-verify";
 import { extractSubstantiveSummary } from "../../server/storage";
 
 const source = ts.createSourceFile("mcp-server.ts", fs.readFileSync("server/mcp-server.ts", "utf8"), ts.ScriptTarget.Latest, true);
@@ -17,7 +17,7 @@ function handler(name: string, deps: Record<string, any>): (input: any) => Promi
   const js = ts.transpileModule(`(${callback.getText(source)})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   return new Function(...Object.keys(deps), `return ${js}`)(...Object.values(deps));
 }
-const base = { VERSION: "test", SOURCE: "test", RETRIEVAL_VERSION: "test", PUBLIC_SITE: "https://example.test", getAuthenticatedUserId: () => "test", enforceQuota: async () => {}, logToolUsage: async () => {} };
+const base = { VERSION: "test", SOURCE: "test", RETRIEVAL_VERSION: "test", PUBLIC_SITE: "https://example.test", judgmentGeneratedPdfUrl, getAuthenticatedUserId: () => "test", enforceQuota: async () => {}, logToolUsage: async () => {} };
 const opening = `Court Name: Supreme Court\nTitle: Ahmad Khan vs State\nReported As: 2024 SCMR 1085\nResult: allowed\n${"Judgment body. ".repeat(40)}`;
 const row = { id: "record", citation: "2024 SCMR 1085", title: "Ahmad Khan vs State", court: "Supreme Court", textStatus: "own", opening };
 
@@ -192,4 +192,40 @@ test("MCP statute search uses semantic query understanding and stops when unders
   ready = false;
   await assert.rejects(search({query:"What law covers that?",limit:5}),/intent could not be established/);
   assert.equal(retrievals,1);
+});
+
+test("MCP URL helpers normalize apex alwakeelo.com to canonical www.alwakeelo.com", () => {
+  const prevPublicSite = process.env.PUBLIC_SITE_URL;
+  const prevVitePublicSite = process.env.VITE_PUBLIC_SITE_URL;
+  try {
+    process.env.PUBLIC_SITE_URL = "https://alwakeelo.com";
+    delete process.env.VITE_PUBLIC_SITE_URL;
+    assert.equal(getCanonicalPublicSiteUrl(), "https://www.alwakeelo.com");
+    assert.equal(
+      judgmentSourceUrl("191a4499-1ed9-43e2-91e7-bc813bb6e1f0"),
+      "https://www.alwakeelo.com/judgment/191a4499-1ed9-43e2-91e7-bc813bb6e1f0",
+    );
+    assert.equal(
+      judgmentGeneratedPdfUrl("191a4499-1ed9-43e2-91e7-bc813bb6e1f0"),
+      "https://www.alwakeelo.com/api/public/judgments/191a4499-1ed9-43e2-91e7-bc813bb6e1f0/pdf",
+    );
+
+    process.env.PUBLIC_SITE_URL = "http://alwakeelo.com/";
+    assert.equal(getCanonicalPublicSiteUrl(), "https://www.alwakeelo.com");
+  } finally {
+    if (prevPublicSite === undefined) delete process.env.PUBLIC_SITE_URL;
+    else process.env.PUBLIC_SITE_URL = prevPublicSite;
+    if (prevVitePublicSite === undefined) delete process.env.VITE_PUBLIC_SITE_URL;
+    else process.env.VITE_PUBLIC_SITE_URL = prevVitePublicSite;
+  }
+});
+
+test("judgment PDF route overrides restrictive CSP so Chrome inline PDF viewer works", () => {
+  const routesSource = fs.readFileSync("server/routes.ts", "utf8");
+  const idx = routesSource.indexOf("const handleJudgmentPdfDownload");
+  assert.ok(idx !== -1);
+  const snippet = routesSource.slice(idx, idx + 3600);
+  assert.match(snippet, /res\.setHeader\("X-Frame-Options",\s*"SAMEORIGIN"\)/);
+  assert.match(snippet, /res\.setHeader\("Content-Security-Policy",\s*"frame-ancestors 'self'"\)/);
+  assert.match(snippet, /res\.setHeader\("Content-Type",\s*"application\/pdf"\)/);
 });

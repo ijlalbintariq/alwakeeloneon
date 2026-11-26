@@ -3,7 +3,7 @@ import type { QualityAssessment } from "../shared/quality-assessment";
 import { memorySafeConcurrency, readMemorySnapshot } from "./memory-guard";
 import { countWords } from "./text-memory";
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
-import { resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, judgmentPdfUrl, judgmentSourceUrl, extractCitations, verifyCitations, citationMatchesCourt } from "./citation-verify";
+import { resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, judgmentPdfUrl, judgmentSourceUrl, judgmentGeneratedPdfUrl, extractCitations, verifyCitations, citationMatchesCourt } from "./citation-verify";
 import { generateCourtJudgmentPdfBuffer } from "./judgment-pdf";
 import { sourceFileFormat } from "../shared/source-file-format";
 import { assertCompletePdfPages, getPdfPageCount } from "./pdf-completeness";
@@ -13174,6 +13174,10 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       });
 
       const safeCitation = (judgment.citation || "judgment").replace(/[^a-zA-Z0-9]/g, "_");
+      // Override global object-src 'none' / frame-ancestors 'none' so Chrome's
+      // built-in inline PDF viewer (<embed>) is not blocked when opening the PDF link.
+      res.setHeader("X-Frame-Options", "SAMEORIGIN");
+      res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${safeCitation}_Court_Judgment.pdf"`);
       res.setHeader("Cache-Control", "public, max-age=3600");
@@ -24111,7 +24115,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
             sourceVerified: false,
             textIntegrity: "own",
             contentFormat: judgmentPdfUrl(v.pdfUrl) ? "text_and_pdf" : "text",
-            pdfUrl: judgmentPdfUrl(v.pdfUrl) || `${(process.env.PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "")}/api/public/judgments/${v.id}/pdf`,
+            pdfUrl: judgmentPdfUrl(v.pdfUrl) || judgmentGeneratedPdfUrl(String(v.id)),
             sourceUrl: judgmentSourceUrl(String(v.id)),
           });
           continue;
@@ -24264,7 +24268,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         courtName: confirmed ? textCheck.court || undefined : undefined,
         decisionDate: confirmed ? detail.decisionDate : undefined,
         fullText: textCheck.fullText || undefined,
-        pdfUrl: textCheck.pdfUrl || (textCheck.textIntegrity === "own" ? `${(process.env.PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "")}/api/public/judgments/${detail.id}/pdf` : undefined),
+        pdfUrl: textCheck.pdfUrl || (textCheck.textIntegrity === "own" ? judgmentGeneratedPdfUrl(detail.id) : undefined),
         pdfKind: textCheck.pdfUrl ? "original" : textCheck.textIntegrity === "own" ? "generated" : undefined,
         contentFormat: textCheck.contentFormat,
         sourceUrl: judgmentSourceUrl(detail.id),

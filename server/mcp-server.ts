@@ -15,7 +15,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
 import {
-  judgmentSourceUrl, resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, prepareJudgmentDetail, judgmentPdfUrl,
+  judgmentSourceUrl, judgmentGeneratedPdfUrl, resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, prepareJudgmentDetail, judgmentPdfUrl,
   extractCitations, verifyCitations, citationMatchesCourt, citationIdentifiesJudgment, citationCanLinkDirectly,
 } from "./citation-verify";
 import { judgeCaseLinks, citationLinks, caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
@@ -29,7 +29,6 @@ export const mcpUserContext = new AsyncLocalStorage<string>();
 const VERSION = "1.0";
 const SOURCE = "AlWakeelo AI";
 const RETRIEVAL_VERSION = "v2";
-const PUBLIC_SITE = (process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://www.alwakeelo.com").replace(/\/+$/, "");
 
 /**
  * Validates the user's plan limits before tool execution.
@@ -330,7 +329,7 @@ export function registerAllTools(server: McpServer) {
           sourceVerified: false,
           textIntegrity: "own",
           contentFormat: judgmentPdfUrl(v.pdfUrl) ? "text_and_pdf" : "text",
-          pdfUrl: judgmentPdfUrl(v.pdfUrl) || `${PUBLIC_SITE}/api/public/judgments/${v.id}/pdf`,
+          pdfUrl: judgmentPdfUrl(v.pdfUrl) || judgmentGeneratedPdfUrl(v.id),
           sourceUrl: judgmentSourceUrl(v.id),
         };
       }
@@ -554,7 +553,7 @@ export function registerAllTools(server: McpServer) {
             ? judgmentRow.decisionDate.toISOString().split("T")[0]
             : undefined,
           fullText: detail.fullText || undefined,
-          pdfUrl: detail.pdfUrl || (detail.textIntegrity === "own" ? `${PUBLIC_SITE}/api/public/judgments/${detail.id}/pdf` : undefined),
+          pdfUrl: detail.pdfUrl || (detail.textIntegrity === "own" ? judgmentGeneratedPdfUrl(detail.id) : undefined),
           pdfKind: detail.pdfUrl ? "original" : detail.textIntegrity === "own" ? "generated" : undefined,
           contentFormat: detail.contentFormat,
           sourceUrl: judgmentSourceUrl(judgmentRow.id),
@@ -629,7 +628,7 @@ export function registerAllTools(server: McpServer) {
         ? detail.decisionDate.toISOString().split("T")[0]
         : (detail.decisionDate ?? undefined),
       fullText: protectedDetail.fullText || undefined,
-      pdfUrl: protectedDetail.pdfUrl || (protectedDetail.textIntegrity === "own" ? `${PUBLIC_SITE}/api/public/judgments/${detail.id}/pdf` : undefined),
+      pdfUrl: protectedDetail.pdfUrl || (protectedDetail.textIntegrity === "own" ? judgmentGeneratedPdfUrl(detail.id) : undefined),
       pdfKind: protectedDetail.pdfUrl ? "original" : protectedDetail.textIntegrity === "own" ? "generated" : undefined,
       contentFormat: protectedDetail.contentFormat,
       sourceUrl: judgmentSourceUrl(detail.id),
