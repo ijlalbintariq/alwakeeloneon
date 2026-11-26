@@ -34,6 +34,7 @@ import { UpgradePlanModal } from "@/experimental/components/dashboard/UpgradePla
 import { AddHearingModal } from "@/experimental/components/dashboard/AddHearingModal";
 import { CourtFeeCalculatorModal } from "@/experimental/components/drafting/CourtFeeCalculatorModal";
 import { type UsageData } from "@/experimental/components/dashboard/QuotaHealthCard";
+import { parseActivityQuery, getActivitySubtitle, getActivityHref } from "@shared/mcp-activity";
 import { cn } from "@/lib/utils";
 
 interface ActivitySummary {
@@ -63,6 +64,7 @@ export const PreviewDashboard: React.FC = () => {
 
   const { data: activitySummary } = useQuery<ActivitySummary>({
     queryKey: ["/api/activity/summary"],
+    refetchInterval: 30_000,
   });
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -83,10 +85,12 @@ export const PreviewDashboard: React.FC = () => {
 
   const { data: documents = [] } = useQuery<any[]>({
     queryKey: ["/api/documents"],
+    refetchInterval: 30_000,
   });
 
   const { data: threads = [] } = useQuery<any[]>({
     queryKey: ["/api/threads"],
+    refetchInterval: 30_000,
   });
 
   const { data: caseFiles = [] } = useQuery<any[]>({
@@ -95,6 +99,7 @@ export const PreviewDashboard: React.FC = () => {
 
   const { data: searchHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/search-history"],
+    refetchInterval: 30_000,
   });
 
   const counselName =
@@ -119,6 +124,7 @@ export const PreviewDashboard: React.FC = () => {
     icon: any;
     iconBg: string;
     iconColor: string;
+    isMcp?: boolean;
   };
 
   const unifiedActivity: ActivityItem[] = useMemo(() => {
@@ -142,33 +148,40 @@ export const PreviewDashboard: React.FC = () => {
 
     // 2. Documents (Drafted Petitions & Agreements)
     (documents.length > 0 ? documents : activitySummary?.recentDocuments || []).forEach((d: any) => {
+      const isMcpDraft = d.sourceType === "mcp-draft" || d.classificationMethod === "mcp-draft";
       items.push({
         id: `doc-${d.id}`,
         type: "draft",
         title: d.title || `Document #${d.id}`,
-        subtitle: d.docType || "Court Petition",
+        subtitle: isMcpDraft ? "MCP Draft" : (d.docType || "Court Petition"),
         href: `/preview/drafting?docId=${d.id}`,
         date: d.updatedAt || d.createdAt || null,
         timestamp: new Date(d.updatedAt || d.createdAt || 0).getTime(),
         icon: FileText,
         iconBg: "bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20",
         iconColor: "text-amber-600 dark:text-amber-400",
+        isMcp: isMcpDraft,
       });
     });
 
-    // 3. Search History (Judgment & Statute Lookups)
+    // 3. Search History (Judgment, Statute, and MCP Lookups/Research)
     searchHistory.forEach((s: any) => {
+      const parsed = parseActivityQuery(s.query);
+      const isResearch = parsed.isMcp && parsed.mcpKind === "research";
       items.push({
         id: `search-${s.id}`,
-        type: "search",
-        title: s.query || "Legal Query",
-        subtitle: "Judgment Search",
-        href: `/preview/judgments?q=${encodeURIComponent(s.query || "")}`,
+        type: isResearch ? "chat" : "search",
+        title: parsed.displayQuery || "Legal Query",
+        subtitle: getActivitySubtitle(parsed, s.type),
+        href: getActivityHref(parsed, s.type),
         date: s.createdAt || null,
         timestamp: new Date(s.createdAt || 0).getTime(),
-        icon: Search,
-        iconBg: "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20",
-        iconColor: "text-[#105B38]",
+        icon: isResearch ? Bot : Search,
+        iconBg: isResearch
+          ? "bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20"
+          : "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20",
+        iconColor: isResearch ? "text-blue-600 dark:text-blue-400" : "text-[#105B38]",
+        isMcp: parsed.isMcp,
       });
     });
 
@@ -176,8 +189,33 @@ export const PreviewDashboard: React.FC = () => {
   }, [threads, documents, activitySummary, searchHistory]);
 
   const filteredActivity = useMemo(() => {
-    if (activityFilter === "all") return unifiedActivity.slice(0, 6);
-    return unifiedActivity.filter((item) => item.type === activityFilter).slice(0, 6);
+    if (activityFilter !== "all") {
+      return unifiedActivity.filter((item) => item.type === activityFilter).slice(0, 6);
+    }
+    // Collapse consecutive MCP search bursts (within 3 min) in the 6-item "All" overview
+    // so one multi-call AI turn doesn't push Consultations/Drafts off the card.
+    const collapsed: ActivityItem[] = [];
+    const BURST_GROUP_MS = 3 * 60 * 1000;
+    for (const item of unifiedActivity) {
+      const prev = collapsed[collapsed.length - 1];
+      if (
+        prev &&
+        prev.isMcp &&
+        item.isMcp &&
+        prev.type === "search" &&
+        item.type === "search" &&
+        Math.abs(prev.timestamp - item.timestamp) <= BURST_GROUP_MS
+      ) {
+        const currentExtraMatch = prev.title.match(/\(\+(\d+) more\)$/);
+        const nextCount = currentExtraMatch ? Number(currentExtraMatch[1]) + 1 : 1;
+        const baseTitle = prev.title.replace(/\s*\(\+\d+ more\)$/, "");
+        prev.title = `${baseTitle} (+${nextCount} more)`;
+        continue;
+      }
+      collapsed.push({ ...item });
+      if (collapsed.length >= 6) break;
+    }
+    return collapsed;
   }, [unifiedActivity, activityFilter]);
 
   const quickActions = [
@@ -450,6 +488,11 @@ export const PreviewDashboard: React.FC = () => {
                         {item.title}
                       </p>
                       <div className="flex items-center gap-1.5 text-[10px] text-[#94A3B8] dark:text-[#475569] font-mono mt-0.5">
+                        {item.isMcp && (
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/10 text-[#105B38] border border-emerald-200 dark:border-emerald-500/20 text-[9px] font-bold">
+                            MCP
+                          </span>
+                        )}
                         <span className="font-semibold text-[#64748B] dark:text-[#94A3B8] dark:text-[#475569]">{item.subtitle}</span>
                         {item.date && (
                           <>

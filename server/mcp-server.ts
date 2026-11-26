@@ -14,10 +14,10 @@ import { isOpenRouterAvailable, chatWithOpenRouter } from "./openrouter";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
-import {
-  judgmentSourceUrl, judgmentGeneratedPdfUrl, resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, prepareJudgmentDetail, judgmentPdfUrl,
+import { judgmentSourceUrl, judgmentGeneratedPdfUrl, resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, prepareJudgmentDetail, judgmentPdfUrl,
   extractCitations, verifyCitations, citationMatchesCourt, citationIdentifiesJudgment, citationCanLinkDirectly,
 } from "./citation-verify";
+import { recordMcpActivity, saveMcpDraftDocument } from "./mcp-activity";
 import { judgeCaseLinks, citationLinks, caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
 import { eq, inArray, sql, and, gte, lte, desc, ilike, count, countDistinct, asc } from "drizzle-orm";
 import { uploadBufferToR2, uploadBufferToR2WithRetry } from "./r2-storage";
@@ -71,9 +71,16 @@ async function logToolUsage(userId: string, feature: string, query: string, outp
       await storage.logUsage(userId, feature).catch(() => {});
     }
 
-    // 2. Always log to AI Output Log for visibility as requested by admin
+    // 2. Always log to AI Output Log for visibility as requested by admin.
+    // Raw tool retrieval outputs (search JSON, RAG prompt context) are operational
+    // logs, not user-facing generated prose, so skip the AI answer quality grader.
+    const isOperationalTool =
+      !outputText.trim() ||
+      feature === "search-judgments" ||
+      feature === "search-statutes" ||
+      feature === "legal-research";
     const logModel = feature === "legal-research" ? "mcp-rag-context" : (feature === "chat" ? "deepseek-chat" : `mcp-tool:${feature}`);
-    void logOutputQuality(userId, feature, logModel, query, outputText, { userQuery: query, operational: !outputText.trim() });
+    void logOutputQuality(userId, feature, logModel, query, outputText, { userQuery: query, operational: isOperationalTool });
 
   } catch (err) {
     console.error(`[MCP] Failed to log usage metrics for ${feature}:`, err);
@@ -372,6 +379,15 @@ export function registerAllTools(server: McpServer) {
       judgments: keptRows,
     };
     await logToolUsage(userId, "search-judgments", query, JSON.stringify(payload));
+    const singleVerified = keptRows.length === 1 && keptRows[0].verified ? keptRows[0] : undefined;
+    void recordMcpActivity({
+      userId,
+      kind: singleVerified ? "judgment" : "case-law",
+      query,
+      judgmentId: singleVerified?.id,
+      citation: singleVerified?.citation,
+      title: singleVerified?.title,
+    });
 
     return {
       content: [
@@ -444,6 +460,7 @@ export function registerAllTools(server: McpServer) {
     };
 
     await logToolUsage(userId, "search-statutes", query, JSON.stringify(payload));
+    void recordMcpActivity({ userId, kind: "statute", query });
 
     return {
       content: [
@@ -541,6 +558,14 @@ export function registerAllTools(server: McpServer) {
         const detail = prepareJudgmentDetail({ ...judgmentRow, court: judgmentRow.courtNameSnapshot || "" }, { opening: judgmentRow.fullText, textStatus: judgmentRow.textStatus, textTrueCitation: judgmentRow.textTrueCitation });
         const safe = detail.contentFormat !== "unavailable";
         const confirmed = detail.textIntegrity === "own";
+        void recordMcpActivity({
+          userId,
+          kind: "judgment",
+          query: judgmentRow.citation,
+          judgmentId: judgmentRow.id,
+          citation: judgmentRow.citation,
+          title: confirmed ? detail.title : undefined,
+        });
         const textCheck = { textIntegrity: detail.textIntegrity, textWarning: detail.textWarning, belongsTo: detail.belongsTo };
         const payload = {
           version: VERSION,
@@ -616,6 +641,14 @@ export function registerAllTools(server: McpServer) {
     const textCheck = { textIntegrity: protectedDetail.textIntegrity, belongsTo: protectedDetail.belongsTo, textWarning: protectedDetail.textWarning };
     const safe = protectedDetail.contentFormat !== "unavailable";
     const confirmed = protectedDetail.textIntegrity === "own";
+    void recordMcpActivity({
+      userId,
+      kind: "judgment",
+      query: detail.citation,
+      judgmentId: detail.id,
+      citation: detail.citation,
+      title: confirmed ? protectedDetail.title : undefined,
+    });
 
     const payload = {
       version: VERSION,
@@ -686,6 +719,7 @@ export function registerAllTools(server: McpServer) {
 
     // Track usage metrics (log token count and costs for AI billing)
     await logToolUsage(userId, "legal-research", query, contextString);
+    void recordMcpActivity({ userId, kind: "research", query });
 
     // ---------------------------------------------------------------------
     // Citation verification.
@@ -1228,16 +1262,7 @@ ${additionalClauses || "None"}`;
     await logToolUsage(userId, "draft", searchQuery, formattedText);
 
     // Save draft directly to the documents table so it appears in the Editor and Word Add-in
-    await db.insert(documents).values({
-      userId,
-      title: `Draft: ${topic}`,
-      content: formattedText,
-      sourceType: "mcp-draft",
-      mimeType: "text/plain",
-      detectedDomain: "legal",
-      detectedDomainLabel: "Legal Draft",
-      classificationMethod: "mcp-draft",
-    });
+    await saveMcpDraftDocument({ userId, title: `Draft: ${topic}`, content: formattedText });
 
     // Pre-wrap draft in a plaintext code block so MCP clients render it with exact alignment & no markdown parsing
     const wrappedDraft = `\`\`\`text\n${formattedText.replace(/^```(?:text|markdown)?\n?/i, "").replace(/\n?```$/i, "")}\n\`\`\``;
@@ -1324,16 +1349,7 @@ ${additionalClauses || "None"}`;
     await logToolUsage(userId, "contract-drafting", contractType, formattedText);
 
     // Save draft directly to the documents table so it appears in the Editor and Word Add-in
-    await db.insert(documents).values({
-      userId,
-      title: `Contract: ${contractType}`,
-      content: formattedText,
-      sourceType: "mcp-draft",
-      mimeType: "text/plain",
-      detectedDomain: "legal",
-      detectedDomainLabel: "Legal Draft",
-      classificationMethod: "mcp-draft",
-    });
+    await saveMcpDraftDocument({ userId, title: `Contract: ${contractType}`, content: formattedText });
 
     // Pre-wrap draft in a plaintext code block so MCP clients render it with exact alignment & no markdown parsing
     const wrappedDraft = `\`\`\`text\n${formattedText.replace(/^```(?:text|markdown)?\n?/i, "").replace(/\n?```$/i, "")}\n\`\`\``;

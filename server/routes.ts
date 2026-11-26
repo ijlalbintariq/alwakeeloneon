@@ -4,6 +4,7 @@ import { memorySafeConcurrency, readMemorySnapshot } from "./memory-guard";
 import { countWords } from "./text-memory";
 import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
 import { resolveJudgment, assessJudgmentIdentity, protectJudgmentDetail, judgmentPdfUrl, judgmentSourceUrl, judgmentGeneratedPdfUrl, extractCitations, verifyCitations, citationMatchesCourt } from "./citation-verify";
+import { recordMcpActivity, saveMcpDraftDocument } from "./mcp-activity";
 import { generateCourtJudgmentPdfBuffer } from "./judgment-pdf";
 import { sourceFileFormat } from "../shared/source-file-format";
 import { assertCompletePdfPages, getPdfPageCount } from "./pdf-completeness";
@@ -3997,12 +3998,15 @@ export async function applyAlWakeeloSafetyGuardrails(
   policy?: CitationPolicy,
   trustedCitations?: Iterable<string>,
   trustedTitles?: Array<{ title: string; citation: string }>,
+  options?: { preserveAttachmentCitations?: boolean },
 ): Promise<string> {
   const withRefs = ensureAlWakeeloReferencesBlock(content);
   const verifiedRefs = await verifyReferencesBlock(withRefs, policy, trustedCitations, trustedTitles);
   // R3: Prose-level statute fact-checking — replace unverified Section X of Y mentions
   const statuteChecked = await enforceStatuteSectionIntegrity(verifiedRefs);
-  const citationScrubbed = await enforceProseCitationIntegrity(statuteChecked, trustedCitations);
+  const citationScrubbed = options?.preserveAttachmentCitations
+    ? statuteChecked
+    : await enforceProseCitationIntegrity(statuteChecked, trustedCitations);
   const noPartyNames = stripPartyNamesFromProseCitations(citationScrubbed);
   return stripForbiddenNoJudgmentsMessage(noPartyNames);
 }
@@ -6986,6 +6990,8 @@ export async function enforceInternalCaseCitationIntegrity(
      * in strict mode.
      */
     trustedCitations?: Iterable<string>;
+    /** Preserve user-transcribed citations in prose when an image attachment is supplied. */
+    preserveAttachmentCitations?: boolean;
   },
 ): Promise<{ content: string; removed: string[]; verified: string[] }> {
   if (options?.trustedCitations !== undefined) options = { ...options, trustedCitations: Array.from(options.trustedCitations) };
@@ -7103,7 +7109,7 @@ export async function enforceInternalCaseCitationIntegrity(
   // The AI received these citations from the knowledge context injected into the prompt.
   // Removing them on a DB-lookup miss degrades response quality and hides valid case law.
   // Only strict mode (e.g. drafting modules) should strip unverified citations.
-  if (removed.size > 0 && (policy.strict || poolMode)) {
+  if (!options?.preserveAttachmentCitations && removed.size > 0 && (policy.strict || poolMode)) {
     const longestFirst = Array.from(removed).filter(Boolean).sort((a, b) => b.length - a.length);
     for (const raw of longestFirst) {
       const escapedCitation = escapeRegExp(raw);
@@ -9048,7 +9054,11 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
       const safeAiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse, undefined, threadKnowledge.caseLawHits.map(hit=>hit.citation)).catch(() => "The response could not be verified. Please retry; no case citations are available.");
 
       if (!fromCache) {
-        await logUsageCost(userId, "chat", usedModel || "deepseek", systemPromptFull + firstMessage, safeAiResponse, { userQuery: firstMessage, responseTimeMs: Date.now() - _t0 });
+        await logUsageCost(userId, "chat", usedModel || "deepseek", systemPromptFull + firstMessage, safeAiResponse, {
+          userQuery: firstMessage,
+          sourceContext: knowledgeContext,
+          responseTimeMs: Date.now() - _t0,
+        });
       }
 
       await storage.createMessage({
@@ -9274,7 +9284,11 @@ app.post("/api/admin/blogs/generate", async (req: any, res) => {
       const normalizedAiResponse = suppressWrongIndianJurisdictionForPakCitation(result.text, message);
       const aiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse, undefined, threadKnowledge.caseLawHits.map(hit=>hit.citation)).catch(() => "The response could not be verified. Please retry; no case citations are available.");
       const inputText = systemPromptFull + history.map(m => m.content).join(" ");
-      await logUsageCost(userId, "chat", result.model, inputText, aiResponse, { userQuery: message, responseTimeMs: Date.now() - _t0 });
+      await logUsageCost(userId, "chat", result.model, inputText, aiResponse, {
+        userQuery: message,
+        sourceContext: knowledgeContext,
+        responseTimeMs: Date.now() - _t0,
+      });
 
       const savedAiMessage = await storage.createMessage({
         threadId,
@@ -18264,12 +18278,21 @@ The user has attached the following documents for your reference. Analyze them c
               },
             ]
           : [];
-      // Combine trusted citations and titles from both tool search AND RAG pipeline
+      // Combine trusted citations and titles from tool search, RAG pipeline, and user-uploaded attachments
+      const attachedTextMatches = (lastUserMessage?.content || "").match(/\[ATTACHED DOCUMENTS\][\s\S]*?\[END ATTACHED DOCUMENTS\]/g) || [];
+      const attachmentCitationSource = [attachmentContext, ...attachedTextMatches].filter(Boolean).join("\n");
+      const attachmentTrustedCitations = attachmentCitationSource
+        ? extractCaseCitationCandidates(attachmentCitationSource)
+        : [];
+      const hasUserImageAttachment =
+        imageAttachments.length > 0 || /\[Attached Image:/i.test(lastUserMessage?.content || "");
+
       const allTrustedCitations = Array.from(
         new Set([
           ...(toolSearchResult?.verifiedCitations || []),
           ...pipelineCaseLawHits.map((h) => h.citation).filter(Boolean),
           ...pipelineCitationLines.filter(Boolean),
+          ...attachmentTrustedCitations,
         ]),
       );
       const allTrustedTitles = [
@@ -18308,7 +18331,7 @@ The user has attached the following documents for your reference. Analyze them c
             allowProseModification: moduleProfile.features.strictCitations,
           };
           const cachedContent = moduleType === "al-wakeelo" && !directMode
-            ? await applyAlWakeeloSafetyGuardrails(cached.response, citationPolicy, allTrustedCitations, allTrustedTitles).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
+            ? await applyAlWakeeloSafetyGuardrails(cached.response, citationPolicy, allTrustedCitations, allTrustedTitles, { preserveAttachmentCitations: hasUserImageAttachment }).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
             : cached.response;
           const scopedCachedContent = suppressWrongIndianJurisdictionForPakCitation(
             enforcePakistanLawOnlyOutput(cachedContent),
@@ -18323,6 +18346,7 @@ The user has attached the following documents for your reference. Analyze them c
             // Tool-search + pipeline citations came directly from the DB — bypass the
             // resolver to avoid format-variant false-negatives stripping them.
             trustedCitations: allTrustedCitations,
+            preserveAttachmentCitations: hasUserImageAttachment,
           });
           // Cache hit: if SSE is already flushed (live-status path), emit cached content as SSE chunks.
           // Otherwise fall through to the normal JSON response.
@@ -18508,7 +18532,7 @@ The user has attached the following documents for your reference. Analyze them c
             strict: moduleProfile.features.strictCitations,
             allowProseModification: moduleProfile.features.strictCitations,
           };
-          const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent, citationPolicy, allTrustedCitations, allTrustedTitles).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
+          const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent, citationPolicy, allTrustedCitations, allTrustedTitles, { preserveAttachmentCitations: hasUserImageAttachment }).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
           if (adjusted !== fullContent) {
             fullContent = adjusted;
             res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
@@ -18535,6 +18559,7 @@ The user has attached the following documents for your reference. Analyze them c
           // Tool-search verified citations bypass the resolver — they came
           // straight from the DB, format-variant lookups should not strip them.
           trustedCitations: allTrustedCitations,
+          preserveAttachmentCitations: hasUserImageAttachment,
         });
         if (citationCheckedStream.content !== fullContent) {
           fullContent = citationCheckedStream.content;
@@ -18603,7 +18628,7 @@ The user has attached the following documents for your reference. Analyze them c
           const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
           await logUsageCost(userId, usageFeatureKey, usedModel, inputText, fullContent, {
             userQuery: lastUserMessage?.content || "",
-            sourceContext: [knowledgeContext, toolSearchResult?.contextString || ""].join("\n"),
+            sourceContext: [knowledgeContext, toolSearchResult?.contextString || "", attachmentContext].filter(Boolean).join("\n"),
             responseTimeMs: Date.now() - aiStartMs,
           });
           try {
@@ -18681,7 +18706,7 @@ The user has attached the following documents for your reference. Analyze them c
 
       if (moduleType === "al-wakeelo" && !directMode) {
         // Use module profile strictCitations — hardcoded true was stripping valid judgments-table citations
-        completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: enforcePrimaryLinkedSourceCitations, allowProseModification: false }, allTrustedCitations, allTrustedTitles).catch(() => ensureAlWakeeloReferencesBlock(completion));
+        completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: enforcePrimaryLinkedSourceCitations, allowProseModification: false }, allTrustedCitations, allTrustedTitles, { preserveAttachmentCitations: hasUserImageAttachment }).catch(() => ensureAlWakeeloReferencesBlock(completion));
       }
       // Always run drafting normalizer for draft module — strips markdown
       // (#, **bold**, ---, etc.) and aligns party captions. The previous
@@ -18721,6 +18746,7 @@ The user has attached the following documents for your reference. Analyze them c
         requireLinkedSource: enforcePrimaryLinkedSourceCitations,
         policy: citationPolicy,
         trustedCitations: allTrustedCitations,
+        preserveAttachmentCitations: hasUserImageAttachment,
       })).content;
       completion = assertNonEmptyModelOutput("AI route", completion);
 
@@ -18747,7 +18773,7 @@ The user has attached the following documents for your reference. Analyze them c
       try {
         await logUsageCost(userId, usageFeatureKey, usedModel, inputText, completion, {
           userQuery: lastUserMessage?.content || "",
-          sourceContext: [knowledgeContext, toolSearchResult?.contextString || ""].join("\n"),
+          sourceContext: [knowledgeContext, toolSearchResult?.contextString || "", attachmentContext].filter(Boolean).join("\n"),
           responseTimeMs: Date.now() - aiStartMs,
         });
       } catch (usageErr) {
@@ -24135,6 +24161,15 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       const includeUnverified = req.body?.includeUnverified !== false;
       const kept = includeUnverified ? mapped : mapped.filter((r) => r.verified);
+      const singleVerified = kept.length === 1 && kept[0].verified ? kept[0] : undefined;
+      void recordMcpActivity({
+        userId,
+        kind: singleVerified ? "judgment" : "case-law",
+        query,
+        judgmentId: singleVerified ? String(singleVerified.id) : undefined,
+        citation: singleVerified?.citation,
+        title: singleVerified?.title,
+      });
 
       res.json({
         instruction: "Verified means internal identity consistency only; the original source has not been authenticated. Independently verify every citation and proposition. Read available text via /api/mcp/get_judgment.",
@@ -24166,6 +24201,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const dummyIntent = { ...understanding.intent, needsCaseLaw: false, needsStatutes: true, needsAdminDocs: false };
       const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
       await storage.logUsage(userId, "search-statutes").catch(() => {});
+      void recordMcpActivity({ userId, kind: "statute", query });
 
       // Update key last used
       db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
@@ -24260,6 +24296,14 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const textCheck = await protectJudgmentDetail(detail);
       const safe = textCheck.contentFormat !== "unavailable";
       const confirmed = textCheck.textIntegrity === "own";
+      void recordMcpActivity({
+        userId,
+        kind: "judgment",
+        query: detail.citation,
+        judgmentId: detail.id,
+        citation: detail.citation,
+        title: confirmed ? textCheck.title : undefined,
+      });
 
       res.json({
         id: detail.id,
@@ -24293,7 +24337,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       if (!allowed) return;
 
       const rawContext = await gatherKnowledgeContextV2(query, userId, undefined, { module: req.body.module });
-      await logUsageCost(userId, "chat", "mcp-rag-context", query, rawContext, { userQuery: query });
+      await logUsageCost(userId, "chat", "mcp-rag-context", query, rawContext, { userQuery: query, skipQualityLog: true });
+      void logOutputQuality(userId, "legal-research", "mcp-rag-context", query, rawContext, { userQuery: query, operational: true });
+      void recordMcpActivity({ userId, kind: "research", query });
 
       // The RAG context carries citations as plain prose, and some of them come
       // from an LLM-extracted index, so a citation in here is not evidence that
@@ -24394,6 +24440,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       }
 
       await storage.logUsage(userId, "draft");
+      await saveMcpDraftDocument({ userId, title: `Draft: ${topic}`, content: formattedText });
       
       // Update key last used
       db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
@@ -24455,6 +24502,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       }
 
       await storage.logUsage(userId, "contract-drafting");
+      await saveMcpDraftDocument({ userId, title: `Contract: ${contractType}`, content: formattedText });
       
       // Update key last used
       db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});

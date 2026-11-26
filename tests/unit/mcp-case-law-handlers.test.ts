@@ -17,7 +17,7 @@ function handler(name: string, deps: Record<string, any>): (input: any) => Promi
   const js = ts.transpileModule(`(${callback.getText(source)})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   return new Function(...Object.keys(deps), `return ${js}`)(...Object.values(deps));
 }
-const base = { VERSION: "test", SOURCE: "test", RETRIEVAL_VERSION: "test", PUBLIC_SITE: "https://example.test", judgmentGeneratedPdfUrl, getAuthenticatedUserId: () => "test", enforceQuota: async () => {}, logToolUsage: async () => {} };
+const base = { VERSION: "test", SOURCE: "test", RETRIEVAL_VERSION: "test", PUBLIC_SITE: "https://example.test", judgmentGeneratedPdfUrl, recordMcpActivity: async () => {}, getAuthenticatedUserId: () => "test", enforceQuota: async () => {}, logToolUsage: async () => {} };
 const opening = `Court Name: Supreme Court\nTitle: Ahmad Khan vs State\nReported As: 2024 SCMR 1085\nResult: allowed\n${"Judgment body. ".repeat(40)}`;
 const row = { id: "record", citation: "2024 SCMR 1085", title: "Ahmad Khan vs State", court: "Supreme Court", textStatus: "own", opening };
 

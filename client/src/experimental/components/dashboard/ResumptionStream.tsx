@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
+import { parseActivityQuery, getActivityHref } from "@shared/mcp-activity";
 import {
   MessageSquare,
   FileSignature,
@@ -234,24 +235,28 @@ export const ResumptionStream: React.FC<ResumptionStreamProps> = ({
               </div>
             ) : (
               <div className="space-y-2">
-                {recentSearches.map((s: any) => (
+                {recentSearches.map((s: any) => {
+                  const parsed = parseActivityQuery(s.query);
+                  const href = getActivityHref(parsed, s.type);
+                  return (
                   <Link
                     key={s.id}
-                    href={`/preview/judgments?q=${encodeURIComponent(s.query)}`}
+                    href={href}
                     className="block p-2.5 rounded-lg bg-white dark:bg-[#131E2E]/70 border border-[#E5E4E2] dark:border-[#1E2D44] hover:border-emerald-500/40 transition-all group"
                   >
                     <div className="flex items-start justify-between gap-1">
                       <p className="text-xs font-medium text-[#2D2D2D] dark:text-[#CBD5E1] group-hover:text-[#1A1A1A] dark:text-[#F8FAFC] transition-colors line-clamp-1 font-mono">
-                        "{s.query}"
+                        "{parsed.displayQuery}"
                       </p>
                       <ArrowRight className="w-3 h-3 text-[#4A4A4A] dark:text-[#94A3B8] dark:text-[#475569] group-hover:text-[#1A1A1A] dark:text-[#F8FAFC] group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-[#666666] dark:text-[#94A3B8] dark:text-[#475569] mt-1 font-mono">
-                      <span>{s.resultCount ? `${s.resultCount} citations` : "Query"}</span>
+                      <span>{parsed.isMcp ? "MCP" : s.resultCount ? `${s.resultCount} citations` : "Query"}</span>
                       <span>Run Search</span>
                     </div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

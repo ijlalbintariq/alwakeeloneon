@@ -13,7 +13,11 @@ const reviewSchema = z.object({
   sourceEvidence: z.string().max(400),
 });
 export interface QualityReviewInput { feature: string; query: string; answer: string; sourceContext?: string; generationContext?: string; }
-const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+const normalize = (text: string) =>
+  text
+    .replace(/\*\*|__|`/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 const contains = (text: string, quote: string, minimum: number) => normalize(quote).length >= minimum && normalize(text).includes(normalize(quote));
 
 export function parseQualityReview(value: unknown, input: QualityReviewInput): QualityAssessment {
@@ -60,11 +64,13 @@ export function parseQualityReview(value: unknown, input: QualityReviewInput): Q
 }
 
 let activeReviews = 0;
-/** Best-effort audit: one bounded request, no queue of retained legal documents. */
+const MAX_CONCURRENT_REVIEWS = 4;
+const REVIEW_TIMEOUT_MS = 15_000;
+/** Best-effort audit: bounded request, no queue of retained legal documents. */
 export async function reviewOutputQuality(input: QualityReviewInput): Promise<QualityAssessment> {
   const unavailable = (reason: string): QualityAssessment => ({ version: 2, status: "unavailable", score: null, reason, flags: ["review_unavailable"] });
   if (!input.query.trim() || !input.answer.trim()) return unavailable("The actual user query or output was not captured; relevance cannot be assessed.");
-  if (activeReviews >= 1) return unavailable("Review capacity was reached. This output was not assessed.");
+  if (activeReviews >= MAX_CONCURRENT_REVIEWS) return unavailable("Review capacity was reached. This output was not assessed.");
   activeReviews++;
   const model = getOpenRouterToolModelName();
   try {
@@ -79,11 +85,12 @@ Return JSON {relevance:1..5,completeness:1..5,caseLawRelevance:1..5 or null,requ
         { role: "user", content: JSON.stringify({ feature: input.feature, query: input.query.slice(0, 6000), answer: input.answer.slice(0, 24000),
           sourceContext: (input.sourceContext || "").slice(0, 16000), generationContext: (input.generationContext || "").slice(-8000) }) },
       ],
-    }, { signal: AbortSignal.timeout(8000), maxRetries: 0 });
+    }, { signal: AbortSignal.timeout(REVIEW_TIMEOUT_MS), maxRetries: 0 });
     const usage = response.usage;
     return { ...parseQualityReview(JSON.parse(response.choices[0]?.message?.content || "{}"), input), model, reviewedAt: new Date().toISOString(),
       tokenUsage: usage && [usage.prompt_tokens, usage.completion_tokens, usage.total_tokens].every(value => Number.isSafeInteger(value) && value >= 0) ? { input: usage.prompt_tokens, output: usage.completion_tokens, total: usage.total_tokens } : undefined };
-  } catch {
-    return { ...unavailable("The reviewer timed out, failed, or returned invalid evidence. No quality score was assigned."), model, reviewedAt: new Date().toISOString() };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return { ...unavailable(`The reviewer timed out, failed, or returned invalid evidence (${detail.slice(0, 140)}). No quality score was assigned.`), model, reviewedAt: new Date().toISOString() };
   } finally { activeReviews--; }
 }

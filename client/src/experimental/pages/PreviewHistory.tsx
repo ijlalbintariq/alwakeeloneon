@@ -34,6 +34,7 @@ import {
   Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseActivityQuery } from "@shared/mcp-activity";
 
 export interface HistoryEntry {
   id: string;
@@ -48,6 +49,7 @@ export interface HistoryEntry {
   aiResponseSummary: string;
   citationsRetrieved: string[];
   bookmarked?: boolean;
+  judgmentId?: string;
 }
 
 const STORAGE_KEY = "alwakeelo_preview_history";
@@ -85,6 +87,7 @@ function mapSearchHistoryToEntry(h: {
   createdAt?: string | Date | null;
 }): HistoryEntry {
   const { timestamp, isoDate } = formatTimestamp(h.createdAt);
+  const parsed = parseActivityQuery(h.query);
   const typeMap: Record<string, HistoryEntry["type"]> = {
     judgment: "judgment",
     statute: "statute",
@@ -94,16 +97,19 @@ function mapSearchHistoryToEntry(h: {
   };
   return {
     id: `sh-${h.id}`,
-    query: h.query || "Legal Search Query",
+    query: parsed.displayQuery || "Legal Search Query",
     type: typeMap[h.type] || "judgment",
     timestamp,
     isoDate,
     resultCount: 1,
     executionTimeMs: 180,
-    matterTag: "General Research",
-    aiResponseSummary: `Search query logged for ${h.type || "legal"} engine.`,
+    matterTag: parsed.isMcp ? "MCP Integration" : "General Research",
+    aiResponseSummary: parsed.isMcp
+      ? `Executed via Al Wakeelo MCP (${parsed.mcpKind || h.type}) integration.`
+      : `Search query logged for ${h.type || "legal"} engine.`,
     citationsRetrieved: [],
     bookmarked: false,
+    judgmentId: parsed.judgmentId,
   };
 }
 
@@ -296,10 +302,18 @@ export const PreviewHistory: React.FC = () => {
       description: `Dispatching "${entry.query.slice(0, 45)}..." to engine.`,
     });
 
-    if (entry.type === "judgment") {
+    if (entry.judgmentId) {
+      navigate(`/judgment/${encodeURIComponent(entry.judgmentId)}`);
+    } else if (entry.type === "statute") {
+      navigate(`/preview/statutes?q=${encodeURIComponent(entry.query)}`);
+    } else if (entry.type === "judgment") {
       navigate(`/preview/judgments?q=${encodeURIComponent(entry.query)}`);
     } else if (entry.type === "ai_chat") {
-      navigate(`/preview/chat?q=${encodeURIComponent(entry.query)}`);
+      if (entry.matterTag === "MCP Integration") {
+        navigate(`/preview/judgments?q=${encodeURIComponent(entry.query)}`);
+      } else {
+        navigate(`/preview/chat?q=${encodeURIComponent(entry.query)}`);
+      }
     } else if (entry.type === "drafting") {
       navigate(`/preview/drafting`);
     } else {

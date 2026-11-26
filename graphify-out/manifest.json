@@ -2046,9 +2046,9 @@
     "semantic_hash": "a0562e8d4333fbea7cddadf05a0630fb"
   },
   "server/mcp-server.ts": {
-    "mtime": 1795711912.3007228,
-    "seen": 1795712076.6127381,
-    "ast_hash": "0678c413575eb499a05dab2af05be412",
+    "mtime": 1795724334.3652027,
+    "seen": 1795724529.522816,
+    "ast_hash": "e2cff5dd17ae527eeaa436300e52699a",
     "semantic_hash": ""
   },
   "server/middleware/db-guard.ts": {
@@ -2298,9 +2298,9 @@
     "semantic_hash": "d7c65518e9a60474aedc33c7fd21aeaf"
   },
   "server/routes.ts": {
-    "mtime": 1795711917.702479,
-    "seen": 1795712076.613579,
-    "ast_hash": "3cb4973ed11d4ad6ff90ed7b73313274",
+    "mtime": 1795724388.9865117,
+    "seen": 1795724529.52376,
+    "ast_hash": "2174167fb71328698a839043328fdce7",
     "semantic_hash": ""
   },
   "server/run-mcp.ts": {
@@ -3990,9 +3990,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/components/dashboard/ResumptionStream.tsx": {
-    "mtime": 1788565021.6660118,
-    "seen": 1791836288.7136462,
-    "ast_hash": "4ad50f2f0407835eae60efffc699727c",
+    "mtime": 1795723322.4025116,
+    "seen": 1795723437.446592,
+    "ast_hash": "eaed67f17d891a2edafe4343e8439ce1",
     "semantic_hash": ""
   },
   "client/src/experimental/components/dashboard/UpgradePlanModal.tsx": {
@@ -4302,9 +4302,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewDashboard.tsx": {
-    "mtime": 1789411003.0399635,
-    "seen": 1791836288.713886,
-    "ast_hash": "52ff12261e6630147fa96ff33052d880",
+    "mtime": 1795723294.4514358,
+    "seen": 1795723437.448277,
+    "ast_hash": "14780581a5153b818cb1af82779d61eb",
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewDocumentAnalyzer.tsx": {
@@ -4332,9 +4332,9 @@
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewHistory.tsx": {
-    "mtime": 1788565021.6083963,
-    "seen": 1791836288.71389,
-    "ast_hash": "2daaf71b64f5e01fb855c63f8bf005c1",
+    "mtime": 1795723320.194179,
+    "seen": 1795723437.448378,
+    "ast_hash": "9834c8d7f456079bdd82001008972f8d",
     "semantic_hash": ""
   },
   "client/src/experimental/pages/PreviewInstallApp.tsx": {
@@ -42276,9 +42276,9 @@
     "semantic_hash": ""
   },
   "tests/unit/mcp-case-law-handlers.test.ts": {
-    "mtime": 1795711984.5176113,
-    "seen": 1795712076.6178298,
-    "ast_hash": "cab4164b8a5342767d3db5fbf9998375",
+    "mtime": 1795723344.224465,
+    "seen": 1795723437.464015,
+    "ast_hash": "b312ee0535234dfe1dd559077ef25c1e",
     "semantic_hash": ""
   },
   "tests/unit/mcp-judgment-identity.test.ts": {
@@ -42816,9 +42816,9 @@
     "semantic_hash": ""
   },
   "server/output-quality.ts": {
-    "mtime": 1795548158.5294936,
-    "seen": 1795712076.612907,
-    "ast_hash": "7417ff1f45452e5f95598665acac75c2",
+    "mtime": 1795724337.2340035,
+    "seen": 1795724529.523009,
+    "ast_hash": "aec2657dd6bc660a7efeac03e35f80b0",
     "semantic_hash": ""
   },
   "server/pipeline/case-relevance.ts": {
@@ -42879,6 +42879,30 @@
     "mtime": 1795442150.5836468,
     "seen": 1795712076.6195478,
     "ast_hash": "ee42e4bd360b2baad764b1e2801152f6",
+    "semantic_hash": ""
+  },
+  "server/mcp-activity.ts": {
+    "mtime": 1795723080.5638564,
+    "seen": 1795723437.458383,
+    "ast_hash": "808a0db51cd8d25c905f6bb595f2c056",
+    "semantic_hash": ""
+  },
+  "shared/mcp-activity.ts": {
+    "mtime": 1795723079.1305225,
+    "seen": 1795723437.46065,
+    "ast_hash": "34c9bd6b8f3095ddfe613eac81998ef0",
+    "semantic_hash": ""
+  },
+  "tests/unit/mcp-activity.test.ts": {
+    "mtime": 1795723345.3194003,
+    "seen": 1795723437.464014,
+    "ast_hash": "4a4150e54784c02bf580b52e0cfeb18c",
+    "semantic_hash": ""
+  },
+  "tests/unit/output-quality-and-attachments.test.ts": {
+    "mtime": 1795724462.495723,
+    "seen": 1795724529.528383,
+    "ast_hash": "dc3bc09d95abf2b1ffdcf5dda47dc998",
     "semantic_hash": ""
   }
 }
